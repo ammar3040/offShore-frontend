@@ -17,8 +17,8 @@ const Sidebar = () => {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo">
-          <div className="logo-icon">sync</div>
-          <span className="logo-text">sync</span>
+          <div className="logo-icon">O</div>
+          <span className="logo-text">Offshore CRM</span>
         </div>
       </div>
       
