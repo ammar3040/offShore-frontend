@@ -68,3 +68,28 @@
   color: #9ca3af;
   text-align: center;
 }
+
+@media (max-width: 768px) {
+  .kpi-cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .kpi-card {
+    padding: 20px;
+  }
+  
+  .kpi-value {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-card {
+    padding: 16px;
+  }
+  
+  .kpi-value {
+    font-size: 24px;
+  }
+}

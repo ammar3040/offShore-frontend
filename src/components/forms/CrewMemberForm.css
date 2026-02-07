@@ -253,20 +253,86 @@
 }
 
 @media (max-width: 768px) {
+  .form-sections {
+    gap: 24px;
+    max-height: calc(95vh - 180px);
+  }
+  
+  .form-section {
+    padding-bottom: 20px;
+  }
+  
+  .form-section-title {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
   .form-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .form-group-full {
     grid-column: 1;
   }
   
+  .file-upload-area {
+    padding: 20px;
+  }
+  
   .form-actions {
     flex-direction: column-reverse;
+    padding-top: 20px;
+    margin-top: 20px;
   }
   
   .button-primary,
   .button-secondary {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-sections {
+    gap: 20px;
+    padding-right: 4px;
+  }
+  
+  .form-section {
+    padding-bottom: 16px;
+  }
+  
+  .form-section-title {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  
+  .form-grid {
+    gap: 12px;
+  }
+  
+  .form-group label {
+    font-size: 13px;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 10px 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .file-upload-area {
+    padding: 16px;
+  }
+  
+  .file-upload-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .form-actions {
+    padding-top: 16px;
+    margin-top: 16px;
   }
 }

@@ -1,10 +1,17 @@
-import { Search, Bell, ChevronDown } from 'lucide-react';
+import { Search, Bell, ChevronDown, Menu } from 'lucide-react';
 import './Header.css';
 
-const Header = () => {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+const Header = ({ onMenuClick }: HeaderProps) => {
   return (
     <header className="header">
       <div className="header-left">
+        <button className="mobile-menu-button" onClick={onMenuClick}>
+          <Menu size={24} />
+        </button>
         <div className="search-container">
           <Search size={18} className="search-icon" />
           <input

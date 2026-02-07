@@ -30,3 +30,31 @@
     width: 100%;
   }
 }
+
+@media (max-width: 768px) {
+  .crew-dashboard {
+    gap: 16px;
+  }
+  
+  .dashboard-main {
+    gap: 16px;
+  }
+  
+  .dashboard-sidebar {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .crew-dashboard {
+    gap: 12px;
+  }
+  
+  .dashboard-main {
+    gap: 12px;
+  }
+  
+  .dashboard-sidebar {
+    gap: 12px;
+  }
+}

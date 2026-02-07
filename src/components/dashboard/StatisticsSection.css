@@ -45,3 +45,29 @@
   font-size: 12px;
   color: #6b7280;
 }
+
+@media (max-width: 768px) {
+  .statistics-section {
+    padding: 20px;
+  }
+  
+  .chart-legend {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .statistics-section {
+    padding: 16px;
+  }
+  
+  .section-title {
+    font-size: 18px;
+  }
+  
+  .section-description {
+    font-size: 13px;
+  }
+}

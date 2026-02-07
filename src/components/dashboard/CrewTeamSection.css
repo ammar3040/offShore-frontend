@@ -179,3 +179,61 @@
   width: 24px;
   border-radius: 4px;
 }
+
+@media (max-width: 768px) {
+  .crew-team-section {
+    padding: 20px;
+  }
+  
+  .crew-card {
+    height: 280px;
+  }
+  
+  .crew-nav-left {
+    left: 8px;
+  }
+  
+  .crew-nav-right {
+    right: 8px;
+  }
+  
+  .crew-avatar-large {
+    width: 80px;
+    height: 80px;
+    font-size: 40px;
+  }
+  
+  .crew-name {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .crew-team-section {
+    padding: 16px;
+  }
+  
+  .crew-card {
+    height: 260px;
+  }
+  
+  .crew-nav-button {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .crew-avatar-large {
+    width: 70px;
+    height: 70px;
+    font-size: 36px;
+  }
+  
+  .crew-name {
+    font-size: 18px;
+  }
+  
+  .crew-action-button {
+    width: 36px;
+    height: 36px;
+  }
+}

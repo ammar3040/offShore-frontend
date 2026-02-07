@@ -1,8 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Search, Users, Building2, FolderKanban, Calendar, Settings, Rocket } from 'lucide-react';
+import { LayoutDashboard, Search, Users, Building2, FolderKanban, Calendar, Settings, Rocket, X } from 'lucide-react';
 import './Sidebar.css';
 
-const Sidebar = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Search, label: 'Leads', path: '/leads' },
@@ -13,13 +18,22 @@ const Sidebar = () => {
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 
+  const handleNavClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
         <div className="logo">
           <div className="logo-icon">O</div>
           <span className="logo-text">Offshore CRM</span>
         </div>
+        <button className="sidebar-close-button" onClick={onClose}>
+          <X size={20} />
+        </button>
       </div>
       
       <nav className="sidebar-nav">
@@ -30,6 +44,7 @@ const Sidebar = () => {
               key={item.path}
               to={item.path}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              onClick={handleNavClick}
             >
               <Icon size={20} />
               <span>{item.label}</span>

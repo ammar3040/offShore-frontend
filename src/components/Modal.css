@@ -107,13 +107,43 @@
   .modal-content {
     max-width: 100%;
     max-height: 95vh;
+    margin: 10px;
   }
   
   .modal-header {
     padding: 20px;
   }
   
+  .modal-title {
+    font-size: 20px;
+  }
+  
   .modal-body {
     padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 0;
+  }
+  
+  .modal-content {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  .modal-header {
+    padding: 16px;
+  }
+  
+  .modal-title {
+    font-size: 18px;
+  }
+  
+  .modal-body {
+    padding: 16px;
   }
 }

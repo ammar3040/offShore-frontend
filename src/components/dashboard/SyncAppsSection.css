@@ -143,3 +143,55 @@
 .sync-more-link:hover {
   color: #1d4ed8;
 }
+
+@media (max-width: 768px) {
+  .sync-apps-section {
+    padding: 20px;
+  }
+  
+  .sync-diagram {
+    height: 240px;
+  }
+  
+  .sync-logo-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 12px;
+  }
+  
+  .sync-app-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  
+  .sync-app-name {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sync-apps-section {
+    padding: 16px;
+  }
+  
+  .sync-diagram {
+    height: 200px;
+  }
+  
+  .sync-logo-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 10px;
+  }
+  
+  .sync-app-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  
+  .sync-app-name {
+    font-size: 9px;
+  }
+}

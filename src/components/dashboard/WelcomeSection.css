@@ -42,3 +42,32 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
+
+@media (max-width: 768px) {
+  .welcome-section {
+    padding: 24px;
+  }
+  
+  .welcome-title {
+    font-size: 24px;
+  }
+  
+  .welcome-description {
+    font-size: 14px;
+  }
+  
+  .welcome-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-section {
+    padding: 20px;
+  }
+  
+  .welcome-title {
+    font-size: 20px;
+  }
+}

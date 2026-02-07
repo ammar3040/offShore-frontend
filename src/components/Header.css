@@ -14,6 +14,27 @@
 .header-left {
   flex: 1;
   max-width: 500px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mobile-menu-button {
+  display: none;
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: #6b7280;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.mobile-menu-button:hover {
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
 .search-container {
@@ -110,4 +131,51 @@
 
 .chevron-icon {
   color: #9ca3af;
+}
+
+/* Mobile styles */
+@media (max-width: 1023px) {
+  .header {
+    padding: 0 16px;
+  }
+  
+  .mobile-menu-button {
+    display: flex;
+  }
+  
+  .search-container {
+    flex: 1;
+  }
+  
+  .user-info {
+    display: none;
+  }
+  
+  .chevron-icon {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    height: 64px;
+    padding: 0 12px;
+  }
+  
+  .header-left {
+    gap: 12px;
+  }
+  
+  .search-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .user-profile {
+    padding: 4px;
+  }
+  
+  .avatar {
+    width: 36px;
+    height: 36px;
+  }
 }
