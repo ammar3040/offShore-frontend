@@ -1,71 +1,80 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import Modal from '../Modal';
-import CrewMemberForm from '../forms/CrewMemberForm';
+import CrewMemberForm, { type CrewMemberFormData } from '../forms/CrewMemberForm';
+import { createCrewMember } from '../../api/crew';
 import './WelcomeSection.css';
-
-interface CrewMemberFormData {
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  nationality: string;
-  gender: string;
-  email: string;
-  phone: string;
-  alternatePhone: string;
-  address: string;
-  city: string;
-  country: string;
-  postalCode: string;
-  role: string;
-  department: string;
-  employeeId: string;
-  hireDate: string;
-  status: string;
-  passportNumber: string;
-  passportIssueDate: string;
-  passportExpiryDate: string;
-  passportIssuingCountry: string;
-  passportDocuments: File[];
-  identityType: string;
-  identityNumber: string;
-  identityIssueDate: string;
-  identityExpiryDate: string;
-  identityDocuments: File[];
-  availabilityStatus: string;
-  availabilityStartDate: string;
-  availabilityEndDate: string;
-  notes: string;
-}
 
 const WelcomeSection = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
 
   const handleAddCrewMember = () => {
     setIsModalOpen(true);
+    setError(null);
   };
 
   const handleCloseModal = () => {
-    setIsModalOpen(false);
+    if (!isLoading) {
+      setIsModalOpen(false);
+      setError(null);
+    }
   };
 
-  const handleSubmitCrewMember = (data: CrewMemberFormData) => {
-    // TODO: Implement API call to save crew member
-    console.log('Crew Member Data:', data);
-    
-    // For now, just show an alert and close the modal
-    alert(`Crew member ${data.firstName} ${data.lastName} added successfully!`);
-    setIsModalOpen(false);
-    
-    // In a real application, you would:
-    // 1. Upload files to a server
-    // 2. Save crew member data via API
-    // 3. Refresh the crew list
-    // 4. Show success/error notifications
+  const handleSubmitCrewMember = async (data: CrewMemberFormData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await createCrewMember(data);
+
+      if (!response.ok) {
+        let message = `Request failed (${response.status})`;
+        const text = await response.text();
+        if (text) {
+          try {
+            const errorData = JSON.parse(text);
+            message = errorData?.message || errorData?.error || message;
+          } catch {
+            message = text;
+          }
+        }
+        setError(message);
+        return;
+      }
+
+      setIsModalOpen(false);
+      if (response.status === 201) {
+        setShowSuccessBanner(true);
+      }
+      // TODO: Refresh crew list if needed
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add crew member';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <>
+      {showSuccessBanner && (
+        <div className="success-banner" role="status">
+          <span className="success-banner-message">
+            Crew added successfully and login credentials have been mailed to the email.
+          </span>
+          <button
+            type="button"
+            className="success-banner-dismiss"
+            onClick={() => setShowSuccessBanner(false)}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="welcome-section">
         <div className="welcome-content">
           <h1 className="welcome-title">Start managing your crew!</h1>
@@ -85,9 +94,15 @@ const WelcomeSection = () => {
         title="Add New Crew Member"
         size="xlarge"
       >
+        {error && (
+          <div className="form-error-message" role="alert">
+            {error}
+          </div>
+        )}
         <CrewMemberForm
           onSubmit={handleSubmitCrewMember}
           onCancel={handleCloseModal}
+          isLoading={isLoading}
         />
       </Modal>
     </>

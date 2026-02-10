@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Search, Users, Building2, FolderKanban, Calendar, Settings, Rocket, X } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Search, Users, Building2, FolderKanban, Calendar, Settings, Rocket, X, Ship } from 'lucide-react';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -8,8 +8,10 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
+  const location = useLocation();
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: Ship, label: 'Crew', path: '/crew' },
     { icon: Search, label: 'Leads', path: '/leads' },
     { icon: Users, label: 'People', path: '/people' },
     { icon: Building2, label: 'Companies', path: '/companies' },
@@ -39,11 +41,12 @@ const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
       <nav className="sidebar-nav">
         {navItems.map((item) => {
           const Icon = item.icon;
+          const isCrewActive = item.path === '/crew' && location.pathname.startsWith('/crew');
           return (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              className={({ isActive }) => `nav-item ${(isActive || isCrewActive) ? 'active' : ''}`}
               onClick={handleNavClick}
             >
               <Icon size={20} />

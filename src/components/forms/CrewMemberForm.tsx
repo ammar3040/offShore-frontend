@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import './CrewMemberForm.css';
 
-interface CrewMemberFormData {
+export interface CrewMemberFormData {
   // Personal Details
   firstName: string;
   lastName: string;
@@ -19,13 +19,6 @@ interface CrewMemberFormData {
   country: string;
   postalCode: string;
   
-  // Role Details
-  role: string;
-  department: string;
-  employeeId: string;
-  hireDate: string;
-  status: string;
-  
   // Passport & Identity
   passportNumber: string;
   passportIssueDate: string;
@@ -39,20 +32,15 @@ interface CrewMemberFormData {
   identityIssueDate: string;
   identityExpiryDate: string;
   identityDocuments: File[];
-  
-  // Availability & Notes
-  availabilityStatus: string;
-  availabilityStartDate: string;
-  availabilityEndDate: string;
-  notes: string;
 }
 
 interface CrewMemberFormProps {
-  onSubmit: (data: CrewMemberFormData) => void;
+  onSubmit: (data: CrewMemberFormData) => void | Promise<void>;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
-const CrewMemberForm = ({ onSubmit, onCancel }: CrewMemberFormProps) => {
+const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFormProps) => {
   const [formData, setFormData] = useState<CrewMemberFormData>({
     firstName: '',
     lastName: '',
@@ -66,11 +54,6 @@ const CrewMemberForm = ({ onSubmit, onCancel }: CrewMemberFormProps) => {
     city: '',
     country: '',
     postalCode: '',
-    role: '',
-    department: '',
-    employeeId: '',
-    hireDate: '',
-    status: 'active',
     passportNumber: '',
     passportIssueDate: '',
     passportExpiryDate: '',
@@ -81,10 +64,6 @@ const CrewMemberForm = ({ onSubmit, onCancel }: CrewMemberFormProps) => {
     identityIssueDate: '',
     identityExpiryDate: '',
     identityDocuments: [],
-    availabilityStatus: 'available',
-    availabilityStartDate: '',
-    availabilityEndDate: '',
-    notes: '',
   });
 
   const passportFileInputRef = useRef<HTMLInputElement>(null);
@@ -129,9 +108,9 @@ const CrewMemberForm = ({ onSubmit, onCancel }: CrewMemberFormProps) => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    await onSubmit(formData);
   };
 
   return (
@@ -282,70 +261,6 @@ const CrewMemberForm = ({ onSubmit, onCancel }: CrewMemberFormProps) => {
           </div>
         </div>
 
-        {/* Role Details Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Role Details</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="role">Role/Position *</label>
-              <input
-                type="text"
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleInputChange}
-                placeholder="e.g., Marine Engineer, Safety Officer"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="department">Department</label>
-              <input
-                type="text"
-                id="department"
-                name="department"
-                value={formData.department}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="employeeId">Employee ID</label>
-              <input
-                type="text"
-                id="employeeId"
-                name="employeeId"
-                value={formData.employeeId}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="hireDate">Hire Date</label>
-              <input
-                type="date"
-                id="hireDate"
-                name="hireDate"
-                value={formData.hireDate}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="status">Status *</label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="on-leave">On Leave</option>
-                <option value="terminated">Terminated</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
         {/* Passport Information Section */}
         <div className="form-section">
           <h3 className="form-section-title">Passport Information</h3>
@@ -447,8 +362,8 @@ const CrewMemberForm = ({ onSubmit, onCancel }: CrewMemberFormProps) => {
                 onChange={handleInputChange}
               >
                 <option value="">Select</option>
-                <option value="national-id">National ID</option>
-                <option value="driving-license">Driving License</option>
+                <option value="national_id">National ID</option>
+                <option value="driving_license">Driving License</option>
                 <option value="seaman-book">Seaman Book</option>
                 <option value="other">Other</option>
               </select>
@@ -524,68 +439,15 @@ const CrewMemberForm = ({ onSubmit, onCancel }: CrewMemberFormProps) => {
             )}
           </div>
         </div>
-
-        {/* Availability & Notes Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Availability & Notes</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="availabilityStatus">Availability Status *</label>
-              <select
-                id="availabilityStatus"
-                name="availabilityStatus"
-                value={formData.availabilityStatus}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="available">Available</option>
-                <option value="unavailable">Unavailable</option>
-                <option value="on-assignment">On Assignment</option>
-                <option value="on-leave">On Leave</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label htmlFor="availabilityStartDate">Available From</label>
-              <input
-                type="date"
-                id="availabilityStartDate"
-                name="availabilityStartDate"
-                value={formData.availabilityStartDate}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="availabilityEndDate">Available Until</label>
-              <input
-                type="date"
-                id="availabilityEndDate"
-                name="availabilityEndDate"
-                value={formData.availabilityEndDate}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group form-group-full">
-              <label htmlFor="notes">Notes</label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                rows={4}
-                placeholder="Additional notes about the crew member..."
-              />
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Form Actions */}
       <div className="form-actions">
-        <button type="button" className="button-secondary" onClick={onCancel}>
+        <button type="button" className="button-secondary" onClick={onCancel} disabled={isLoading}>
           Cancel
         </button>
-        <button type="submit" className="button-primary">
-          Add Crew Member
+        <button type="submit" className="button-primary" disabled={isLoading}>
+          {isLoading ? 'Adding...' : 'Add Crew Member'}
         </button>
       </div>
     </form>
