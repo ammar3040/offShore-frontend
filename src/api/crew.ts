@@ -52,7 +52,7 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   try {
-    const response = await fetch(`${env.apiBaseUrl}/crew`, {
+    const response = await fetch(`${env.apiBaseUrl}/api/crew`, {
       method: 'POST',
       headers,
       body: formData,
