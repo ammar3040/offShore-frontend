@@ -5,7 +5,7 @@
 
 export const env = {
   // API Configuration
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://marine-flight-backend.vercel.app/',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://marine-flight-backend.vercel.app',
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 
   // Authentication
