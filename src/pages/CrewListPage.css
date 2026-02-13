@@ -1,0 +1,98 @@
+.crew-list-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
+}
+
+.crew-list-header {
+  margin-bottom: 24px;
+}
+
+.crew-list-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.crew-list-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.crew-list-loading,
+.crew-list-error,
+.crew-list-empty {
+  padding: 48px 24px;
+  text-align: center;
+  border-radius: 12px;
+  font-size: 14px;
+  background-color: #f9fafb;
+}
+
+.crew-list-error {
+  color: #b91c1c;
+  background-color: #fef2f2;
+}
+
+.crew-list-empty {
+  color: #6b7280;
+  background-color: #f3f4f6;
+}
+
+.crew-list-table-wrapper {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.crew-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.crew-list-table th,
+.crew-list-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.crew-list-table th {
+  font-weight: 600;
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+.crew-list-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.crew-list-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.crew-list-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+@media (max-width: 768px) {
+  .crew-list-page {
+    padding: 0 16px 16px;
+  }
+
+  .crew-list-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .crew-list-table th,
+  .crew-list-table td {
+    padding: 12px;
+    font-size: 13px;
+  }
+}

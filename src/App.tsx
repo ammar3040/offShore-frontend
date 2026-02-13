@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import CrewManagementDashboard from './pages/CrewManagementDashboard';
+import CrewListPage from './pages/CrewListPage';
 import CrewLogin from './pages/CrewLogin';
 import './App.css';
 
@@ -8,11 +9,10 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Crew panel - login screen (no sidebar layout) */}
-        <Route path="/crew" element={<CrewLogin />} />
+        {/* Crew portal login (no sidebar layout) */}
         <Route path="/crew/login" element={<CrewLogin />} />
 
-        {/* Crew dashboard - after login (with layout) */}
+        {/* Crew dashboard - after crew login (with layout) */}
         <Route
           path="/crew/dashboard"
           element={
@@ -29,6 +29,7 @@ function App() {
             <Layout>
               <Routes>
                 <Route path="/" element={<CrewManagementDashboard />} />
+                <Route path="/crew" element={<CrewListPage />} />
                 <Route path="/leads" element={<div>Leads</div>} />
                 <Route path="/people" element={<div>People</div>} />
                 <Route path="/companies" element={<div>Companies</div>} />

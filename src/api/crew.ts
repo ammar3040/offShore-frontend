@@ -1,6 +1,45 @@
 import { env } from '../config/env';
 import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 
+/** Crew list API response and related types */
+export interface CrewPassport {
+  passport_number: string;
+  issue_date: string;
+  expiry_date: string;
+  issuing_country: string;
+  passport_document: string;
+}
+
+export interface CrewIdentity {
+  identity_type: string;
+  identity_number: string;
+  issue_date: string;
+  expiry_date: string;
+  identity_document: string;
+}
+
+export interface CrewMemberApi {
+  id: string;
+  firstname: string;
+  lastname: string;
+  dateOfBirth: string;
+  nationality: string;
+  gender: string;
+  email: string;
+  phone: string;
+  alternate_phone: string;
+  address: string;
+  city: string;
+  country: string;
+  postal_code: string;
+  passport: CrewPassport;
+  identity: CrewIdentity;
+}
+
+export interface GetCrewResponse {
+  crew: CrewMemberApi[];
+}
+
 function buildCrewFormData(data: CrewMemberFormData): FormData {
   const formData = new FormData();
 
@@ -37,6 +76,42 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
 
 function getAuthToken(): string | null {
   return localStorage.getItem(env.authTokenKey);
+}
+
+export async function getCrewList(): Promise<GetCrewResponse> {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew`, {
+    method: 'GET',
+    headers,
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
 }
 
 export async function createCrewMember(data: CrewMemberFormData): Promise<Response> {

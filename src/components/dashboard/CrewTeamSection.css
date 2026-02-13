@@ -22,6 +22,30 @@
   line-height: 1.5;
 }
 
+.crew-team-loading,
+.crew-team-error,
+.crew-team-empty {
+  padding: 32px 24px;
+  text-align: center;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.crew-team-loading {
+  color: #6b7280;
+  background-color: #f9fafb;
+}
+
+.crew-team-error {
+  color: #b91c1c;
+  background-color: #fef2f2;
+}
+
+.crew-team-empty {
+  color: #6b7280;
+  background-color: #f3f4f6;
+}
+
 .crew-card-container {
   position: relative;
   margin-bottom: 16px;
