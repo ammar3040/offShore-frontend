@@ -1,0 +1,331 @@
+.projects-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
+}
+
+.projects-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.projects-page-header-text {
+  min-width: 0;
+}
+
+.projects-page-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.projects-page-create-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.projects-page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.projects-page-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.projects-page-loading,
+.projects-page-error,
+.projects-page-empty {
+  padding: 48px 24px;
+  text-align: center;
+  border-radius: 12px;
+  font-size: 14px;
+  background-color: #f9fafb;
+}
+
+.projects-page-error {
+  color: #b91c1c;
+  background-color: #fef2f2;
+}
+
+.projects-page-empty {
+  color: #6b7280;
+  background-color: #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.projects-page-empty-icon {
+  color: #9ca3af;
+}
+
+.projects-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.project-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.project-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-color: #d1d5db;
+}
+
+.project-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.project-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+}
+
+.project-card-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.project-card-status-active {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.project-card-status-completed {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.project-card-status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.project-card-status-default {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.project-card-description {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.project-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.project-card-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.project-card-meta-item svg {
+  flex-shrink: 0;
+  color: #9ca3af;
+}
+
+.project-card-dates {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Create project modal form */
+.projects-page-form-error {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+}
+
+.projects-page-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.projects-page-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.projects-page-form-field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.projects-page-form-field input,
+.projects-page-form-field textarea {
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #1f2937;
+  transition: border-color 0.2s;
+}
+
+.projects-page-form-field input:focus,
+.projects-page-form-field textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+
+.projects-page-form-field input:disabled,
+.projects-page-form-field textarea:disabled {
+  background: #f9fafb;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.projects-page-form-field textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.projects-page-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.projects-page-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.projects-page-form-cancel {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.projects-page-form-cancel:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.projects-page-form-submit {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.projects-page-form-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.projects-page-form-cancel:disabled,
+.projects-page-form-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .projects-page {
+    padding: 0 16px 16px;
+  }
+
+  .projects-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .projects-page-create-btn {
+    justify-content: center;
+  }
+
+  .projects-page-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .projects-card-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .project-card {
+    padding: 16px;
+  }
+
+  .project-card-title {
+    font-size: 16px;
+  }
+}

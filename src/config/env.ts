@@ -5,12 +5,15 @@
 
 export const env = {
   // API Configuration
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://marine-flight-backend.vercel.app',
+  // apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://marine-flight-backend.vercel.app',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 
   // Authentication
   authTokenKey: import.meta.env.VITE_AUTH_TOKEN_KEY || 'offshore_crm_auth_token',
   refreshTokenKey: import.meta.env.VITE_REFRESH_TOKEN_KEY || 'offshore_crm_refresh_token',
+  crewTokenKey: import.meta.env.VITE_CREW_TOKEN_KEY || 'offshore_crew_token',
 
   // Application Settings
   appName: import.meta.env.VITE_APP_NAME || 'Offshore CRM',
@@ -43,6 +46,6 @@ export const env = {
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
 } as const;
-
+console.log("🚀 ~ env:", env)
 // Type-safe environment variable access
 export default env;

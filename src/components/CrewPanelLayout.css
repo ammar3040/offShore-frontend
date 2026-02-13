@@ -1,0 +1,90 @@
+.crew-panel-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+}
+
+.crew-panel-header {
+  height: 64px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.crew-panel-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.crew-panel-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.crew-panel-logo-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.crew-panel-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #667eea;
+  background-color: #eff6ff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-left: 4px;
+}
+
+.crew-panel-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.crew-panel-logout:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.crew-panel-main {
+  flex: 1;
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .crew-panel-header {
+    padding: 0 16px;
+  }
+
+  .crew-panel-main {
+    padding: 16px;
+  }
+}

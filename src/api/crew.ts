@@ -114,6 +114,35 @@ export async function getCrewList(): Promise<GetCrewResponse> {
   return response.json();
 }
 
+/**
+ * Fetches the currently logged-in crew member (requires crew token).
+ * Returns null if no token or API not available.
+ */
+export async function getCrewMe(): Promise<CrewMemberApi | null> {
+  const token = localStorage.getItem(env.crewTokenKey);
+  if (!token) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/api/crew/me`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    clearTimeout(timeoutId);
+    return null;
+  }
+}
+
 export async function createCrewMember(data: CrewMemberFormData): Promise<Response> {
   const formData = buildCrewFormData(data);
   const token = getAuthToken();

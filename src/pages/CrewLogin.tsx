@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
+import { setCrewPanelUser } from '../lib/crewPanelAuth';
 import './CrewLogin.css';
 
-const CrewLogin = () => {
+interface CrewLoginProps {
+  /** Redirect path after successful login (default: /crew/dashboard) */
+  redirectTo?: string;
+}
+
+const CrewLogin = ({ redirectTo = '/crew/dashboard' }: CrewLoginProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,8 +24,10 @@ const CrewLogin = () => {
     await new Promise((resolve) => setTimeout(resolve, 800));
     setIsLoading(false);
 
-    // Navigate to crew dashboard on successful login
-    navigate('/crew/dashboard');
+    if (redirectTo.startsWith('/panel/crew/')) {
+      setCrewPanelUser({ email });
+    }
+    navigate(redirectTo);
   };
 
   return (
