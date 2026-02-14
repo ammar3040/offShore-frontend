@@ -37,6 +37,7 @@ function getAuthToken(): string | null {
 
 function getHeaders(): HeadersInit {
   const token = getAuthToken();
+  console.log("🚀 ~ getHeaders ~ token:", token)
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
