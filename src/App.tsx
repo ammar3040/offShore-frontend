@@ -17,7 +17,7 @@ function App() {
         <Route path="/login" element={<AdminLoginPage />} />
 
         {/* Crew portal login (no sidebar layout) */}
-        <Route path="/crew/login" element={<CrewLogin />} />
+        <Route path="/crew/login" element={<CrewLogin redirectTo="/panel/crew/dashboard" />} />
 
         {/* Crew panel - detached from admin, own URL space */}
         <Route

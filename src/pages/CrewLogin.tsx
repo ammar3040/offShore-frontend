@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
+import { crewLogin } from '../api/crew';
 import { setCrewPanelUser } from '../lib/crewPanelAuth';
 import './CrewLogin.css';
 
 interface CrewLoginProps {
-  /** Redirect path after successful login (default: /crew/dashboard) */
+  /** Redirect path after successful login (default: /panel/crew/dashboard) */
   redirectTo?: string;
 }
 
-const CrewLogin = ({ redirectTo = '/crew/dashboard' }: CrewLoginProps) => {
+const CrewLogin = ({ redirectTo = '/panel/crew/dashboard' }: CrewLoginProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,14 +22,18 @@ const CrewLogin = ({ redirectTo = '/crew/dashboard' }: CrewLoginProps) => {
     if (!email || !password) return;
 
     setIsLoading(true);
-    // TODO: Replace with actual crew auth API
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsLoading(false);
-
-    if (redirectTo.startsWith('/panel/crew/')) {
-      setCrewPanelUser({ email });
+    setError(null);
+    try {
+      await crewLogin({ email, password });
+      if (redirectTo.startsWith('/panel/crew/')) {
+        setCrewPanelUser({ email });
+      }
+      navigate(redirectTo);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
     }
-    navigate(redirectTo);
   };
 
   return (
@@ -77,6 +83,12 @@ const CrewLogin = ({ redirectTo = '/crew/dashboard' }: CrewLoginProps) => {
               />
             </div>
           </div>
+
+          {error && (
+            <div className="crew-login-error" role="alert">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"

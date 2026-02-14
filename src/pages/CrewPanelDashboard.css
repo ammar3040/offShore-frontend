@@ -30,7 +30,15 @@
 }
 
 .crew-panel-dashboard-header {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
+}
+
+.crew-panel-dashboard-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .crew-panel-dashboard-title {
@@ -44,6 +52,432 @@
   font-size: 14px;
   color: #6b7280;
   font-weight: 500;
+}
+
+.crew-panel-update-availability-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.crew-panel-update-availability-btn:hover {
+  background: #5a67d8;
+}
+
+.crew-panel-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.crew-panel-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.crew-panel-tab:hover {
+  color: #374151;
+}
+
+.crew-panel-tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.crew-panel-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #667eea;
+  border-radius: 10px;
+}
+
+.crew-panel-tab-content {
+  min-height: 200px;
+}
+
+.crew-panel-enrolled-section {
+  padding-top: 8px;
+}
+
+.crew-panel-enrolled-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px dashed #e5e7eb;
+  color: #6b7280;
+}
+
+.crew-panel-enrolled-empty-icon {
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+/* Project invitations */
+.crew-panel-invitations-section {
+  padding-top: 8px;
+}
+
+.crew-panel-invitations-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px dashed #e5e7eb;
+  color: #6b7280;
+}
+
+.crew-panel-invitations-empty-icon {
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.crew-panel-invitations-empty-hint {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 8px;
+}
+
+.crew-panel-invitations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.crew-panel-invitation-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-left: 3px solid #667eea;
+}
+
+.crew-panel-invitation-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.crew-panel-invitation-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.crew-panel-invitation-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.crew-panel-invitation-status--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.crew-panel-invitation-status--accepted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.crew-panel-invitation-status--declined {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.crew-panel-invitation-card-description {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.crew-panel-invitation-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.crew-panel-invitation-card-meta svg {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.crew-panel-invitation-invited {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 8px 0 0;
+}
+
+.crew-panel-invitation-error {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #dc2626;
+}
+
+.crew-panel-invitation-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.crew-panel-invitation-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.crew-panel-invitation-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.crew-panel-invitation-btn--accept {
+  background: #059669;
+  color: #fff;
+}
+
+.crew-panel-invitation-btn--accept:hover:not(:disabled) {
+  background: #047857;
+}
+
+.crew-panel-invitation-btn--reject {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.crew-panel-invitation-btn--reject:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.crew-panel-invitation-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: crew-panel-spin 0.7s linear infinite;
+}
+
+.crew-panel-enrolled-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.crew-panel-project-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.crew-panel-project-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.crew-panel-project-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.crew-panel-project-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.crew-panel-project-status--active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.crew-panel-project-status--completed {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.crew-panel-project-status--pending,
+.crew-panel-project-status--draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.crew-panel-project-status--default {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.crew-panel-project-card-description {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.crew-panel-project-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.crew-panel-project-card-meta svg {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* Update availability form */
+.crew-availability-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.crew-availability-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crew-availability-field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.crew-availability-field input,
+.crew-availability-field select,
+.crew-availability-field textarea {
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.crew-availability-field input:focus,
+.crew-availability-field select:focus,
+.crew-availability-field textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.crew-availability-field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.crew-availability-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.crew-availability-cancel {
+  padding: 10px 18px;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.crew-availability-cancel:hover {
+  background: #e5e7eb;
+}
+
+.crew-availability-submit {
+  padding: 10px 18px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.crew-availability-submit:hover:not(:disabled) {
+  background: #5a67d8;
+}
+
+.crew-availability-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .crew-panel-dashboard-grid {
@@ -113,6 +547,28 @@
 }
 
 @media (max-width: 768px) {
+  .crew-panel-dashboard-header-row {
+    flex-direction: column;
+  }
+
+  .crew-panel-update-availability-btn {
+    align-self: flex-start;
+  }
+
+  .crew-panel-tabs {
+    flex-wrap: wrap;
+  }
+
+  .crew-panel-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .crew-panel-enrolled-grid,
+  .crew-panel-invitations-grid {
+    grid-template-columns: 1fr;
+  }
+
   .crew-panel-dashboard-grid {
     grid-template-columns: 1fr;
   }
