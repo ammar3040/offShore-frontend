@@ -4,7 +4,7 @@ import CrewPanelLayout from './components/CrewPanelLayout';
 import CrewManagementDashboard from './pages/CrewManagementDashboard';
 import CrewListPage from './pages/CrewListPage';
 import CrewLogin from './pages/CrewLogin';
-import AdminLoginPage from './pages/AdminLoginPage';
+import LoginPage from './pages/LoginPage';
 import CrewPanelDashboard from './pages/CrewPanelDashboard';
 import ProjectsPage from './pages/ProjectsPage';
 import './App.css';
@@ -13,8 +13,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Admin login/register (no sidebar layout) */}
-        <Route path="/login" element={<AdminLoginPage />} />
+        {/* Unified login - choose Admin or Crew */}
+        <Route path="/login" element={<LoginPage />} />
 
         {/* Crew portal login (no sidebar layout) */}
         <Route path="/crew/login" element={<CrewLogin redirectTo="/panel/crew/dashboard" />} />

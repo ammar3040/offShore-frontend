@@ -26,6 +26,10 @@
   pointer-events: none;
 }
 
+.crew-login-embedded {
+  width: 100%;
+}
+
 .crew-login-card {
   position: relative;
   width: 100%;

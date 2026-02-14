@@ -8,9 +8,11 @@ import './CrewLogin.css';
 interface CrewLoginProps {
   /** Redirect path after successful login (default: /panel/crew/dashboard) */
   redirectTo?: string;
+  /** When true, renders without the outer page wrapper (for use inside LoginPage) */
+  embedded?: boolean;
 }
 
-const CrewLogin = ({ redirectTo = '/panel/crew/dashboard' }: CrewLoginProps) => {
+const CrewLogin = ({ redirectTo = '/panel/crew/dashboard', embedded }: CrewLoginProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -36,10 +38,8 @@ const CrewLogin = ({ redirectTo = '/panel/crew/dashboard' }: CrewLoginProps) => 
     }
   };
 
-  return (
-    <div className="crew-login">
-      <div className="crew-login-background" />
-      <div className="crew-login-card">
+  const content = (
+    <>
         <div className="crew-login-header">
           <div className="crew-login-logo">
             <div className="crew-login-logo-icon">O</div>
@@ -109,7 +109,17 @@ const CrewLogin = ({ redirectTo = '/panel/crew/dashboard' }: CrewLoginProps) => 
         <p className="crew-login-footer">
           Crew member access only. Contact your admin if you need help.
         </p>
-      </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="crew-login-embedded">{content}</div>;
+  }
+
+  return (
+    <div className="crew-login">
+      <div className="crew-login-background" />
+      <div className="crew-login-card">{content}</div>
     </div>
   );
 };

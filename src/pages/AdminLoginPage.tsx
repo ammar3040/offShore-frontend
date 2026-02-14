@@ -6,7 +6,12 @@ import './AdminLoginPage.css';
 
 type Mode = 'login' | 'register';
 
-const AdminLoginPage = () => {
+interface AdminLoginPageProps {
+  /** When true, renders without the outer page wrapper (for use inside LoginPage) */
+  embedded?: boolean;
+}
+
+const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,10 +68,8 @@ const AdminLoginPage = () => {
     setSuccessMessage(null);
   };
 
-  return (
-    <div className="admin-login">
-      <div className="admin-login-background" />
-      <div className="admin-login-card">
+  const content = (
+    <>
         <div className="admin-login-header">
           <div className="admin-login-logo">
             <div className="admin-login-logo-icon">O</div>
@@ -261,7 +264,17 @@ const AdminLoginPage = () => {
         <p className="admin-login-footer">
           Admin access only. Use this screen to sign in or register.
         </p>
-      </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="admin-login-embedded">{content}</div>;
+  }
+
+  return (
+    <div className="admin-login">
+      <div className="admin-login-background" />
+      <div className="admin-login-card">{content}</div>
     </div>
   );
 };
