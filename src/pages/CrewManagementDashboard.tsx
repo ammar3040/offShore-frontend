@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FolderKanban, Users, Plane, Plus, Calendar } from 'lucide-react';
 import { getProjects } from '../api/project';
 import { getCrewList } from '../api/crew';
+import { getAdminUserFromToken } from '../lib/auth';
 import type { ProjectApi } from '../api/project';
 import './CrewManagementDashboard.css';
 
@@ -58,7 +59,7 @@ const CrewManagementDashboard = () => {
       <div className="admin-dashboard-header">
         <div>
           <h1 className="admin-dashboard-greeting">
-            {getGreeting()}, Sarah
+            {getGreeting()}, Admin
           </h1>
           <p className="admin-dashboard-date">Today is {formatDate(new Date())}.</p>
         </div>
