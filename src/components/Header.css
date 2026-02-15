@@ -1,11 +1,10 @@
 .header {
-  height: 72px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  height: 64px;
+  background-color: #0f172a;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
+  padding: 0 24px;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -13,10 +12,10 @@
 
 .header-left {
   flex: 1;
-  max-width: 500px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
+  min-width: 0;
 }
 
 .mobile-menu-button {
@@ -25,44 +24,60 @@
   border: none;
   padding: 8px;
   border-radius: 8px;
-  color: #6b7280;
+  color: #fff;
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  opacity: 0.9;
 }
 
 .mobile-menu-button:hover {
-  background-color: #f3f4f6;
-  color: #374151;
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.header-brand {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .search-container {
   position: relative;
-  display: flex;
-  align-items: center;
+  flex: 1;
+  max-width: 400px;
 }
 
 .search-icon {
   position: absolute;
-  left: 16px;
-  color: #9ca3af;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
 }
 
 .search-input {
   width: 100%;
-  padding: 10px 16px 10px 44px;
-  border: 1px solid #e5e7eb;
+  padding: 10px 16px 10px 42px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 8px;
   font-size: 14px;
-  background-color: #f9fafb;
+  background-color: rgba(30, 41, 59, 0.6);
+  color: #fff;
   transition: all 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #2563eb;
-  background-color: #ffffff;
+  border-color: #3b82f6;
+  background-color: rgba(30, 41, 59, 0.9);
 }
 
 .header-right {
@@ -71,12 +86,23 @@
   gap: 20px;
 }
 
+.hipaa-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background-color: #16a34a;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
 .icon-button {
   background: none;
   border: none;
   padding: 8px;
   border-radius: 8px;
-  color: #6b7280;
+  color: #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,8 +110,8 @@
 }
 
 .icon-button:hover {
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .user-profile-wrapper {
@@ -109,7 +135,7 @@
 
 .user-profile:hover,
 .user-profile.active {
-  background-color: #f3f4f6;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .user-profile-dropdown {
@@ -117,10 +143,10 @@
   top: calc(100% + 8px);
   right: 0;
   min-width: 180px;
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 4px;
   z-index: 100;
 }
@@ -155,10 +181,16 @@
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  overflow: hidden;
+  background-color: #3b82f6;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -168,41 +200,50 @@
   gap: 2px;
 }
 
-.user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
+.user-email {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e2e8f0;
   line-height: 1.2;
 }
 
-.user-email {
-  font-size: 12px;
-  color: #6b7280;
+.user-role {
+  font-size: 11px;
+  color: #94a3b8;
   line-height: 1.2;
 }
 
 .chevron-icon {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
-/* Mobile styles */
 @media (max-width: 1023px) {
   .header {
     padding: 0 16px;
   }
-  
+
   .mobile-menu-button {
     display: flex;
   }
-  
-  .search-container {
-    flex: 1;
-  }
-  
-  .user-info {
+
+  .header-brand {
     display: none;
   }
-  
+
+  .search-container {
+    flex: 1;
+    max-width: none;
+  }
+
+  .hipaa-badge {
+    display: none;
+  }
+
+  .user-email,
+  .user-role {
+    display: none;
+  }
+
   .chevron-icon {
     display: none;
   }
@@ -210,24 +251,21 @@
 
 @media (max-width: 640px) {
   .header {
-    height: 64px;
+    height: 56px;
     padding: 0 12px;
   }
-  
+
   .header-left {
     gap: 12px;
   }
-  
+
   .search-input {
-    font-size: 16px; /* Prevents zoom on iOS */
+    font-size: 16px;
   }
-  
-  .user-profile {
-    padding: 4px;
-  }
-  
+
   .avatar {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
   }
 }

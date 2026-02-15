@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Calendar, Users, FolderKanban, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Calendar, Users, FolderKanban, Plus, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import Modal from '../components/Modal';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
 import './ProjectsPage.css';
@@ -32,6 +32,11 @@ const ProjectsPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
+
+  const pageSize = 6;
 
   const fetchProjects = useCallback(() => {
     getProjects()
@@ -48,17 +53,39 @@ const ProjectsPage = () => {
         if (!cancelled) setProjects(res.projects ?? []);
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load projects');
-        }
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load projects');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
+
+  const filteredProjects = useMemo(() => {
+    let list = projects;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          (p.title || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q)
+      );
+    }
+    if (statusFilter !== 'all') {
+      list = list.filter((p) => (p.status || '').toLowerCase() === statusFilter);
+    }
+    return list;
+  }, [projects, search, statusFilter]);
+
+  const paginatedProjects = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredProjects.slice(start, start + pageSize);
+  }, [filteredProjects, page]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / pageSize));
+
+  const activeCount = projects.filter((p) => (p.status || '').toLowerCase() === 'active').length;
+  const completedCount = projects.filter((p) => (p.status || '').toLowerCase() === 'completed').length;
 
   const openCreateModal = () => {
     setIsCreateModalOpen(true);
@@ -103,96 +130,183 @@ const ProjectsPage = () => {
     }
   };
 
-  const header = (
-    <div className="projects-page-header">
-      <div className="projects-page-header-text">
-        <h1 className="projects-page-title">Projects</h1>
-        <p className="projects-page-subtitle">
-          {loading
-            ? 'View and manage all projects.'
-            : error
-              ? 'View and manage all projects.'
-              : `View and manage all projects. ${projects.length} project${projects.length !== 1 ? 's' : ''} total.`}
-        </p>
-      </div>
-      <button type="button" className="projects-page-create-btn" onClick={openCreateModal}>
-        <Plus size={18} />
-        Create project
-      </button>
-    </div>
-  );
-
-  if (loading) {
-    return (
-      <div className="projects-page">
-        {header}
-        <div className="projects-page-loading" role="status">
-          Loading projects…
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="projects-page">
-        {header}
-        <div className="projects-page-error" role="alert">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="projects-page">
-      {header}
+      <div className="projects-page-header">
+        <div>
+          <h1 className="projects-page-title">Projects</h1>
+          <p className="projects-page-subtitle">
+            View and manage all projects. {loading ? '' : `${projects.length} project${projects.length !== 1 ? 's' : ''} total.`}
+          </p>
+        </div>
+        <button type="button" className="projects-page-create-btn" onClick={openCreateModal}>
+          <Plus size={18} />
+          Create project
+        </button>
+      </div>
 
-      {projects.length === 0 ? (
+      <div className="projects-stat-cards">
+        <div className="projects-stat-card">
+          <div className="projects-stat-icon projects-stat-blue">
+            <FolderKanban size={24} />
+          </div>
+          <span className="projects-stat-value">{loading ? '…' : projects.length}</span>
+          <span className="projects-stat-label">TOTAL PROJECTS</span>
+        </div>
+        <div className="projects-stat-card">
+          <div className="projects-stat-icon projects-stat-green">
+            <FolderKanban size={24} />
+          </div>
+          <span className="projects-stat-value">{loading ? '…' : activeCount}</span>
+          <span className="projects-stat-label">ACTIVE</span>
+        </div>
+        <div className="projects-stat-card">
+          <div className="projects-stat-icon projects-stat-purple">
+            <FolderKanban size={24} />
+          </div>
+          <span className="projects-stat-value">{loading ? '…' : completedCount}</span>
+          <span className="projects-stat-label">COMPLETED</span>
+        </div>
+        <div className="projects-stat-card">
+          <div className="projects-stat-icon projects-stat-teal">
+            <Users size={24} />
+          </div>
+          <span className="projects-stat-value">{loading ? '…' : projects.filter((p) => (p.status || '').toLowerCase() === 'pending').length}</span>
+          <span className="projects-stat-label">PENDING</span>
+        </div>
+      </div>
+
+      <div className="projects-filters">
+        <div className="projects-search-wrap">
+          <Search size={18} className="projects-search-icon" />
+          <input
+            type="text"
+            placeholder="Search projects..."
+            className="projects-search"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <div className="projects-select-wrap">
+          <select
+            className="projects-select"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+          </select>
+          <ChevronDown size={18} className="projects-select-chevron" />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="projects-page-loading" role="status">Loading projects…</div>
+      ) : error ? (
+        <div className="projects-page-error" role="alert">{error}</div>
+      ) : paginatedProjects.length === 0 ? (
         <div className="projects-page-empty">
           <FolderKanban size={48} className="projects-page-empty-icon" />
           <p>No projects yet.</p>
+          <button type="button" className="projects-page-create-btn projects-page-create-inline" onClick={openCreateModal}>
+            <Plus size={18} />
+            Create project
+          </button>
         </div>
       ) : (
-        <div className="projects-card-grid">
-          {projects.map((project) => (
-            <article key={project.id} className="project-card">
-              <div className="project-card-header">
-                <h3 className="project-card-title">{project.title}</h3>
-                <span className={`project-card-status ${statusClass(project.status)}`}>
-                  {project.status}
-                </span>
+        <>
+          <div className="projects-card-grid">
+            {paginatedProjects.map((project) => (
+              <article key={project.id} className="project-card">
+                <div className="project-card-header">
+                  <h3 className="project-card-title">{project.title}</h3>
+                  <span className={`project-card-status ${statusClass(project.status)}`}>
+                    {project.status}
+                  </span>
+                </div>
+                {project.description && (
+                  <p className="project-card-description">{project.description}</p>
+                )}
+                <div className="project-card-meta">
+                  <span className="project-card-meta-item">
+                    <Calendar size={14} />
+                    {project.span || (project.duration
+                      ? `${formatDate(project.duration.startDate)} – ${formatDate(project.duration.endDate)}`
+                      : '—')}
+                  </span>
+                  <span className="project-card-meta-item">
+                    <Users size={14} />
+                    {project.participants?.length ?? 0} participant{(project.participants?.length ?? 0) !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {filteredProjects.length > pageSize && (
+            <div className="projects-pagination">
+              <span className="projects-pagination-info">
+                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredProjects.length)} of {filteredProjects.length} projects
+              </span>
+              <div className="projects-pagination-btns">
+                <button
+                  type="button"
+                  className="projects-pagination-btn"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`projects-pagination-btn ${p === page ? 'active' : ''}`}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="projects-pagination-btn"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                </button>
               </div>
-              {project.description && (
-                <p className="project-card-description">{project.description}</p>
-              )}
-              <div className="project-card-meta">
-                <span className="project-card-meta-item">
-                  <Calendar size={14} />
-                  {project.span || (project.duration
-                    ? `${formatDate(project.duration.startDate)} – ${formatDate(project.duration.endDate)}`
-                    : '—')}
-                </span>
-                <span className="project-card-meta-item">
-                  <Users size={14} />
-                  {project.participants?.length ?? 0} participant{(project.participants?.length ?? 0) !== 1 ? 's' : ''}
-                </span>
-              </div>
-              {project.duration?.startDate && project.duration?.endDate && project.span && (
-                <p className="project-card-dates">
-                  {formatDate(project.duration.startDate)} – {formatDate(project.duration.endDate)}
-                </p>
-              )}
-            </article>
-          ))}
-        </div>
+            </div>
+          )}
+        </>
       )}
+
+      <button type="button" className="projects-switch-view" aria-label="Switch view">
+        <RefreshCw size={18} />
+        Switch View
+      </button>
+
+      <footer className="projects-footer">
+        <p className="projects-footer-copy">© 2023 Offshore CRM. All rights reserved.</p>
+        <nav className="projects-footer-links">
+          <a href="/hipaa">HIPAA Policy</a>
+          <a href="/terms">Terms of Service</a>
+          <a href="/security">Security Audit Logs</a>
+        </nav>
+        <p className="projects-footer-status">• All Systems Operational</p>
+      </footer>
 
       <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title="Create project" size="medium">
         {createError && (
-          <div className="projects-page-form-error" role="alert">
-            {createError}
-          </div>
+          <div className="projects-page-form-error" role="alert">{createError}</div>
         )}
         <form className="projects-page-create-form" onSubmit={handleCreateProject}>
           <div className="projects-page-form-field">

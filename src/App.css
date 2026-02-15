@@ -1,1 +1,7 @@
 /* App-specific styles */
+.page-placeholder {
+  padding: 48px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 16px;
+}

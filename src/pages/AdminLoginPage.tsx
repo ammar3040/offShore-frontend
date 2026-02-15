@@ -130,7 +130,7 @@ const AdminLoginPage = ({ embedded, variant = 'default' }: AdminLoginPageProps) 
                 <input
                   id="admin-email"
                   type="email"
-                  placeholder={isSplit ? 'attorney@firm.com' : 'you@company.com'}
+                  placeholder={isSplit ? 'marine-admin@yopmail.com' : 'you@company.com'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

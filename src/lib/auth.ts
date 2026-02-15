@@ -32,6 +32,22 @@ function getJwtExp(token: string): number | null {
   }
 }
 
+/** Decode JWT payload and return email/name if present */
+export function getAdminUserFromToken(): { email?: string; name?: string } | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+    const email = payload.email ?? payload.sub;
+    const name = payload.name ?? payload.firstname ?? (payload.email ? payload.email.split('@')[0] : undefined);
+    return { email: typeof email === 'string' ? email : undefined, name: typeof name === 'string' ? name : undefined };
+  } catch {
+    return null;
+  }
+}
+
 /** Returns true if token has exp in the past (or no exp claim). Works for any JWT. */
 export function isTokenExpired(token: string): boolean {
   const exp = getJwtExp(token);
@@ -41,11 +57,6 @@ export function isTokenExpired(token: string): boolean {
 
 export function getAccessToken(): string | null {
   const token = localStorage.getItem(STORAGE_KEY);
-  // #region agent log
-  const exp = token ? getJwtExp(token) : null;
-  const expired = token ? isTokenExpired(token) : false;
-  fetch('http://127.0.0.1:7243/ingest/abba73b6-88d9-45e1-a3bb-58f7114b5f40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:getAccessToken',message:'Token read',data:{hasToken:!!token,tokenLen:token?.length??0,exp,expired,storageKey:STORAGE_KEY,issuer:token?getIssuerFromJwt(token):null,isFirebase:token?isFirebaseToken(token):false},hypothesisId:'H2',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (token && isFirebaseToken(token)) {
     localStorage.removeItem(STORAGE_KEY);
     return null;
@@ -58,9 +69,6 @@ export function getAccessToken(): string | null {
 }
 
 export function setAccessToken(token: string): void {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/abba73b6-88d9-45e1-a3bb-58f7114b5f40',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:setAccessToken',message:'Token stored',data:{tokenLen:token.length,storageKey:STORAGE_KEY,issuer:getIssuerFromJwt(token)},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   localStorage.setItem(STORAGE_KEY, token);
 }
 

@@ -44,7 +44,7 @@
 /* Desktop styles */
 @media (min-width: 1024px) {
   .layout-main {
-    margin-left: 240px;
+    margin-left: 260px;
   }
   
   .sidebar-overlay {

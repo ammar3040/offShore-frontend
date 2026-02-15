@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Bell, ChevronDown, Menu, LogOut } from 'lucide-react';
-import { clearAccessToken } from '../lib/auth';
+import { clearAccessToken, getAdminUserFromToken } from '../lib/auth';
 import './Header.css';
 
 interface HeaderProps {
@@ -12,6 +12,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const user = getAdminUserFromToken();
+  const email = user?.email ?? 'admin@gmail.com';
+  const name = user?.name ?? 'Admin';
+  const initials = name ? name.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase() : 'AD';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -34,9 +38,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   return (
     <header className="header">
       <div className="header-left">
-        <button className="mobile-menu-button" onClick={onMenuClick}>
+        <button className="mobile-menu-button" onClick={onMenuClick} aria-label="Open menu">
           <Menu size={24} />
         </button>
+        <div className="header-brand">Offshore CRM</div>
         <div className="search-container">
           <Search size={18} className="search-icon" />
           <input
@@ -46,9 +51,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           />
         </div>
       </div>
-      
+
       <div className="header-right">
-        <button className="icon-button">
+        <span className="hipaa-badge">HIPAA COMPLIANT SESSION</span>
+        <button className="icon-button" aria-label="Notifications">
           <Bell size={20} />
         </button>
         <div className="user-profile-wrapper" ref={dropdownRef}>
@@ -59,15 +65,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             aria-expanded={dropdownOpen}
             aria-haspopup="menu"
           >
-            <div className="avatar">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="16" fill="#e5e7eb"/>
-                <path d="M16 10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-3.31 0-6 1.34-6 3v1h12v-1c0-1.66-2.69-3-6-3z" fill="#6b7280"/>
-              </svg>
-            </div>
+            <div className="avatar">{initials}</div>
             <div className="user-info">
-              <div className="user-name">Alex</div>
-              <div className="user-email">Alex@gmail.com</div>
+              <div className="user-email">{email}</div>
+              <div className="user-role">Admin</div>
             </div>
             <ChevronDown size={16} className="chevron-icon" />
           </button>

@@ -53,7 +53,7 @@ const CrewLogin = ({ redirectTo = '/panel/crew/dashboard', embedded, variant = '
           <input
             id="crew-email"
             type="email"
-            placeholder="attorney@firm.com"
+            placeholder="marine-admin@yopmail.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
