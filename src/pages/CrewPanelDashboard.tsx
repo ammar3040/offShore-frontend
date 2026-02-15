@@ -12,10 +12,11 @@ import {
   MailPlus,
   Check,
   X,
+  ClipboardList,
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { getCrewMe, getCrewEnrolledProjects, getCrewProjectInvitations, acceptCrewInvitation, rejectCrewInvitation, type CrewMemberApi, type CrewEnrolledProject, type CrewProjectInvitation } from '../api/crew';
-import { getStoredCrewPanelUser } from '../lib/crewPanelAuth';
+import { getStoredCrewPanelUser, hasCrewAccessToken } from '../lib/crewPanelAuth';
 import './CrewPanelDashboard.css';
 
 function placeholderCrewProfile(email: string): CrewMemberApi {
@@ -70,7 +71,45 @@ function formatDate(iso: string): string {
   }
 }
 
-type TabId = 'enrolled' | 'invitations' | 'profile';
+type TabId = 'enrolled' | 'invitations' | 'profile' | 'timesheet';
+
+export type AttendanceStatus = 'present' | 'absent' | 'leave';
+
+/** All dates between start and end (inclusive), in ascending order. */
+function getDatesInRange(startDate: string, endDate: string): string[] {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return [];
+  }
+  const out: string[] = [];
+  const cur = new Date(start);
+  cur.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  while (cur <= end) {
+    out.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+function getDayOfWeek(isoDate: string): string {
+  try {
+    return new Date(isoDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long' });
+  } catch {
+    return '—';
+  }
+}
+
+function attendanceClass(status: AttendanceStatus | null): string {
+  if (!status) return 'crew-panel-attendance--placeholder';
+  return `crew-panel-attendance--${status}`;
+}
+
+function attendanceLabel(status: AttendanceStatus | null): string {
+  if (!status) return '—';
+  return status;
+}
 
 const CrewPanelDashboard = () => {
   const navigate = useNavigate();
@@ -79,6 +118,7 @@ const CrewPanelDashboard = () => {
   const [invitations, setInvitations] = useState<CrewProjectInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('enrolled');
+  const [selectedProject, setSelectedProject] = useState<CrewEnrolledProject | null>(null);
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -119,6 +159,10 @@ const CrewPanelDashboard = () => {
   };
 
   useEffect(() => {
+    if (!hasCrewAccessToken()) {
+      navigate('/login', { replace: true });
+      return;
+    }
     const user = getStoredCrewPanelUser();
     if (!user?.email) {
       navigate('/panel/crew/login', { replace: true });
@@ -199,6 +243,16 @@ const CrewPanelDashboard = () => {
             <span className="crew-panel-tab-badge">{invitations.length}</span>
           )}
         </button>
+        {selectedProject && (
+          <button
+            type="button"
+            className={`crew-panel-tab ${activeTab === 'timesheet' ? 'active' : ''}`}
+            onClick={() => setActiveTab('timesheet')}
+          >
+            <ClipboardList size={18} />
+            Timesheet
+          </button>
+        )}
         <button
           type="button"
           className={`crew-panel-tab ${activeTab === 'profile' ? 'active' : ''}`}
@@ -220,7 +274,23 @@ const CrewPanelDashboard = () => {
             ) : (
               <div className="crew-panel-enrolled-grid">
                 {enrolledProjects.map((project) => (
-                  <article key={project.id} className="crew-panel-project-card">
+                  <article
+                    key={project.id}
+                    className="crew-panel-project-card crew-panel-project-card--clickable"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setActiveTab('timesheet');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedProject(project);
+                        setActiveTab('timesheet');
+                      }
+                    }}
+                  >
                     <div className="crew-panel-project-card-header">
                       <h3 className="crew-panel-project-card-title">{project.title}</h3>
                       <span className={`crew-panel-project-status crew-panel-project-status--${(project.status || '').toLowerCase()}`}>
@@ -334,6 +404,63 @@ const CrewPanelDashboard = () => {
                 })}
                 </div>
               </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'timesheet' && selectedProject && (
+          <div className="crew-panel-timesheet-section">
+            <div className="crew-panel-timesheet-header">
+              <h2 className="crew-panel-timesheet-title">
+                <ClipboardList size={22} />
+                Timesheet — {selectedProject.title}
+              </h2>
+              <button
+                type="button"
+                className="crew-panel-timesheet-back"
+                onClick={() => setActiveTab('enrolled')}
+              >
+                Back to projects
+              </button>
+            </div>
+            {selectedProject.startDate && selectedProject.endDate ? (
+              <div className="crew-panel-timesheet-table-wrap">
+                <table className="crew-panel-timesheet-table">
+                  <thead>
+                    <tr>
+                      <th>S.No.</th>
+                      <th>Date</th>
+                      <th>Day</th>
+                      <th>Attendance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getDatesInRange(selectedProject.startDate, selectedProject.endDate).map((date, index) => {
+                      const attendance: AttendanceStatus | null = null;
+                      return (
+                        <tr key={date}>
+                          <td>{index + 1}</td>
+                          <td>{formatDate(date)}</td>
+                          <td>{getDayOfWeek(date)}</td>
+                          <td>
+                            <span className={`crew-panel-attendance ${attendanceClass(attendance)}`}>
+                              {attendanceLabel(attendance)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="crew-panel-timesheet-empty">
+                <Calendar size={48} className="crew-panel-timesheet-empty-icon" />
+                <p>No project duration set.</p>
+                <p className="crew-panel-timesheet-empty-hint">
+                  Start and end dates are required to show the timesheet.
+                </p>
+              </div>
             )}
           </div>
         )}

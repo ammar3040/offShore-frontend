@@ -32,8 +32,8 @@ function getJwtExp(token: string): number | null {
   }
 }
 
-/** Returns true if token has exp in the past (or no exp claim) */
-function isTokenExpired(token: string): boolean {
+/** Returns true if token has exp in the past (or no exp claim). Works for any JWT. */
+export function isTokenExpired(token: string): boolean {
   const exp = getJwtExp(token);
   if (exp == null) return false; // no exp = treat as valid, backend will decide
   return exp < Date.now() / 1000;

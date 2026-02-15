@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import CrewPanelLayout from './components/CrewPanelLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 import CrewManagementDashboard from './pages/CrewManagementDashboard';
 import CrewListPage from './pages/CrewListPage';
 import CrewLogin from './pages/CrewLogin';
@@ -37,9 +38,11 @@ function App() {
         <Route
           path="/crew/dashboard"
           element={
-            <Layout>
-              <CrewManagementDashboard />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <CrewManagementDashboard />
+              </Layout>
+            </ProtectedRoute>
           }
         />
 
@@ -47,7 +50,8 @@ function App() {
         <Route
           path="/*"
           element={
-            <Layout>
+            <ProtectedRoute>
+              <Layout>
               <Routes>
                 <Route path="/" element={<CrewManagementDashboard />} />
                 <Route path="/crew" element={<CrewListPage />} />
@@ -60,6 +64,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>
+            </ProtectedRoute>
           }
         />
       </Routes>
