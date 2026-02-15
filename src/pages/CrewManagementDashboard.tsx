@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { FolderKanban, Users, Plane, Plus, Calendar } from 'lucide-react';
 import { getProjects } from '../api/project';
 import { getCrewList } from '../api/crew';
-import { getAdminUserFromToken } from '../lib/auth';
 import type { ProjectApi } from '../api/project';
 import './CrewManagementDashboard.css';
 
