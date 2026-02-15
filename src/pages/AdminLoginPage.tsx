@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, UserPlus, Mail, Lock, User, Phone } from 'lucide-react';
+import { ArrowRight, UserPlus, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
 import { adminLogin, adminRegister } from '../api/admin';
 import './AdminLoginPage.css';
 
@@ -9,19 +9,24 @@ type Mode = 'login' | 'register';
 interface AdminLoginPageProps {
   /** When true, renders without the outer page wrapper (for use inside LoginPage) */
   embedded?: boolean;
+  /** When true, use split-screen form style (Welcome Back is in parent; no header/tabs) */
+  variant?: 'default' | 'split';
 }
 
-const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
+const AdminLoginPage = ({ embedded, variant = 'default' }: AdminLoginPageProps) => {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [phone, setPhone] = useState('');
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const isSplit = embedded && variant === 'split';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,37 +75,40 @@ const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
 
   const content = (
     <>
-        <div className="admin-login-header">
-          <div className="admin-login-logo">
-            <div className="admin-login-logo-icon">O</div>
-            <span className="admin-login-logo-text">Offshore CRM</span>
-          </div>
-          <h1 className="admin-login-title">
-            {mode === 'login' ? 'Admin sign in' : 'Create admin account'}
-          </h1>
-          <p className="admin-login-subtitle">
-            {mode === 'login'
-              ? 'Sign in to manage crew, projects, and leads.'
-              : 'Register a new admin account.'}
-          </p>
-        </div>
-
-        <div className="admin-login-tabs">
-          <button
-            type="button"
-            className={`admin-login-tab ${mode === 'login' ? 'active' : ''}`}
-            onClick={switchToLogin}
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            className={`admin-login-tab ${mode === 'register' ? 'active' : ''}`}
-            onClick={switchToRegister}
-          >
-            Register
-          </button>
-        </div>
+        {!isSplit && (
+          <>
+            <div className="admin-login-header">
+              <div className="admin-login-logo">
+                <div className="admin-login-logo-icon">O</div>
+                <span className="admin-login-logo-text">Offshore CRM</span>
+              </div>
+              <h1 className="admin-login-title">
+                {mode === 'login' ? 'Admin sign in' : 'Create admin account'}
+              </h1>
+              <p className="admin-login-subtitle">
+                {mode === 'login'
+                  ? 'Sign in to manage crew, projects, and leads.'
+                  : 'Register a new admin account.'}
+              </p>
+            </div>
+            <div className="admin-login-tabs">
+              <button
+                type="button"
+                className={`admin-login-tab ${mode === 'login' ? 'active' : ''}`}
+                onClick={switchToLogin}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                className={`admin-login-tab ${mode === 'register' ? 'active' : ''}`}
+                onClick={switchToRegister}
+              >
+                Register
+              </button>
+            </div>
+          </>
+        )}
 
         {error && (
           <div className="admin-login-error" role="alert">
@@ -114,15 +122,15 @@ const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
         )}
 
         {mode === 'login' ? (
-          <form className="admin-login-form" onSubmit={handleLogin}>
+          <form className={`admin-login-form ${isSplit ? 'admin-login-form-split' : ''}`} onSubmit={handleLogin}>
             <div className="admin-login-field">
-              <label htmlFor="admin-email">Email</label>
+              <label htmlFor="admin-email">{isSplit ? 'Email Address' : 'Email'}</label>
               <div className="admin-login-input-wrapper">
                 <Mail size={18} className="admin-login-input-icon" />
                 <input
                   id="admin-email"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder={isSplit ? 'attorney@firm.com' : 'you@company.com'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -132,12 +140,17 @@ const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
               </div>
             </div>
             <div className="admin-login-field">
-              <label htmlFor="admin-password">Password</label>
-              <div className="admin-login-input-wrapper">
+              <div className="admin-login-label-row">
+                <label htmlFor="admin-password">Password</label>
+                {isSplit && (
+                  <a href="#" className="admin-login-forgot" onClick={(e) => e.preventDefault()}>Forgot Password?</a>
+                )}
+              </div>
+              <div className={`admin-login-input-wrapper ${isSplit ? 'admin-login-input-has-toggle' : ''}`}>
                 <Lock size={18} className="admin-login-input-icon" />
                 <input
                   id="admin-password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -145,8 +158,28 @@ const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
                   autoComplete="current-password"
                   disabled={isLoading}
                 />
+                {isSplit && (
+                  <button
+                    type="button"
+                    className="admin-login-password-toggle"
+                    onClick={() => setShowPassword((p) => !p)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                )}
               </div>
             </div>
+            {isSplit && (
+              <label className="admin-login-remember">
+                <input
+                  type="checkbox"
+                  checked={rememberDevice}
+                  onChange={(e) => setRememberDevice(e.target.checked)}
+                />
+                <span>Remember this device for 30 days</span>
+              </label>
+            )}
             <button
               type="submit"
               className="admin-login-button"
@@ -156,11 +189,28 @@ const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
                 <span className="admin-login-spinner" />
               ) : (
                 <>
-                  <LogIn size={20} />
-                  Sign in
+                  {isSplit ? (
+                    <>
+                      Sign In to Portal
+                      <ArrowRight size={20} />
+                    </>
+                  ) : (
+                    <>
+                      Sign in
+                      <ArrowRight size={20} />
+                    </>
+                  )}
                 </>
               )}
             </button>
+            {isSplit && (
+              <p className="admin-login-create">
+                Don&apos;t have an account?{' '}
+                <button type="button" className="admin-login-create-btn" onClick={switchToRegister}>
+                  Create Account →
+                </button>
+              </p>
+            )}
           </form>
         ) : (
           <form className="admin-login-form" onSubmit={handleRegister}>
@@ -258,12 +308,22 @@ const AdminLoginPage = ({ embedded }: AdminLoginPageProps) => {
                 </>
               )}
             </button>
+            {isSplit && (
+              <p className="admin-login-create">
+                Already have an account?{' '}
+                <button type="button" className="admin-login-create-btn" onClick={switchToLogin}>
+                  Sign in →
+                </button>
+              </p>
+            )}
           </form>
         )}
 
-        <p className="admin-login-footer">
-          Admin access only. Use this screen to sign in or register.
-        </p>
+        {!isSplit && (
+          <p className="admin-login-footer">
+            Admin access only. Use this screen to sign in or register.
+          </p>
+        )}
     </>
   );
 

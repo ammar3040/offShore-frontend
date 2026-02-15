@@ -255,3 +255,123 @@
   color: #9ca3af;
   text-align: center;
 }
+
+/* Split variant (right panel of login page) */
+.admin-login-form-split .admin-login-input-wrapper {
+  position: relative;
+}
+
+.admin-login-input-has-toggle input {
+  padding-right: 44px;
+}
+
+.admin-login-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.admin-login-label-row label {
+  margin-bottom: 0;
+}
+
+.admin-login-forgot {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.admin-login-forgot:hover {
+  text-decoration: underline;
+}
+
+.admin-login-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-login-password-toggle:hover {
+  color: #374151;
+}
+
+.admin-login-remember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  margin: -4px 0 0;
+}
+
+.admin-login-remember input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #3b82f6;
+}
+
+.admin-login-create {
+  margin: 20px 0 0;
+  font-size: 0.9375rem;
+  color: #4b5563;
+  text-align: center;
+}
+
+.admin-login-create-btn {
+  font-size: inherit;
+  font-weight: 600;
+  color: #3b82f6;
+  background: transparent;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 10px 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.admin-login-create-btn:hover {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.admin-login-form-split .admin-login-create {
+  margin-top: 24px;
+}
+
+.admin-login-form-split .admin-login-button {
+  margin-top: 20px;
+  border-radius: 10px;
+  background: #3b82f6;
+}
+
+.admin-login-form-split .admin-login-button:hover:not(:disabled) {
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+
+.admin-login-form-split .admin-login-input-wrapper input {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  border-radius: 10px;
+}
+
+.admin-login-form-split .admin-login-input-wrapper input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
