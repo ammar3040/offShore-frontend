@@ -34,6 +34,12 @@ export function clearCrewPanelUser(): void {
   localStorage.removeItem(CREW_PANEL_USER_KEY);
 }
 
+/** Clears crew session (user + token). Use on logout. */
+export function clearCrewSession(): void {
+  clearCrewPanelUser();
+  localStorage.removeItem(env.crewTokenKey);
+}
+
 /** Returns valid crew token or null if missing/expired. Cleans up invalid token. */
 export function getCrewAccessToken(): string | null {
   const token = localStorage.getItem(env.crewTokenKey);

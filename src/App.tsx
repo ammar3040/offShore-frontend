@@ -7,6 +7,11 @@ import CrewListPage from './pages/CrewListPage';
 import CrewLogin from './pages/CrewLogin';
 import LoginPage from './pages/LoginPage';
 import CrewPanelDashboard from './pages/CrewPanelDashboard';
+import CrewEnrolledProjectsPage from './pages/CrewEnrolledProjectsPage';
+import CrewProfilePage from './pages/CrewProfilePage';
+import CrewSettingsPage from './pages/CrewSettingsPage';
+import CrewTicketsPage from './pages/CrewTicketsPage';
+import CrewTimesheetPage from './pages/CrewTimesheetPage';
 import ProjectsPage from './pages/ProjectsPage';
 import './App.css';
 
@@ -25,14 +30,15 @@ function App() {
           path="/panel/crew/login"
           element={<CrewLogin redirectTo="/panel/crew/dashboard" />}
         />
-        <Route
-          path="/panel/crew/dashboard"
-          element={
-            <CrewPanelLayout>
-              <CrewPanelDashboard />
-            </CrewPanelLayout>
-          }
-        />
+        <Route path="/panel/crew" element={<CrewPanelLayout />}>
+          <Route path="dashboard" element={<CrewPanelDashboard />} />
+          <Route path="enrolled-projects" element={<CrewEnrolledProjectsPage />} />
+          <Route path="profile" element={<CrewProfilePage />} />
+          <Route path="settings" element={<CrewSettingsPage />} />
+          <Route path="tickets" element={<CrewTicketsPage />} />
+          <Route path="timesheet" element={<CrewTimesheetPage />} />
+          <Route index element={<Navigate to="/panel/crew/dashboard" replace />} />
+        </Route>
 
         {/* Crew dashboard - after crew login (with layout) */}
         <Route

@@ -1,0 +1,197 @@
+.crew-enrolled-page {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@keyframes crew-panel-spin {
+  to { transform: rotate(360deg); }
+}
+
+.crew-enrolled-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  gap: 16px;
+  color: #6b7280;
+}
+
+.crew-enrolled-loading .crew-panel-dashboard-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: crew-panel-spin 0.8s linear infinite;
+}
+
+.crew-enrolled-header {
+  margin-bottom: 28px;
+}
+
+.crew-enrolled-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 4px;
+}
+
+.crew-enrolled-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.crew-enrolled-section {
+  margin-bottom: 32px;
+}
+
+.crew-enrolled-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px;
+}
+
+.crew-enrolled-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px dashed #e5e7eb;
+  color: #6b7280;
+}
+
+.crew-enrolled-empty svg {
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.crew-enrolled-empty--small {
+  padding: 32px;
+}
+
+.crew-enrolled-empty--small svg {
+  margin-bottom: 12px;
+}
+
+.crew-enrolled-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.crew-enrolled-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.crew-enrolled-card--invitation {
+  border-left: 3px solid #3b82f6;
+}
+
+.crew-enrolled-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.crew-enrolled-card-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.crew-enrolled-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.crew-enrolled-status--active { background: #d1fae5; color: #065f46; }
+.crew-enrolled-status--completed { background: #e5e7eb; color: #374151; }
+.crew-enrolled-status--pending { background: #fef3c7; color: #92400e; }
+.crew-enrolled-status--accepted { background: #d1fae5; color: #065f46; }
+.crew-enrolled-status--declined { background: #fee2e2; color: #991b1b; }
+
+.crew-enrolled-card-desc {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.crew-enrolled-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.crew-enrolled-invitation-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.crew-enrolled-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.crew-enrolled-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.crew-enrolled-btn--accept {
+  background: #059669;
+  color: #fff;
+}
+
+.crew-enrolled-btn--reject {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.crew-enrolled-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: crew-panel-spin 0.7s linear infinite;
+}
+
+.crew-enrolled-error {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+}
+
+.crew-enrolled-placeholder {
+  margin: 0;
+  color: #6b7280;
+}

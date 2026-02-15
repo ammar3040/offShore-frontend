@@ -1,0 +1,20 @@
+.crew-settings-page { max-width: 800px; margin: 0 auto; }
+
+.crew-settings-header { margin-bottom: 24px; }
+
+.crew-settings-title { font-size: 24px; font-weight: 700; color: #1f2937; margin: 0 0 4px; }
+.crew-settings-subtitle { font-size: 14px; color: #6b7280; margin: 0; }
+
+.crew-settings-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px dashed #e5e7eb;
+  color: #6b7280;
+}
+
+.crew-settings-icon { color: #d1d5db; margin-bottom: 16px; }
