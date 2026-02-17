@@ -24,6 +24,22 @@ function getDayOfWeek(iso: string): string {
   }
 }
 
+/** Weekend = Saturday (6) or Sunday (0). */
+function isWeekend(iso: string): boolean {
+  try {
+    const d = new Date(iso + 'T12:00:00');
+    const day = d.getDay();
+    return day === 0 || day === 6;
+  } catch {
+    return false;
+  }
+}
+
+/** Default: present on weekdays, absent on weekends. */
+function getDefaultAttendance(iso: string): AttendanceStatus {
+  return isWeekend(iso) ? 'absent' : 'present';
+}
+
 function getDatesInRange(start: string, end: string): string[] {
   const s = new Date(start);
   const e = new Date(end);
@@ -41,12 +57,43 @@ function getDatesInRange(start: string, end: string): string[] {
 
 const PAGE_SIZE = 10;
 
+/** Max page numbers to show in pagination (e.g. 5 → "... 4 5 6 7 8 ..."). */
+const PAGINATION_WINDOW = 5;
+
+/**
+ * Returns page numbers and ellipsis to show. e.g. [1, 'ellipsis', 4, 5, 6, 'ellipsis', 20].
+ */
+function getPaginationPages(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= PAGINATION_WINDOW + 2) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const half = Math.floor(PAGINATION_WINDOW / 2);
+  let start = Math.max(1, current - half);
+  let end = Math.min(total, start + PAGINATION_WINDOW - 1);
+  if (end - start + 1 < PAGINATION_WINDOW) {
+    start = Math.max(1, end - PAGINATION_WINDOW + 1);
+  }
+  const pages: (number | 'ellipsis')[] = [];
+  if (start > 1) {
+    pages.push(1);
+    if (start > 2) pages.push('ellipsis');
+  }
+  for (let p = start; p <= end; p++) pages.push(p);
+  if (end < total) {
+    if (end < total - 1) pages.push('ellipsis');
+    pages.push(total);
+  }
+  return pages;
+}
+
 const CrewTimesheetPage = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<CrewEnrolledProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<CrewEnrolledProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  /** Per-date overrides: date string -> present | absent | leave. */
+  const [attendanceOverrides, setAttendanceOverrides] = useState<Record<string, AttendanceStatus>>({});
 
   useEffect(() => {
     if (!hasCrewAccessToken()) {
@@ -93,6 +140,24 @@ const CrewTimesheetPage = () => {
     setPage(1);
   };
 
+  const getAttendanceForDate = (date: string): AttendanceStatus =>
+    attendanceOverrides[date] ?? getDefaultAttendance(date);
+
+  const setAttendanceForDate = (date: string, status: AttendanceStatus) => {
+    const defaultStatus = getDefaultAttendance(date);
+    setAttendanceOverrides((prev) => {
+      const next = { ...prev };
+      if (status === defaultStatus) {
+        delete next[date];
+      } else {
+        next[date] = status;
+      }
+      return next;
+    });
+  };
+
+  const paginationPages = getPaginationPages(page, totalPages);
+
   return (
     <div className="crew-timesheet-page">
       <header className="crew-timesheet-header">
@@ -136,7 +201,7 @@ const CrewTimesheetPage = () => {
                 </thead>
                 <tbody>
                   {paginatedDates.map((date, i) => {
-                    const status: AttendanceStatus = null;
+                    const status = getAttendanceForDate(date);
                     const rowNum = startIndex + i + 1;
                     return (
                       <tr key={date}>
@@ -144,15 +209,25 @@ const CrewTimesheetPage = () => {
                         <td>{selectedProject?.title ?? '—'}</td>
                         <td>{formatDate(date)}</td>
                         <td>{getDayOfWeek(date)}</td>
-                          <td>
-                            <span className={`crew-timesheet-attendance crew-timesheet-attendance--${status ?? 'placeholder'}`}>
-                              {status ?? '—'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
+                        <td>
+                          <select
+                            className={`crew-timesheet-attendance crew-timesheet-attendance--${status ?? 'placeholder'}`}
+                            value={status ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value as '' | AttendanceStatus;
+                              setAttendanceForDate(date, v || null);
+                            }}
+                            aria-label={`Attendance for ${formatDate(date)}`}
+                          >
+                            <option value="present">Present</option>
+                            <option value="absent">Absent</option>
+                            <option value="leave">Leave</option>
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
                 </table>
               </div>
 
@@ -166,20 +241,35 @@ const CrewTimesheetPage = () => {
                       type="button"
                       className="crew-timesheet-pagination-btn"
                       disabled={page <= 1}
+                      onClick={() => setPage(1)}
+                      aria-label="First page"
+                    >
+                      First
+                    </button>
+                    <button
+                      type="button"
+                      className="crew-timesheet-pagination-btn"
+                      disabled={page <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
                       Previous
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        className={`crew-timesheet-pagination-btn ${p === page ? 'active' : ''}`}
-                        onClick={() => setPage(p)}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    {paginationPages.map((p, idx) =>
+                      p === 'ellipsis' ? (
+                        <span key={`ellipsis-${idx}`} className="crew-timesheet-pagination-ellipsis" aria-hidden>
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          type="button"
+                          className={`crew-timesheet-pagination-btn ${p === page ? 'active' : ''}`}
+                          onClick={() => setPage(p)}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
                     <button
                       type="button"
                       className="crew-timesheet-pagination-btn"
@@ -187,6 +277,15 @@ const CrewTimesheetPage = () => {
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     >
                       Next
+                    </button>
+                    <button
+                      type="button"
+                      className="crew-timesheet-pagination-btn"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage(totalPages)}
+                      aria-label="Last page"
+                    >
+                      Last
                     </button>
                   </div>
                 </div>
