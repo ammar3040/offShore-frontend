@@ -415,6 +415,78 @@ export async function getCrewMe(): Promise<CrewMemberApi | null> {
   }
 }
 
+/** Raw availability item from GET /api/crew/me (availability array) */
+export interface CrewAvailabilityItem {
+  id: string;
+  from: string;
+  to: string;
+}
+
+/** Response from GET /api/crew/me when used for dashboard (crew + availability + enrolledProjects) */
+export interface CrewMeDashboardResponse {
+  crew: CrewMemberApi | null;
+  availability: CrewAvailability;
+  enrolledProjects: CrewEnrolledProject[];
+}
+
+/**
+ * Fetches dashboard data for the logged-in crew: profile, availability, and enrolled projects.
+ * Single GET /api/crew/me call returning { crew, availability[], enrolledProjects[] }.
+ */
+export async function getCrewMeDashboard(): Promise<CrewMeDashboardResponse> {
+  const token = localStorage.getItem(env.crewTokenKey);
+  const empty: CrewMeDashboardResponse = {
+    crew: null,
+    availability: { availableFrom: null, availableTo: null },
+    enrolledProjects: [],
+  };
+  if (!token) return empty;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/api/crew/me`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) return empty;
+    const data = await response.json();
+
+    const crew = (data?.crew ?? null) as CrewMemberApi | null;
+
+    const availList = Array.isArray(data?.availability) ? data.availability : [];
+    const first = availList[0];
+    const availability: CrewAvailability = {
+      availableFrom: first?.from != null ? String(first.from) : null,
+      availableTo: first?.to != null ? String(first.to) : null,
+    };
+
+    const rawProjects = Array.isArray(data?.enrolledProjects) ? data.enrolledProjects : [];
+    const enrolledProjects: CrewEnrolledProject[] = rawProjects.map((p: Record<string, unknown>) => {
+      const d = (p?.duration as Record<string, unknown>) ?? {};
+      return {
+        id: String(p?.id ?? ''),
+        title: String(p?.title ?? ''),
+        description: p?.description != null ? String(p.description) : undefined,
+        status: String(p?.status ?? ''),
+        startDate: (d?.startDate != null ? String(d.startDate) : undefined) || undefined,
+        endDate: (d?.endDate != null ? String(d.endDate) : undefined) || undefined,
+      };
+    });
+
+    return { crew, availability, enrolledProjects };
+  } catch {
+    clearTimeout(timeoutId);
+    return empty;
+  }
+}
+
 /** Crew availability (signed-in crew): from date – to date */
 export interface CrewAvailability {
   availableFrom: string | null;

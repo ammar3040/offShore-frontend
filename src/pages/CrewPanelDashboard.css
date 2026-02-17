@@ -35,6 +35,7 @@
 .crew-panel-dash-card-icon--green { background: #ecfdf5; color: #059669; }
 .crew-panel-dash-card-icon--purple { background: #f5f3ff; color: #7c3aed; }
 .crew-panel-dash-card-icon--teal { background: #f0fdfa; color: #0d9488; }
+.crew-panel-dash-card-icon--amber { background: #fffbeb; color: #d97706; }
 
 .crew-panel-dash-card-content {
   display: flex;
@@ -52,6 +53,58 @@
   font-size: 14px;
   font-weight: 500;
   color: #6b7280;
+}
+
+.crew-panel-dash-card-value--small {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.crew-panel-dash-card-value--muted {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.crew-panel-dash-availability-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2563eb;
+  text-decoration: none;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.crew-panel-dash-availability-link:hover {
+  text-decoration: underline;
+}
+
+.crew-panel-dash-availability-link--block {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+.crew-panel-enrolled-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 32px;
+}
+
+.crew-panel-enrolled-count-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crew-panel-enrolled-count-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.crew-panel-enrolled-count-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
 }
 
 .crew-panel-dash-card-header {

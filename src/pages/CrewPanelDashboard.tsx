@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   FolderKanban,
   Percent,
-  Calendar,
-  Plane,
+  CalendarRange,
   CheckCircle2,
 } from 'lucide-react';
-import { getCrewMe, getCrewEnrolledProjects } from '../api/crew';
+import { getCrewMeDashboard } from '../api/crew';
 import { getStoredCrewPanelUser, hasCrewAccessToken } from '../lib/crewPanelAuth';
-import type { CrewMemberApi, CrewEnrolledProject } from '../api/crew';
+import type { CrewMemberApi, CrewEnrolledProject, CrewAvailability } from '../api/crew';
 import './CrewPanelDashboard.css';
 
 function placeholderCrewProfile(email: string): CrewMemberApi {
@@ -47,6 +47,7 @@ const CrewPanelDashboard = () => {
   const navigate = useNavigate();
   const [crew, setCrew] = useState<CrewMemberApi | null>(null);
   const [enrolledProjects, setEnrolledProjects] = useState<CrewEnrolledProject[]>([]);
+  const [availability, setAvailability] = useState<CrewAvailability | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,11 +62,12 @@ const CrewPanelDashboard = () => {
     }
 
     let cancelled = false;
-    Promise.all([getCrewMe(), getCrewEnrolledProjects()])
-      .then(([me, { projects }]) => {
+    getCrewMeDashboard()
+      .then((res) => {
         if (cancelled) return;
-        setCrew(me ?? placeholderCrewProfile(user.email));
-        setEnrolledProjects(projects ?? []);
+        setCrew(res.crew ?? placeholderCrewProfile(user.email));
+        setEnrolledProjects(res.enrolledProjects ?? []);
+        setAvailability(res.availability ?? null);
       })
       .catch(() => {
         if (!cancelled) setCrew(placeholderCrewProfile(user.email));
@@ -86,7 +88,8 @@ const CrewPanelDashboard = () => {
   }
 
   const completedProjects = enrolledProjects.filter((p) => (p.status || '').toLowerCase() === 'completed');
-  const currentProject = enrolledProjects.find((p) => (p.status || '').toLowerCase() === 'active') ?? enrolledProjects[0];
+  const activeProjects = enrolledProjects.filter((p) => (p.status || '').toLowerCase() === 'active');
+  const totalEnrolled = enrolledProjects.length;
   const attendancePercent = 0; // TODO: wire to backend when API available
 
   return (
@@ -97,6 +100,19 @@ const CrewPanelDashboard = () => {
       </header>
 
       <div className="crew-panel-dashboard-cards">
+        <div className="crew-panel-dash-card">
+          <div className="crew-panel-dash-card-icon crew-panel-dash-card-icon--purple">
+            <FolderKanban size={24} />
+          </div>
+          <div className="crew-panel-dash-card-content">
+            <span className="crew-panel-dash-card-value">{totalEnrolled}</span>
+            <span className="crew-panel-dash-card-label">Enrolled Projects</span>
+            <Link to="/panel/crew/enrolled-projects" className="crew-panel-dash-availability-link">
+              View all
+            </Link>
+          </div>
+        </div>
+
         <div className="crew-panel-dash-card">
           <div className="crew-panel-dash-card-icon crew-panel-dash-card-icon--blue">
             <CheckCircle2 size={24} />
@@ -117,75 +133,52 @@ const CrewPanelDashboard = () => {
           </div>
         </div>
 
-        <div className="crew-panel-dash-card crew-panel-dash-card--span-2">
-          <div className="crew-panel-dash-card-header">
-            <div className="crew-panel-dash-card-icon crew-panel-dash-card-icon--purple">
-              <FolderKanban size={22} />
-            </div>
-            <h2 className="crew-panel-dash-card-title">Current Enrolled Project</h2>
+        <div className="crew-panel-dash-card">
+          <div className="crew-panel-dash-card-icon crew-panel-dash-card-icon--amber">
+            <CalendarRange size={24} />
           </div>
-          <div className="crew-panel-dash-card-body">
-            {currentProject ? (
-              <div className="crew-panel-current-project">
-                <h3 className="crew-panel-current-project-name">{currentProject.title}</h3>
-                {currentProject.description && (
-                  <p className="crew-panel-current-project-desc">{currentProject.description}</p>
-                )}
-                <div className="crew-panel-current-project-meta">
-                  <span className="crew-panel-project-status crew-panel-project-status--active">
-                    {currentProject.status || 'Active'}
-                  </span>
-                  {(currentProject.startDate || currentProject.endDate) && (
-                    <span className="crew-panel-current-project-dates">
-                      <Calendar size={14} />
-                      {currentProject.startDate && currentProject.endDate
-                        ? `${formatDate(currentProject.startDate)} – ${formatDate(currentProject.endDate)}`
-                        : currentProject.startDate
-                          ? formatDate(currentProject.startDate)
-                          : currentProject.endDate
-                            ? formatDate(currentProject.endDate)
-                            : ''}
-                    </span>
-                  )}
-                </div>
-              </div>
+          <div className="crew-panel-dash-card-content">
+            <span className="crew-panel-dash-card-label">Availability</span>
+            {availability?.availableFrom && availability?.availableTo ? (
+              <span className="crew-panel-dash-card-value crew-panel-dash-card-value--small">
+                {formatDate(availability.availableFrom)} – {formatDate(availability.availableTo)}
+              </span>
             ) : (
-              <p className="crew-panel-dash-card-empty">No active project enrolled.</p>
+              <span className="crew-panel-dash-card-value crew-panel-dash-card-value--small crew-panel-dash-card-value--muted">
+                Not set
+              </span>
             )}
+            <Link to="/panel/crew/availability" className="crew-panel-dash-availability-link">
+              {availability?.availableFrom && availability?.availableTo ? 'Update' : 'Set'} availability
+            </Link>
           </div>
         </div>
 
         <div className="crew-panel-dash-card crew-panel-dash-card--span-2">
           <div className="crew-panel-dash-card-header">
-            <div className="crew-panel-dash-card-icon crew-panel-dash-card-icon--teal">
-              <Plane size={22} />
+            <div className="crew-panel-dash-card-icon crew-panel-dash-card-icon--purple">
+              <FolderKanban size={22} />
             </div>
-            <h2 className="crew-panel-dash-card-title">Current Project Flight Ticket</h2>
+            <h2 className="crew-panel-dash-card-title">Enrolled projects overview</h2>
           </div>
           <div className="crew-panel-dash-card-body">
-            {currentProject ? (
-              <div className="crew-panel-flight-details">
-                <div className="crew-panel-flight-row">
-                  <span className="crew-panel-flight-label">Flight</span>
-                  <span className="crew-panel-flight-value">—</span>
-                </div>
-                <div className="crew-panel-flight-row">
-                  <span className="crew-panel-flight-label">Departure</span>
-                  <span className="crew-panel-flight-value">—</span>
-                </div>
-                <div className="crew-panel-flight-row">
-                  <span className="crew-panel-flight-label">Arrival</span>
-                  <span className="crew-panel-flight-value">—</span>
-                </div>
-                <div className="crew-panel-flight-row">
-                  <span className="crew-panel-flight-label">Booking ref</span>
-                  <span className="crew-panel-flight-value">—</span>
-                </div>
-                <p className="crew-panel-flight-hint">Flight details will appear when assigned by admin.</p>
+            <div className="crew-panel-enrolled-counts">
+              <div className="crew-panel-enrolled-count-row">
+                <span className="crew-panel-enrolled-count-label">All enrolled</span>
+                <span className="crew-panel-enrolled-count-value">{totalEnrolled}</span>
               </div>
-            ) : (
-              <p className="crew-panel-dash-card-empty">No flight ticket. Enroll in a project first.</p>
-            )}
+              <div className="crew-panel-enrolled-count-row">
+                <span className="crew-panel-enrolled-count-label">Active</span>
+                <span className="crew-panel-enrolled-count-value">{activeProjects.length}</span>
+              </div>
+              <div className="crew-panel-enrolled-count-row">
+                <span className="crew-panel-enrolled-count-label">Completed</span>
+                <span className="crew-panel-enrolled-count-value">{completedProjects.length}</span>
+              </div>
+            </div>
+            <Link to="/panel/crew/enrolled-projects" className="crew-panel-dash-availability-link crew-panel-dash-availability-link--block">
+              View all enrolled projects →
+            </Link>
           </div>
         </div>
       </div>
