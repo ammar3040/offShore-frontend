@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Calendar, Users, FolderKanban, Plus, Search, ChevronDown, RefreshCw } from 'lucide-react';
+import { Calendar, Users, FolderKanban, Plus, Search, ChevronDown, RefreshCw, UserPlus } from 'lucide-react';
 import Modal from '../components/Modal';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
+import { getCrewAvailableForProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import './ProjectsPage.css';
 
 function formatDate(iso: string): string {
@@ -35,6 +36,14 @@ const ProjectsPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
+
+  const [inviteProject, setInviteProject] = useState<ProjectApi | null>(null);
+  const [crew, setCrew] = useState<CrewMemberApi[]>([]);
+  const [crewLoading, setCrewLoading] = useState(false);
+  const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   const pageSize = 6;
 
@@ -127,6 +136,55 @@ const ProjectsPage = () => {
       setCreateError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const openInviteModal = useCallback((project: ProjectApi) => {
+    setInviteProject(project);
+    setSelectedCrewIds([]);
+    setInviteError(null);
+    setInviteSuccess(false);
+    setCrewLoading(true);
+    getCrewAvailableForProject(project.id)
+      .then((res) => setCrew(res.crew ?? []))
+      .catch(() => setCrew([]))
+      .finally(() => setCrewLoading(false));
+  }, []);
+
+  const toggleCrewSelection = useCallback((crewId: string) => {
+    setSelectedCrewIds((prev) =>
+      prev.includes(crewId) ? prev.filter((id) => id !== crewId) : [...prev, crewId]
+    );
+  }, []);
+
+  const selectAllCrew = useCallback(() => {
+    setSelectedCrewIds(crew.map((c) => c.id));
+  }, [crew]);
+
+  const deselectAllCrew = useCallback(() => {
+    setSelectedCrewIds([]);
+  }, []);
+
+  const closeInviteModal = useCallback(() => {
+    if (!inviteLoading) {
+      setInviteProject(null);
+      setInviteError(null);
+      setInviteSuccess(false);
+    }
+  }, [inviteLoading]);
+
+  const handleInviteCrew = async () => {
+    if (!inviteProject || selectedCrewIds.length === 0) return;
+    setInviteLoading(true);
+    setInviteError(null);
+    try {
+      await inviteCrewToProject(inviteProject.id, selectedCrewIds);
+      setInviteSuccess(true);
+      setTimeout(closeInviteModal, 1200);
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Failed to send invitation');
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -247,6 +305,17 @@ const ProjectsPage = () => {
                     {project.participants?.length ?? 0} participant{(project.participants?.length ?? 0) !== 1 ? 's' : ''}
                   </span>
                 </div>
+                <div className="project-card-actions">
+                  <button
+                    type="button"
+                    className="project-card-invite-btn"
+                    onClick={() => openInviteModal(project)}
+                    title="Invite crew to this project"
+                  >
+                    <UserPlus size={16} />
+                    Invite crew
+                  </button>
+                </div>
               </article>
             ))}
           </div>
@@ -303,6 +372,96 @@ const ProjectsPage = () => {
         </nav>
         <p className="projects-footer-status">• All Systems Operational</p>
       </footer>
+
+      <Modal
+        isOpen={!!inviteProject}
+        onClose={closeInviteModal}
+        title="Invite crew to project"
+        size="medium"
+      >
+        {inviteProject && (
+          <div className="project-invite-modal">
+            <p className="project-invite-intro">
+              Invite crew members to <strong>{inviteProject.title}</strong>. Only crews whose availability aligns with this project&apos;s duration are listed. Selected crew will see the invitation in their crew panel.
+            </p>
+            {inviteSuccess ? (
+              <div className="project-invite-success" role="status">
+                Invitation{selectedCrewIds.length !== 1 ? 's' : ''} sent successfully.
+              </div>
+            ) : (
+              <>
+                {inviteError && (
+                  <div className="projects-page-form-error project-invite-error" role="alert">
+                    {inviteError}
+                  </div>
+                )}
+                <div className="project-invite-field">
+                  <div className="project-invite-label-row">
+                    <span className="project-invite-label">Crew members</span>
+                    {!crewLoading && crew.length > 0 && (
+                      <span className="project-invite-select-actions">
+                        <button type="button" className="project-invite-select-link" onClick={selectAllCrew}>
+                          Select all
+                        </button>
+                        <span className="project-invite-select-sep">·</span>
+                        <button type="button" className="project-invite-select-link" onClick={deselectAllCrew}>
+                          Deselect all
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                  {crewLoading ? (
+                    <p className="project-invite-loading">Loading crew…</p>
+                  ) : crew.length === 0 ? (
+                    <p className="project-invite-loading">No crew available for this project&apos;s duration.</p>
+                  ) : (
+                    <div className="project-invite-crew-list" role="group" aria-label="Select crew to invite">
+                      {crew.map((c) => (
+                        <label key={c.id} className="project-invite-crew-item">
+                          <input
+                            type="checkbox"
+                            checked={selectedCrewIds.includes(c.id)}
+                            onChange={() => toggleCrewSelection(c.id)}
+                            disabled={inviteLoading}
+                            className="project-invite-crew-checkbox"
+                          />
+                          <span className="project-invite-crew-name">
+                            {c.firstname} {c.lastname}
+                          </span>
+                          <span className="project-invite-crew-email">{c.email}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {!crewLoading && crew.length > 0 && selectedCrewIds.length > 0 && (
+                    <p className="project-invite-count">
+                      {selectedCrewIds.length} member{selectedCrewIds.length !== 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </div>
+                <div className="project-invite-actions">
+                  <button
+                    type="button"
+                    className="projects-page-form-cancel"
+                    onClick={closeInviteModal}
+                    disabled={inviteLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="projects-page-form-submit"
+                    onClick={handleInviteCrew}
+                    disabled={inviteLoading || selectedCrewIds.length === 0 || crewLoading}
+                  >
+                    {inviteLoading ? 'Sending…' : `Send invitation${selectedCrewIds.length > 1 ? 's' : ''}`}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title="Create project" size="medium">
         {createError && (

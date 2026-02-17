@@ -162,6 +162,52 @@ export async function getCrewList(): Promise<GetCrewResponse> {
   return response.json();
 }
 
+/**
+ * Fetches crews whose availability aligns with the project's duration.
+ * GET /api/crew/project/:project_id/available
+ * Requires admin auth token.
+ */
+export async function getCrewAvailableForProject(projectId: string): Promise<GetCrewResponse> {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/api/crew/project/${encodeURIComponent(projectId)}/available`,
+    {
+      method: 'GET',
+      headers,
+      signal: controller.signal,
+    }
+  );
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  const crewList = Array.isArray(data?.crew) ? data.crew : (Array.isArray(data) ? data : []);
+  return { crew: crewList };
+}
+
 export interface CrewEnrolledProject {
   id: string;
   title: string;
@@ -369,6 +415,97 @@ export async function getCrewMe(): Promise<CrewMemberApi | null> {
   }
 }
 
+/** Crew availability (signed-in crew): from date – to date */
+export interface CrewAvailability {
+  availableFrom: string | null;
+  availableTo: string | null;
+}
+
+/**
+ * Fetches the logged-in crew member's availability (requires crew token).
+ * GET /api/crew-availability — returns { availability?: { from, to } } or similar.
+ */
+export async function getCrewAvailability(): Promise<CrewAvailability> {
+  const token = localStorage.getItem(env.crewTokenKey);
+  if (!token) return { availableFrom: null, availableTo: null };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/api/crew-availability`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) return { availableFrom: null, availableTo: null };
+    const data = await response.json();
+    const avail = data?.availability ?? data;
+    const from = avail?.from ?? null;
+    const to = avail?.to ?? null;
+    return {
+      availableFrom: from != null ? String(from) : null,
+      availableTo: to != null ? String(to) : null,
+    };
+  } catch {
+    clearTimeout(timeoutId);
+    return { availableFrom: null, availableTo: null };
+  }
+}
+
+/**
+ * Adds/updates the logged-in crew member's availability (requires crew token).
+ * POST /api/crew-availability
+ * Body: { from: "YYYY-MM-DD", to: "YYYY-MM-DD" }
+ * Response: { message, availability: { id, crew_id, from, to } }
+ */
+export async function updateCrewAvailability(payload: {
+  availableFrom: string;
+  availableTo: string;
+}): Promise<CrewAvailability> {
+  const token = localStorage.getItem(env.crewTokenKey);
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew-availability`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      from: payload.availableFrom,
+      to: payload.availableTo,
+    }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      (data as { message?: string }).message ??
+      (data as { error?: string }).error ??
+      `Failed to update availability (${response.status})`;
+    throw new Error(message);
+  }
+
+  const avail = (data as { availability?: { from?: string; to?: string } }).availability;
+  const from = avail?.from ?? payload.availableFrom;
+  const to = avail?.to ?? payload.availableTo;
+  return {
+    availableFrom: from != null ? String(from) : null,
+    availableTo: to != null ? String(to) : null,
+  };
+}
+
 export async function createCrewMember(data: CrewMemberFormData): Promise<Response> {
   const formData = buildCrewFormData(data);
   const token = getAuthToken();
@@ -392,4 +529,58 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+/** Response from inviting crew to a project (POST /api/crew-invite/project/:project_id) */
+export interface CrewInviteToProjectItem {
+  id: string;
+  crew_id: string;
+  project_id: string;
+  acceptanceStatus: 'pending' | 'accepted' | 'declined';
+}
+
+export interface InviteCrewToProjectResponse {
+  message: string;
+  invites: CrewInviteToProjectItem[];
+}
+
+/**
+ * Invites crew members to a project (admin). Requires admin auth token.
+ * POST /api/crew-invite/project/:project_id
+ * Body: { crew_ids: string[] }
+ */
+export async function inviteCrewToProject(
+  projectId: string,
+  crewIds: string[]
+): Promise<InviteCrewToProjectResponse> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/api/crew-invite/project/${encodeURIComponent(projectId)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ crew_ids: crewIds }),
+      signal: controller.signal,
+    }
+  );
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const message =
+      (data as { message?: string }).message ??
+      (data as { error?: string }).error ??
+      `Failed to invite (${response.status})`;
+    throw new Error(message);
+  }
+
+  return response.json();
 }

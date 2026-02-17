@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, RefreshCw } from 'lucide-react';
-import { getCrewList, type CrewMemberApi } from '../api/crew';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, RefreshCw, Send } from 'lucide-react';
+import { getCrewList, createCrewMember, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
+import { getProjects, type ProjectApi } from '../api/project';
 import Modal from '../components/Modal';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
-import { createCrewMember } from '../api/crew';
 import './CrewListPage.css';
 
 function getInitials(firstname: string, lastname: string): string {
@@ -21,6 +21,14 @@ const CrewListPage = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+
+  const [inviteCrewMember, setInviteCrewMember] = useState<CrewMemberApi | null>(null);
+  const [projects, setProjects] = useState<ProjectApi[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   const pageSize = 5;
 
@@ -70,6 +78,41 @@ const CrewListPage = () => {
     if (!addLoading) {
       setIsAddModalOpen(false);
       setAddError(null);
+    }
+  };
+
+  const openInviteModal = useCallback((member: CrewMemberApi) => {
+    setInviteCrewMember(member);
+    setSelectedProjectId('');
+    setInviteError(null);
+    setInviteSuccess(false);
+    setProjectsLoading(true);
+    getProjects()
+      .then((res) => setProjects(res.projects ?? []))
+      .catch(() => setProjects([]))
+      .finally(() => setProjectsLoading(false));
+  }, []);
+
+  const closeInviteModal = useCallback(() => {
+    if (!inviteLoading) {
+      setInviteCrewMember(null);
+      setInviteError(null);
+      setInviteSuccess(false);
+    }
+  }, [inviteLoading]);
+
+  const handleInviteToProject = async () => {
+    if (!inviteCrewMember || !selectedProjectId) return;
+    setInviteLoading(true);
+    setInviteError(null);
+    try {
+      await inviteCrewToProject(selectedProjectId, [inviteCrewMember.id]);
+      setInviteSuccess(true);
+      setTimeout(closeInviteModal, 1200);
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Failed to send invitation');
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -209,6 +252,15 @@ const CrewListPage = () => {
                     <td>{member.country || '—'}</td>
                     <td>
                       <div className="user-mgmt-actions">
+                        <button
+                          type="button"
+                          className="user-mgmt-action-btn user-mgmt-action-btn-invite"
+                          aria-label="Invite to project"
+                          onClick={() => openInviteModal(member)}
+                          title="Invite to project"
+                        >
+                          <Send size={16} />
+                        </button>
                         <button type="button" className="user-mgmt-action-btn" aria-label="Edit">
                           <Pencil size={16} />
                         </button>
@@ -278,6 +330,77 @@ const CrewListPage = () => {
           onCancel={handleCloseAddModal}
           isLoading={addLoading}
         />
+      </Modal>
+
+      <Modal
+        isOpen={!!inviteCrewMember}
+        onClose={closeInviteModal}
+        title="Invite to project"
+        size="medium"
+      >
+        {inviteCrewMember && (
+          <div className="invite-to-project-modal">
+            <p className="invite-to-project-intro">
+              Invite <strong>{inviteCrewMember.firstname} {inviteCrewMember.lastname}</strong> to a project. They will see the invitation in their crew panel.
+            </p>
+            {inviteSuccess ? (
+              <div className="invite-to-project-success" role="status">
+                Invitation sent successfully.
+              </div>
+            ) : (
+              <>
+                {inviteError && (
+                  <div className="form-error-message invite-to-project-error" role="alert">
+                    {inviteError}
+                  </div>
+                )}
+                <div className="invite-to-project-field">
+                  <label htmlFor="invite-project-select" className="invite-to-project-label">
+                    Project
+                  </label>
+                  {projectsLoading ? (
+                    <p className="invite-to-project-loading">Loading projects…</p>
+                  ) : (
+                    <select
+                      id="invite-project-select"
+                      className="invite-to-project-select"
+                      value={selectedProjectId}
+                      onChange={(e) => setSelectedProjectId(e.target.value)}
+                      disabled={inviteLoading || projects.length === 0}
+                    >
+                      <option value="">
+                        {projects.length === 0 ? 'No projects available' : 'Select a project'}
+                      </option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} {p.status ? `(${p.status})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div className="invite-to-project-actions">
+                  <button
+                    type="button"
+                    className="invite-to-project-cancel"
+                    onClick={closeInviteModal}
+                    disabled={inviteLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="invite-to-project-submit"
+                    onClick={handleInviteToProject}
+                    disabled={inviteLoading || !selectedProjectId || projectsLoading}
+                  >
+                    {inviteLoading ? 'Sending…' : 'Send invitation'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   ClipboardList,
   LogOut,
   Plane,
+  CalendarRange,
 } from 'lucide-react';
 import { clearCrewSession } from '../lib/crewPanelAuth';
 import './CrewPanelLayout.css';
@@ -20,6 +21,7 @@ interface CrewPanelLayoutProps {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/panel/crew/dashboard' },
   { icon: FolderKanban, label: 'Enrolled Projects', path: '/panel/crew/enrolled-projects' },
+  { icon: CalendarRange, label: 'Availability', path: '/panel/crew/availability' },
   { icon: User, label: 'Profile', path: '/panel/crew/profile' },
   { icon: Settings, label: 'Settings', path: '/panel/crew/settings' },
   { icon: Ticket, label: 'Tickets', path: '/panel/crew/tickets' },

@@ -270,6 +270,11 @@
   color: #374151;
 }
 
+.user-mgmt-action-btn-invite:hover {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
 .user-mgmt-pagination {
   display: flex;
   align-items: center;
@@ -345,6 +350,130 @@
   .user-mgmt-cards {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Invite to project modal */
+.invite-to-project-modal {
+  padding: 4px 0;
+}
+
+.invite-to-project-intro {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.invite-to-project-intro strong {
+  color: #1f2937;
+}
+
+.invite-to-project-success {
+  padding: 16px;
+  background: #ecfdf5;
+  color: #059669;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.invite-to-project-error {
+  margin-bottom: 16px;
+}
+
+.invite-to-project-field {
+  margin-bottom: 20px;
+}
+
+.invite-to-project-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.invite-to-project-loading {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.invite-to-project-select {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+.invite-to-project-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.invite-to-project-select:disabled {
+  background-color: #f9fafb;
+  cursor: not-allowed;
+}
+
+.invite-to-project-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.invite-to-project-cancel {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.invite-to-project-cancel:hover:not(:disabled) {
+  background: #f9fafb;
+  color: #374151;
+}
+
+.invite-to-project-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.invite-to-project-submit {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.invite-to-project-submit:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.invite-to-project-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 640px) {

@@ -301,6 +301,8 @@
   padding: 20px;
   border: 1px solid #e5e7eb;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .project-card:hover {
@@ -371,7 +373,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .project-card-meta-item {
@@ -391,6 +393,197 @@
   font-size: 12px;
   color: #9ca3af;
   margin: 0;
+}
+
+.project-card-actions {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.project-card-invite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.project-card-invite-btn:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* Invite crew to project modal */
+.project-invite-modal {
+  padding: 4px 0;
+}
+
+.project-invite-intro {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.project-invite-intro strong {
+  color: #1f2937;
+}
+
+.project-invite-success {
+  padding: 16px;
+  background: #ecfdf5;
+  color: #059669;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.project-invite-error {
+  margin-bottom: 16px;
+}
+
+.project-invite-field {
+  margin-bottom: 20px;
+}
+
+.project-invite-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.project-invite-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.project-invite-select-actions {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.project-invite-select-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.project-invite-select-link:hover {
+  text-decoration: underline;
+}
+
+.project-invite-select-sep {
+  margin: 0 6px;
+  color: #d1d5db;
+}
+
+.project-invite-crew-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 6px 0;
+}
+
+.project-invite-crew-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.project-invite-crew-item:hover {
+  background: #f3f4f6;
+}
+
+.project-invite-crew-checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.project-invite-crew-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  flex-shrink: 0;
+}
+
+.project-invite-crew-email {
+  font-size: 13px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-invite-count {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.project-invite-loading {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.project-invite-select {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+.project-invite-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.project-invite-select:disabled {
+  background-color: #f9fafb;
+  cursor: not-allowed;
+}
+
+.project-invite-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
 }
 
 /* Create project modal form */

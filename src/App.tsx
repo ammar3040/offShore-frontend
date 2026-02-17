@@ -12,6 +12,7 @@ import CrewProfilePage from './pages/CrewProfilePage';
 import CrewSettingsPage from './pages/CrewSettingsPage';
 import CrewTicketsPage from './pages/CrewTicketsPage';
 import CrewTimesheetPage from './pages/CrewTimesheetPage';
+import CrewAvailabilityPage from './pages/CrewAvailabilityPage';
 import ProjectsPage from './pages/ProjectsPage';
 import './App.css';
 
@@ -37,6 +38,7 @@ function App() {
           <Route path="settings" element={<CrewSettingsPage />} />
           <Route path="tickets" element={<CrewTicketsPage />} />
           <Route path="timesheet" element={<CrewTimesheetPage />} />
+          <Route path="availability" element={<CrewAvailabilityPage />} />
           <Route index element={<Navigate to="/panel/crew/dashboard" replace />} />
         </Route>
 
