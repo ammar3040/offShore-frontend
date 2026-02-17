@@ -1,4 +1,12 @@
-.crew-profile-page { max-width: 1000px; margin: 0 auto; }
+/* ~2% larger base; layout wider to fit screen */
+.crew-profile-page {
+  font-size: 102%;
+  max-width: min(1400px, 96vw);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 2vw, 24px);
+  box-sizing: border-box;
+}
 
 .crew-profile-loading {
   display: flex;
@@ -6,8 +14,9 @@
   align-items: center;
   justify-content: center;
   min-height: 320px;
-  gap: 16px;
+  gap: 18px;
   color: #6b7280;
+  font-size: 1rem;
 }
 
 .crew-profile-spinner {
@@ -23,23 +32,34 @@
   to { transform: rotate(360deg); }
 }
 
-.crew-profile-header { margin-bottom: 24px; }
+.crew-profile-header { margin-bottom: 28px; }
 
-.crew-profile-title { font-size: 24px; font-weight: 700; color: #1f2937; margin: 0 0 4px; }
-.crew-profile-subtitle { font-size: 14px; color: #6b7280; margin: 0; }
+.crew-profile-title {
+  font-size: 1.53rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.crew-profile-subtitle {
+  font-size: 1.02rem;
+  color: #6b7280;
+  margin: 0;
+}
 
 .crew-profile-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 24px;
 }
 
 .crew-profile-card {
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .crew-profile-card--span-2 { grid-column: span 2; }
@@ -47,12 +67,12 @@
 .crew-profile-card-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 16px;
+  gap: 12px;
+  font-size: 1.04rem;
   font-weight: 600;
   color: #1f2937;
-  margin: 0 0 16px;
-  padding-bottom: 12px;
+  margin: 0 0 18px;
+  padding-bottom: 14px;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -60,23 +80,28 @@
 
 .crew-profile-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 18px 28px;
 }
 
-.crew-profile-list { display: flex; flex-direction: column; gap: 12px; }
+.crew-profile-list { display: flex; flex-direction: column; gap: 14px; }
 
-.crew-profile-field { display: flex; flex-direction: column; gap: 4px; }
+.crew-profile-field { display: flex; flex-direction: column; gap: 6px; }
 
 .crew-profile-label {
-  font-size: 12px;
+  font-size: 0.78rem;
   font-weight: 500;
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
-.crew-profile-value { font-size: 14px; color: #1f2937; font-weight: 500; }
+.crew-profile-value {
+  font-size: 1.02rem;
+  color: #1f2937;
+  font-weight: 500;
+  line-height: 1.4;
+}
 
 @media (max-width: 768px) {
   .crew-profile-grid { grid-template-columns: 1fr; }
