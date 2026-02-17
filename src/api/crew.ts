@@ -495,17 +495,23 @@ export interface CrewAvailability {
 
 /**
  * Fetches the logged-in crew member's availability (requires crew token).
- * GET /api/crew-availability — returns { availability?: { from, to } } or similar.
+ * GET /api/crew-availability — returns { availabilities: [ { id, crew_id, from, to }, ... ] }.
+ * Uses the first item in the array. Pass crew_id in req.query when available.
  */
-export async function getCrewAvailability(): Promise<CrewAvailability> {
+export async function getCrewAvailability(options?: { crewId?: string }): Promise<CrewAvailability> {
   const token = localStorage.getItem(env.crewTokenKey);
   if (!token) return { availableFrom: null, availableTo: null };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
+  const query = new URLSearchParams();
+  if (options?.crewId) query.set('crew_id', options.crewId);
+  const queryString = query.toString();
+  const url = `${env.apiBaseUrl}/api/crew-availability${queryString ? `?${queryString}` : ''}`;
+
   try {
-    const response = await fetch(`${env.apiBaseUrl}/api/crew-availability`, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -516,9 +522,11 @@ export async function getCrewAvailability(): Promise<CrewAvailability> {
     clearTimeout(timeoutId);
     if (!response.ok) return { availableFrom: null, availableTo: null };
     const data = await response.json();
-    const avail = data?.availability ?? data;
-    const from = avail?.from ?? null;
-    const to = avail?.to ?? null;
+    // API returns { availabilities: [ { id, crew_id, from, to }, ... ] }
+    const list = Array.isArray(data?.availabilities) ? data.availabilities : [];
+    const first = list[0];
+    const from = first?.from ?? null;
+    const to = first?.to ?? null;
     return {
       availableFrom: from != null ? String(from) : null,
       availableTo: to != null ? String(to) : null,

@@ -6,6 +6,8 @@ import {
   Percent,
   CalendarRange,
   CheckCircle2,
+  CircleDot,
+  ArrowRight,
 } from 'lucide-react';
 import { getCrewMeDashboard } from '../api/crew';
 import { getStoredCrewPanelUser, hasCrewAccessToken } from '../lib/crewPanelAuth';
@@ -154,30 +156,49 @@ const CrewPanelDashboard = () => {
           </div>
         </div>
 
-        <div className="crew-panel-dash-card crew-panel-dash-card--span-2">
-          <div className="crew-panel-dash-card-header">
+        <div className="crew-panel-dash-card crew-panel-dash-card--span-2 crew-panel-dash-card--overview">
+          <div className="crew-panel-dash-card-header crew-panel-dash-card-header--overview">
             <div className="crew-panel-dash-card-icon crew-panel-dash-card-icon--purple">
               <FolderKanban size={22} />
             </div>
-            <h2 className="crew-panel-dash-card-title">Enrolled projects overview</h2>
+            <div className="crew-panel-dash-card-header-text">
+              <h2 className="crew-panel-dash-card-title">Enrolled projects overview</h2>
+              <p className="crew-panel-dash-card-subtitle">Summary of your project assignments</p>
+            </div>
           </div>
-          <div className="crew-panel-dash-card-body">
-            <div className="crew-panel-enrolled-counts">
-              <div className="crew-panel-enrolled-count-row">
-                <span className="crew-panel-enrolled-count-label">All enrolled</span>
-                <span className="crew-panel-enrolled-count-value">{totalEnrolled}</span>
+          <div className="crew-panel-dash-card-body crew-panel-dash-card-body--overview">
+            <div className="crew-panel-enrolled-stats">
+              <div className="crew-panel-enrolled-stat">
+                <div className="crew-panel-enrolled-stat-icon crew-panel-enrolled-stat-icon--purple">
+                  <FolderKanban size={20} />
+                </div>
+                <div className="crew-panel-enrolled-stat-content">
+                  <span className="crew-panel-enrolled-stat-value">{totalEnrolled}</span>
+                  <span className="crew-panel-enrolled-stat-label">Total enrolled</span>
+                </div>
               </div>
-              <div className="crew-panel-enrolled-count-row">
-                <span className="crew-panel-enrolled-count-label">Active</span>
-                <span className="crew-panel-enrolled-count-value">{activeProjects.length}</span>
+              <div className="crew-panel-enrolled-stat">
+                <div className="crew-panel-enrolled-stat-icon crew-panel-enrolled-stat-icon--green">
+                  <CircleDot size={20} />
+                </div>
+                <div className="crew-panel-enrolled-stat-content">
+                  <span className="crew-panel-enrolled-stat-value">{activeProjects.length}</span>
+                  <span className="crew-panel-enrolled-stat-label">Active</span>
+                </div>
               </div>
-              <div className="crew-panel-enrolled-count-row">
-                <span className="crew-panel-enrolled-count-label">Completed</span>
-                <span className="crew-panel-enrolled-count-value">{completedProjects.length}</span>
+              <div className="crew-panel-enrolled-stat">
+                <div className="crew-panel-enrolled-stat-icon crew-panel-enrolled-stat-icon--blue">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div className="crew-panel-enrolled-stat-content">
+                  <span className="crew-panel-enrolled-stat-value">{completedProjects.length}</span>
+                  <span className="crew-panel-enrolled-stat-label">Completed</span>
+                </div>
               </div>
             </div>
-            <Link to="/panel/crew/enrolled-projects" className="crew-panel-dash-availability-link crew-panel-dash-availability-link--block">
-              View all enrolled projects →
+            <Link to="/panel/crew/enrolled-projects" className="crew-panel-enrolled-cta">
+              <span>View all enrolled projects</span>
+              <ArrowRight size={18} />
             </Link>
           </div>
         </div>

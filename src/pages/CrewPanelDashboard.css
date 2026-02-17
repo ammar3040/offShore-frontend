@@ -83,28 +83,118 @@
   margin-top: 12px;
 }
 
-.crew-panel-enrolled-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px 32px;
+/* Enrolled projects overview card */
+.crew-panel-dash-card--overview {
+  padding: 0;
+  overflow: hidden;
 }
 
-.crew-panel-enrolled-count-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.crew-panel-dash-card-header--overview {
+  padding: 20px 24px;
+  margin-bottom: 0;
+  background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
+  border-bottom: 1px solid #ede9fe;
 }
 
-.crew-panel-enrolled-count-label {
+.crew-panel-dash-card-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.crew-panel-dash-card-header--overview .crew-panel-dash-card-title {
+  font-size: 17px;
+  margin-bottom: 2px;
+}
+
+.crew-panel-dash-card-subtitle {
+  margin: 0;
   font-size: 13px;
   font-weight: 500;
   color: #6b7280;
 }
 
-.crew-panel-enrolled-count-value {
-  font-size: 24px;
+.crew-panel-dash-card-body--overview {
+  padding: 24px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.crew-panel-enrolled-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.crew-panel-enrolled-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #f3f4f6;
+}
+
+.crew-panel-enrolled-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.crew-panel-enrolled-stat-icon--purple { background: #f5f3ff; color: #7c3aed; }
+.crew-panel-enrolled-stat-icon--green { background: #ecfdf5; color: #059669; }
+.crew-panel-enrolled-stat-icon--blue { background: #eff6ff; color: #2563eb; }
+
+.crew-panel-enrolled-stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.crew-panel-enrolled-stat-value {
+  font-size: 22px;
   font-weight: 700;
   color: #1f2937;
+  line-height: 1.2;
+}
+
+.crew-panel-enrolled-stat-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.crew-panel-enrolled-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(124, 58, 237, 0.2);
+  transition: box-shadow 0.2s, transform 0.15s;
+  align-self: flex-start;
+}
+
+.crew-panel-enrolled-cta:hover {
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+  color: #fff;
+}
+
+.crew-panel-enrolled-cta:active {
+  transform: scale(0.98);
 }
 
 .crew-panel-dash-card-header {
@@ -208,6 +298,14 @@
 
   .crew-panel-flight-details {
     grid-template-columns: 1fr;
+  }
+
+  .crew-panel-enrolled-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .crew-panel-enrolled-cta {
+    align-self: stretch;
   }
 }
 
