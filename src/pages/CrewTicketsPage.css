@@ -39,3 +39,13 @@
 }
 
 .crew-tickets-icon { color: #d1d5db; margin-bottom: 16px; }
+
+/* Dark mode */
+.crew-panel-layout--dark .crew-tickets-title { color: #f9fafb; }
+.crew-panel-layout--dark .crew-tickets-subtitle { color: #9ca3af; }
+.crew-panel-layout--dark .crew-tickets-placeholder {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+.crew-panel-layout--dark .crew-tickets-icon { color: #6b7280; }

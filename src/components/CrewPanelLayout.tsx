@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -10,8 +10,11 @@ import {
   LogOut,
   Plane,
   CalendarRange,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { clearCrewSession } from '../lib/crewPanelAuth';
+import { getCrewPanelTheme, setCrewPanelTheme, type CrewPanelTheme } from '../lib/crewPanelTheme';
 import './CrewPanelLayout.css';
 
 interface CrewPanelLayoutProps {
@@ -31,6 +34,13 @@ const navItems = [
 const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [theme, setTheme] = useState<CrewPanelTheme>(() => getCrewPanelTheme());
+
+  const toggleTheme = () => {
+    const next: CrewPanelTheme = theme === 'dark' ? 'light' : 'dark';
+    setCrewPanelTheme(next);
+    setTheme(next);
+  };
 
   const handleLogout = () => {
     clearCrewSession();
@@ -43,7 +53,7 @@ const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
   };
 
   return (
-    <div className="crew-panel-layout">
+    <div className={`crew-panel-layout${theme === 'dark' ? ' crew-panel-layout--dark' : ''}`}>
       <aside className="crew-panel-sidebar">
         <div className="crew-panel-sidebar-header">
           <div className="crew-panel-logo">
@@ -73,6 +83,16 @@ const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
         </nav>
 
         <div className="crew-panel-sidebar-footer">
+          <button
+            type="button"
+            className="crew-panel-theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
           <button
             type="button"
             className="crew-panel-logout"

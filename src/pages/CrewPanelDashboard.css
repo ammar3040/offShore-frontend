@@ -1042,3 +1042,127 @@
     font-size: 20px;
   }
 }
+
+/* Dark mode */
+.crew-panel-layout--dark .crew-panel-dashboard--loading,
+.crew-panel-layout--dark .crew-panel-dashboard-title,
+.crew-panel-layout--dark .crew-panel-dashboard-subtitle { color: #e5e7eb; }
+.crew-panel-layout--dark .crew-panel-dashboard--loading { color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-dashboard-spinner { border-color: #374151; border-top-color: #93c5fd; }
+.crew-panel-layout--dark .crew-panel-dash-card {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.crew-panel-layout--dark .crew-panel-dash-card-icon--blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+.crew-panel-layout--dark .crew-panel-dash-card-icon--green { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+.crew-panel-layout--dark .crew-panel-dash-card-icon--purple { background: rgba(124, 58, 237, 0.2); color: #c4b5fd; }
+.crew-panel-layout--dark .crew-panel-dash-card-icon--teal { background: rgba(13, 148, 136, 0.2); color: #5eead4; }
+.crew-panel-layout--dark .crew-panel-dash-card-icon--amber { background: rgba(217, 119, 6, 0.2); color: #fcd34d; }
+.crew-panel-layout--dark .crew-panel-dash-card-value,
+.crew-panel-layout--dark .crew-panel-dash-card-title,
+.crew-panel-layout--dark .crew-panel-current-project-name,
+.crew-panel-layout--dark .crew-panel-flight-value { color: #f9fafb; }
+.crew-panel-layout--dark .crew-panel-dash-card-value--muted { color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-dash-card-label,
+.crew-panel-layout--dark .crew-panel-dash-card-subtitle,
+.crew-panel-layout--dark .crew-panel-dash-card-empty,
+.crew-panel-layout--dark .crew-panel-current-project-desc,
+.crew-panel-layout--dark .crew-panel-flight-label,
+.crew-panel-layout--dark .crew-panel-flight-hint,
+.crew-panel-layout--dark .crew-panel-enrolled-stat-label { color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-dash-card-header--overview {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border-bottom-color: #4b5563;
+}
+.crew-panel-layout--dark .crew-panel-enrolled-stat {
+  background: #111827;
+  border-color: #374151;
+}
+.crew-panel-layout--dark .crew-panel-enrolled-stat-value { color: #f9fafb; }
+.crew-panel-layout--dark .crew-panel-dash-availability-link { color: #93c5fd; }
+.crew-panel-layout--dark .crew-panel-update-availability-btn { background: #4f46e5; }
+.crew-panel-layout--dark .crew-panel-update-availability-btn:hover { background: #4338ca; }
+.crew-panel-layout--dark .crew-panel-tabs { border-bottom-color: #374151; }
+.crew-panel-layout--dark .crew-panel-tab { color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-tab:hover { color: #e5e7eb; }
+.crew-panel-layout--dark .crew-panel-tab.active { color: #a5b4fc; border-bottom-color: #818cf8; }
+.crew-panel-layout--dark .crew-panel-enrolled-empty,
+.crew-panel-layout--dark .crew-panel-timesheet-empty,
+.crew-panel-layout--dark .crew-panel-invitations-empty {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+.crew-panel-layout--dark .crew-panel-timesheet-table-wrap {
+  background: #1f2937;
+  border-color: #374151;
+}
+.crew-panel-layout--dark .crew-panel-timesheet-table th,
+.crew-panel-layout--dark .crew-panel-timesheet-table td { border-bottom-color: #374151; }
+.crew-panel-layout--dark .crew-panel-timesheet-table th {
+  background: #111827;
+  color: #d1d5db;
+}
+.crew-panel-layout--dark .crew-panel-timesheet-table td {
+  color: #e5e7eb;
+}
+.crew-panel-layout--dark .crew-panel-timesheet-table tbody tr:hover { background: #374151; }
+.crew-panel-layout--dark .crew-panel-timesheet-title { color: #f9fafb; }
+.crew-panel-layout--dark .crew-panel-timesheet-empty-icon { color: #6b7280; }
+.crew-panel-layout--dark .crew-panel-timesheet-empty-hint { color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-timesheet-back {
+  background: rgba(79, 70, 229, 0.2);
+  color: #a5b4fc;
+  border-color: #4f46e5;
+}
+.crew-panel-layout--dark .crew-panel-timesheet-back:hover { background: #374151; color: #c7d2fe; }
+.crew-panel-layout--dark .crew-panel-attendance--placeholder { background: #374151; color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-attendance--present { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+.crew-panel-layout--dark .crew-panel-attendance--absent { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+.crew-panel-layout--dark .crew-panel-attendance--leave { background: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+.crew-panel-layout--dark .crew-panel-invitation-card,
+.crew-panel-layout--dark .crew-panel-project-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+.crew-panel-layout--dark .crew-panel-invitation-card-title,
+.crew-panel-layout--dark .crew-panel-project-card-title { color: #f9fafb; }
+.crew-panel-layout--dark .crew-panel-invitation-card-description,
+.crew-panel-layout--dark .crew-panel-invitation-card-meta,
+.crew-panel-layout--dark .crew-panel-project-card-description,
+.crew-panel-layout--dark .crew-panel-project-card-meta { color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-invitation-card-meta svg,
+.crew-panel-layout--dark .crew-panel-project-card-meta svg { color: #6b7280; }
+.crew-panel-layout--dark .crew-panel-invitation-actions { border-top-color: #374151; }
+.crew-panel-layout--dark .crew-panel-invitation-btn--reject {
+  background: #374151;
+  color: #e5e7eb;
+}
+.crew-panel-layout--dark .crew-panel-invitation-btn--reject:hover:not(:disabled) { background: #4b5563; }
+.crew-panel-layout--dark .crew-panel-invitation-error {
+  background: rgba(220, 38, 38, 0.15);
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+.crew-panel-layout--dark .crew-availability-field label { color: #d1d5db; }
+.crew-panel-layout--dark .crew-availability-field input,
+.crew-panel-layout--dark .crew-availability-field select,
+.crew-panel-layout--dark .crew-availability-field textarea {
+  background: #111827;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+.crew-panel-layout--dark .crew-availability-cancel {
+  background: #374151;
+  color: #e5e7eb;
+}
+.crew-panel-layout--dark .crew-availability-cancel:hover { background: #4b5563; }
+.crew-panel-layout--dark .crew-panel-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+.crew-panel-layout--dark .crew-panel-card-title { color: #f9fafb; border-bottom-color: #374151; }
+.crew-panel-layout--dark .crew-panel-field-label { color: #9ca3af; }
+.crew-panel-layout--dark .crew-panel-field-value { color: #e5e7eb; }
+.crew-panel-layout--dark .crew-panel-current-project-dates { color: #9ca3af; }

@@ -91,6 +91,31 @@
 .crew-panel-sidebar-footer {
   padding: 16px;
   border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crew-panel-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.crew-panel-theme-toggle:hover {
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
 .crew-panel-logout {
@@ -169,4 +194,82 @@
   .crew-panel-body {
     padding: 16px;
   }
+
+  .crew-panel-sidebar-footer {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .crew-panel-theme-toggle,
+  .crew-panel-logout {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ----- Dark mode ----- */
+.crew-panel-layout--dark {
+  background-color: #111827;
+}
+
+.crew-panel-layout--dark .crew-panel-sidebar {
+  background-color: #1f2937;
+  border-right-color: #374151;
+}
+
+.crew-panel-layout--dark .crew-panel-sidebar-header {
+  border-bottom-color: #374151;
+}
+
+.crew-panel-layout--dark .crew-panel-logo-text {
+  color: #f9fafb;
+}
+
+.crew-panel-layout--dark .crew-panel-badge {
+  color: #93c5fd;
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+.crew-panel-layout--dark .crew-panel-nav-item {
+  color: #d1d5db;
+}
+
+.crew-panel-layout--dark .crew-panel-nav-item:hover {
+  background-color: #374151;
+  color: #f9fafb;
+}
+
+.crew-panel-layout--dark .crew-panel-nav-item.active {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.crew-panel-layout--dark .crew-panel-nav-item.active svg {
+  color: #93c5fd;
+}
+
+.crew-panel-layout--dark .crew-panel-sidebar-footer {
+  border-top-color: #374151;
+}
+
+.crew-panel-layout--dark .crew-panel-theme-toggle {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.crew-panel-layout--dark .crew-panel-theme-toggle:hover {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.crew-panel-layout--dark .crew-panel-logout {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.crew-panel-layout--dark .crew-panel-logout:hover {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  border-color: #7f1d1d;
 }

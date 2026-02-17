@@ -226,3 +226,59 @@
 }
 
 .crew-timesheet-no-dates svg { color: #d1d5db; margin-bottom: 18px; }
+
+/* Dark mode */
+.crew-panel-layout--dark .crew-timesheet-title { color: #f9fafb; }
+.crew-panel-layout--dark .crew-timesheet-subtitle,
+.crew-panel-layout--dark .crew-timesheet-loading,
+.crew-panel-layout--dark .crew-timesheet-pagination-info,
+.crew-panel-layout--dark .crew-timesheet-pagination-ellipsis { color: #9ca3af; }
+.crew-panel-layout--dark .crew-timesheet-spinner { border-color: #374151; border-top-color: #93c5fd; }
+.crew-panel-layout--dark .crew-timesheet-empty,
+.crew-panel-layout--dark .crew-timesheet-no-dates {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+.crew-panel-layout--dark .crew-timesheet-empty svg,
+.crew-panel-layout--dark .crew-timesheet-no-dates svg { color: #6b7280; }
+.crew-panel-layout--dark .crew-timesheet-link { color: #93c5fd; }
+.crew-panel-layout--dark .crew-timesheet-select-wrap label { color: #d1d5db; }
+.crew-panel-layout--dark .crew-timesheet-select-wrap select {
+  background: #111827;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+.crew-panel-layout--dark .crew-timesheet-table-wrap {
+  background: #1f2937;
+  border-color: #374151;
+}
+.crew-panel-layout--dark .crew-timesheet-table th,
+.crew-panel-layout--dark .crew-timesheet-table td { border-bottom-color: #374151; }
+.crew-panel-layout--dark .crew-timesheet-table th {
+  background: #111827;
+  color: #d1d5db;
+}
+.crew-panel-layout--dark .crew-timesheet-table td {
+  color: #e5e7eb;
+}
+.crew-panel-layout--dark .crew-timesheet-table tbody tr:hover { background: #374151; }
+.crew-panel-layout--dark .crew-timesheet-pagination-btn {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+.crew-panel-layout--dark .crew-timesheet-pagination-btn:hover:not(:disabled) {
+  background: #374151;
+  border-color: #6b7280;
+}
+.crew-panel-layout--dark .crew-timesheet-pagination-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+.crew-panel-layout--dark .crew-timesheet-attendance--placeholder { background: #374151; color: #9ca3af; }
+.crew-panel-layout--dark .crew-timesheet-attendance--present { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+.crew-panel-layout--dark .crew-timesheet-attendance--absent { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+.crew-panel-layout--dark .crew-timesheet-attendance--leave { background: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+.crew-panel-layout--dark .crew-timesheet-empty-hint { color: #9ca3af; }

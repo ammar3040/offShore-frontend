@@ -18,3 +18,13 @@
 }
 
 .crew-settings-icon { color: #d1d5db; margin-bottom: 16px; }
+
+/* Dark mode */
+.crew-panel-layout--dark .crew-settings-title { color: #f9fafb; }
+.crew-panel-layout--dark .crew-settings-subtitle { color: #9ca3af; }
+.crew-panel-layout--dark .crew-settings-placeholder {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+.crew-panel-layout--dark .crew-settings-icon { color: #6b7280; }

@@ -107,3 +107,17 @@
   .crew-profile-grid { grid-template-columns: 1fr; }
   .crew-profile-card--span-2 { grid-column: span 1; }
 }
+
+/* Dark mode */
+.crew-panel-layout--dark .crew-profile-title { color: #f9fafb; }
+.crew-panel-layout--dark .crew-profile-subtitle,
+.crew-panel-layout--dark .crew-profile-loading { color: #9ca3af; }
+.crew-panel-layout--dark .crew-profile-spinner { border-color: #374151; border-top-color: #93c5fd; }
+.crew-panel-layout--dark .crew-profile-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+.crew-panel-layout--dark .crew-profile-card-title { color: #f9fafb; border-bottom-color: #374151; }
+.crew-panel-layout--dark .crew-profile-card-title svg { color: #93c5fd; }
+.crew-panel-layout--dark .crew-profile-label { color: #9ca3af; }
+.crew-panel-layout--dark .crew-profile-value { color: #e5e7eb; }
