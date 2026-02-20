@@ -221,6 +221,37 @@ export interface GetCrewEnrolledProjectsResponse {
   projects: CrewEnrolledProject[];
 }
 
+/** Single timesheet entry from GET /api/timesheet/me/project/:project_id */
+export interface CrewTimesheetEntry {
+  date: string; // ISO date or datetime
+  status: string; // e.g. "PRESENT" | "ABSENT" | "LEAVE"
+}
+
+/** Project duration nested in timesheet response */
+export interface CrewTimesheetProjectDuration {
+  startDate: string;
+  endDate: string;
+}
+
+/** Project nested in timesheet response */
+export interface CrewTimesheetProjectRef {
+  _id: string;
+  title?: string;
+  duration?: CrewTimesheetProjectDuration;
+}
+
+/** Full timesheet response for one project */
+export interface CrewTimesheetResponse {
+  id: string;
+  crew_id?: unknown;
+  project_id?: CrewTimesheetProjectRef;
+  entries: CrewTimesheetEntry[];
+}
+
+export interface GetCrewTimesheetForProjectResponse {
+  timesheet: CrewTimesheetResponse;
+}
+
 export interface CrewProjectInvitation {
   id: string;
   projectId: string;
@@ -383,6 +414,126 @@ export async function getCrewEnrolledProjects(): Promise<GetCrewEnrolledProjects
     clearTimeout(timeoutId);
     return { projects: [] };
   }
+}
+
+/**
+ * Fetches timesheet for the logged-in crew member for a specific project.
+ * GET /api/timesheet/me/project/:project_id
+ * Returns null if no token, 404, or API error.
+ */
+export async function getCrewTimesheetForProject(projectId: string): Promise<GetCrewTimesheetForProjectResponse | null> {
+  const token = localStorage.getItem(env.crewTokenKey);
+  if (!token) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(
+      `${env.apiBaseUrl}/api/timesheet/me/project/${encodeURIComponent(projectId)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const raw = data?.timesheet ?? data;
+    if (!raw || typeof raw !== 'object') return null;
+    const entries = Array.isArray(raw.entries) ? raw.entries : [];
+    const projectIdRef = raw.project_id && typeof raw.project_id === 'object' ? raw.project_id : undefined;
+    return {
+      timesheet: {
+        id: String(raw.id ?? ''),
+        crew_id: raw.crew_id,
+        project_id: projectIdRef,
+        entries: entries.map((e: Record<string, unknown>) => ({
+          date: String(e?.date ?? ''),
+          status: String(e?.status ?? ''),
+        })),
+      },
+    };
+  } catch {
+    clearTimeout(timeoutId);
+    return null;
+  }
+}
+
+/** Payload to mark/update attendance for a single date */
+export interface UpdateCrewTimesheetEntryPayload {
+  date: string; // "YYYY-MM-DD"
+  status: string; // "PRESENT" | "ABSENT" | "LEAVE"
+}
+
+/** Response from PATCH/POST timesheet entry */
+export interface UpdateCrewTimesheetEntryResponse {
+  message: string;
+  timesheet: CrewTimesheetResponse;
+}
+
+/**
+ * Marks attendance for a specific date on a project timesheet.
+ * POST (or PATCH) /api/timesheet/me/project/:project_id/entry
+ * Body: { date: "YYYY-MM-DD", status: "PRESENT" | "ABSENT" | "LEAVE" }
+ */
+export async function updateCrewTimesheetEntry(
+  projectId: string,
+  payload: UpdateCrewTimesheetEntryPayload
+): Promise<GetCrewTimesheetForProjectResponse> {
+  const token = localStorage.getItem(env.crewTokenKey);
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/api/timesheet/me/project/${encodeURIComponent(projectId)}/entry`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: payload.date,
+        status: payload.status.toUpperCase(),
+      }),
+      signal: controller.signal,
+    }
+  );
+  clearTimeout(timeoutId);
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      (data as { message?: string }).message ??
+      (data as { error?: string }).error ??
+      `Failed to update attendance (${response.status})`;
+    throw new Error(message);
+  }
+
+  const raw = data?.timesheet ?? data;
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Invalid response: missing timesheet');
+  }
+  const entries = Array.isArray(raw.entries) ? raw.entries : [];
+  const projectIdRef = raw.project_id && typeof raw.project_id === 'object' ? raw.project_id : undefined;
+  return {
+    timesheet: {
+      id: String(raw.id ?? ''),
+      crew_id: raw.crew_id,
+      project_id: projectIdRef,
+      entries: entries.map((e: Record<string, unknown>) => ({
+        date: String(e?.date ?? ''),
+        status: String(e?.status ?? ''),
+      })),
+    },
+  };
 }
 
 /**
