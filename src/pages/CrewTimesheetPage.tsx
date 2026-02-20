@@ -14,9 +14,6 @@ import './CrewTimesheetPage.css';
 
 type AttendanceStatus = 'present' | 'absent' | 'leave' | null;
 
-/** Entry row with guaranteed non-null attendance (from API). */
-type TimesheetEntryRow = { date: string; status: 'present' | 'absent' | 'leave' };
-
 /** Normalize API status to our AttendanceStatus. */
 function normalizeApiStatus(apiStatus: string): AttendanceStatus {
   const s = (apiStatus || '').toUpperCase();
@@ -51,6 +48,28 @@ function getDayOfWeek(iso: string): string {
   } catch {
     return '—';
   }
+}
+
+/** Build date range from start to end (inclusive) using date-only YYYY-MM-DD to avoid timezone shifting. */
+function getDatesInRange(start: string, end: string): string[] {
+  const startStr = start.slice(0, 10);
+  const endStr = end.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr) || !/^\d{4}-\d{2}-\d{2}$/.test(endStr)) return [];
+  if (startStr > endStr) return [];
+  const out: string[] = [];
+  let cur = startStr;
+  while (cur <= endStr) {
+    out.push(cur);
+    const [y, m, d] = cur.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    cur =
+      next.getFullYear() +
+      '-' +
+      String(next.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(next.getDate()).padStart(2, '0');
+  }
+  return out;
 }
 
 const PAGE_SIZE = 10;
@@ -137,18 +156,28 @@ const CrewTimesheetPage = () => {
     return () => { cancelled = true; };
   }, [selectedProject?.id]);
 
-  /** Only entries from API that have a valid attendance status, sorted by date. */
-  const timesheetEntries = useMemo((): TimesheetEntryRow[] => {
+  /** All dates from project start to end. */
+  const dateRange = useMemo(() => {
+    const fromApi = timesheetData?.timesheet?.project_id?.duration;
+    if (fromApi?.startDate && fromApi?.endDate) {
+      return getDatesInRange(fromApi.startDate, fromApi.endDate);
+    }
+    if (selectedProject?.startDate && selectedProject?.endDate) {
+      return getDatesInRange(selectedProject.startDate, selectedProject.endDate);
+    }
+    return [];
+  }, [timesheetData, selectedProject]);
+
+  /** Date -> attendance status from API entries (only dates that have an entry). */
+  const attendanceFromApi = useMemo(() => {
     const entries = timesheetData?.timesheet?.entries ?? [];
-    return entries
-      .map((e): TimesheetEntryRow | null => {
-        const dateKey = toDateOnly(e.date);
-        const status = normalizeApiStatus(e.status);
-        if (!dateKey || !status) return null;
-        return { date: dateKey, status };
-      })
-      .filter((x): x is TimesheetEntryRow => x !== null)
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const map: Record<string, 'present' | 'absent' | 'leave'> = {};
+    for (const e of entries) {
+      const dateKey = toDateOnly(e.date);
+      const status = normalizeApiStatus(e.status);
+      if (dateKey && status) map[dateKey] = status;
+    }
+    return map;
   }, [timesheetData]);
 
   if (loading) {
@@ -160,8 +189,8 @@ const CrewTimesheetPage = () => {
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(timesheetEntries.length / PAGE_SIZE));
-  const paginatedEntries = timesheetEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(dateRange.length / PAGE_SIZE));
+  const paginatedDates = dateRange.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const startIndex = (page - 1) * PAGE_SIZE;
 
   const handleProjectChange = (projectId: string) => {
@@ -222,7 +251,7 @@ const CrewTimesheetPage = () => {
             )}
           </div>
 
-          {selectedProject && !timesheetLoading && timesheetEntries.length > 0 ? (
+          {selectedProject && !timesheetLoading && dateRange.length > 0 ? (
             <>
               {updateError && (
                 <div className="crew-timesheet-error" role="alert">
@@ -241,25 +270,27 @@ const CrewTimesheetPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedEntries.map((entry, i) => {
+                  {paginatedDates.map((date, i) => {
                     const rowNum = startIndex + i + 1;
+                    const status = attendanceFromApi[date] ?? null;
                     return (
-                      <tr key={entry.date}>
+                      <tr key={date}>
                         <td>{rowNum}</td>
                         <td>{selectedProject?.title ?? '—'}</td>
-                        <td>{formatDate(entry.date)}</td>
-                        <td>{getDayOfWeek(entry.date)}</td>
+                        <td>{formatDate(date)}</td>
+                        <td>{getDayOfWeek(date)}</td>
                         <td>
                           <select
-                            className={`crew-timesheet-attendance crew-timesheet-attendance--${entry.status}`}
-                            value={entry.status}
-                            disabled={updatingDate === entry.date}
+                            className={`crew-timesheet-attendance crew-timesheet-attendance--${status ?? 'placeholder'}`}
+                            value={status ?? ''}
+                            disabled={updatingDate === date}
                             onChange={(e) => {
-                              const v = e.target.value as AttendanceStatus;
-                              handleAttendanceChange(entry.date, v);
+                              const v = e.target.value as '' | AttendanceStatus;
+                              if (v) handleAttendanceChange(date, v);
                             }}
-                            aria-label={`Attendance for ${formatDate(entry.date)}`}
+                            aria-label={`Attendance for ${formatDate(date)}`}
                           >
+                            <option value="">—</option>
                             <option value="present">Present</option>
                             <option value="absent">Absent</option>
                             <option value="leave">Leave</option>
@@ -272,10 +303,10 @@ const CrewTimesheetPage = () => {
                 </table>
               </div>
 
-              {timesheetEntries.length > PAGE_SIZE && (
+              {dateRange.length > PAGE_SIZE && (
                 <div className="crew-timesheet-pagination">
                   <span className="crew-timesheet-pagination-info">
-                    Showing {startIndex + 1}-{Math.min(page * PAGE_SIZE, timesheetEntries.length)} of {timesheetEntries.length} entries
+                    Showing {startIndex + 1}-{Math.min(page * PAGE_SIZE, dateRange.length)} of {dateRange.length} entries
                   </span>
                   <div className="crew-timesheet-pagination-btns">
                     <button
@@ -335,7 +366,7 @@ const CrewTimesheetPage = () => {
           ) : selectedProject && !timesheetLoading ? (
             <div className="crew-timesheet-no-dates">
               <Calendar size={40} />
-              <p>No timesheet entries for this project.</p>
+              <p>No project duration set.</p>
             </div>
           ) : null}
         </>
