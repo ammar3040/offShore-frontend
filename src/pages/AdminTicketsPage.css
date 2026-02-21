@@ -127,6 +127,14 @@
   background: #fafafa;
 }
 
+.admin-tickets-row-clickable {
+  cursor: pointer;
+}
+
+.admin-tickets-row-clickable:hover {
+  background: #f0f9ff !important;
+}
+
 .admin-tickets-cell-crew,
 .admin-tickets-cell-project {
   font-weight: 500;
@@ -153,6 +161,65 @@
 .admin-tickets-project-select:focus {
   outline: none;
   border-color: #3b82f6;
+}
+
+/* Ticket detail card */
+.admin-tickets-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.admin-tickets-detail-section {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.admin-tickets-detail-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-tickets-detail-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-tickets-detail-item {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px 16px;
+  align-items: baseline;
+}
+
+.admin-tickets-detail-item dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+}
+
+.admin-tickets-detail-item dd {
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+  line-height: 1.4;
+}
+
+.admin-tickets-detail-meta {
+  grid-column: 2;
+  font-size: 12px !important;
+  color: #6b7280 !important;
 }
 
 .admin-tickets-title {

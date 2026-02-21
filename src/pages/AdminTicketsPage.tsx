@@ -27,6 +27,7 @@ const AdminTicketsPage = () => {
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectApi | null>(null);
@@ -237,6 +238,18 @@ const AdminTicketsPage = () => {
     return p?.title ?? (p as { title?: string })?.title ?? '—';
   };
 
+  const formatProjectDuration = (p: CrewTicketApi['project_id']) => {
+    const d = (p as { duration?: { startDate?: string; endDate?: string } })?.duration;
+    if (!d?.startDate || !d?.endDate) return '—';
+    try {
+      const start = new Date(d.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const end = new Date(d.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      return `${start} – ${end}`;
+    } catch {
+      return '—';
+    }
+  };
+
   return (
     <div className="admin-tickets-page">
       <div className="admin-tickets-header">
@@ -317,7 +330,19 @@ const AdminTicketsPage = () => {
             </thead>
             <tbody>
               {filteredTickets.map((ticket) => (
-                <tr key={ticket.id}>
+                <tr
+                  key={ticket.id}
+                  className="admin-tickets-row-clickable"
+                  onClick={() => setSelectedTicket(ticket)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedTicket(ticket);
+                    }
+                  }}
+                >
                   <td>
                     <span className="admin-tickets-cell-crew">{getCrewName(ticket)}</span>
                   </td>
@@ -342,6 +367,99 @@ const AdminTicketsPage = () => {
           </table>
         </div>
       )}
+
+      <Modal
+        isOpen={!!selectedTicket}
+        onClose={() => setSelectedTicket(null)}
+        title="Ticket details"
+        size="medium"
+      >
+        {selectedTicket && (
+          <div className="admin-tickets-detail-card">
+            <section className="admin-tickets-detail-section">
+              <h3 className="admin-tickets-detail-heading">Flight details</h3>
+              <dl className="admin-tickets-detail-list">
+                <div className="admin-tickets-detail-item">
+                  <dt>From</dt>
+                  <dd>{selectedTicket.from?.Name ?? '—'}</dd>
+                  <dd className="admin-tickets-detail-meta">
+                    {selectedTicket.from?.COUNTRYNAME ?? ''} ({selectedTicket.from?.COUNTRY ?? ''})
+                  </dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>To</dt>
+                  <dd>{selectedTicket.to?.Name ?? '—'}</dd>
+                  <dd className="admin-tickets-detail-meta">
+                    {selectedTicket.to?.COUNTRYNAME ?? ''} ({selectedTicket.to?.COUNTRY ?? ''})
+                  </dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Class</dt>
+                  <dd>{selectedTicket.class ?? '—'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Trip</dt>
+                  <dd>{selectedTicket.trip?.replace('_', ' ') ?? '—'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Passengers</dt>
+                  <dd>
+                    {[selectedTicket.adult && `${selectedTicket.adult} adult(s)`, selectedTicket.children ? `${selectedTicket.children} child(ren)` : null, selectedTicket.infants ? `${selectedTicket.infants} infant(s)` : null]
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="admin-tickets-detail-section">
+              <h3 className="admin-tickets-detail-heading">Crew</h3>
+              <dl className="admin-tickets-detail-list">
+                <div className="admin-tickets-detail-item">
+                  <dt>Name</dt>
+                  <dd>{getCrewName(selectedTicket)}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Email</dt>
+                  <dd>{(selectedTicket.crew_id as { email?: string })?.email ?? '—'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Phone</dt>
+                  <dd>{(selectedTicket.crew_id as { phone?: string })?.phone ?? '—'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Nationality</dt>
+                  <dd>{(selectedTicket.crew_id as { nationality?: string })?.nationality ?? '—'}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="admin-tickets-detail-section">
+              <h3 className="admin-tickets-detail-heading">Project</h3>
+              <dl className="admin-tickets-detail-list">
+                <div className="admin-tickets-detail-item">
+                  <dt>Title</dt>
+                  <dd>{getProjectTitle(selectedTicket)}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Status</dt>
+                  <dd>{selectedTicket.project_id?.status ?? '—'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Duration</dt>
+                  <dd>{formatProjectDuration(selectedTicket.project_id)}</dd>
+                </div>
+                {(selectedTicket.project_id as { description?: string })?.description && (
+                  <div className="admin-tickets-detail-item">
+                    <dt>Description</dt>
+                    <dd>{(selectedTicket.project_id as { description?: string }).description}</dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={isCreateModalOpen}
