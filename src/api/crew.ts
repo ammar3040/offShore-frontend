@@ -88,6 +88,75 @@ export async function crewLogin(payload: CrewLoginPayload): Promise<CrewLoginRes
   return data as CrewLoginResponse;
 }
 
+/** Payload to change crew password (requires current password) */
+export interface CrewChangePasswordPayload {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+/**
+ * Resets the logged-in crew member's password (requires crew token).
+ * PATCH /api/crew/reset-password
+ */
+export async function crewChangePassword(payload: CrewChangePasswordPayload): Promise<void> {
+  const token = localStorage.getItem(env.crewTokenKey);
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew/reset-password`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      oldPassword: payload.oldPassword,
+      newPassword: payload.newPassword,
+      confirmPassword: payload.confirmPassword,
+    }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      (data as { message?: string }).message ??
+      (data as { error?: string }).error ??
+      `Failed to change password (${response.status})`;
+    throw new Error(message);
+  }
+}
+
+/**
+ * Requests a password reset link for crew (by email). No auth required.
+ * POST /api/crew/forgot-password
+ */
+export async function crewForgotPassword(email: string): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      (data as { message?: string }).message ??
+      (data as { error?: string }).error ??
+      `Request failed (${response.status})`;
+    throw new Error(message);
+  }
+}
+
 function buildCrewFormData(data: CrewMemberFormData): FormData {
   const formData = new FormData();
 
