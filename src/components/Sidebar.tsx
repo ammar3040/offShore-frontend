@@ -12,6 +12,7 @@ import {
   LogOut,
   X,
   HelpCircle,
+  Ticket,
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -27,6 +28,7 @@ const mainNavItems = [
   { icon: Users, label: 'People', path: '/people' },
   { icon: Building2, label: 'Companies', path: '/companies' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
+  { icon: Ticket, label: 'Tickets', path: '/tickets' },
   { icon: Calendar, label: 'Schedule', path: '/schedule' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];

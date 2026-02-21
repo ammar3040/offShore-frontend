@@ -277,6 +277,39 @@ export async function getCrewAvailableForProject(projectId: string): Promise<Get
   return { crew: crewList };
 }
 
+/**
+ * Fetches crew members enrolled/accepted in a project (admin).
+ * GET /api/project/:project_id/crew
+ * Falls back to empty array if endpoint not available.
+ */
+export async function getCrewEnrolledInProject(projectId: string): Promise<GetCrewResponse> {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(
+      `${env.apiBaseUrl}/api/project/${encodeURIComponent(projectId)}/crew`,
+      { method: 'GET', headers, signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    if (!response.ok) return { crew: [] };
+    const data = await response.json();
+    const crewList = Array.isArray(data?.crew) ? data.crew : (Array.isArray(data) ? data : []);
+    return { crew: crewList };
+  } catch {
+    clearTimeout(timeoutId);
+    return { crew: [] };
+  }
+}
+
 export interface CrewEnrolledProject {
   id: string;
   title: string;

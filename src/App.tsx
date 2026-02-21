@@ -14,6 +14,7 @@ import CrewTicketsPage from './pages/CrewTicketsPage';
 import CrewTimesheetPage from './pages/CrewTimesheetPage';
 import CrewAvailabilityPage from './pages/CrewAvailabilityPage';
 import ProjectsPage from './pages/ProjectsPage';
+import AdminTicketsPage from './pages/AdminTicketsPage';
 import './App.css';
 
 function App() {
@@ -67,6 +68,7 @@ function App() {
                 <Route path="/people" element={<div className="page-placeholder">People</div>} />
                 <Route path="/companies" element={<div className="page-placeholder">Companies</div>} />
                 <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/tickets" element={<AdminTicketsPage />} />
                 <Route path="/schedule" element={<div className="page-placeholder">Schedule</div>} />
                 <Route path="/settings" element={<div className="page-placeholder">Settings</div>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
