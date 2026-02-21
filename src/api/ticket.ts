@@ -67,7 +67,47 @@ function getHeaders(): HeadersInit {
 }
 
 /**
- * Fetches all crew tickets. GET /api/crew-ticket
+ * Fetches crew tickets for a specific crew member (requires crew token).
+ * GET /api/crew-ticket/crew/:crew_id
+ */
+export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTicketsResponse> {
+  const crewToken = localStorage.getItem(env.crewTokenKey);
+  if (!crewToken) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/crew/${encodeURIComponent(crewId)}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${crewToken}`,
+    },
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  const crewTickets = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
+  return { crewTickets };
+}
+
+/**
+ * Fetches all crew tickets. GET /api/crew-ticket (admin)
  */
 export async function getCrewTickets(): Promise<GetCrewTicketsResponse> {
   const controller = new AbortController();

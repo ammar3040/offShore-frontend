@@ -1,14 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plane } from 'lucide-react';
-import { getCrewEnrolledProjects } from '../api/crew';
+import { getCrewMe } from '../api/crew';
+import { getCrewTicketsByCrewId, type CrewTicketApi } from '../api/ticket';
+import Modal from '../components/Modal';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
 import './CrewTicketsPage.css';
 
 const CrewTicketsPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [hasProjects, setHasProjects] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
+
+  const fetchTickets = useCallback(async () => {
+    const crew = await getCrewMe();
+    if (!crew) {
+      setTickets([]);
+      return;
+    }
+    const crewId = crew.id ?? (crew as { _id?: string })?._id;
+    if (!crewId) {
+      setTickets([]);
+      return;
+    }
+    const { crewTickets } = await getCrewTicketsByCrewId(crewId);
+    setTickets(crewTickets ?? []);
+  }, []);
 
   useEffect(() => {
     if (!hasCrewAccessToken()) {
@@ -16,15 +35,20 @@ const CrewTicketsPage = () => {
       return;
     }
     let cancelled = false;
-    getCrewEnrolledProjects()
-      .then(({ projects }) => {
-        if (!cancelled) setHasProjects((projects ?? []).length > 0);
+    fetchTickets()
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load tickets');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [navigate]);
+  }, [navigate, fetchTickets]);
+
+  const getProjectTitle = (t: CrewTicketApi) => {
+    const p = t.project_id;
+    return p?.title ?? (p as { title?: string })?.title ?? '—';
+  };
 
   if (loading) {
     return (
@@ -35,16 +59,130 @@ const CrewTicketsPage = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="crew-tickets-page">
+        <header className="crew-tickets-header">
+          <h1 className="crew-tickets-title">Tickets</h1>
+          <p className="crew-tickets-subtitle">Your flight tickets for assigned projects</p>
+        </header>
+        <div className="crew-tickets-error" role="alert">{error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="crew-tickets-page">
       <header className="crew-tickets-header">
         <h1 className="crew-tickets-title">Tickets</h1>
         <p className="crew-tickets-subtitle">Your flight tickets for assigned projects</p>
       </header>
-      <div className="crew-tickets-placeholder">
-        <Plane size={48} className="crew-tickets-icon" />
-        <p>{hasProjects ? 'No flight tickets assigned yet.' : 'Enroll in a project to receive flight tickets.'}</p>
-      </div>
+
+      {tickets.length === 0 ? (
+        <div className="crew-tickets-placeholder">
+          <Plane size={48} className="crew-tickets-icon" />
+          <p>No flight tickets assigned yet.</p>
+          <p className="crew-tickets-placeholder-hint">Enroll in a project to receive flight tickets.</p>
+        </div>
+      ) : (
+        <div className="crew-tickets-table-wrap">
+          <table className="crew-tickets-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>From → To</th>
+                <th>Class</th>
+                <th>Trip</th>
+                <th>Passengers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map((ticket) => (
+                <tr
+                  key={ticket.id}
+                  className="crew-tickets-row-clickable"
+                  onClick={() => setSelectedTicket(ticket)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedTicket(ticket);
+                    }
+                  }}
+                >
+                  <td>
+                    <span className="crew-tickets-cell-project">{getProjectTitle(ticket)}</span>
+                  </td>
+                  <td>
+                    <span className="crew-tickets-cell-route" title={`${ticket.from?.Name ?? ''} → ${ticket.to?.Name ?? ''}`}>
+                      {ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}
+                    </span>
+                  </td>
+                  <td>{ticket.class ?? '—'}</td>
+                  <td>{ticket.trip?.replace('_', ' ') ?? '—'}</td>
+                  <td>
+                    {[ticket.adult, ticket.children, ticket.infants]
+                      .filter((n) => n != null && n > 0)
+                      .join(' / ') || '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal
+        isOpen={!!selectedTicket}
+        onClose={() => setSelectedTicket(null)}
+        title="Ticket details"
+        size="medium"
+      >
+        {selectedTicket && (
+          <div className="crew-tickets-detail-card">
+            <section className="crew-tickets-detail-section">
+              <h3 className="crew-tickets-detail-heading">Flight details</h3>
+              <dl className="crew-tickets-detail-list">
+                <div className="crew-tickets-detail-item">
+                  <dt>From</dt>
+                  <dd>{selectedTicket.from?.Name ?? '—'}</dd>
+                  <dd className="crew-tickets-detail-meta">
+                    {selectedTicket.from?.COUNTRYNAME ?? ''} ({selectedTicket.from?.COUNTRY ?? ''})
+                  </dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>To</dt>
+                  <dd>{selectedTicket.to?.Name ?? '—'}</dd>
+                  <dd className="crew-tickets-detail-meta">
+                    {selectedTicket.to?.COUNTRYNAME ?? ''} ({selectedTicket.to?.COUNTRY ?? ''})
+                  </dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>Project</dt>
+                  <dd>{getProjectTitle(selectedTicket)}</dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>Class</dt>
+                  <dd>{selectedTicket.class ?? '—'}</dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>Trip</dt>
+                  <dd>{selectedTicket.trip?.replace('_', ' ') ?? '—'}</dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>Passengers</dt>
+                  <dd>
+                    {[selectedTicket.adult && `${selectedTicket.adult} adult(s)`, selectedTicket.children ? `${selectedTicket.children} child(ren)` : null, selectedTicket.infants ? `${selectedTicket.infants} infant(s)` : null]
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
