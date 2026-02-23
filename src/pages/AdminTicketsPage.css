@@ -1,36 +1,50 @@
+/* Page container – full-width alignment with consistent padding */
 .admin-tickets-page {
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 0 48px;
+  padding: 0 24px 48px;
+  min-height: 60vh;
+  box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+  .admin-tickets-page {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
 }
 
 .admin-tickets-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 20px;
+  margin-bottom: 28px;
   flex-wrap: wrap;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .admin-tickets-create-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px;
-  font-size: 14px;
+  padding: 10px 20px;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: white;
-  background-color: #3b82f6;
+  color: #fff;
+  background: #2563eb;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
 }
 
 .admin-tickets-create-btn:hover {
-  background-color: #2563eb;
-  transform: translateY(-1px);
+  background: #1d4ed8;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 
 .admin-tickets-create-inline {
@@ -53,7 +67,8 @@
 }
 
 .admin-tickets-toolbar {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  width: 100%;
 }
 
 .admin-tickets-filter-wrap {
@@ -95,11 +110,12 @@
 }
 
 .admin-tickets-table-wrap {
+  width: 100%;
   overflow-x: auto;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid #e5e7eb;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .admin-tickets-table {
@@ -110,17 +126,21 @@
 
 .admin-tickets-table th {
   text-align: left;
-  padding: 14px 16px;
+  padding: 16px 20px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #374151;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .admin-tickets-table td {
-  padding: 14px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid #f3f4f6;
-  color: #1f2937;
+  font-size: 0.875rem;
+  color: #111827;
 }
 
 .admin-tickets-table tbody tr:hover {
@@ -223,14 +243,15 @@
 }
 
 .admin-tickets-title {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 8px 0;
+  color: #111827;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.02em;
 }
 
 .admin-tickets-subtitle {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: #6b7280;
   margin: 0;
   line-height: 1.5;
@@ -239,11 +260,13 @@
 .admin-tickets-loading,
 .admin-tickets-error,
 .admin-tickets-empty {
-  padding: 48px 24px;
+  width: 100%;
+  padding: 48px 32px;
   text-align: center;
-  border-radius: 12px;
-  font-size: 14px;
-  background-color: #f9fafb;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
 .admin-tickets-loading {
@@ -630,4 +653,673 @@
   margin: 0;
   font-size: 13px;
   color: #6b7280;
+}
+
+/* Header tabs and Search & Book */
+.admin-tickets-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.admin-tickets-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.admin-tickets-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.admin-tickets-tab:hover {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.admin-tickets-tab-active {
+  color: #0f172a;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+/* Search view – full width within container */
+.admin-tickets-search-view {
+  margin-top: 0;
+  width: 100%;
+}
+
+/* Flights hero (header with currency) */
+.admin-tickets-flights-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 28px 32px;
+  margin-bottom: 28px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
+  border-radius: 16px;
+  border: 1px solid #bae6fd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.admin-tickets-flights-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.admin-tickets-flights-hero-icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  color: #0284c7;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.admin-tickets-flights-hero-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0c4a6e;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.admin-tickets-flights-hero-subtitle {
+  font-size: 0.875rem;
+  color: #0369a1;
+  margin: 0;
+}
+
+.admin-tickets-flights-hero-currency {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-tickets-flights-hero-currency-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #0c4a6e;
+  letter-spacing: 0.06em;
+}
+
+.admin-tickets-flights-hero-currency-select {
+  padding: 10px 36px 10px 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0c4a6e;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #7dd3fc;
+  border-radius: 10px;
+  appearance: none;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.admin-tickets-flights-hero-currency-select:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+/* Search form card – grid layout for alignment */
+.admin-tickets-search-form-card {
+  width: 100%;
+  max-width: 800px;
+  padding: 32px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.admin-tickets-search-form-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 24px;
+}
+
+.admin-tickets-search-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 32px;
+  align-items: start;
+}
+
+@media (max-width: 639px) {
+  .admin-tickets-search-form {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.admin-tickets-search-row {
+  display: contents;
+}
+
+.admin-tickets-search-row.admin-tickets-search-row-trip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 8px;
+}
+
+.admin-tickets-search-row-trip .admin-tickets-search-row-label {
+  flex-shrink: 0;
+}
+
+.admin-tickets-search-row-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.admin-tickets-search-radio-group {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.admin-tickets-search-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.admin-tickets-search-radio input {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.admin-tickets-search-row-2 {
+  display: contents;
+}
+
+.admin-tickets-search-row-2 .admin-tickets-search-field {
+  min-width: 0;
+}
+
+.admin-tickets-search-row-3 {
+  display: contents;
+}
+
+.admin-tickets-search-row-3 .admin-tickets-search-field {
+  min-width: 0;
+}
+
+.admin-tickets-search-field-cabin {
+  max-width: 200px;
+}
+
+/* Project & Crew members in search form */
+.admin-tickets-search-field-crew {
+  min-width: 0;
+}
+
+.admin-tickets-search-crew-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.admin-tickets-search-crew-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  color: #111827;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  text-align: left;
+}
+
+.admin-tickets-search-crew-trigger:hover:not(:disabled) {
+  border-color: #d1d5db;
+}
+
+.admin-tickets-search-crew-trigger:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.admin-tickets-search-crew-trigger[aria-expanded="true"] {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.admin-tickets-search-crew-trigger-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-tickets-search-crew-chevron {
+  flex-shrink: 0;
+  color: #6b7280;
+  transition: transform 0.2s;
+}
+
+.admin-tickets-search-crew-trigger[aria-expanded="true"] .admin-tickets-search-crew-chevron {
+  transform: rotate(180deg);
+}
+
+.admin-tickets-search-crew-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.admin-tickets-search-crew-actions {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.75rem;
+}
+
+.admin-tickets-search-crew-select-all,
+.admin-tickets-search-crew-clear {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.admin-tickets-search-crew-select-all:hover,
+.admin-tickets-search-crew-clear:hover {
+  text-decoration: underline;
+}
+
+.admin-tickets-search-crew-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.admin-tickets-search-crew-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin-tickets-search-crew-item:hover {
+  background: #f3f4f6;
+}
+
+.admin-tickets-search-crew-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.admin-tickets-search-crew-item span:first-of-type {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.admin-tickets-search-crew-item-email {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-tickets-search-crew-empty {
+  margin: 0;
+  padding: 16px 14px;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Search form field styling */
+.admin-tickets-search-view .admin-tickets-search-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.admin-tickets-search-view .admin-tickets-search-field input,
+.admin-tickets-search-view .admin-tickets-search-field select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-tickets-search-view .admin-tickets-search-field input:focus,
+.admin-tickets-search-view .admin-tickets-search-field select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.admin-tickets-search-view .admin-tickets-search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.admin-tickets-search-error {
+  padding: 12px;
+  font-size: 14px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.admin-tickets-search-actions {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding-top: 24px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.admin-tickets-search-error {
+  grid-column: 1 / -1;
+}
+
+.admin-tickets-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+}
+
+.admin-tickets-search-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.admin-tickets-search-btn.admin-tickets-search-btn-primary {
+  background: linear-gradient(135deg, #f97316 0%, #eab308 100%);
+  color: #1f2937;
+}
+
+.admin-tickets-search-btn.admin-tickets-search-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.admin-tickets-search-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.admin-tickets-spinner-inline {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
+/* Results */
+.admin-tickets-results-wrap {
+  margin-top: 0;
+  width: 100%;
+}
+
+.admin-tickets-results-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-tickets-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.admin-tickets-back-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.admin-tickets-results-summary {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.admin-tickets-results-count {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0 auto;
+}
+
+.admin-tickets-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.admin-tickets-results-empty {
+  padding: 48px 24px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px dashed #e2e8f0;
+}
+
+/* Flight card */
+.admin-tickets-flight-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.admin-tickets-flight-card:hover {
+  border-color: #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.admin-tickets-flight-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.admin-tickets-flight-card-route {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-tickets-flight-card-airline {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.admin-tickets-flight-card-cities {
+  font-size: 15px;
+  color: #374151;
+}
+
+.admin-tickets-flight-card-time {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.admin-tickets-flight-card-fares {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-tickets-flight-card-fare-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-tickets-flight-card-fare-tab {
+  padding: 8px 14px;
+  font-size: 13px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.admin-tickets-flight-card-fare-tab:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.admin-tickets-flight-card-fare-tab-active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.admin-tickets-flight-card-fare-name {
+  font-weight: 500;
+  color: #374151;
+}
+
+.admin-tickets-flight-card-fare-price {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.admin-tickets-flight-card-no-fares {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.admin-tickets-flight-card-action {
+  flex-shrink: 0;
+}
+
+.admin-tickets-book-btn {
+  white-space: nowrap;
+}
+
+.admin-tickets-flight-card-leg {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.admin-tickets-flight-card-leg-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.admin-tickets-flight-card-segment {
+  font-size: 13px;
+  color: #6b7280;
+  padding: 4px 0;
+}
+
+.admin-tickets-flight-card-layover {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
 }

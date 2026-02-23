@@ -1,12 +1,16 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plane, ChevronLeft, Plus, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon } from 'lucide-react';
 import Modal from '../components/Modal';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
+import { searchFlights, bookFlight } from '../api/flightSearch';
+import { AIRPORTS, getAirportDisplayName } from '../lib/airports';
+import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
 import './AdminTicketsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
+type TicketsTab = 'tickets' | 'search';
 
 const TRIP_OPTIONS: Array<{ value: CreateFlightTicketPayload['trip']; label: string }> = [
   { value: 'ONE_WAY', label: 'One way' },
@@ -19,6 +23,116 @@ const CLASS_OPTIONS: Array<{ value: CreateFlightTicketPayload['class']; label: s
   { value: 'BUSINESS', label: 'Business' },
   { value: 'FIRST', label: 'First' },
 ];
+
+const CABIN_OPTIONS: Array<{ value: CabinClass; label: string }> = [
+  { value: 'economy', label: 'Economy' },
+  { value: 'premium_economy', label: 'Premium Economy' },
+  { value: 'business', label: 'Business' },
+  { value: 'first', label: 'First' },
+];
+
+const CURRENCY_OPTIONS: Array<{ value: CurrencyCode; label: string }> = [
+  { value: 'USD', label: 'USD' },
+  { value: 'GBP', label: 'GBP' },
+  { value: 'INR', label: 'INR' },
+];
+
+function toYYYYMMDD(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function FlightResultCard({
+  flight,
+  currency,
+  onBook,
+  isBooking,
+}: {
+  flight: Flight;
+  currency: CurrencyCode;
+  onBook: (flight: Flight, selectedFare: Fare | null) => void;
+  isBooking: boolean;
+}) {
+  const [selectedFare, setSelectedFare] = useState<Fare | null>(flight.fares?.[0] ?? null);
+  const firstLeg = flight.legs?.[0];
+  const lastLeg = flight.legs?.[flight.legs.length - 1];
+  const from = firstLeg?.from ?? '—';
+  const to = lastLeg?.to ?? '—';
+  const departure = firstLeg?.departureTime ?? '—';
+  const arrival = lastLeg?.arrivalTime ?? '—';
+  const stops = flight.legs?.reduce((acc, leg) => acc + (leg.stops ?? 0), 0) ?? 0;
+  const airlineName = firstLeg?.airlineName ?? '—';
+  const fares = flight.fares ?? [];
+
+  return (
+    <div className="admin-tickets-flight-card">
+      <div className="admin-tickets-flight-card-main">
+        <div className="admin-tickets-flight-card-route">
+          <span className="admin-tickets-flight-card-airline">{airlineName}</span>
+          <span className="admin-tickets-flight-card-cities">{from} → {to}</span>
+          <span className="admin-tickets-flight-card-time">
+            {departure} – {arrival}
+            {stops > 0 && ` · ${stops} stop${stops !== 1 ? 's' : ''}`}
+          </span>
+        </div>
+        <div className="admin-tickets-flight-card-fares">
+          {fares.length > 0 ? (
+            <div className="admin-tickets-flight-card-fare-tabs">
+              {fares.map((f) => (
+                <button
+                  key={f.type}
+                  type="button"
+                  className={'admin-tickets-flight-card-fare-tab' + (selectedFare?.type === f.type ? ' admin-tickets-flight-card-fare-tab-active' : '')}
+                  onClick={() => setSelectedFare(f)}
+                >
+                  <span className="admin-tickets-flight-card-fare-name">{f.name ?? f.type}</span>
+                  <span className="admin-tickets-flight-card-fare-price">
+                    {currency} {f.totalFare?.toLocaleString() ?? f.basicFare?.toLocaleString() ?? '—'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="admin-tickets-flight-card-no-fares">No fares</span>
+          )}
+        </div>
+        <div className="admin-tickets-flight-card-action">
+          <button
+            type="button"
+            className="admin-tickets-search-btn admin-tickets-book-btn"
+            onClick={() => onBook(flight, selectedFare)}
+            disabled={isBooking || fares.length === 0}
+          >
+            {isBooking ? (
+              <>
+                <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
+                Booking…
+              </>
+            ) : (
+              'Book Now'
+            )}
+          </button>
+        </div>
+      </div>
+      {flight.legs?.map((leg, idx) => (
+        <div key={idx} className="admin-tickets-flight-card-leg">
+          <div className="admin-tickets-flight-card-leg-header">
+            {leg.airlineName} · {leg.from} → {leg.to} · {leg.duration}
+          </div>
+          {leg.itinerary?.map((seg, i) => (
+            <div key={i} className="admin-tickets-flight-card-segment">
+              {seg.from} {seg.departureTime} → {seg.to} {seg.arrivalTime} · {seg.duration}
+              {seg.layover && (
+                <span className="admin-tickets-flight-card-layover">
+                  Layover {seg.layover.location} {seg.layover.duration}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const AdminTicketsPage = () => {
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
@@ -54,6 +168,67 @@ const AdminTicketsPage = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  /* Search & Book tab state */
+  const [activeTab, setActiveTab] = useState<TicketsTab>('search');
+  const [searchTripType, setSearchTripType] = useState<SearchPayload['tripType']>('one-way');
+  const [searchFrom, setSearchFrom] = useState<Airport | null>(() => AIRPORTS[0] ?? null);
+  const [searchTo, setSearchTo] = useState<Airport | null>(() => AIRPORTS[1] ?? null);
+  const [departureDate, setDepartureDate] = useState(() => toYYYYMMDD(new Date()));
+  const [returnDate, setReturnDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return toYYYYMMDD(d);
+  });
+  const [adults, setAdults] = useState(1);
+  const [childrenCount, setChildrenCount] = useState(0);
+  const [infants, setInfants] = useState(0);
+  const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
+  const [currency, setCurrency] = useState<CurrencyCode>('USD');
+  const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
+  const [searchCriteria, setSearchCriteria] = useState<SearchPayload | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [bookingFlightId, setBookingFlightId] = useState<string | null>(null);
+
+  /* Project & crew for search form */
+  const [searchProjectId, setSearchProjectId] = useState<string>('');
+  const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
+  const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
+  const [searchCrewLoading, setSearchCrewLoading] = useState(false);
+  const [crewDropdownOpen, setCrewDropdownOpen] = useState(false);
+  const crewDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!crewDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (crewDropdownRef.current && !crewDropdownRef.current.contains(e.target as Node)) {
+        setCrewDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [crewDropdownOpen]);
+
+  useEffect(() => {
+    if (!searchProjectId) {
+      setSearchCrewList([]);
+      setSearchCrewIds([]);
+      return;
+    }
+    setSearchCrewLoading(true);
+    getCrewEnrolledInProject(searchProjectId)
+      .then((res) => setSearchCrewList(res.crew ?? []))
+      .catch(() => setSearchCrewList([]))
+      .finally(() => setSearchCrewLoading(false));
+    setSearchCrewIds([]);
+  }, [searchProjectId]);
+
+  const toggleCrewSearch = useCallback((crewId: string) => {
+    setSearchCrewIds((prev) =>
+      prev.includes(crewId) ? prev.filter((id) => id !== crewId) : [...prev, crewId]
+    );
+  }, []);
 
   const fetchTickets = useCallback(() => {
     setTicketsLoading(true);
@@ -178,6 +353,70 @@ const AdminTicketsPage = () => {
     setSubmitError(null);
   }, []);
 
+  const handleSearch = useCallback(async () => {
+    if (!searchFrom || !searchTo) {
+      setSearchError('Please select From and To airports.');
+      return;
+    }
+    const criteria: SearchPayload = {
+      tripType: searchTripType,
+      from: searchFrom,
+      to: searchTo,
+      departureDate,
+      returnDate: searchTripType === 'round-trip' ? returnDate : undefined,
+      adults,
+      children: childrenCount,
+      infants,
+      cabinClass,
+      currency,
+    };
+    setSearchCriteria(criteria);
+    setSearchResults(null);
+    setSearchError(null);
+    setIsSearching(true);
+    try {
+      const data = await searchFlights(criteria);
+      setSearchResults(data);
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : 'Search failed');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [
+    searchFrom,
+    searchTo,
+    searchTripType,
+    departureDate,
+    returnDate,
+    adults,
+    childrenCount,
+    infants,
+    cabinClass,
+    currency,
+  ]);
+
+  const handleBookNow = useCallback(
+    async (flight: Flight, selectedFare: Fare | null) => {
+      setBookingFlightId(flight.id);
+      try {
+        const data = await bookFlight({ flight, selectedFare: selectedFare ?? undefined });
+        window.alert(data.message ?? 'Booking request submitted. Reference: ' + (data.bookingReference ?? ''));
+        setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : 'Failed to submit booking');
+      } finally {
+        setBookingFlightId(null);
+      }
+    },
+    []
+  );
+
+  const handleSearchBack = useCallback(() => {
+    setSearchResults(null);
+    setSearchCriteria(null);
+    setSearchError(null);
+  }, []);
+
   const handleSubmitTickets = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedProject || selectedCrewIds.length === 0) return;
@@ -259,12 +498,347 @@ const AdminTicketsPage = () => {
             View and manage flight tickets for crew on projects.
           </p>
         </div>
-        <button type="button" className="admin-tickets-create-btn" onClick={openCreateModal}>
-          <Plus size={18} />
-          Create ticket
-        </button>
+        <div className="admin-tickets-header-actions">
+          <div className="admin-tickets-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'tickets'}
+              className={'admin-tickets-tab' + (activeTab === 'tickets' ? ' admin-tickets-tab-active' : '')}
+              onClick={() => setActiveTab('tickets')}
+            >
+              <TicketIcon size={18} />
+              Tickets
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'search'}
+              className={'admin-tickets-tab' + (activeTab === 'search' ? ' admin-tickets-tab-active' : '')}
+              onClick={() => setActiveTab('search')}
+            >
+              <Search size={18} />
+              Search & Book
+            </button>
+          </div>
+          {activeTab === 'tickets' && (
+            <button type="button" className="admin-tickets-create-btn" onClick={openCreateModal}>
+              <Plus size={18} />
+              Create ticket
+            </button>
+          )}
+        </div>
       </div>
 
+      {activeTab === 'search' ? (
+        <div className="admin-tickets-search-view">
+          {searchResults == null ? (
+            <>
+              <div className="admin-tickets-flights-hero">
+                <div className="admin-tickets-flights-hero-left">
+                  <div className="admin-tickets-flights-hero-icon">
+                    <Plane size={28} />
+                  </div>
+                  <div>
+                    <h2 className="admin-tickets-flights-hero-title">Flights</h2>
+                    <p className="admin-tickets-flights-hero-subtitle">Search and compare flight options</p>
+                  </div>
+                </div>
+                <div className="admin-tickets-flights-hero-currency">
+                  <label htmlFor="hero-currency" className="admin-tickets-flights-hero-currency-label">CURRENCY</label>
+                  <select
+                    id="hero-currency"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                    className="admin-tickets-flights-hero-currency-select"
+                  >
+                    {CURRENCY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="admin-tickets-search-form-card">
+                <div className="admin-tickets-search-form">
+                  <div className="admin-tickets-search-row admin-tickets-search-row-trip">
+                    <span className="admin-tickets-search-row-label">Trip type</span>
+                    <div className="admin-tickets-search-radio-group">
+                      <label className="admin-tickets-search-radio">
+                        <input
+                          type="radio"
+                          name="trip-type"
+                          checked={searchTripType === 'one-way'}
+                          onChange={() => setSearchTripType('one-way')}
+                        />
+                        <span>One way</span>
+                      </label>
+                      <label className="admin-tickets-search-radio">
+                        <input
+                          type="radio"
+                          name="trip-type"
+                          checked={searchTripType === 'round-trip'}
+                          onChange={() => setSearchTripType('round-trip')}
+                        />
+                        <span>Round Trip</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-project">Project</label>
+                    <select
+                      id="search-project"
+                      value={searchProjectId}
+                      onChange={(e) => setSearchProjectId(e.target.value)}
+                    >
+                      <option value="">Select project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-tickets-search-field admin-tickets-search-field-crew">
+                    <label htmlFor="search-crew-toggle">Crew members</label>
+                    <div className="admin-tickets-search-crew-wrap" ref={crewDropdownRef}>
+                      <button
+                        id="search-crew-toggle"
+                        type="button"
+                        className="admin-tickets-search-crew-trigger"
+                        onClick={() => setCrewDropdownOpen((o) => !o)}
+                        disabled={!searchProjectId}
+                        aria-expanded={crewDropdownOpen}
+                        aria-haspopup="listbox"
+                      >
+                        <span className="admin-tickets-search-crew-trigger-text">
+                          {!searchProjectId
+                            ? 'Select a project first'
+                            : searchCrewLoading
+                              ? 'Loading…'
+                              : searchCrewIds.length === 0
+                                ? 'Select crew members…'
+                                : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
+                        </span>
+                        <ChevronDown size={18} className="admin-tickets-search-crew-chevron" />
+                      </button>
+                      {crewDropdownOpen && searchProjectId && (
+                        <div
+                          className="admin-tickets-search-crew-dropdown"
+                          role="listbox"
+                          aria-multiselectable
+                        >
+                          {searchCrewList.length === 0 ? (
+                            <p className="admin-tickets-search-crew-empty">No crew enrolled in this project.</p>
+                          ) : (
+                            <>
+                              <div className="admin-tickets-search-crew-actions">
+                                <button
+                                  type="button"
+                                  className="admin-tickets-search-crew-select-all"
+                                  onClick={() => setSearchCrewIds(searchCrewList.map((c) => c.id))}
+                                >
+                                  Select all
+                                </button>
+                                <button
+                                  type="button"
+                                  className="admin-tickets-search-crew-clear"
+                                  onClick={() => setSearchCrewIds([])}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                              <ul className="admin-tickets-search-crew-list">
+                                {searchCrewList.map((c) => (
+                                  <li key={c.id}>
+                                    <label className="admin-tickets-search-crew-item">
+                                      <input
+                                        type="checkbox"
+                                        checked={searchCrewIds.includes(c.id)}
+                                        onChange={() => toggleCrewSearch(c.id)}
+                                      />
+                                      <span>
+                                        {c.firstname} {c.lastname}
+                                      </span>
+                                      <span className="admin-tickets-search-crew-item-email">{c.email}</span>
+                                    </label>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-from">From</label>
+                    <select
+                      id="search-from"
+                      value={searchFrom ? searchFrom.Name : ''}
+                      onChange={(e) => {
+                        const airport = AIRPORTS.find((a) => a.Name === e.target.value) ?? null;
+                        setSearchFrom(airport);
+                      }}
+                    >
+                      <option value="">Select airport</option>
+                      {AIRPORTS.map((a) => (
+                        <option key={a.Name} value={a.Name}>
+                          {getAirportDisplayName(a)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-to">To</label>
+                    <select
+                      id="search-to"
+                      value={searchTo ? searchTo.Name : ''}
+                      onChange={(e) => {
+                        const airport = AIRPORTS.find((a) => a.Name === e.target.value) ?? null;
+                        setSearchTo(airport);
+                      }}
+                    >
+                      <option value="">Select airport</option>
+                      {AIRPORTS.map((a) => (
+                        <option key={a.Name} value={a.Name}>
+                          {getAirportDisplayName(a)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-departure">Departure date</label>
+                    <input
+                      id="search-departure"
+                      type="date"
+                      value={departureDate}
+                      onChange={(e) => setDepartureDate(e.target.value)}
+                    />
+                  </div>
+                  {searchTripType === 'round-trip' ? (
+                    <div className="admin-tickets-search-field">
+                      <label htmlFor="search-return">Return date</label>
+                      <input
+                        id="search-return"
+                        type="date"
+                        value={returnDate}
+                        onChange={(e) => setReturnDate(e.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="admin-tickets-search-field" aria-hidden />
+                  )}
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-adults">Adults</label>
+                    <input
+                      id="search-adults"
+                      type="number"
+                      min={0}
+                      value={adults}
+                      onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    />
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-children">Children</label>
+                    <input
+                      id="search-children"
+                      type="number"
+                      min={0}
+                      value={childrenCount}
+                      onChange={(e) => setChildrenCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    />
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-infants">Infants</label>
+                    <input
+                      id="search-infants"
+                      type="number"
+                      min={0}
+                      value={infants}
+                      onChange={(e) => setInfants(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    />
+                  </div>
+                  <div className="admin-tickets-search-field admin-tickets-search-field-cabin">
+                    <label htmlFor="search-cabin">Cabin class</label>
+                    <select
+                      id="search-cabin"
+                      value={cabinClass}
+                      onChange={(e) => setCabinClass(e.target.value as CabinClass)}
+                    >
+                      {CABIN_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {searchError && (
+                  <div className="admin-tickets-search-error" role="alert">
+                    {searchError}
+                  </div>
+                )}
+                <div className="admin-tickets-search-actions">
+                  <button
+                    type="button"
+                    className="admin-tickets-search-btn admin-tickets-search-btn-primary"
+                    onClick={handleSearch}
+                    disabled={isSearching || !searchFrom || !searchTo}
+                  >
+                    {isSearching ? (
+                      <>
+                        <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
+                        Searching…
+                      </>
+                    ) : (
+                      <>
+                        <Search size={18} />
+                        Search flights
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="admin-tickets-results-wrap">
+              <div className="admin-tickets-results-header">
+                <button type="button" className="admin-tickets-back-btn" onClick={handleSearchBack}>
+                  <ChevronLeft size={18} />
+                  Back to search
+                </button>
+                {searchCriteria && (
+                  <p className="admin-tickets-results-summary">
+                    {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
+                    {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                  </p>
+                )}
+                <p className="admin-tickets-results-count">
+                  {searchResults.length} flight{searchResults.length !== 1 ? 's' : ''} found
+                </p>
+              </div>
+              <div className="admin-tickets-results-list">
+                {searchResults.length === 0 ? (
+                  <p className="admin-tickets-results-empty">No flights match your criteria.</p>
+                ) : (
+                  searchResults.map((flight) => (
+                    <FlightResultCard
+                      key={flight.id}
+                      flight={flight}
+                      currency={currency}
+                      onBook={handleBookNow}
+                      isBooking={bookingFlightId === flight.id}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
       <div className="admin-tickets-toolbar">
         <div className="admin-tickets-filter-wrap">
           <label htmlFor="tickets-project-filter" className="admin-tickets-filter-label">
@@ -366,6 +940,8 @@ const AdminTicketsPage = () => {
             </tbody>
           </table>
         </div>
+      )}
+        </>
       )}
 
       <Modal
