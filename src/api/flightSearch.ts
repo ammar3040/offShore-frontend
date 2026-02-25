@@ -1,5 +1,21 @@
 import { env } from '../config/env';
-import type { Flight, Fare, SearchPayload } from '../types/flight';
+import type { Flight, SearchPayload } from '../types/flight';
+
+/** Payload for POST /api/crew-ticket/book (matches backend bookFlightSchema) */
+export interface BookFlightPayload {
+  project_id: string;
+  crew_ids: string[];
+  flight: {
+    id: string;
+    legs: Array<{
+      itinerary?: Array<{ fromAirport?: string; toAirport?: string }>;
+    }>;
+    fares?: Array<{ cabin?: string }>;
+  };
+  adult?: number;
+  children?: number;
+  infants?: number;
+}
 
 function getAuthToken(): string | null {
   return localStorage.getItem(env.authTokenKey);
@@ -50,20 +66,43 @@ export async function searchFlights(payload: SearchPayload): Promise<Flight[]> {
 }
 
 /**
- * POST /api/flight-ticket/book – submit booking for a flight (and optional selected fare).
+ * POST /api/crew-ticket/book – submit booking for selected crew on a project.
+ * Payload is extracted from search flight result to match backend bookFlightSchema.
  * Returns { message?, bookingReference? }. On error throws with message.
  */
 export async function bookFlight(params: {
+  project_id: string;
+  crew_ids: string[];
   flight: Flight;
-  selectedFare?: Fare | null;
+  adult?: number;
+  children?: number;
+  infants?: number;
 }): Promise<{ message?: string; bookingReference?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${API_BASE}/api/flight-ticket/book`, {
+  const body: BookFlightPayload = {
+    project_id: params.project_id,
+    crew_ids: params.crew_ids,
+    flight: {
+      id: params.flight.id,
+      legs: (params.flight.legs ?? []).map((leg) => ({
+        itinerary: leg.itinerary?.map((seg) => ({
+          fromAirport: seg.fromAirport,
+          toAirport: seg.toAirport,
+        })),
+      })),
+      fares: params.flight.fares?.map((f) => ({ cabin: f.cabin })),
+    },
+    adult: params.adult ?? 1,
+    children: params.children ?? 0,
+    infants: params.infants ?? 0,
+  };
+
+  const response = await fetch(`${API_BASE}/api/crew-ticket/book`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ flight: params.flight, selectedFare: params.selectedFare ?? undefined }),
+    body: JSON.stringify(body),
     signal: controller.signal,
   });
   clearTimeout(timeoutId);

@@ -49,7 +49,7 @@ function FlightResultCard({
 }: {
   flight: Flight;
   currency: CurrencyCode;
-  onBook: (flight: Flight, selectedFare: Fare | null) => void;
+  onBook: (flight: Flight) => void;
   isBooking: boolean;
 }) {
   const [selectedFare, setSelectedFare] = useState<Fare | null>(flight.fares?.[0] ?? null);
@@ -99,7 +99,7 @@ function FlightResultCard({
           <button
             type="button"
             className="admin-tickets-search-btn admin-tickets-book-btn"
-            onClick={() => onBook(flight, selectedFare)}
+            onClick={() => onBook(flight)}
             disabled={isBooking || fares.length === 0}
           >
             {isBooking ? (
@@ -369,6 +369,8 @@ const AdminTicketsPage = () => {
       infants,
       cabinClass,
       currency,
+      ...(searchProjectId ? { project_id: searchProjectId } : {}),
+      ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
     };
     setSearchCriteria(criteria);
     setSearchResults(null);
@@ -393,13 +395,30 @@ const AdminTicketsPage = () => {
     infants,
     cabinClass,
     currency,
+    searchProjectId,
+    searchCrewIds,
   ]);
 
   const handleBookNow = useCallback(
-    async (flight: Flight, selectedFare: Fare | null) => {
+    async (flight: Flight) => {
+      if (!searchProjectId) {
+        window.alert('Please select a project in the search form.');
+        return;
+      }
+      if (searchCrewIds.length === 0) {
+        window.alert('Please select at least one crew member in the search form.');
+        return;
+      }
       setBookingFlightId(flight.id);
       try {
-        const data = await bookFlight({ flight, selectedFare: selectedFare ?? undefined });
+        const data = await bookFlight({
+          project_id: searchProjectId,
+          crew_ids: searchCrewIds,
+          flight,
+          adult: adults,
+          children: childrenCount,
+          infants,
+        });
         window.alert(data.message ?? 'Booking request submitted. Reference: ' + (data.bookingReference ?? ''));
         setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
       } catch (err) {
@@ -408,7 +427,7 @@ const AdminTicketsPage = () => {
         setBookingFlightId(null);
       }
     },
-    []
+    [searchProjectId, searchCrewIds, adults, childrenCount, infants]
   );
 
   const handleSearchBack = useCallback(() => {

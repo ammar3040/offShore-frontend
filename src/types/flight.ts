@@ -78,4 +78,7 @@ export interface SearchPayload {
   sectorFare?: boolean;
   region?: { id: string; name: string; transitPoints: unknown[] } | null;
   transitPoints?: { code: string; name: string; airport: string }[];
+  /** Optional: project and crew context (admin portal) */
+  project_id?: string;
+  crew_ids?: string[];
 }
