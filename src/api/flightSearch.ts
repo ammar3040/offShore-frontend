@@ -1,20 +1,63 @@
 import { env } from '../config/env';
 import type { Flight, SearchPayload } from '../types/flight';
 
+/** Full itinerary segment shape sent to POST /api/crew-ticket/book */
+export interface BookItinerarySegment {
+  airlineName?: string;
+  airlineCode?: string;
+  flightNumber?: string;
+  from?: string;
+  fromAirport?: string;
+  fromTerminal?: string;
+  to?: string;
+  toAirport?: string;
+  toTerminal?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  duration?: string;
+  cabin?: string;
+  baggage?: string;
+  cabinBaggage?: string;
+  layover?: { location: string; duration: string } | null;
+}
+
+/** Full leg shape sent to POST /api/crew-ticket/book */
+export interface BookLeg {
+  airlineName?: string;
+  airlineCode?: string;
+  from?: string;
+  to?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  duration?: string;
+  stops?: number;
+  via?: string | null;
+  itinerary?: BookItinerarySegment[];
+}
+
+/** Full fare shape sent to POST /api/crew-ticket/book */
+export interface BookFare {
+  type?: string;
+  name?: string;
+  indicator?: string;
+  totalFare?: number;
+  basicFare?: number;
+  seats?: string;
+  cabin?: string;
+}
+
 /** Payload for POST /api/crew-ticket/book (matches backend bookFlightSchema) */
 export interface BookFlightPayload {
   project_id: string;
   crew_ids: string[];
   flight: {
     id: string;
-    legs: Array<{
-      itinerary?: Array<{ fromAirport?: string; toAirport?: string }>;
-    }>;
-    fares?: Array<{ cabin?: string }>;
+    legs: BookLeg[];
+    fares?: BookFare[];
   };
-  adult?: number;
-  children?: number;
-  infants?: number;
+  adult: number;
+  children: number;
+  infants: number;
 }
 
 function getAuthToken(): string | null {
@@ -80,7 +123,13 @@ export async function bookFlight(params: {
   adult?: number;
   children?: number;
   infants?: number;
-}): Promise<{ message?: string; bookingReference?: string }> {
+}): Promise<{
+  message?: string;
+  bookingReference?: string;
+  tickets?: unknown[];
+  emailSent?: boolean;
+  [key: string]: unknown;
+}> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
@@ -90,12 +139,43 @@ export async function bookFlight(params: {
     flight: {
       id: params.flight.id,
       legs: (params.flight.legs ?? []).map((leg) => ({
+        airlineName: leg.airlineName,
+        airlineCode: leg.airlineCode,
+        from: leg.from,
+        to: leg.to,
+        departureTime: leg.departureTime,
+        arrivalTime: leg.arrivalTime,
+        duration: leg.duration,
+        stops: leg.stops,
+        via: leg.via,
         itinerary: leg.itinerary?.map((seg) => ({
+          airlineName: seg.airlineName,
+          airlineCode: seg.airlineCode,
+          flightNumber: seg.flightNumber,
+          from: seg.from,
           fromAirport: seg.fromAirport,
+          fromTerminal: seg.fromTerminal,
+          to: seg.to,
           toAirport: seg.toAirport,
+          toTerminal: seg.toTerminal,
+          departureTime: seg.departureTime,
+          arrivalTime: seg.arrivalTime,
+          duration: seg.duration,
+          cabin: seg.cabin,
+          baggage: seg.baggage,
+          cabinBaggage: seg.cabinBaggage,
+          layover: seg.layover,
         })),
       })),
-      fares: params.flight.fares?.map((f) => ({ cabin: f.cabin })),
+      fares: params.flight.fares?.map((f) => ({
+        type: f.type,
+        name: f.name,
+        indicator: f.indicator,
+        totalFare: f.totalFare,
+        basicFare: f.basicFare,
+        seats: f.seats,
+        cabin: f.cabin,
+      })),
     },
     adult: params.adult ?? 1,
     children: params.children ?? 0,
@@ -116,5 +196,5 @@ export async function bookFlight(params: {
     throw new Error(message);
   }
 
-  return data as { message?: string; bookingReference?: string };
+  return data as { message?: string; bookingReference?: string; tickets?: unknown[]; emailSent?: boolean; [key: string]: unknown };
 }

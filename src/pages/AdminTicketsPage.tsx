@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon } from 'lucide-react';
 import Modal from '../components/Modal';
+import { Toaster, useToast } from '../components/Toast';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
@@ -223,6 +224,7 @@ function FlightResultCard({
 }
 
 const AdminTicketsPage = () => {
+  const { toasts, toast, dismiss } = useToast();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -490,11 +492,11 @@ const AdminTicketsPage = () => {
   const handleBookNow = useCallback(
     async (flight: Flight) => {
       if (!searchProjectId) {
-        window.alert('Please select a project in the search form.');
+        toast('error', 'No project selected', 'Please select a project in the search form before booking.');
         return;
       }
       if (searchCrewIds.length === 0) {
-        window.alert('Please select at least one crew member in the search form.');
+        toast('error', 'No crew selected', 'Please select at least one crew member in the search form.');
         return;
       }
       setBookingFlightId(flight.id);
@@ -507,15 +509,17 @@ const AdminTicketsPage = () => {
           children: childrenCount,
           infants,
         });
-        window.alert(data.message ?? 'Booking request submitted. Reference: ' + (data.bookingReference ?? ''));
+        const ticketCount = Array.isArray(data.tickets) ? data.tickets.length : searchCrewIds.length;
+        const desc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${data.bookingReference ? ` Ref: ${data.bookingReference}` : ''}`;
+        toast('success', 'Ticket booked successfully!', desc);
         setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
       } catch (err) {
-        window.alert(err instanceof Error ? err.message : 'Failed to submit booking');
+        toast('error', 'Booking failed', err instanceof Error ? err.message : 'Unable to complete booking. Please try again.');
       } finally {
         setBookingFlightId(null);
       }
     },
-    [searchProjectId, searchCrewIds, adults, childrenCount, infants]
+    [searchProjectId, searchCrewIds, adults, childrenCount, infants, toast]
   );
 
   const handleSearchBack = useCallback(() => {
@@ -1446,6 +1450,7 @@ const AdminTicketsPage = () => {
             )}
           </div>
       </Modal>
+      <Toaster toasts={toasts} dismiss={dismiss} />
     </div>
   );
 };
