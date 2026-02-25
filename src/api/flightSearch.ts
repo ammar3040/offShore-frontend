@@ -62,7 +62,10 @@ export async function searchFlights(payload: SearchPayload): Promise<Flight[]> {
   }
 
   const data = await response.json();
-  return Array.isArray(data) ? data : [];
+  // Response envelope: { flights: Flight[], pagination: {...} }  or a plain Flight[]
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.flights)) return data.flights;
+  return [];
 }
 
 /**

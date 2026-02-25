@@ -41,6 +41,22 @@ function toYYYYMMDD(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+function fmtTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  } catch {
+    return iso;
+  }
+}
+
+function fmtDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  } catch {
+    return iso;
+  }
+}
+
 function FlightResultCard({
   flight,
   currency,
@@ -53,83 +69,155 @@ function FlightResultCard({
   isBooking: boolean;
 }) {
   const [selectedFare, setSelectedFare] = useState<Fare | null>(flight.fares?.[0] ?? null);
-  const firstLeg = flight.legs?.[0];
-  const lastLeg = flight.legs?.[flight.legs.length - 1];
-  const from = firstLeg?.from ?? '—';
-  const to = lastLeg?.to ?? '—';
-  const departure = firstLeg?.departureTime ?? '—';
-  const arrival = lastLeg?.arrivalTime ?? '—';
-  const stops = flight.legs?.reduce((acc, leg) => acc + (leg.stops ?? 0), 0) ?? 0;
-  const airlineName = firstLeg?.airlineName ?? '—';
+  const [expanded, setExpanded] = useState(false);
   const fares = flight.fares ?? [];
 
+  const firstLeg = flight.legs?.[0];
+  const lastLeg = flight.legs?.[flight.legs.length - 1];
+  const firstSeg = firstLeg?.itinerary?.[0];
+  const lastSeg = lastLeg?.itinerary?.[lastLeg.itinerary.length - 1];
+
+  const fromAirport = firstSeg?.fromAirport ?? firstLeg?.from ?? '—';
+  const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
+  const departureTime = firstLeg?.departureTime ?? '';
+  const arrivalTime = lastLeg?.arrivalTime ?? '';
+  const duration = firstLeg?.duration ?? '—';
+  const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
+  const via = firstLeg?.via;
+  const airlineName = (flight as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
+  const airlineCode = (flight as { airlineCode?: string }).airlineCode ?? '';
+  const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
+
   return (
-    <div className="admin-tickets-flight-card">
-      <div className="admin-tickets-flight-card-main">
-        <div className="admin-tickets-flight-card-route">
-          <span className="admin-tickets-flight-card-airline">{airlineName}</span>
-          <span className="admin-tickets-flight-card-cities">{from} → {to}</span>
-          <span className="admin-tickets-flight-card-time">
-            {departure} – {arrival}
-            {stops > 0 && ` · ${stops} stop${stops !== 1 ? 's' : ''}`}
-          </span>
+    <div className="atfc-card">
+      {/* ── Main row ── */}
+      <div className="atfc-main">
+        {/* Airline */}
+        <div className="atfc-airline">
+          <span className="atfc-airline-name">{airlineName}</span>
+          <span className="atfc-airline-code">{airlineCode}</span>
         </div>
-        <div className="admin-tickets-flight-card-fares">
-          {fares.length > 0 ? (
-            <div className="admin-tickets-flight-card-fare-tabs">
-              {fares.map((f) => (
-                <button
-                  key={f.type}
-                  type="button"
-                  className={'admin-tickets-flight-card-fare-tab' + (selectedFare?.type === f.type ? ' admin-tickets-flight-card-fare-tab-active' : '')}
-                  onClick={() => setSelectedFare(f)}
-                >
-                  <span className="admin-tickets-flight-card-fare-name">{f.name ?? f.type}</span>
-                  <span className="admin-tickets-flight-card-fare-price">
-                    {currency} {f.totalFare?.toLocaleString() ?? f.basicFare?.toLocaleString() ?? '—'}
-                  </span>
-                </button>
-              ))}
+
+        {/* Route */}
+        <div className="atfc-route">
+          <div className="atfc-route-endpoint">
+            <span className="atfc-time">{departureTime ? fmtTime(departureTime) : '—'}</span>
+            <span className="atfc-date">{departureTime ? fmtDate(departureTime) : ''}</span>
+            <span className="atfc-airport" title={fromAirport}>{fromAirport}</span>
+          </div>
+          <div className="atfc-route-mid">
+            <span className="atfc-duration">{duration}</span>
+            <div className="atfc-route-line">
+              <span className="atfc-route-dot" />
+              <span className="atfc-route-bar" />
+              <Plane size={14} className="atfc-route-plane" />
+              <span className="atfc-route-bar" />
+              <span className="atfc-route-dot" />
+            </div>
+            <span className="atfc-stops">
+              {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}${via ? ` via ${via}` : ''}`}
+            </span>
+          </div>
+          <div className="atfc-route-endpoint atfc-route-endpoint-right">
+            <span className="atfc-time">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
+            <span className="atfc-date">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
+            <span className="atfc-airport" title={toAirport}>{toAirport}</span>
+          </div>
+        </div>
+
+        {/* Cabin badge */}
+        <div className="atfc-cabin">
+          <span className="atfc-cabin-badge">{cabin}</span>
+        </div>
+
+        {/* Fare & action */}
+        <div className="atfc-fare-action">
+          {selectedFare ? (
+            <div className="atfc-fare-price">
+              <span className="atfc-fare-total">{currency} {selectedFare.totalFare?.toLocaleString() ?? '—'}</span>
+              {selectedFare.basicFare !== selectedFare.totalFare && (
+                <span className="atfc-fare-basic">Base: {currency} {selectedFare.basicFare?.toLocaleString()}</span>
+              )}
+              <span className="atfc-fare-label">{selectedFare.name ?? selectedFare.type}</span>
             </div>
           ) : (
-            <span className="admin-tickets-flight-card-no-fares">No fares</span>
+            <span className="atfc-fare-empty">No fare</span>
           )}
-        </div>
-        <div className="admin-tickets-flight-card-action">
           <button
             type="button"
-            className="admin-tickets-search-btn admin-tickets-book-btn"
+            className="atfc-book-btn"
             onClick={() => onBook(flight)}
             disabled={isBooking || fares.length === 0}
           >
             {isBooking ? (
-              <>
-                <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
-                Booking…
-              </>
-            ) : (
-              'Book Now'
-            )}
+              <><span className="admin-tickets-spinner admin-tickets-spinner-inline" />Booking…</>
+            ) : 'Book Now'}
           </button>
         </div>
       </div>
-      {flight.legs?.map((leg, idx) => (
-        <div key={idx} className="admin-tickets-flight-card-leg">
-          <div className="admin-tickets-flight-card-leg-header">
-            {leg.airlineName} · {leg.from} → {leg.to} · {leg.duration}
-          </div>
-          {leg.itinerary?.map((seg, i) => (
-            <div key={i} className="admin-tickets-flight-card-segment">
-              {seg.from} {seg.departureTime} → {seg.to} {seg.arrivalTime} · {seg.duration}
+
+      {/* Fare tabs (multiple fares) */}
+      {fares.length > 1 && (
+        <div className="atfc-fare-tabs">
+          {fares.map((f) => (
+            <button
+              key={f.type}
+              type="button"
+              className={'atfc-fare-tab' + (selectedFare?.type === f.type ? ' atfc-fare-tab-active' : '')}
+              onClick={() => setSelectedFare(f)}
+            >
+              <span className="atfc-fare-tab-name">{f.name ?? f.type}</span>
+              <span className="atfc-fare-tab-price">{currency} {f.totalFare?.toLocaleString() ?? '—'}</span>
+              <span className="atfc-fare-tab-seats">{f.seats} seats</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Segment details toggle */}
+      <button
+        type="button"
+        className="atfc-toggle"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <ChevronDown size={16} className={'atfc-toggle-icon' + (expanded ? ' atfc-toggle-icon-open' : '')} />
+        {expanded ? 'Hide' : 'Show'} flight details
+      </button>
+
+      {expanded && (
+        <div className="atfc-segments">
+          {flight.legs?.flatMap((leg) => leg.itinerary ?? []).map((seg, i) => (
+            <div key={i} className="atfc-seg">
+              <div className="atfc-seg-header">
+                <span className="atfc-seg-airline">{seg.airlineName} {seg.airlineCode} {seg.flightNumber}</span>
+                <span className="atfc-seg-cabin">{seg.cabin}</span>
+              </div>
+              <div className="atfc-seg-route">
+                <div className="atfc-seg-point">
+                  <span className="atfc-seg-time">{seg.departureTime ? fmtTime(seg.departureTime) : '—'}</span>
+                  <span className="atfc-seg-airport">{seg.fromAirport ?? seg.from}</span>
+                  {seg.fromTerminal && <span className="atfc-seg-terminal">Terminal {seg.fromTerminal}</span>}
+                </div>
+                <div className="atfc-seg-arrow">→</div>
+                <div className="atfc-seg-point">
+                  <span className="atfc-seg-time">{seg.arrivalTime ? fmtTime(seg.arrivalTime) : '—'}</span>
+                  <span className="atfc-seg-airport">{seg.toAirport ?? seg.to}</span>
+                  {seg.toTerminal && <span className="atfc-seg-terminal">Terminal {seg.toTerminal}</span>}
+                </div>
+              </div>
+              <div className="atfc-seg-meta">
+                <span>Baggage: {seg.baggage}</span>
+                <span>Cabin bag: {seg.cabinBaggage}</span>
+              </div>
               {seg.layover && (
-                <span className="admin-tickets-flight-card-layover">
-                  Layover {seg.layover.location} {seg.layover.duration}
-                </span>
+                <div className="atfc-seg-layover">
+                  <span>Layover at {seg.layover.location}: {seg.layover.duration}</span>
+                </div>
               )}
             </div>
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }

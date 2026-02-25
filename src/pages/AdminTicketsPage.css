@@ -1192,134 +1192,318 @@
   border: 1px dashed #e2e8f0;
 }
 
-/* Flight card */
-.admin-tickets-flight-card {
+/* ─── Flight Result Card (atfc-*) ─── */
+.atfc-card {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  padding: 24px;
+  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.2s, border-color 0.2s;
 }
+.atfc-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); }
 
-.admin-tickets-flight-card:hover {
-  border-color: #e2e8f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+/* Main row */
+.atfc-main {
+  display: grid;
+  grid-template-columns: 160px 1fr auto auto;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+}
+@media (max-width: 900px) {
+  .atfc-main { grid-template-columns: 1fr 1fr; }
+  .atfc-cabin, .atfc-fare-action { grid-column: span 1; }
+}
+@media (max-width: 600px) {
+  .atfc-main { grid-template-columns: 1fr; }
 }
 
-.admin-tickets-flight-card-main {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.admin-tickets-flight-card-route {
-  flex: 1;
-  min-width: 200px;
+/* Airline */
+.atfc-airline {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+}
+.atfc-airline-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+.atfc-airline-code {
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 1px 6px;
+  display: inline-block;
+  width: fit-content;
 }
 
-.admin-tickets-flight-card-airline {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.admin-tickets-flight-card-cities {
-  font-size: 15px;
-  color: #374151;
-}
-
-.admin-tickets-flight-card-time {
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.admin-tickets-flight-card-fares {
+/* Route */
+.atfc-route {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
-
-.admin-tickets-flight-card-fare-tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.admin-tickets-flight-card-fare-tab {
-  padding: 8px 14px;
-  font-size: 13px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
+.atfc-route-endpoint {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  transition: border-color 0.2s, background 0.2s;
+  min-width: 0;
 }
-
-.admin-tickets-flight-card-fare-tab:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
+.atfc-route-endpoint-right { align-items: flex-end; }
+.atfc-time {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1;
 }
-
-.admin-tickets-flight-card-fare-tab-active {
-  border-color: #3b82f6;
-  background: #eff6ff;
+.atfc-date {
+  font-size: 0.75rem;
+  color: #64748b;
 }
-
-.admin-tickets-flight-card-fare-name {
-  font-weight: 500;
+.atfc-airport {
+  font-size: 0.75rem;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.atfc-route-mid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 80px;
+}
+.atfc-duration {
+  font-size: 0.75rem;
+  font-weight: 600;
   color: #374151;
 }
-
-.admin-tickets-flight-card-fare-price {
-  font-size: 12px;
-  color: #6b7280;
+.atfc-route-line {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
 }
-
-.admin-tickets-flight-card-no-fares {
-  font-size: 14px;
-  color: #9ca3af;
-}
-
-.admin-tickets-flight-card-action {
+.atfc-route-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
   flex-shrink: 0;
 }
-
-.admin-tickets-book-btn {
+.atfc-route-bar {
+  flex: 1;
+  height: 1px;
+  background: #cbd5e1;
+}
+.atfc-route-plane {
+  color: #3b82f6;
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+.atfc-stops {
+  font-size: 0.7rem;
+  color: #64748b;
   white-space: nowrap;
 }
 
-.admin-tickets-flight-card-leg {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
+/* Cabin badge */
+.atfc-cabin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.atfc-cabin-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0369a1;
+  background: #e0f2fe;
+  border-radius: 20px;
+  padding: 4px 12px;
+  white-space: nowrap;
 }
 
-.admin-tickets-flight-card-leg-header {
-  font-size: 13px;
+/* Fare + action */
+.atfc-fare-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.atfc-fare-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.atfc-fare-total {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.atfc-fare-basic {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.atfc-fare-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.atfc-fare-empty { font-size: 0.875rem; color: #94a3b8; }
+
+.atfc-book-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.atfc-book-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+.atfc-book-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* Fare tabs (multiple fares) */
+.atfc-fare-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.atfc-fare-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.atfc-fare-tab:hover { border-color: #3b82f6; background: #eff6ff; }
+.atfc-fare-tab-active { border-color: #3b82f6; background: #eff6ff; }
+.atfc-fare-tab-name { font-size: 0.8125rem; font-weight: 600; color: #1e40af; }
+.atfc-fare-tab-price { font-size: 0.875rem; font-weight: 700; color: #0f172a; }
+.atfc-fare-tab-seats { font-size: 0.75rem; color: #64748b; }
+
+/* Toggle */
+.atfc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #2563eb;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.atfc-toggle:hover { background: #f8fafc; }
+.atfc-toggle-icon { transition: transform 0.2s; color: #64748b; }
+.atfc-toggle-icon-open { transform: rotate(180deg); }
+
+/* Segments */
+.atfc-segments {
+  border-top: 1px solid #f1f5f9;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fafafa;
+}
+.atfc-seg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.atfc-seg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.atfc-seg-airline {
+  font-size: 0.8125rem;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 8px;
 }
-
-.admin-tickets-flight-card-segment {
-  font-size: 13px;
-  color: #6b7280;
-  padding: 4px 0;
+.atfc-seg-cabin {
+  font-size: 0.75rem;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 2px 8px;
+  border-radius: 20px;
 }
-
-.admin-tickets-flight-card-layover {
-  display: block;
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 2px;
+.atfc-seg-route {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.atfc-seg-point {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.atfc-seg-time {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.atfc-seg-airport {
+  font-size: 0.75rem;
+  color: #374151;
+  max-width: 200px;
+}
+.atfc-seg-terminal {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+.atfc-seg-arrow {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+.atfc-seg-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.atfc-seg-layover {
+  font-size: 0.75rem;
+  color: #b45309;
+  background: #fef3c7;
+  border-radius: 6px;
+  padding: 4px 10px;
+  display: inline-block;
+  width: fit-content;
 }
