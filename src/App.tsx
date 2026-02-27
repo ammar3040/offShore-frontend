@@ -1,11 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import CrewPanelLayout from './components/CrewPanelLayout';
+import SuperadminPanelLayout from './components/SuperadminPanelLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedSuperadminRoute from './components/ProtectedSuperadminRoute';
 import CrewManagementDashboard from './pages/CrewManagementDashboard';
 import CrewListPage from './pages/CrewListPage';
 import CrewLogin from './pages/CrewLogin';
 import LoginPage from './pages/LoginPage';
+import SuperadminLoginPage from './pages/SuperadminLoginPage';
 import CrewPanelDashboard from './pages/CrewPanelDashboard';
 import CrewEnrolledProjectsPage from './pages/CrewEnrolledProjectsPage';
 import CrewProfilePage from './pages/CrewProfilePage';
@@ -15,14 +18,33 @@ import CrewTimesheetPage from './pages/CrewTimesheetPage';
 import CrewAvailabilityPage from './pages/CrewAvailabilityPage';
 import ProjectsPage from './pages/ProjectsPage';
 import AdminTicketsPage from './pages/AdminTicketsPage';
+import SuperadminDashboard from './pages/SuperadminDashboard';
+import SuperadminAdminsPage from './pages/SuperadminAdminsPage';
+import SuperadminTicketsPage from './pages/SuperadminTicketsPage';
 import './App.css';
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Unified login - choose Admin or Crew */}
+        {/* Unified login - choose Admin, Crew, or Superadmin */}
         <Route path="/login" element={<LoginPage />} />
+
+        {/* Superadmin portal */}
+        <Route path="/panel/superadmin/login" element={<SuperadminLoginPage />} />
+        <Route
+          path="/panel/superadmin"
+          element={
+            <ProtectedSuperadminRoute>
+              <SuperadminPanelLayout />
+            </ProtectedSuperadminRoute>
+          }
+        >
+          <Route path="dashboard" element={<SuperadminDashboard />} />
+          <Route path="admins" element={<SuperadminAdminsPage />} />
+          <Route path="tickets" element={<SuperadminTicketsPage />} />
+          <Route index element={<Navigate to="/panel/superadmin/dashboard" replace />} />
+        </Route>
 
         {/* Crew portal login (no sidebar layout) */}
         <Route path="/crew/login" element={<CrewLogin redirectTo="/panel/crew/dashboard" />} />

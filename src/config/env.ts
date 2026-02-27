@@ -14,6 +14,7 @@ export const env = {
   authTokenKey: import.meta.env.VITE_AUTH_TOKEN_KEY || 'offshore_crm_auth_token',
   refreshTokenKey: import.meta.env.VITE_REFRESH_TOKEN_KEY || 'offshore_crm_refresh_token',
   crewTokenKey: import.meta.env.VITE_CREW_TOKEN_KEY || 'offshore_crew_token',
+  superadminTokenKey: import.meta.env.VITE_SUPERADMIN_TOKEN_KEY || 'offshore_superadmin_token',
 
   // Application Settings
   appName: import.meta.env.VITE_APP_NAME || 'Offshore CRM',

@@ -1,0 +1,167 @@
+.superadmin-tickets-page {
+  max-width: 900px;
+}
+
+.superadmin-tickets-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.superadmin-tickets-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 4px;
+}
+
+.superadmin-tickets-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.superadmin-tickets-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.superadmin-tickets-filter label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.superadmin-tickets-select-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.superadmin-tickets-select {
+  appearance: none;
+  padding: 10px 36px 10px 14px;
+  font-size: 14px;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  min-width: 240px;
+  cursor: pointer;
+}
+
+.superadmin-tickets-select:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+}
+
+.superadmin-tickets-select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.superadmin-tickets-error {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+}
+
+.superadmin-tickets-content {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e7e5e4;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.superadmin-tickets-empty {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.superadmin-tickets-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.superadmin-ticket-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fafaf9;
+  border-radius: 8px;
+  border: 1px solid #e7e5e4;
+  transition: background 0.2s;
+}
+
+.superadmin-ticket-card:hover {
+  background: #fffbeb;
+}
+
+.superadmin-ticket-icon {
+  width: 40px;
+  height: 40px;
+  background: #fffbeb;
+  color: #d97706;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.superadmin-ticket-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.superadmin-ticket-route {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.superadmin-ticket-meta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.superadmin-ticket-sep {
+  margin: 0 6px;
+  color: #d1d5db;
+}
+
+.superadmin-ticket-badges {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.superadmin-ticket-class,
+.superadmin-ticket-trip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #e7e5e4;
+  color: #4b5563;
+}

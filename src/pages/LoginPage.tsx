@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Plane, Check, Lock, ChevronDown } from 'lucide-react';
 import AdminLoginPage from './AdminLoginPage';
 import CrewLogin from './CrewLogin';
+import SuperadminLoginPage from './SuperadminLoginPage';
 import './LoginPage.css';
 
-type Role = 'admin' | 'crew';
+type Role = 'admin' | 'crew' | 'superadmin';
 
 const LOGIN_AS_OPTIONS: { value: Role; label: string }[] = [
   { value: 'admin', label: 'Admin Portal' },
   { value: 'crew', label: 'Crew Portal' },
+  { value: 'superadmin', label: 'Superadmin Portal' },
 ];
 
 const LoginPage = () => {
@@ -72,11 +74,9 @@ const LoginPage = () => {
             </div>
           </div>
 
-          {role === 'admin' ? (
-            <AdminLoginPage embedded variant="split" />
-          ) : (
-            <CrewLogin redirectTo="/panel/crew/dashboard" embedded variant="split" />
-          )}
+          {role === 'admin' && <AdminLoginPage embedded variant="split" />}
+          {role === 'crew' && <CrewLogin redirectTo="/panel/crew/dashboard" embedded variant="split" />}
+          {role === 'superadmin' && <SuperadminLoginPage embedded variant="split" />}
 
           <footer className="login-page-footer">
             <p className="login-page-copy">© 2024 Marine Flight Pro Platform. All Rights Reserved.</p>

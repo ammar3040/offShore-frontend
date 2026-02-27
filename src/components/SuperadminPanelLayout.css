@@ -1,0 +1,124 @@
+.superadmin-panel-layout {
+  min-height: 100vh;
+  display: flex;
+  background-color: #fafaf9;
+}
+
+.superadmin-panel-sidebar {
+  width: 260px;
+  background-color: #fff;
+  border-right: 1px solid #e7e5e4;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.superadmin-panel-sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #e7e5e4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.superadmin-panel-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.superadmin-panel-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.superadmin-panel-logo-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.superadmin-panel-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #d97706;
+  background-color: #fffbeb;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-left: auto;
+}
+
+.superadmin-panel-nav {
+  flex: 1;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.superadmin-panel-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 2px;
+  border-radius: 8px;
+  color: #4b5563;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.superadmin-panel-nav-item:hover {
+  background-color: #f5f5f4;
+  color: #1f2937;
+}
+
+.superadmin-panel-nav-item.active {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.superadmin-panel-nav-item.active svg {
+  color: #d97706;
+}
+
+.superadmin-panel-sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #e7e5e4;
+}
+
+.superadmin-panel-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.superadmin-panel-logout:hover {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.superadmin-panel-body {
+  flex: 1;
+  min-width: 0;
+  padding: 32px;
+  overflow-y: auto;
+}
