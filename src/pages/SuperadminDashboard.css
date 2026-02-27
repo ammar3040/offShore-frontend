@@ -87,6 +87,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .superadmin-dash-card-value {
@@ -122,6 +123,7 @@
   justify-content: space-between;
   padding: 18px 20px;
   border-bottom: 1px solid #e7e5e4;
+  gap: 12px;
 }
 
 .superadmin-panel-title {
@@ -136,6 +138,7 @@
   font-weight: 500;
   color: #d97706;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .superadmin-panel-view-all:hover {
@@ -166,6 +169,7 @@
   padding: 10px 0;
   border-bottom: 1px solid #f5f5f4;
   font-size: 14px;
+  gap: 12px;
 }
 
 .superadmin-admin-item:last-child {
@@ -175,6 +179,10 @@
 .superadmin-admin-email {
   font-weight: 500;
   color: #1f2937;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .superadmin-admin-stats {
@@ -182,6 +190,7 @@
   gap: 12px;
   font-size: 12px;
   color: #6b7280;
+  flex-shrink: 0;
 }
 
 .superadmin-quick-actions {
@@ -209,8 +218,204 @@
   color: #b45309;
 }
 
+/* Markup card - hover reveals Add Markup button */
+.superadmin-dash-card-markup {
+  position: relative;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.superadmin-dash-card-markup:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #99f6e4;
+}
+
+.superadmin-dash-icon--teal {
+  background: #ccfbf1;
+  color: #0d9488;
+}
+
+.superadmin-dash-card-markup .superadmin-dash-card-content {
+  position: relative;
+}
+
+.superadmin-markup-add-btn {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0d9488;
+  background: #ccfbf1;
+  border: 1px solid #99f6e4;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.2s, transform 0.2s, background 0.2s;
+}
+
+.superadmin-dash-card-markup:hover .superadmin-markup-add-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.superadmin-markup-add-btn:hover {
+  background: #99f6e4;
+  color: #0f766e;
+}
+
+.superadmin-markup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.superadmin-markup-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.superadmin-markup-input:focus {
+  outline: none;
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+}
+
+.superadmin-markup-input::placeholder {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.superadmin-markup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.superadmin-markup-save {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background: #0d9488;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.superadmin-markup-save:hover:not(:disabled) {
+  background: #0f766e;
+}
+
+.superadmin-markup-save:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.superadmin-markup-cancel {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #fff;
+  border: 1px solid #e7e5e4;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.superadmin-markup-cancel:hover:not(:disabled) {
+  background: #f5f5f4;
+}
+
+/* ===== Tablet ===== */
+@media (max-width: 1024px) {
+  .superadmin-dashboard-cards {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .superadmin-dash-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .superadmin-dash-card-value {
+    font-size: 20px;
+  }
+}
+
+/* ===== Mobile ===== */
 @media (max-width: 768px) {
+  .superadmin-dashboard-header {
+    margin-bottom: 24px;
+  }
+
+  .superadmin-dashboard-greeting {
+    font-size: 20px;
+  }
+
+  .superadmin-dashboard-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .superadmin-dash-card {
+    padding: 14px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .superadmin-dash-card-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .superadmin-dash-card-value {
+    font-size: 18px;
+  }
+
   .superadmin-dashboard-panels {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .superadmin-panel-header {
+    padding: 14px 16px;
+  }
+
+  .superadmin-panel-body {
+    padding: 16px;
+    min-height: 100px;
+  }
+
+  .superadmin-admin-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .superadmin-markup-add-btn {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===== Small phones ===== */
+@media (max-width: 480px) {
+  .superadmin-dashboard-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .superadmin-dash-card {
+    flex-direction: row;
+    align-items: center;
   }
 }

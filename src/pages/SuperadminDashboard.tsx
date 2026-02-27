@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FolderKanban, Ship, Ticket } from 'lucide-react';
-import { getSuperadminAnalytics } from '../api/superadmin';
+import { Users, FolderKanban, Ship, Ticket, Percent, Plus } from 'lucide-react';
+import { getSuperadminAnalytics, updateSuperadminMarkup } from '../api/superadmin';
+import { Toaster, useToast } from '../components/Toast';
 import './SuperadminDashboard.css';
 
 function getGreeting(): string {
@@ -21,6 +22,11 @@ function formatDate(d: Date): string {
 }
 
 const SuperadminDashboard = () => {
+  const { toasts, toast, dismiss } = useToast();
+  const [markup, setMarkup] = useState<number | null>(null);
+  const [showMarkupForm, setShowMarkupForm] = useState(false);
+  const [markupInput, setMarkupInput] = useState('');
+  const [markupSaving, setMarkupSaving] = useState(false);
   const [analytics, setAnalytics] = useState<{
     totalAdmins: number;
     activeAdmins: number;
@@ -93,8 +99,30 @@ const SuperadminDashboard = () => {
 
   const adminsByActivity = analytics?.adminsByActivity ?? [];
 
+  const handleSaveMarkup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(markupInput.trim());
+    if (isNaN(value) || value < 0 || value > 100) {
+      toast('error', 'Invalid markup', 'Please enter a number between 0 and 100.');
+      return;
+    }
+    setMarkupSaving(true);
+    try {
+      const res = await updateSuperadminMarkup(value);
+      setMarkup(res.superAdmin.markup);
+      setShowMarkupForm(false);
+      setMarkupInput('');
+      toast('success', 'Markup updated', res.message);
+    } catch (err) {
+      toast('error', 'Update failed', err instanceof Error ? err.message : 'Failed to update markup.');
+    } finally {
+      setMarkupSaving(false);
+    }
+  };
+
   return (
     <div className="superadmin-dashboard">
+      <Toaster toasts={toasts} dismiss={dismiss} />
       <header className="superadmin-dashboard-header">
         <div>
           <h1 className="superadmin-dashboard-greeting">{getGreeting()}, Superadmin</h1>
@@ -123,6 +151,59 @@ const SuperadminDashboard = () => {
             </div>
           );
         })}
+        <div className="superadmin-dash-card superadmin-dash-card-markup">
+          <div className="superadmin-dash-card-icon superadmin-dash-icon--teal">
+            <Percent size={24} />
+          </div>
+          <div className="superadmin-dash-card-content">
+            {showMarkupForm ? (
+              <form className="superadmin-markup-form" onSubmit={handleSaveMarkup}>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={markupInput}
+                  onChange={(e) => setMarkupInput(e.target.value)}
+                  placeholder="e.g. 15.5"
+                  className="superadmin-markup-input"
+                  autoFocus
+                  disabled={markupSaving}
+                />
+                <div className="superadmin-markup-actions">
+                  <button type="submit" className="superadmin-markup-save" disabled={markupSaving}>
+                    {markupSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    className="superadmin-markup-cancel"
+                    onClick={() => { setShowMarkupForm(false); setMarkupInput(''); }}
+                    disabled={markupSaving}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="superadmin-dash-card-value">
+                  {markup != null ? `${markup}%` : '—'}
+                </span>
+                <span className="superadmin-dash-card-label">MARKUP</span>
+                <button
+                  type="button"
+                  className="superadmin-markup-add-btn"
+                  onClick={() => setShowMarkupForm(true)}
+                  title="Add markup"
+                  aria-label="Add markup"
+                >
+                  <Plus size={14} />
+                  Add Markup
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="superadmin-dashboard-panels">

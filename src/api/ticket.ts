@@ -170,3 +170,90 @@ export async function createFlightTicket(payload: CreateFlightTicketPayload): Pr
 
   return response.json();
 }
+
+/**
+ * Uploads a PDF for a crew ticket. POST /api/crew-ticket/:id/upload-ticket
+ * Uses admin token. For crew token use uploadCrewTicketPdfByCrew.
+ */
+export async function uploadCrewTicketPdf(ticketId: string, file: File): Promise<unknown> {
+  if (!file.type.includes('pdf')) {
+    throw new Error('Only PDF files are allowed');
+  }
+
+  const formData = new FormData();
+  formData.append('pdf', file);
+
+  const token = getAuthToken();
+  const headers: HeadersInit = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
+    method: 'POST',
+    headers,
+    body: formData,
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+/**
+ * Uploads a PDF for a crew ticket (crew context). POST /api/crew-ticket/:id/upload-ticket
+ * Uses crew token – crew can upload for their own tickets.
+ */
+export async function uploadCrewTicketPdfByCrew(ticketId: string, file: File): Promise<unknown> {
+  if (!file.type.includes('pdf')) {
+    throw new Error('Only PDF files are allowed');
+  }
+
+  const crewToken = localStorage.getItem(env.crewTokenKey);
+  if (!crewToken) throw new Error('Not authenticated');
+
+  const formData = new FormData();
+  formData.append('pdf', file);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${crewToken}` },
+    body: formData,
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}

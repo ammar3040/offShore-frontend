@@ -1,6 +1,6 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Ticket, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket, LogOut, Shield, Menu, X } from 'lucide-react';
 import { clearSuperadminSession } from '../lib/superadminAuth';
 import './SuperadminPanelLayout.css';
 
@@ -17,9 +17,11 @@ const navItems = [
 const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
     clearSuperadminSession();
+    setMobileOpen(false);
     navigate('/panel/superadmin/login');
   };
 
@@ -27,7 +29,11 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
 
   return (
     <div className="superadmin-panel-layout">
-      <aside className="superadmin-panel-sidebar">
+      <div
+        className={`superadmin-panel-overlay${mobileOpen ? ' open' : ''}`}
+        onClick={() => setMobileOpen(false)}
+      />
+      <aside className={`superadmin-panel-sidebar${mobileOpen ? ' open' : ''}`}>
         <div className="superadmin-panel-sidebar-header">
           <div className="superadmin-panel-logo">
             <div className="superadmin-panel-logo-icon">
@@ -36,6 +42,14 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
             <span className="superadmin-panel-logo-text">Superadmin</span>
           </div>
           <span className="superadmin-panel-badge">SA</span>
+          <button
+            type="button"
+            className="superadmin-panel-sidebar-close"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="superadmin-panel-nav">
@@ -47,6 +61,7 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
                 key={item.path}
                 to={item.path}
                 className={`superadmin-panel-nav-item ${active ? 'active' : ''}`}
+                onClick={() => setMobileOpen(false)}
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
@@ -68,8 +83,24 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
         </div>
       </aside>
 
-      <div className="superadmin-panel-body">
-        {children ?? <Outlet />}
+      <div className="superadmin-panel-main">
+        <header className="superadmin-panel-mobile-header">
+          <button
+            type="button"
+            className="superadmin-panel-hamburger"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu size={22} />
+          </button>
+          <div className="superadmin-panel-mobile-logo">
+            <Shield size={18} />
+            <span>Superadmin</span>
+          </div>
+        </header>
+        <div className="superadmin-panel-body">
+          {children ?? <Outlet />}
+        </div>
       </div>
     </div>
   );

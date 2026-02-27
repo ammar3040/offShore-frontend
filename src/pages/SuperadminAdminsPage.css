@@ -36,6 +36,8 @@
   border-radius: 8px;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .superadmin-admins-create-btn:hover {
@@ -60,6 +62,7 @@
 .superadmin-admins-search {
   position: relative;
   max-width: 320px;
+  width: 100%;
 }
 
 .superadmin-admins-search-icon {
@@ -78,6 +81,7 @@
   border-radius: 8px;
   background: #fff;
   color: #1f2937;
+  box-sizing: border-box;
 }
 
 .superadmin-admins-search-input:focus {
@@ -90,8 +94,9 @@
   background: #fff;
   border-radius: 12px;
   border: 1px solid #e7e5e4;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  -webkit-overflow-scrolling: touch;
 }
 
 .superadmin-admins-empty {
@@ -105,6 +110,7 @@
 .superadmin-admins-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 540px;
 }
 
 .superadmin-admins-table th,
@@ -119,6 +125,7 @@
   font-weight: 600;
   color: #374151;
   background: #fafaf9;
+  white-space: nowrap;
 }
 
 .superadmin-admins-table tbody tr:last-child td {
@@ -132,6 +139,7 @@
 .superadmin-admins-name {
   font-weight: 500;
   color: #1f2937;
+  white-space: nowrap;
 }
 
 /* Create Admin Form */
@@ -175,6 +183,8 @@
   border-radius: 8px;
   background: #fff;
   color: #1f2937;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .superadmin-create-admin-field input:focus {
@@ -225,4 +235,46 @@
 .superadmin-create-admin-submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  .superadmin-admins-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .superadmin-admins-title {
+    font-size: 20px;
+  }
+
+  .superadmin-admins-create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .superadmin-admins-search {
+    max-width: 100%;
+  }
+
+  .superadmin-admins-table th,
+  .superadmin-admins-table td {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .superadmin-create-admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .superadmin-create-admin-actions {
+    flex-direction: column;
+  }
+
+  .superadmin-create-admin-cancel,
+  .superadmin-create-admin-submit {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
 }

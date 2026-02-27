@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon } from 'lucide-react';
+import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon, Upload } from 'lucide-react';
 import Modal from '../components/Modal';
 import { Toaster, useToast } from '../components/Toast';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
-import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
+import { getCrewTickets, createFlightTicket, uploadCrewTicketPdf, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
 import { searchFlights, bookFlight } from '../api/flightSearch';
 import { AIRPORTS, getAirportDisplayName } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
@@ -288,6 +288,37 @@ const AdminTicketsPage = () => {
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
   const [crewDropdownOpen, setCrewDropdownOpen] = useState(false);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
+
+  /* PDF upload for crew tickets */
+  const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
+  const ticketPdfInputRef = useRef<HTMLInputElement>(null);
+  const pendingPdfUploadRef = useRef<string | null>(null);
+
+  const handleUploadPdfClick = useCallback((ticketId: string) => {
+    pendingPdfUploadRef.current = ticketId;
+    ticketPdfInputRef.current?.click();
+  }, []);
+
+  const handlePdfFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const ticketId = pendingPdfUploadRef.current;
+    pendingPdfUploadRef.current = null;
+    e.target.value = '';
+    if (!file || !ticketId) return;
+    if (!file.type.includes('pdf')) {
+      toast('error', 'Invalid file', 'Only PDF files are allowed.');
+      return;
+    }
+    setUploadingTicketId(ticketId);
+    try {
+      await uploadCrewTicketPdf(ticketId, file);
+      toast('success', 'PDF uploaded', 'Ticket PDF uploaded successfully.');
+    } catch (err) {
+      toast('error', 'Upload failed', err instanceof Error ? err.message : 'Failed to upload PDF.');
+    } finally {
+      setUploadingTicketId(null);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!crewDropdownOpen) return;
@@ -950,6 +981,14 @@ const AdminTicketsPage = () => {
         </div>
       ) : (
         <>
+      <input
+        ref={ticketPdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="admin-tickets-file-input-hidden"
+        onChange={handlePdfFileChange}
+        aria-hidden
+      />
       <div className="admin-tickets-toolbar">
         <div className="admin-tickets-filter-wrap">
           <label htmlFor="tickets-project-filter" className="admin-tickets-filter-label">
@@ -1011,6 +1050,7 @@ const AdminTicketsPage = () => {
                 <th>Class</th>
                 <th>Trip</th>
                 <th>Passengers</th>
+                <th>PDF</th>
               </tr>
             </thead>
             <tbody>
@@ -1045,6 +1085,24 @@ const AdminTicketsPage = () => {
                     {[ticket.adult, ticket.children, ticket.infants]
                       .filter((n) => n != null && n > 0)
                       .join(' / ') || '—'}
+                  </td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="admin-tickets-upload-pdf-btn"
+                      onClick={() => handleUploadPdfClick(ticket.id)}
+                      disabled={uploadingTicketId === ticket.id}
+                      title="Upload ticket PDF"
+                    >
+                      {uploadingTicketId === ticket.id ? (
+                        <span className="admin-tickets-upload-spinner" />
+                      ) : (
+                        <>
+                          <Upload size={16} />
+                          Upload
+                        </>
+                      )}
+                    </button>
                   </td>
                 </tr>
               ))}

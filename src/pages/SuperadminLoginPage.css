@@ -126,6 +126,7 @@
   background: #ffffff;
   color: #1f2937;
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 .superadmin-login-input-wrapper input:focus {
@@ -203,4 +204,24 @@
   border: none;
   color: #6b7280;
   cursor: pointer;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 480px) {
+  .superadmin-login {
+    padding: 16px;
+  }
+
+  .superadmin-login-card {
+    padding: 28px 20px;
+    border-radius: 12px;
+  }
+
+  .superadmin-login-title {
+    font-size: 20px;
+  }
+
+  .superadmin-login-logo-text {
+    font-size: 18px;
+  }
 }

@@ -201,6 +201,48 @@ export async function createSuperadminAdmin(payload: CreateAdminPayload): Promis
   return response.json();
 }
 
+export interface MarkupResponse {
+  message: string;
+  superAdmin: {
+    id: string;
+    firstname: string;
+    lastname: string;
+    email: string;
+    phone?: string;
+    markup: number;
+  };
+}
+
+/** Update markup - POST /api/superadmin/markup */
+export async function updateSuperadminMarkup(markup: number): Promise<MarkupResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/markup`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ markup }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let msg = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const err = JSON.parse(text);
+        msg = err?.message || err?.error || msg;
+      } catch {
+        msg = text;
+      }
+    }
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
 /** Crew tickets for superadmin - GET /api/crew-ticket (uses superadmin token; project filter applied client-side if backend omits it) */
 export async function getSuperadminCrewTickets(projectId?: string): Promise<{ crewTickets: import('./ticket').CrewTicketApi[] }> {
   const controller = new AbortController();
@@ -262,4 +304,45 @@ export async function getSuperadminProjects(): Promise<{ projects: import('./pro
 
   const data = await response.json();
   return { projects: Array.isArray(data?.projects) ? data.projects : [] };
+}
+
+/** Uploads a PDF for a crew ticket. POST /api/crew-ticket/:id/upload-ticket */
+export async function uploadSuperadminCrewTicketPdf(ticketId: string, file: File): Promise<unknown> {
+  if (!file.type.includes('pdf')) {
+    throw new Error('Only PDF files are allowed');
+  }
+
+  const formData = new FormData();
+  formData.append('pdf', file);
+
+  const token = localStorage.getItem(env.superadminTokenKey);
+  const headers: HeadersInit = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
+    method: 'POST',
+    headers,
+    body: formData,
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let msg = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const err = JSON.parse(text);
+        msg = err?.message || err?.error || msg;
+      } catch {
+        msg = text;
+      }
+    }
+    throw new Error(msg);
+  }
+
+  return response.json();
 }

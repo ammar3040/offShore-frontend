@@ -1,15 +1,20 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Ticket, ChevronDown } from 'lucide-react';
-import { getSuperadminCrewTickets, getSuperadminProjects } from '../api/superadmin';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Ticket, ChevronDown, Upload } from 'lucide-react';
+import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf } from '../api/superadmin';
 import type { CrewTicketApi } from '../api/ticket';
+import { Toaster, useToast } from '../components/Toast';
 import './SuperadminTicketsPage.css';
 
 const SuperadminTicketsPage = () => {
+  const { toasts, toast, dismiss } = useToast();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<{ id: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,8 +78,39 @@ const SuperadminTicketsPage = () => {
     return `${from} → ${to}`;
   };
 
+  const pendingUploadRef = useRef<string | null>(null);
+
+  const handleUploadClick = (ticketId: string) => {
+    setUploadError(null);
+    pendingUploadRef.current = ticketId;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const ticketId = pendingUploadRef.current;
+    pendingUploadRef.current = null;
+    e.target.value = '';
+    if (!file || !ticketId) return;
+    if (!file.type.includes('pdf')) {
+      setUploadError('Only PDF files are allowed');
+      return;
+    }
+    setUploadingTicketId(ticketId);
+    setUploadError(null);
+    try {
+      await uploadSuperadminCrewTicketPdf(ticketId, file);
+      toast('success', 'PDF uploaded', 'Ticket PDF uploaded successfully.');
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingTicketId(null);
+    }
+  };
+
   return (
     <div className="superadmin-tickets-page">
+      <Toaster toasts={toasts} dismiss={dismiss} />
       <header className="superadmin-tickets-header">
         <div>
           <h1 className="superadmin-tickets-title">Crew Tickets</h1>
@@ -109,6 +145,21 @@ const SuperadminTicketsPage = () => {
         </div>
       )}
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="superadmin-tickets-file-input"
+        onChange={handleFileChange}
+        aria-hidden
+      />
+
+      {uploadError && (
+        <div className="superadmin-tickets-error" role="alert">
+          {uploadError}
+        </div>
+      )}
+
       <div className="superadmin-tickets-content">
         {loading ? (
           <p className="superadmin-tickets-empty">Loading…</p>
@@ -133,6 +184,22 @@ const SuperadminTicketsPage = () => {
                   <span className="superadmin-ticket-class">{t.class}</span>
                   <span className="superadmin-ticket-trip">{t.trip}</span>
                 </div>
+                <button
+                  type="button"
+                  className="superadmin-ticket-upload-btn"
+                  onClick={(e) => { e.stopPropagation(); handleUploadClick(t.id); }}
+                  disabled={uploadingTicketId === t.id}
+                  title="Upload ticket PDF"
+                >
+                  {uploadingTicketId === t.id ? (
+                    <span className="superadmin-ticket-upload-spinner" />
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload PDF
+                    </>
+                  )}
+                </button>
               </div>
             ))}
           </div>
