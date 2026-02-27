@@ -93,7 +93,7 @@ const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
           <div className="sidebar-help-content">
             <p className="sidebar-help-title">Need Help?</p>
             <p className="sidebar-help-text">
-              Contact portal technical support for HIPAA security inquiries.
+              Contact portal technical support for security inquiries.
             </p>
           </div>
         </div>

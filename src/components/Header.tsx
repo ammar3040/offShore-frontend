@@ -53,7 +53,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
       </div>
 
       <div className="header-right">
-        <span className="hipaa-badge">HIPAA COMPLIANT SESSION</span>
+        <span className="secure-session-badge">SECURE SESSION</span>
         <button className="icon-button" aria-label="Notifications">
           <Bell size={20} />
         </button>

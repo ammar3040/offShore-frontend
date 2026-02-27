@@ -366,7 +366,7 @@ const ProjectsPage = () => {
       <footer className="projects-footer">
         <p className="projects-footer-copy">© 2023 Offshore CRM. All rights reserved.</p>
         <nav className="projects-footer-links">
-          <a href="/hipaa">HIPAA Policy</a>
+          <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms of Service</a>
           <a href="/security">Security Audit Logs</a>
         </nav>

@@ -33,13 +33,13 @@ const LoginPage = () => {
             </div>
             <h2 className="login-page-motto">Bridging Project Expertise with Transport Strategy</h2>
             <p className="login-page-tagline">
-              Secure, HIPAA-compliant consulting for the nation's Project Expertise and trade experts.
+              Secure, enterprise-grade consulting for the nation's Project Expertise and trade experts.
             </p>
           </div>
           <div className="login-page-badges">
             <div className="login-page-badge">
               <span className="login-page-badge-icon"><Check size={16} strokeWidth={2.5} /></span>
-              <span>HIPAA COMPLIANT</span>
+              <span>SECURE ACCESS</span>
             </div>
             <div className="login-page-badge">
               <span className="login-page-badge-icon"><Lock size={16} strokeWidth={2} /></span>
