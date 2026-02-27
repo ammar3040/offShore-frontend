@@ -6,7 +6,7 @@ import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import { getCrewTickets, createFlightTicket, uploadCrewTicketPdf, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
 import { searchFlights, bookFlight } from '../api/flightSearch';
-import { AIRPORTS, getAirportDisplayName } from '../lib/airports';
+import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
 import './AdminTicketsPage.css';
 
@@ -56,6 +56,90 @@ function fmtDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function AirportCombobox({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: Airport | null;
+  onChange: (airport: Airport | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => searchAirports(query), [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const displayValue = value ? getAirportDisplayName(value) : '';
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    if (!open) setOpen(true);
+    if (value) onChange(null);
+  };
+
+  const handleFocus = () => {
+    setOpen(true);
+    if (value) {
+      setQuery('');
+    }
+  };
+
+  const handleSelect = (airport: Airport) => {
+    onChange(airport);
+    setQuery('');
+    setOpen(false);
+  };
+
+  return (
+    <div className="airport-combobox" ref={wrapRef}>
+      <input
+        id={id}
+        type="text"
+        className="airport-combobox-input"
+        value={open ? query : displayValue}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        placeholder="Type city, code or airport…"
+        autoComplete="off"
+        ref={inputRef}
+      />
+      {open && (
+        <ul className="airport-combobox-dropdown">
+          {filtered.length === 0 ? (
+            <li className="airport-combobox-empty">No airports found</li>
+          ) : (
+            filtered.map((a) => (
+              <li
+                key={a.Name}
+                className={'airport-combobox-option' + (value?.Name === a.Name ? ' airport-combobox-option-active' : '')}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(a)}
+              >
+                <span className="airport-combobox-option-name">{getAirportDisplayName(a)}</span>
+                <span className="airport-combobox-option-country">{a.COUNTRYNAME}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function FlightResultCard({
@@ -795,15 +879,17 @@ const AdminTicketsPage = () => {
                                 {searchCrewList.map((c) => (
                                   <li key={c.id}>
                                     <label className="admin-tickets-search-crew-item">
+                                      <div className="admin-tickets-search-crew-item-info">
+                                        <span>
+                                          {c.firstname} {c.lastname}
+                                        </span>
+                                        <span className="admin-tickets-search-crew-item-email">{c.email}</span>
+                                      </div>
                                       <input
                                         type="checkbox"
                                         checked={searchCrewIds.includes(c.id)}
                                         onChange={() => toggleCrewSearch(c.id)}
                                       />
-                                      <span>
-                                        {c.firstname} {c.lastname}
-                                      </span>
-                                      <span className="admin-tickets-search-crew-item-email">{c.email}</span>
                                     </label>
                                   </li>
                                 ))}
@@ -814,41 +900,23 @@ const AdminTicketsPage = () => {
                       )}
                     </div>
                   </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-from">From</label>
-                    <select
-                      id="search-from"
-                      value={searchFrom ? searchFrom.Name : ''}
-                      onChange={(e) => {
-                        const airport = AIRPORTS.find((a) => a.Name === e.target.value) ?? null;
-                        setSearchFrom(airport);
-                      }}
-                    >
-                      <option value="">Select airport</option>
-                      {AIRPORTS.map((a) => (
-                        <option key={a.Name} value={a.Name}>
-                          {getAirportDisplayName(a)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-to">To</label>
-                    <select
-                      id="search-to"
-                      value={searchTo ? searchTo.Name : ''}
-                      onChange={(e) => {
-                        const airport = AIRPORTS.find((a) => a.Name === e.target.value) ?? null;
-                        setSearchTo(airport);
-                      }}
-                    >
-                      <option value="">Select airport</option>
-                      {AIRPORTS.map((a) => (
-                        <option key={a.Name} value={a.Name}>
-                          {getAirportDisplayName(a)}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="admin-tickets-search-airports-row">
+                    <div className="admin-tickets-search-field">
+                      <label htmlFor="search-from">From</label>
+                      <AirportCombobox
+                        id="search-from"
+                        value={searchFrom}
+                        onChange={setSearchFrom}
+                      />
+                    </div>
+                    <div className="admin-tickets-search-field">
+                      <label htmlFor="search-to">To</label>
+                      <AirportCombobox
+                        id="search-to"
+                        value={searchTo}
+                        onChange={setSearchTo}
+                      />
+                    </div>
                   </div>
                   <div className="admin-tickets-search-field">
                     <label htmlFor="search-departure">Departure date</label>

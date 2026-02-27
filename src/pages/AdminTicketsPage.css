@@ -718,6 +718,8 @@
   border-radius: 16px;
   border: 1px solid #bae6fd;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .admin-tickets-flights-hero-left {
@@ -787,12 +789,12 @@
 /* Search form card – grid layout for alignment */
 .admin-tickets-search-form-card {
   width: 100%;
-  max-width: 800px;
   padding: 32px;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
 }
 
 .admin-tickets-search-form-title {
@@ -804,9 +806,15 @@
 
 .admin-tickets-search-form {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px 32px;
   align-items: start;
+}
+
+@media (max-width: 900px) {
+  .admin-tickets-search-form {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 639px) {
@@ -880,7 +888,7 @@
 }
 
 .admin-tickets-search-field-cabin {
-  max-width: 200px;
+  min-width: 0;
 }
 
 /* Project & Crew members in search form */
@@ -991,7 +999,8 @@
 .admin-tickets-search-crew-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 14px;
   cursor: pointer;
   transition: background 0.15s;
@@ -1009,16 +1018,26 @@
   cursor: pointer;
 }
 
-.admin-tickets-search-crew-item span:first-of-type {
+.admin-tickets-search-crew-item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-tickets-search-crew-item-info span:first-child {
   font-size: 0.875rem;
   font-weight: 500;
   color: #111827;
+  line-height: 1.3;
 }
 
 .admin-tickets-search-crew-item-email {
-  font-size: 0.8125rem;
+  display: block;
+  font-size: 0.75rem;
   color: #6b7280;
-  margin-left: auto;
+  line-height: 1.3;
+  margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1029,6 +1048,21 @@
   padding: 16px 14px;
   font-size: 0.875rem;
   color: #6b7280;
+}
+
+/* From / To on same row */
+.admin-tickets-search-airports-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 32px;
+}
+
+@media (max-width: 639px) {
+  .admin-tickets-search-airports-row {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
 }
 
 /* Search form field styling */
@@ -1553,4 +1587,91 @@
 
 @keyframes admin-tickets-upload-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ─── Airport Combobox ─── */
+.airport-combobox {
+  position: relative;
+  width: 100%;
+}
+
+.airport-combobox-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.airport-combobox-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.airport-combobox-input::placeholder {
+  color: #9ca3af;
+}
+
+.airport-combobox-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+
+.airport-combobox-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.airport-combobox-option:hover {
+  background: #f0f9ff;
+}
+
+.airport-combobox-option-active {
+  background: #eff6ff;
+}
+
+.airport-combobox-option-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.airport-combobox-option-country {
+  font-size: 0.75rem;
+  color: #6b7280;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.airport-combobox-empty {
+  padding: 14px;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  text-align: center;
 }
