@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronDown, FileText, FileCheck } from 'lucide-react';
-import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf } from '../api/superadmin';
+import { ChevronDown, FileText, FileCheck, Send } from 'lucide-react';
+import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail } from '../api/superadmin';
 import type { CrewTicketApi } from '../api/ticket';
 import { Toaster, useToast } from '../components/Toast';
 import './SuperadminTicketsPage.css';
@@ -13,6 +13,7 @@ const SuperadminTicketsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
+  const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,6 +114,18 @@ const SuperadminTicketsPage = () => {
     }
   };
 
+  const handleSendTicketClick = async (ticketId: string) => {
+    setSendingTicketId(ticketId);
+    try {
+      await sendSuperadminCrewTicketEmail(ticketId);
+      toast('success', 'Ticket sent', 'Ticket email sent to crew member successfully.');
+    } catch (err) {
+      toast('error', 'Send failed', err instanceof Error ? err.message : 'Failed to send ticket email.');
+    } finally {
+      setSendingTicketId(null);
+    }
+  };
+
   return (
     <div className="superadmin-tickets-page">
       <Toaster toasts={toasts} dismiss={dismiss} />
@@ -189,31 +202,49 @@ const SuperadminTicketsPage = () => {
                   <span className="superadmin-ticket-class">{t.class}</span>
                   <span className="superadmin-ticket-trip">{t.trip}</span>
                 </div>
-                <button
-                  type="button"
-                  className="superadmin-ticket-pdf-btn"
-                  onClick={(e) => { e.stopPropagation(); handleUploadClick(t.id); }}
-                  disabled={uploadingTicketId === t.id}
-                  title={t.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
-                >
-                  {uploadingTicketId === t.id ? (
-                    <span className="superadmin-ticket-upload-spinner" />
-                  ) : t.pdf ? (
-                    <>
-                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
-                        <FileCheck size={16} />
-                      </span>
-                      PDF uploaded
-                    </>
-                  ) : (
-                    <>
-                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
-                        <FileText size={16} />
-                      </span>
-                      Upload PDF
-                    </>
-                  )}
-                </button>
+                <div className="superadmin-ticket-actions">
+                  <button
+                    type="button"
+                    className={`superadmin-ticket-pdf-btn${t.pdf ? ' superadmin-ticket-pdf-btn--uploaded' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); handleUploadClick(t.id); }}
+                    disabled={uploadingTicketId === t.id}
+                    title={t.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
+                  >
+                    {uploadingTicketId === t.id ? (
+                      <span className="superadmin-ticket-upload-spinner" />
+                    ) : t.pdf ? (
+                      <>
+                        <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
+                          <FileCheck size={16} />
+                        </span>
+                        PDF uploaded
+                      </>
+                    ) : (
+                      <>
+                        <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
+                          <FileText size={16} />
+                        </span>
+                        Upload PDF
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="superadmin-ticket-send-btn"
+                    onClick={(e) => { e.stopPropagation(); handleSendTicketClick(t.id); }}
+                    disabled={sendingTicketId === t.id}
+                    title="Send ticket to crew email"
+                  >
+                    {sendingTicketId === t.id ? (
+                      <span className="superadmin-ticket-send-spinner" />
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Send ticket
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
