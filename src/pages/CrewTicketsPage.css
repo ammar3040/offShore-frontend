@@ -199,3 +199,61 @@
 .crew-panel-layout--dark .crew-tickets-detail-item dt { color: #9ca3af; }
 .crew-panel-layout--dark .crew-tickets-detail-item dd { color: #f9fafb; }
 .crew-panel-layout--dark .crew-tickets-detail-meta { color: #9ca3af !important; }
+
+.crew-tickets-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.crew-tickets-upload-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.crew-tickets-upload-pdf-btn:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.crew-tickets-upload-pdf-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.crew-tickets-upload-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(37, 99, 235, 0.3);
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: crew-tickets-upload-spin 0.6s linear infinite;
+}
+
+@keyframes crew-tickets-upload-spin {
+  to { transform: rotate(360deg); }
+}
+
+.crew-panel-layout--dark .crew-tickets-upload-pdf-btn {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+}
+
+.crew-panel-layout--dark .crew-tickets-upload-pdf-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.25);
+  color: #bfdbfe;
+}

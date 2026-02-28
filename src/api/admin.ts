@@ -88,6 +88,37 @@ function getErrorMessage(data: Record<string, unknown>, fallback: string): strin
   return msg ?? fallback;
 }
 
+export interface AdminProfile {
+  id: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  phone?: string;
+  markup?: number;
+}
+
+export async function getAdminProfile(): Promise<AdminProfile> {
+  const token = localStorage.getItem(getStoredTokenKey());
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/admin/me`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch profile (${response.status})`);
+  }
+
+  return response.json();
+}
+
 export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse> {
   const body = {
     email: payload.email.trim(),

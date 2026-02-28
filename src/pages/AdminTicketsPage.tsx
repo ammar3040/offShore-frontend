@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon } from 'lucide-react';
+import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon, Upload } from 'lucide-react';
 import Modal from '../components/Modal';
 import { Toaster, useToast } from '../components/Toast';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
-import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
+import { getCrewTickets, createFlightTicket, uploadCrewTicketPdf, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
 import { searchFlights, bookFlight } from '../api/flightSearch';
-import { AIRPORTS, getAirportDisplayName } from '../lib/airports';
+import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
 import './AdminTicketsPage.css';
 
@@ -56,6 +56,90 @@ function fmtDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function AirportCombobox({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: Airport | null;
+  onChange: (airport: Airport | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => searchAirports(query), [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const displayValue = value ? getAirportDisplayName(value) : '';
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    if (!open) setOpen(true);
+    if (value) onChange(null);
+  };
+
+  const handleFocus = () => {
+    setOpen(true);
+    if (value) {
+      setQuery('');
+    }
+  };
+
+  const handleSelect = (airport: Airport) => {
+    onChange(airport);
+    setQuery('');
+    setOpen(false);
+  };
+
+  return (
+    <div className="airport-combobox" ref={wrapRef}>
+      <input
+        id={id}
+        type="text"
+        className="airport-combobox-input"
+        value={open ? query : displayValue}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        placeholder="Type city, code or airport…"
+        autoComplete="off"
+        ref={inputRef}
+      />
+      {open && (
+        <ul className="airport-combobox-dropdown">
+          {filtered.length === 0 ? (
+            <li className="airport-combobox-empty">No airports found</li>
+          ) : (
+            filtered.map((a) => (
+              <li
+                key={a.Name}
+                className={'airport-combobox-option' + (value?.Name === a.Name ? ' airport-combobox-option-active' : '')}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(a)}
+              >
+                <span className="airport-combobox-option-name">{getAirportDisplayName(a)}</span>
+                <span className="airport-combobox-option-country">{a.COUNTRYNAME}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function FlightResultCard({
@@ -140,6 +224,9 @@ function FlightResultCard({
                 <span className="atfc-fare-basic">Base: {currency} {selectedFare.basicFare?.toLocaleString()}</span>
               )}
               <span className="atfc-fare-label">{selectedFare.name ?? selectedFare.type}</span>
+              {flight.cashback != null && flight.cashback > 0 && (
+                <span className="atfc-cashback">{currency} {flight.cashback.toLocaleString()} cashback</span>
+              )}
             </div>
           ) : (
             <span className="atfc-fare-empty">No fare</span>
@@ -288,6 +375,37 @@ const AdminTicketsPage = () => {
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
   const [crewDropdownOpen, setCrewDropdownOpen] = useState(false);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
+
+  /* PDF upload for crew tickets */
+  const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
+  const ticketPdfInputRef = useRef<HTMLInputElement>(null);
+  const pendingPdfUploadRef = useRef<string | null>(null);
+
+  const handleUploadPdfClick = useCallback((ticketId: string) => {
+    pendingPdfUploadRef.current = ticketId;
+    ticketPdfInputRef.current?.click();
+  }, []);
+
+  const handlePdfFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const ticketId = pendingPdfUploadRef.current;
+    pendingPdfUploadRef.current = null;
+    e.target.value = '';
+    if (!file || !ticketId) return;
+    if (!file.type.includes('pdf')) {
+      toast('error', 'Invalid file', 'Only PDF files are allowed.');
+      return;
+    }
+    setUploadingTicketId(ticketId);
+    try {
+      await uploadCrewTicketPdf(ticketId, file);
+      toast('success', 'PDF uploaded', 'Ticket PDF uploaded successfully.');
+    } catch (err) {
+      toast('error', 'Upload failed', err instanceof Error ? err.message : 'Failed to upload PDF.');
+    } finally {
+      setUploadingTicketId(null);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!crewDropdownOpen) return;
@@ -764,15 +882,17 @@ const AdminTicketsPage = () => {
                                 {searchCrewList.map((c) => (
                                   <li key={c.id}>
                                     <label className="admin-tickets-search-crew-item">
+                                      <div className="admin-tickets-search-crew-item-info">
+                                        <span>
+                                          {c.firstname} {c.lastname}
+                                        </span>
+                                        <span className="admin-tickets-search-crew-item-email">{c.email}</span>
+                                      </div>
                                       <input
                                         type="checkbox"
                                         checked={searchCrewIds.includes(c.id)}
                                         onChange={() => toggleCrewSearch(c.id)}
                                       />
-                                      <span>
-                                        {c.firstname} {c.lastname}
-                                      </span>
-                                      <span className="admin-tickets-search-crew-item-email">{c.email}</span>
                                     </label>
                                   </li>
                                 ))}
@@ -783,41 +903,23 @@ const AdminTicketsPage = () => {
                       )}
                     </div>
                   </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-from">From</label>
-                    <select
-                      id="search-from"
-                      value={searchFrom ? searchFrom.Name : ''}
-                      onChange={(e) => {
-                        const airport = AIRPORTS.find((a) => a.Name === e.target.value) ?? null;
-                        setSearchFrom(airport);
-                      }}
-                    >
-                      <option value="">Select airport</option>
-                      {AIRPORTS.map((a) => (
-                        <option key={a.Name} value={a.Name}>
-                          {getAirportDisplayName(a)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-to">To</label>
-                    <select
-                      id="search-to"
-                      value={searchTo ? searchTo.Name : ''}
-                      onChange={(e) => {
-                        const airport = AIRPORTS.find((a) => a.Name === e.target.value) ?? null;
-                        setSearchTo(airport);
-                      }}
-                    >
-                      <option value="">Select airport</option>
-                      {AIRPORTS.map((a) => (
-                        <option key={a.Name} value={a.Name}>
-                          {getAirportDisplayName(a)}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="admin-tickets-search-airports-row">
+                    <div className="admin-tickets-search-field">
+                      <label htmlFor="search-from">From</label>
+                      <AirportCombobox
+                        id="search-from"
+                        value={searchFrom}
+                        onChange={setSearchFrom}
+                      />
+                    </div>
+                    <div className="admin-tickets-search-field">
+                      <label htmlFor="search-to">To</label>
+                      <AirportCombobox
+                        id="search-to"
+                        value={searchTo}
+                        onChange={setSearchTo}
+                      />
+                    </div>
                   </div>
                   <div className="admin-tickets-search-field">
                     <label htmlFor="search-departure">Departure date</label>
@@ -950,6 +1052,14 @@ const AdminTicketsPage = () => {
         </div>
       ) : (
         <>
+      <input
+        ref={ticketPdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="admin-tickets-file-input-hidden"
+        onChange={handlePdfFileChange}
+        aria-hidden
+      />
       <div className="admin-tickets-toolbar">
         <div className="admin-tickets-filter-wrap">
           <label htmlFor="tickets-project-filter" className="admin-tickets-filter-label">
@@ -1011,6 +1121,7 @@ const AdminTicketsPage = () => {
                 <th>Class</th>
                 <th>Trip</th>
                 <th>Passengers</th>
+                <th>PDF</th>
               </tr>
             </thead>
             <tbody>
@@ -1045,6 +1156,24 @@ const AdminTicketsPage = () => {
                     {[ticket.adult, ticket.children, ticket.infants]
                       .filter((n) => n != null && n > 0)
                       .join(' / ') || '—'}
+                  </td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="admin-tickets-upload-pdf-btn"
+                      onClick={() => handleUploadPdfClick(ticket.id)}
+                      disabled={uploadingTicketId === ticket.id}
+                      title="Upload ticket PDF"
+                    >
+                      {uploadingTicketId === ticket.id ? (
+                        <span className="admin-tickets-upload-spinner" />
+                      ) : (
+                        <>
+                          <Upload size={16} />
+                          Upload
+                        </>
+                      )}
+                    </button>
                   </td>
                 </tr>
               ))}
