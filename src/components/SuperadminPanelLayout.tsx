@@ -22,7 +22,7 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
   const handleLogout = () => {
     clearSuperadminSession();
     setMobileOpen(false);
-    navigate('/panel/superadmin/login');
+    navigate('/login');
   };
 
   const isActive = (path: string) => location.pathname.startsWith(path);
