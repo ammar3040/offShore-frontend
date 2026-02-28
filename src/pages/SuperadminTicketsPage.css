@@ -117,6 +117,10 @@
   background: #fffbeb;
 }
 
+.superadmin-ticket-card--clickable {
+  cursor: pointer;
+}
+
 .superadmin-ticket-icon {
   width: 40px;
   height: 40px;
@@ -241,6 +245,80 @@
 
 @keyframes superadmin-ticket-upload-spin {
   to { transform: rotate(360deg); }
+}
+
+/* Detail overlay / modal */
+.superadmin-tickets-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.superadmin-tickets-detail-section {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.superadmin-tickets-detail-heading {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.superadmin-tickets-detail-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.superadmin-tickets-detail-item {
+  margin: 0;
+}
+
+.superadmin-tickets-detail-item dt {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.superadmin-tickets-detail-item dd {
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.superadmin-tickets-detail-meta {
+  font-size: 12px !important;
+  color: #6b7280 !important;
+  margin-top: 2px !important;
+}
+
+.superadmin-tickets-detail-pdf-status {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.superadmin-tickets-detail-pdf-uploaded {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #166534;
+}
+
+.superadmin-tickets-detail-pdf-missing {
+  color: #6b7280;
+}
+
+.superadmin-tickets-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .superadmin-ticket-send-btn {
@@ -445,4 +523,33 @@
 .superadmin-panel-layout--dark .superadmin-ticket-send-spinner {
   border-color: rgba(96, 165, 250, 0.3);
   border-top-color: #60a5fa;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-section {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-heading {
+  color: #e5e7eb;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-item dt {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-item dd {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-meta {
+  color: #9ca3af !important;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-pdf-uploaded {
+  color: #4ade80;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-pdf-missing {
+  color: #9ca3af;
 }

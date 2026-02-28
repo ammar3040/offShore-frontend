@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, FileText, FileCheck, Send } from 'lucide-react';
 import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail } from '../api/superadmin';
 import type { CrewTicketApi } from '../api/ticket';
+import Modal from '../components/Modal';
 import { Toaster, useToast } from '../components/Toast';
 import './SuperadminTicketsPage.css';
 
@@ -14,8 +15,16 @@ const SuperadminTicketsPage = () => {
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
   const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      const updated = tickets.find((t) => t.id === selectedTicket.id);
+      if (updated) setSelectedTicket(updated);
+    }
+  }, [tickets, selectedTicket?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,7 +195,20 @@ const SuperadminTicketsPage = () => {
         ) : (
           <div className="superadmin-tickets-list">
             {filteredTickets.map((t) => (
-              <div key={t.id} className="superadmin-ticket-card">
+              <div
+                key={t.id}
+                className="superadmin-ticket-card superadmin-ticket-card--clickable"
+                onClick={() => setSelectedTicket(t)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedTicket(t);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for ${getRoute(t)}`}
+              >
                 <div className="superadmin-ticket-icon" title="Crew ticket">
                   <FileText size={20} />
                 </div>
@@ -250,6 +272,125 @@ const SuperadminTicketsPage = () => {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={!!selectedTicket}
+        onClose={() => setSelectedTicket(null)}
+        title="Ticket details"
+        size="medium"
+      >
+        {selectedTicket && (
+          <div className="superadmin-tickets-detail-card">
+            <section className="superadmin-tickets-detail-section">
+              <h3 className="superadmin-tickets-detail-heading">Flight details</h3>
+              <dl className="superadmin-tickets-detail-list">
+                <div className="superadmin-tickets-detail-item">
+                  <dt>From</dt>
+                  <dd>{selectedTicket.from?.Name ?? '—'}</dd>
+                  <dd className="superadmin-tickets-detail-meta">
+                    {selectedTicket.from?.COUNTRYNAME ?? ''} ({selectedTicket.from?.COUNTRY ?? ''})
+                  </dd>
+                </div>
+                <div className="superadmin-tickets-detail-item">
+                  <dt>To</dt>
+                  <dd>{selectedTicket.to?.Name ?? '—'}</dd>
+                  <dd className="superadmin-tickets-detail-meta">
+                    {selectedTicket.to?.COUNTRYNAME ?? ''} ({selectedTicket.to?.COUNTRY ?? ''})
+                  </dd>
+                </div>
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Class</dt>
+                  <dd>{selectedTicket.class ?? '—'}</dd>
+                </div>
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Trip</dt>
+                  <dd>{selectedTicket.trip?.replace('_', ' ') ?? '—'}</dd>
+                </div>
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Passengers</dt>
+                  <dd>
+                    {[selectedTicket.adult && `${selectedTicket.adult} adult(s)`, selectedTicket.children ? `${selectedTicket.children} child(ren)` : null, selectedTicket.infants ? `${selectedTicket.infants} infant(s)` : null]
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+            <section className="superadmin-tickets-detail-section">
+              <h3 className="superadmin-tickets-detail-heading">Crew</h3>
+              <dl className="superadmin-tickets-detail-list">
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Name</dt>
+                  <dd>{getCrewName(selectedTicket)}</dd>
+                </div>
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Email</dt>
+                  <dd>{(selectedTicket.crew_id as { email?: string })?.email ?? '—'}</dd>
+                </div>
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Project</dt>
+                  <dd>{getProjectTitle(selectedTicket)}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="superadmin-tickets-detail-section">
+              <h3 className="superadmin-tickets-detail-heading">PDF status</h3>
+              <p className="superadmin-tickets-detail-pdf-status">
+                {selectedTicket.pdf ? (
+                  <span className="superadmin-tickets-detail-pdf-uploaded">
+                    <FileCheck size={16} /> PDF uploaded
+                  </span>
+                ) : (
+                  <span className="superadmin-tickets-detail-pdf-missing">No PDF uploaded yet</span>
+                )}
+              </p>
+              <div className="superadmin-tickets-detail-actions">
+                <button
+                  type="button"
+                  className={`superadmin-ticket-pdf-btn${selectedTicket.pdf ? ' superadmin-ticket-pdf-btn--uploaded' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleUploadClick(selectedTicket.id); }}
+                  disabled={uploadingTicketId === selectedTicket.id}
+                  title={selectedTicket.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
+                >
+                  {uploadingTicketId === selectedTicket.id ? (
+                    <span className="superadmin-ticket-upload-spinner" />
+                  ) : selectedTicket.pdf ? (
+                    <>
+                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
+                        <FileCheck size={16} />
+                      </span>
+                      PDF uploaded
+                    </>
+                  ) : (
+                    <>
+                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
+                        <FileText size={16} />
+                      </span>
+                      Upload PDF
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="superadmin-ticket-send-btn"
+                  onClick={(e) => { e.stopPropagation(); handleSendTicketClick(selectedTicket.id); }}
+                  disabled={sendingTicketId === selectedTicket.id}
+                  title="Send ticket to crew email"
+                >
+                  {sendingTicketId === selectedTicket.id ? (
+                    <span className="superadmin-ticket-send-spinner" />
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Send ticket
+                    </>
+                  )}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
