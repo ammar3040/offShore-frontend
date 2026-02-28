@@ -142,6 +142,30 @@
   line-height: 1.4;
 }
 
+.sidebar-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+
+.sidebar-theme-toggle:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
 @media (max-width: 1023px) {
   .sidebar {
     width: 280px;
@@ -155,4 +179,89 @@
   .sidebar-close-button {
     display: flex;
   }
+}
+
+/* ----- Dark mode ----- */
+.layout--dark .sidebar {
+  background-color: #1f2937;
+  border-right-color: #374151;
+}
+
+.layout--dark .sidebar-header {
+  border-bottom-color: #374151;
+}
+
+.layout--dark .sidebar-close-button {
+  color: #9ca3af;
+}
+
+.layout--dark .sidebar-close-button:hover {
+  background-color: #374151;
+  color: #f9fafb;
+}
+
+.layout--dark .logo-text {
+  color: #f9fafb;
+}
+
+.layout--dark .nav-item {
+  color: #d1d5db;
+}
+
+.layout--dark .nav-item:hover {
+  background-color: #374151;
+  color: #f9fafb;
+}
+
+.layout--dark .nav-item.active {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.layout--dark .nav-item.active svg {
+  color: #93c5fd;
+}
+
+.layout--dark .nav-item-logout {
+  color: #f87171;
+}
+
+.layout--dark .nav-item-logout:hover {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+}
+
+.layout--dark .sidebar-divider {
+  color: #6b7280;
+  border-top-color: #374151;
+}
+
+.layout--dark .sidebar-footer {
+  border-top-color: #374151;
+}
+
+.layout--dark .sidebar-theme-toggle {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.layout--dark .sidebar-theme-toggle:hover {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.layout--dark .sidebar-help {
+  background-color: #374151;
+}
+
+.layout--dark .sidebar-help-icon {
+  color: #9ca3af;
+}
+
+.layout--dark .sidebar-help-title {
+  color: #e5e7eb;
+}
+
+.layout--dark .sidebar-help-text {
+  color: #9ca3af;
 }

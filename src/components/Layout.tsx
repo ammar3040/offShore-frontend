@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { getAdminTheme, setAdminTheme, type AdminTheme } from '../lib/adminTheme';
 import './Layout.css';
 
 interface LayoutProps {
@@ -9,6 +10,13 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<AdminTheme>(() => getAdminTheme());
+
+  const toggleTheme = () => {
+    const next: AdminTheme = theme === 'dark' ? 'light' : 'dark';
+    setAdminTheme(next);
+    setTheme(next);
+  };
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -19,12 +27,12 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="layout">
+    <div className={`layout${theme === 'dark' ? ' layout--dark' : ''}`}>
       <div 
         className={`sidebar-overlay ${isMobileMenuOpen ? 'active' : ''}`}
         onClick={closeMobileMenu}
       />
-      <Sidebar isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
+      <Sidebar isOpen={isMobileMenuOpen} onClose={closeMobileMenu} theme={theme} onToggleTheme={toggleTheme} />
       <div className="layout-main">
         <Header onMenuClick={toggleMobileMenu} />
         <main className="main-content">

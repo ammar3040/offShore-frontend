@@ -336,3 +336,92 @@
     margin-top: 16px;
   }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .form-sections::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.layout--dark .form-sections::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+.layout--dark .form-sections::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.layout--dark .form-section {
+  border-bottom-color: #374151;
+}
+
+.layout--dark .form-section-title {
+  color: #f9fafb;
+  border-bottom-color: #374151;
+}
+
+.layout--dark .form-group label {
+  color: #e5e7eb;
+}
+
+.layout--dark .form-group input,
+.layout--dark .form-group select,
+.layout--dark .form-group textarea {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.layout--dark .form-group input:focus,
+.layout--dark .form-group select:focus,
+.layout--dark .form-group textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.layout--dark .form-group input::placeholder,
+.layout--dark .form-group textarea::placeholder {
+  color: #6b7280;
+}
+
+.layout--dark .file-upload-label {
+  color: #e5e7eb;
+}
+
+.layout--dark .file-upload-area {
+  border-color: #4b5563;
+  background-color: #374151;
+}
+
+.layout--dark .file-upload-area:hover {
+  border-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.layout--dark .file-upload-hint {
+  color: #9ca3af;
+}
+
+.layout--dark .uploaded-file-item {
+  background-color: #374151;
+  border-color: #4b5563;
+}
+
+.layout--dark .file-name {
+  color: #e5e7eb;
+}
+
+.layout--dark .form-actions {
+  border-top-color: #374151;
+  background-color: #1f2937;
+}
+
+.layout--dark .button-secondary {
+  background-color: #374151;
+  color: #d1d5db;
+  border-color: #4b5563;
+}
+
+.layout--dark .button-secondary:hover {
+  background-color: #4b5563;
+  border-color: #6b7280;
+}

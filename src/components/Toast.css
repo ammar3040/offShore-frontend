@@ -124,3 +124,43 @@
   from { width: 100%; }
   to   { width: 0%; }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .toast-success,
+.superadmin-panel-layout--dark .toast-success {
+  background: #1f2937;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+.layout--dark .toast-error,
+.superadmin-panel-layout--dark .toast-error {
+  background: #1f2937;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.layout--dark .toast-info,
+.superadmin-panel-layout--dark .toast-info {
+  background: #1f2937;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.layout--dark .toast-title,
+.superadmin-panel-layout--dark .toast-title {
+  color: #f9fafb;
+}
+
+.layout--dark .toast-desc,
+.superadmin-panel-layout--dark .toast-desc {
+  color: #9ca3af;
+}
+
+.layout--dark .toast-close,
+.superadmin-panel-layout--dark .toast-close {
+  color: #6b7280;
+}
+
+.layout--dark .toast-close:hover,
+.superadmin-panel-layout--dark .toast-close:hover {
+  background: #374151;
+  color: #d1d5db;
+}

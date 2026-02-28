@@ -93,3 +93,31 @@
     font-size: 24px;
   }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .kpi-card {
+  background-color: #1f2937;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.layout--dark .kpi-title {
+  color: #9ca3af;
+}
+
+.layout--dark .kpi-value {
+  color: #f9fafb;
+}
+
+.layout--dark .kpi-change-purple {
+  color: #c084fc;
+  background-color: rgba(147, 51, 234, 0.15);
+}
+
+.layout--dark .kpi-change-orange {
+  color: #fb923c;
+  background-color: rgba(249, 115, 22, 0.15);
+}
+
+.layout--dark .kpi-last-period {
+  color: #6b7280;
+}

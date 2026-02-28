@@ -279,3 +279,84 @@
     justify-content: center;
   }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .admin-dashboard-greeting {
+  color: #f9fafb;
+}
+
+.layout--dark .admin-dashboard-date {
+  color: #9ca3af;
+}
+
+.layout--dark .admin-stat-card {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.layout--dark .admin-stat-icon-blue { background-color: rgba(37, 99, 235, 0.15); }
+.layout--dark .admin-stat-icon-purple { background-color: rgba(124, 58, 237, 0.15); }
+.layout--dark .admin-stat-icon-green { background-color: rgba(5, 150, 105, 0.15); }
+.layout--dark .admin-stat-icon-teal { background-color: rgba(13, 148, 136, 0.15); }
+
+.layout--dark .admin-stat-value {
+  color: #f9fafb;
+}
+
+.layout--dark .admin-stat-label {
+  color: #9ca3af;
+}
+
+.layout--dark .admin-dashboard-panel {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.layout--dark .admin-panel-header {
+  border-bottom-color: #374151;
+}
+
+.layout--dark .admin-panel-title {
+  color: #f9fafb;
+}
+
+.layout--dark .admin-panel-empty {
+  color: #9ca3af;
+}
+
+.layout--dark .admin-case-item {
+  border-bottom-color: #374151;
+}
+
+.layout--dark .admin-case-title {
+  color: #e5e7eb;
+}
+
+.layout--dark .admin-case-status {
+  background: #374151;
+  color: #d1d5db;
+}
+
+.layout--dark .admin-panel-calendar-btn {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.layout--dark .admin-panel-calendar-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.layout--dark .admin-dashboard-footer {
+  border-top-color: #374151;
+  color: #6b7280;
+}
+
+.layout--dark .admin-footer-links a {
+  color: #6b7280;
+}
+
+.layout--dark .admin-footer-links a:hover {
+  color: #9ca3af;
+}

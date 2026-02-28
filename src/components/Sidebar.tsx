@@ -13,12 +13,17 @@ import {
   X,
   HelpCircle,
   Ticket,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import type { AdminTheme } from '../lib/adminTheme';
 import './Sidebar.css';
 
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
+  theme?: AdminTheme;
+  onToggleTheme?: () => void;
 }
 
 const mainNavItems = [
@@ -33,7 +38,7 @@ const mainNavItems = [
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
-const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
+const Sidebar = ({ isOpen = true, onClose, theme = 'light', onToggleTheme }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -88,6 +93,18 @@ const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
       </nav>
 
       <div className="sidebar-footer">
+        {onToggleTheme && (
+          <button
+            type="button"
+            className="sidebar-theme-toggle"
+            onClick={onToggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
+        )}
         <div className="sidebar-help">
           <HelpCircle size={18} className="sidebar-help-icon" />
           <div className="sidebar-help-content">

@@ -147,3 +147,36 @@
     padding: 16px;
   }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .modal-overlay,
+.superadmin-panel-layout--dark .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.layout--dark .modal-content,
+.superadmin-panel-layout--dark .modal-content {
+  background-color: #1f2937;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.layout--dark .modal-header,
+.superadmin-panel-layout--dark .modal-header {
+  border-bottom-color: #374151;
+}
+
+.layout--dark .modal-title,
+.superadmin-panel-layout--dark .modal-title {
+  color: #f9fafb;
+}
+
+.layout--dark .modal-close-button,
+.superadmin-panel-layout--dark .modal-close-button {
+  color: #9ca3af;
+}
+
+.layout--dark .modal-close-button:hover,
+.superadmin-panel-layout--dark .modal-close-button:hover {
+  background-color: #374151;
+  color: #f9fafb;
+}

@@ -100,6 +100,32 @@
 .superadmin-panel-sidebar-footer {
   padding: 16px;
   border-top: 1px solid #e7e5e4;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.superadmin-panel-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.superadmin-panel-theme-toggle:hover {
+  background-color: #f5f5f4;
+  color: #374151;
 }
 
 .superadmin-panel-logout {
@@ -240,4 +266,87 @@
   .superadmin-panel-body {
     padding: 16px;
   }
+}
+
+/* ----- Dark mode ----- */
+.superadmin-panel-layout--dark {
+  background-color: #111827;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-sidebar {
+  background-color: #1f2937;
+  border-right-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-sidebar-header {
+  border-bottom-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-logo-text {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-badge {
+  color: #fbbf24;
+  background-color: rgba(245, 158, 11, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-nav-item {
+  color: #d1d5db;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-nav-item:hover {
+  background-color: #374151;
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-nav-item.active {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-nav-item.active svg {
+  color: #fbbf24;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-sidebar-footer {
+  border-top-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-theme-toggle {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-theme-toggle:hover {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-logout {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-logout:hover {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-sidebar-close {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-mobile-header {
+  background: #1f2937;
+  border-bottom-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-hamburger {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-mobile-logo {
+  color: #fbbf24;
 }

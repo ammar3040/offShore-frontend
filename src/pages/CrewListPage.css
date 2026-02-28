@@ -494,3 +494,159 @@
     align-items: flex-start;
   }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .user-mgmt-title {
+  color: #f9fafb;
+}
+
+.layout--dark .user-mgmt-subtitle {
+  color: #9ca3af;
+}
+
+.layout--dark .user-mgmt-stat-card {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.layout--dark .user-mgmt-stat-blue { background-color: rgba(37, 99, 235, 0.15); }
+.layout--dark .user-mgmt-stat-green { background-color: rgba(5, 150, 105, 0.15); }
+.layout--dark .user-mgmt-stat-purple { background-color: rgba(124, 58, 237, 0.15); }
+.layout--dark .user-mgmt-stat-teal { background-color: rgba(13, 148, 136, 0.15); }
+
+.layout--dark .user-mgmt-stat-value {
+  color: #f9fafb;
+}
+
+.layout--dark .user-mgmt-stat-label {
+  color: #9ca3af;
+}
+
+.layout--dark .user-mgmt-search {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.layout--dark .user-mgmt-search:focus {
+  border-color: #3b82f6;
+}
+
+.layout--dark .user-mgmt-select {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+.layout--dark .user-mgmt-table-wrap {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.layout--dark .user-mgmt-table th {
+  background-color: #111827;
+  color: #9ca3af;
+  border-bottom-color: #374151;
+}
+
+.layout--dark .user-mgmt-table td {
+  border-bottom-color: #374151;
+  color: #d1d5db;
+}
+
+.layout--dark .user-mgmt-table tbody tr:hover {
+  background-color: #374151;
+}
+
+.layout--dark .user-mgmt-name {
+  color: #f9fafb;
+}
+
+.layout--dark .user-mgmt-loading,
+.layout--dark .user-mgmt-error {
+  color: #9ca3af;
+}
+
+.layout--dark .user-mgmt-badge-role {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.layout--dark .user-mgmt-badge-active {
+  background-color: rgba(22, 163, 74, 0.2);
+  color: #86efac;
+}
+
+.layout--dark .user-mgmt-action-btn {
+  color: #9ca3af;
+}
+
+.layout--dark .user-mgmt-action-btn:hover {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.layout--dark .user-mgmt-action-btn-invite:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.layout--dark .user-mgmt-pagination-info {
+  color: #9ca3af;
+}
+
+.layout--dark .user-mgmt-pagination-btn {
+  color: #d1d5db;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.layout--dark .user-mgmt-pagination-btn:hover:not(:disabled) {
+  background: #374151;
+  border-color: #6b7280;
+}
+
+.layout--dark .user-mgmt-pagination-btn.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.layout--dark .user-mgmt-empty-cell {
+  color: #9ca3af;
+}
+
+.layout--dark .invite-to-project-intro {
+  color: #d1d5db;
+}
+
+.layout--dark .invite-to-project-intro strong {
+  color: #f9fafb;
+}
+
+.layout--dark .invite-to-project-label {
+  color: #e5e7eb;
+}
+
+.layout--dark .invite-to-project-select {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.layout--dark .invite-to-project-actions {
+  border-top-color: #374151;
+}
+
+.layout--dark .invite-to-project-cancel {
+  background: #374151;
+  border-color: #4b5563;
+  color: #d1d5db;
+}
+
+.layout--dark .invite-to-project-cancel:hover:not(:disabled) {
+  background: #4b5563;
+  color: #f9fafb;
+}
