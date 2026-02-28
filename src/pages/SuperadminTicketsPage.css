@@ -267,3 +267,85 @@
     justify-content: center;
   }
 }
+
+/* ----- Dark mode ----- */
+.superadmin-panel-layout--dark .superadmin-tickets-title {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-subtitle {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-filter label {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-select {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-select:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-error {
+  background: rgba(185, 28, 28, 0.1);
+  color: #fca5a5;
+  border-color: rgba(185, 28, 28, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-content {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-empty {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-card {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-card:hover {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-icon {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-route {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-meta {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-sep {
+  color: #4b5563;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-class,
+.superadmin-panel-layout--dark .superadmin-ticket-trip {
+  background: #1f2937;
+  color: #d1d5db;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-upload-btn {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(253, 230, 138, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-upload-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}

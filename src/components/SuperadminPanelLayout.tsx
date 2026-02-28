@@ -1,7 +1,8 @@
 import { type ReactNode, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Ticket, LogOut, Shield, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket, LogOut, Shield, Menu, X, Sun, Moon } from 'lucide-react';
 import { clearSuperadminSession } from '../lib/superadminAuth';
+import { getSuperadminTheme, setSuperadminTheme, type SuperadminTheme } from '../lib/superadminTheme';
 import './SuperadminPanelLayout.css';
 
 interface SuperadminPanelLayoutProps {
@@ -18,6 +19,13 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [theme, setTheme] = useState<SuperadminTheme>(() => getSuperadminTheme());
+
+  const toggleTheme = () => {
+    const next: SuperadminTheme = theme === 'dark' ? 'light' : 'dark';
+    setSuperadminTheme(next);
+    setTheme(next);
+  };
 
   const handleLogout = () => {
     clearSuperadminSession();
@@ -28,7 +36,7 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <div className="superadmin-panel-layout">
+    <div className={`superadmin-panel-layout${theme === 'dark' ? ' superadmin-panel-layout--dark' : ''}`}>
       <div
         className={`superadmin-panel-overlay${mobileOpen ? ' open' : ''}`}
         onClick={() => setMobileOpen(false)}
@@ -71,6 +79,16 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
         </nav>
 
         <div className="superadmin-panel-sidebar-footer">
+          <button
+            type="button"
+            className="superadmin-panel-theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
           <button
             type="button"
             className="superadmin-panel-logout"

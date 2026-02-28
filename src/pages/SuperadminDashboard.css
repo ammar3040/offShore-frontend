@@ -520,3 +520,155 @@
     align-items: center;
   }
 }
+
+/* ----- Dark mode ----- */
+.superadmin-panel-layout--dark .superadmin-dashboard-greeting {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-dashboard-date {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-base-currency-label {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-base-currency-select {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-base-currency-select:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-base-currency-hint {
+  color: #6b7280;
+}
+
+.superadmin-panel-layout--dark .superadmin-input-currency-hint {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-dashboard-error {
+  background: rgba(185, 28, 28, 0.1);
+  color: #fca5a5;
+  border-color: rgba(185, 28, 28, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-dash-card {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-dash-icon--amber { background: rgba(217, 119, 6, 0.15); }
+.superadmin-panel-layout--dark .superadmin-dash-icon--green { background: rgba(22, 163, 74, 0.15); }
+.superadmin-panel-layout--dark .superadmin-dash-icon--blue { background: rgba(37, 99, 235, 0.15); }
+.superadmin-panel-layout--dark .superadmin-dash-icon--purple { background: rgba(124, 58, 237, 0.15); }
+.superadmin-panel-layout--dark .superadmin-dash-icon--orange { background: rgba(234, 88, 12, 0.15); }
+.superadmin-panel-layout--dark .superadmin-dash-icon--teal { background: rgba(13, 148, 136, 0.15); }
+.superadmin-panel-layout--dark .superadmin-dash-icon--emerald { background: rgba(22, 163, 74, 0.15); }
+
+.superadmin-panel-layout--dark .superadmin-dash-card-value {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-dash-card-label {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-dashboard-panel {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-header {
+  border-bottom-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-title {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-panel-empty {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-admin-item {
+  border-bottom-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-admin-email {
+  color: #e5e7eb;
+}
+
+.superadmin-panel-layout--dark .superadmin-admin-stats {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-quick-link {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.superadmin-panel-layout--dark .superadmin-quick-link:hover {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+
+.superadmin-panel-layout--dark .superadmin-dash-card-markup:hover {
+  border-color: rgba(153, 246, 228, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-markup-add-btn {
+  background: rgba(13, 148, 136, 0.15);
+  border-color: rgba(153, 246, 228, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-markup-add-btn:hover {
+  background: rgba(13, 148, 136, 0.25);
+}
+
+.superadmin-panel-layout--dark .superadmin-markup-input {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-markup-input:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.25);
+}
+
+.superadmin-panel-layout--dark .superadmin-markup-cancel {
+  background: #374151;
+  border-color: #4b5563;
+  color: #d1d5db;
+}
+
+.superadmin-panel-layout--dark .superadmin-markup-cancel:hover:not(:disabled) {
+  background: #4b5563;
+}
+
+.superadmin-panel-layout--dark .superadmin-dash-card-cashback:hover {
+  border-color: rgba(134, 239, 172, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-cashback-add-btn {
+  background: rgba(22, 163, 74, 0.15);
+  border-color: rgba(134, 239, 172, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-cashback-add-btn:hover {
+  background: rgba(22, 163, 74, 0.25);
+}
+
+.superadmin-panel-layout--dark .superadmin-cashback-input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+}

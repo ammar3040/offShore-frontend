@@ -195,3 +195,33 @@
     font-size: 9px;
   }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .sync-apps-section {
+  background-color: #1f2937;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.layout--dark .sync-app-icon {
+  background-color: #374151;
+}
+
+.layout--dark .sync-app-name {
+  color: #9ca3af;
+}
+
+.layout--dark .synced-apps {
+  border-top-color: #374151;
+}
+
+.layout--dark .synced-app-item {
+  background-color: #374151;
+}
+
+.layout--dark .synced-app-name {
+  color: #f9fafb;
+}
+
+.layout--dark .synced-app-action {
+  color: #9ca3af;
+}

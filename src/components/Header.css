@@ -299,3 +299,40 @@
     font-size: 11px;
   }
 }
+
+/* ----- Dark mode ----- */
+.layout--dark .header {
+  background-color: #0b1120;
+  border-bottom: 1px solid #1e293b;
+}
+
+.layout--dark .search-input {
+  background-color: rgba(15, 23, 42, 0.8);
+  border-color: rgba(71, 85, 105, 0.5);
+}
+
+.layout--dark .search-input:focus {
+  background-color: rgba(15, 23, 42, 0.95);
+}
+
+.layout--dark .user-profile-dropdown {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.layout--dark .user-profile-dropdown-item {
+  color: #d1d5db;
+}
+
+.layout--dark .user-profile-dropdown-item:hover {
+  background-color: #374151;
+}
+
+.layout--dark .user-profile-dropdown-item.logout {
+  color: #f87171;
+}
+
+.layout--dark .user-profile-dropdown-item.logout:hover {
+  background-color: rgba(220, 38, 38, 0.15);
+}

@@ -278,3 +278,93 @@
     justify-content: center;
   }
 }
+
+/* ----- Dark mode ----- */
+.superadmin-panel-layout--dark .superadmin-admins-title {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-subtitle {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-error {
+  background: rgba(185, 28, 28, 0.1);
+  color: #fca5a5;
+  border-color: rgba(185, 28, 28, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-search-input {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-search-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-table-wrap {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-table th {
+  background: #111827;
+  color: #9ca3af;
+  border-bottom-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-table td {
+  border-bottom-color: #374151;
+  color: #d1d5db;
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-table tbody tr:hover {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-name {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-admins-empty {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-create-admin-error {
+  background: rgba(185, 28, 28, 0.1);
+  color: #fca5a5;
+  border-color: rgba(185, 28, 28, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-create-admin-field label {
+  color: #e5e7eb;
+}
+
+.superadmin-panel-layout--dark .superadmin-create-admin-field input {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-create-admin-field input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.superadmin-panel-layout--dark .superadmin-create-admin-actions {
+  border-top-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-create-admin-cancel {
+  background: #374151;
+  border-color: #4b5563;
+  color: #d1d5db;
+}
+
+.superadmin-panel-layout--dark .superadmin-create-admin-cancel:hover:not(:disabled) {
+  background: #4b5563;
+}
