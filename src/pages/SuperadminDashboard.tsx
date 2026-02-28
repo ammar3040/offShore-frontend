@@ -50,20 +50,6 @@ const SuperadminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSettings = useCallback(async () => {
-    try {
-      const data = await getSuperadminAnalytics();
-      setAnalytics(data);
-      setSettings({
-        baseCurrency: data.baseCurrency ?? 'GBP',
-        markupGBP: data.markup ?? null,
-        cashbackGBP: data.cashback ?? null,
-      });
-    } catch {
-      setSettings({ baseCurrency: 'GBP', markupGBP: null, cashbackGBP: null });
-    }
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
