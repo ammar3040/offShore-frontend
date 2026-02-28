@@ -1,20 +1,32 @@
 import { useState } from 'react';
-import { Plane, Check, Lock, ChevronDown } from 'lucide-react';
-import AdminLoginPage from './AdminLoginPage';
-import CrewLogin from './CrewLogin';
-import SuperadminLoginPage from './SuperadminLoginPage';
+import { useNavigate } from 'react-router-dom';
+import { Plane, Check, Lock, ArrowRight, Mail, Eye, EyeOff } from 'lucide-react';
+import { authLogin } from '../api/auth';
 import './LoginPage.css';
-
-type Role = 'admin' | 'crew' | 'superadmin';
-
-const LOGIN_AS_OPTIONS: { value: Role; label: string }[] = [
-  { value: 'admin', label: 'Admin Portal' },
-  { value: 'crew', label: 'Crew Portal' },
-  { value: 'superadmin', label: 'Superadmin Portal' },
-];
+import './AdminLoginPage.css';
 
 const LoginPage = () => {
-  const [role, setRole] = useState<Role>('admin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!email || !password) return;
+    setIsLoading(true);
+    try {
+      const { redirectTo } = await authLogin({ email, password });
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="login-page">
@@ -57,26 +69,71 @@ const LoginPage = () => {
           <h1 className="login-page-welcome">Welcome Back</h1>
           <p className="login-page-subtitle">Please enter your credentials to access the secure portal.</p>
 
-          <div className="login-page-role-field">
-            <label htmlFor="login-as">Login As (Demo Mode)</label>
-            <div className="login-page-select-wrap">
-              <select
-                id="login-as"
-                className="login-page-select"
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-              >
-                {LOGIN_AS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <ChevronDown size={20} className="login-page-select-chevron" aria-hidden />
+          {error && (
+            <div className="admin-login-error" role="alert">
+              {error}
             </div>
-          </div>
+          )}
 
-          {role === 'admin' && <AdminLoginPage embedded variant="split" />}
-          {role === 'crew' && <CrewLogin redirectTo="/panel/crew/dashboard" embedded variant="split" />}
-          {role === 'superadmin' && <SuperadminLoginPage embedded variant="split" />}
+          <form className="admin-login-form admin-login-form-split" onSubmit={handleSubmit}>
+            <div className="admin-login-field">
+              <label htmlFor="login-email">Email Address</label>
+              <div className="admin-login-input-wrapper">
+                <Mail size={18} className="admin-login-input-icon" />
+                <input
+                  id="login-email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <div className="admin-login-field">
+              <div className="admin-login-label-row">
+                <label htmlFor="login-password">Password</label>
+                <a href="#" className="admin-login-forgot" onClick={(e) => e.preventDefault()}>Forgot Password?</a>
+              </div>
+              <div className="admin-login-input-wrapper admin-login-input-has-toggle">
+                <Lock size={18} className="admin-login-input-icon" />
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className="admin-login-password-toggle"
+                  onClick={() => setShowPassword((p) => !p)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+            <button
+              type="submit"
+              className="admin-login-button"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="admin-login-spinner" />
+              ) : (
+                <>
+                  Sign In to Portal
+                  <ArrowRight size={20} />
+                </>
+              )}
+            </button>
+          </form>
 
           <footer className="login-page-footer">
             <p className="login-page-copy">© 2024 Marine Flight Pro Platform. All Rights Reserved.</p>

@@ -168,55 +168,6 @@
   line-height: 1.45;
 }
 
-.login-page-role-field {
-  margin-bottom: 24px;
-}
-
-.login-page-role-field label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.login-page-select-wrap {
-  position: relative;
-}
-
-.login-page-select {
-  width: 100%;
-  padding: 12px 40px 12px 14px;
-  font-size: 0.9375rem;
-  color: #1f2937;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  appearance: none;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-}
-
-.login-page-select:hover {
-  background: #e5e7eb;
-  border-color: #d1d5db;
-}
-
-.login-page-select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-}
-
-.login-page-select-chevron {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6b7280;
-  pointer-events: none;
-}
-
 .login-page-footer {
   margin-top: 32px;
   padding-top: 24px;
