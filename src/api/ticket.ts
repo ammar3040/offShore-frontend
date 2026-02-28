@@ -33,6 +33,8 @@ export interface CrewTicketApi {
   children: number;
   infants: number;
   trip: string;
+  /** URL to uploaded ticket PDF when present */
+  pdf?: string;
 }
 
 export interface GetCrewTicketsResponse {

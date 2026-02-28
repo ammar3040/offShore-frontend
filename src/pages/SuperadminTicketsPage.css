@@ -1,5 +1,6 @@
 .superadmin-tickets-page {
-  max-width: 900px;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .superadmin-tickets-header {
@@ -116,6 +117,10 @@
   background: #fffbeb;
 }
 
+.superadmin-ticket-card--clickable {
+  cursor: pointer;
+}
+
 .superadmin-ticket-icon {
   width: 40px;
   height: 40px;
@@ -159,6 +164,13 @@
   flex-shrink: 0;
 }
 
+.superadmin-ticket-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .superadmin-ticket-class,
 .superadmin-ticket-trip {
   font-size: 11px;
@@ -177,7 +189,7 @@
   pointer-events: none;
 }
 
-.superadmin-ticket-upload-btn {
+.superadmin-ticket-pdf-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -194,15 +206,32 @@
   white-space: nowrap;
 }
 
-.superadmin-ticket-upload-btn:hover:not(:disabled) {
+.superadmin-ticket-pdf-btn:hover:not(:disabled) {
   background: #fef3c7;
   border-color: #fcd34d;
   color: #b45309;
 }
 
-.superadmin-ticket-upload-btn:disabled {
+.superadmin-ticket-pdf-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.superadmin-ticket-pdf-btn--uploaded {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.superadmin-ticket-pdf-btn--uploaded:hover:not(:disabled) {
+  background: #bbf7d0;
+  border-color: #4ade80;
+  color: #15803d;
+}
+
+.superadmin-ticket-pdf-btn:has(.superadmin-ticket-pdf-icon) .superadmin-ticket-pdf-icon {
+  display: inline-flex;
+  align-items: center;
 }
 
 .superadmin-ticket-upload-spinner {
@@ -216,6 +245,117 @@
 
 @keyframes superadmin-ticket-upload-spin {
   to { transform: rotate(360deg); }
+}
+
+/* Detail overlay / modal */
+.superadmin-tickets-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.superadmin-tickets-detail-section {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.superadmin-tickets-detail-heading {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.superadmin-tickets-detail-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.superadmin-tickets-detail-item {
+  margin: 0;
+}
+
+.superadmin-tickets-detail-item dt {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.superadmin-tickets-detail-item dd {
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.superadmin-tickets-detail-meta {
+  font-size: 12px !important;
+  color: #6b7280 !important;
+  margin-top: 2px !important;
+}
+
+.superadmin-tickets-detail-pdf-status {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.superadmin-tickets-detail-pdf-uploaded {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #166534;
+}
+
+.superadmin-tickets-detail-pdf-missing {
+  color: #6b7280;
+}
+
+.superadmin-tickets-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.superadmin-ticket-send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.superadmin-ticket-send-btn:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.superadmin-ticket-send-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.superadmin-ticket-send-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(37, 99, 235, 0.3);
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: superadmin-ticket-upload-spin 0.6s linear infinite;
 }
 
 /* ===== Mobile ===== */
@@ -262,8 +402,15 @@
     flex-wrap: wrap;
   }
 
-  .superadmin-ticket-upload-btn {
+  .superadmin-ticket-actions {
+    flex-wrap: wrap;
     width: 100%;
+  }
+
+  .superadmin-ticket-pdf-btn,
+  .superadmin-ticket-send-btn {
+    flex: 1;
+    min-width: 120px;
     justify-content: center;
   }
 }
@@ -339,13 +486,70 @@
   color: #d1d5db;
 }
 
-.superadmin-panel-layout--dark .superadmin-ticket-upload-btn {
+.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn {
   color: #fbbf24;
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(253, 230, 138, 0.3);
 }
 
-.superadmin-panel-layout--dark .superadmin-ticket-upload-btn:hover:not(:disabled) {
+.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn:hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.2);
   color: #fde68a;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn--uploaded {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn--uploaded:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-send-btn {
+  color: #60a5fa;
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-send-btn:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.25);
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #93c5fd;
+}
+
+.superadmin-panel-layout--dark .superadmin-ticket-send-spinner {
+  border-color: rgba(96, 165, 250, 0.3);
+  border-top-color: #60a5fa;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-section {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-heading {
+  color: #e5e7eb;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-item dt {
+  color: #9ca3af;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-item dd {
+  color: #f9fafb;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-meta {
+  color: #9ca3af !important;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-pdf-uploaded {
+  color: #4ade80;
+}
+
+.superadmin-panel-layout--dark .superadmin-tickets-detail-pdf-missing {
+  color: #9ca3af;
 }
