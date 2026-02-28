@@ -1393,6 +1393,15 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.atfc-cashback {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: #f0fdf4;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-top: 2px;
+}
 .atfc-fare-empty { font-size: 0.875rem; color: #94a3b8; }
 
 .atfc-book-btn {

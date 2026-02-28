@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FolderKanban, Ship, Ticket, Percent, Plus } from 'lucide-react';
-import { getSuperadminAnalytics, updateSuperadminMarkup } from '../api/superadmin';
+import { Users, FolderKanban, Ship, Ticket, Percent, Plus, BadgeDollarSign } from 'lucide-react';
+import { getSuperadminAnalytics, updateSuperadminSettings } from '../api/superadmin';
+import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
 import { Toaster, useToast } from '../components/Toast';
 import './SuperadminDashboard.css';
+
+const CURRENCY_LABELS: { value: CurrencyCode; label: string; symbol: string }[] = [
+  { value: 'GBP', label: 'GBP', symbol: '£' },
+  { value: 'USD', label: 'USD', symbol: '$' },
+  { value: 'INR', label: 'INR', symbol: '₹' },
+];
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -21,34 +28,65 @@ function formatDate(d: Date): string {
   });
 }
 
+function getCurrencySymbol(code: CurrencyCode): string {
+  return CURRENCY_LABELS.find((c) => c.value === code)?.symbol ?? code;
+}
+
 const SuperadminDashboard = () => {
   const { toasts, toast, dismiss } = useToast();
-  const [markup, setMarkup] = useState<number | null>(null);
+  const [settings, setSettings] = useState<{
+    baseCurrency: CurrencyCode;
+    markupGBP: number | null;
+    cashbackGBP: number | null;
+  }>({ baseCurrency: 'GBP', markupGBP: null, cashbackGBP: null });
+  const [rates, setRates] = useState<Record<CurrencyCode, number> | null>(null);
   const [showMarkupForm, setShowMarkupForm] = useState(false);
   const [markupInput, setMarkupInput] = useState('');
   const [markupSaving, setMarkupSaving] = useState(false);
-  const [analytics, setAnalytics] = useState<{
-    totalAdmins: number;
-    activeAdmins: number;
-    totalProjects: number;
-    totalCrew: number;
-    totalTickets: number;
-    adminsByActivity?: { adminId: string; email: string; projectsCount: number; crewCount: number }[];
-  } | null>(null);
+  const [showCashbackForm, setShowCashbackForm] = useState(false);
+  const [cashbackInput, setCashbackInput] = useState('');
+  const [cashbackSaving, setCashbackSaving] = useState(false);
+  const [analytics, setAnalytics] = useState<import('../api/superadmin').AdminAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const data = await getSuperadminAnalytics();
+      setAnalytics(data);
+      setSettings({
+        baseCurrency: data.baseCurrency ?? 'GBP',
+        markupGBP: data.markup ?? null,
+        cashbackGBP: data.cashback ?? null,
+      });
+    } catch {
+      setSettings({ baseCurrency: 'GBP', markupGBP: null, cashbackGBP: null });
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    getSuperadminAnalytics()
-      .then((data) => {
-        if (!cancelled) setAnalytics(data);
+    const fallbackRates: Record<CurrencyCode, number> = { GBP: 1, USD: 1.27, INR: 105 };
+    Promise.all([
+      getSuperadminAnalytics(),
+      fetchRates().catch(() => fallbackRates),
+    ])
+      .then(([analyticsData, ratesData]) => {
+        if (!cancelled) {
+          setAnalytics(analyticsData);
+          setRates(ratesData);
+          setSettings({
+            baseCurrency: analyticsData.baseCurrency ?? 'GBP',
+            markupGBP: analyticsData.markup ?? null,
+            cashbackGBP: analyticsData.cashback ?? null,
+          });
+        }
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load analytics');
+          setError(err instanceof Error ? err.message : 'Failed to load');
           setAnalytics({
             totalAdmins: 0,
             activeAdmins: 0,
@@ -56,6 +94,8 @@ const SuperadminDashboard = () => {
             totalCrew: 0,
             totalTickets: 0,
           });
+          setRates(fallbackRates);
+          setSettings({ baseCurrency: 'GBP', markupGBP: null, cashbackGBP: null });
         }
       })
       .finally(() => {
@@ -63,6 +103,12 @@ const SuperadminDashboard = () => {
       });
     return () => { cancelled = true; };
   }, []);
+
+  const handleCurrencyChange = useCallback((newCurrency: CurrencyCode) => {
+    if (!settings) return;
+    if (settings.baseCurrency === newCurrency) return;
+    setSettings((s) => ({ ...s, baseCurrency: newCurrency }));
+  }, [settings]);
 
   const stats = [
     {
@@ -98,26 +144,77 @@ const SuperadminDashboard = () => {
   ];
 
   const adminsByActivity = analytics?.adminsByActivity ?? [];
+  const symbol = getCurrencySymbol(settings.baseCurrency);
+
+  const displayMarkup = rates && settings.markupGBP != null
+    ? convert(settings.markupGBP, 'GBP', settings.baseCurrency, rates)
+    : settings.markupGBP;
+  const displayCashback = rates && settings.cashbackGBP != null
+    ? convert(settings.cashbackGBP, 'GBP', settings.baseCurrency, rates)
+    : settings.cashbackGBP;
 
   const handleSaveMarkup = async (e: React.FormEvent) => {
     e.preventDefault();
     const value = parseFloat(markupInput.trim());
-    if (isNaN(value) || value < 0 || value > 100) {
-      toast('error', 'Invalid markup', 'Please enter a number between 0 and 100.');
+    if (isNaN(value) || value < 0) {
+      toast('error', 'Invalid markup', 'Please enter a valid positive number.');
       return;
     }
+    if (!rates) return;
+    const gbpValue = convert(value, settings.baseCurrency, 'GBP', rates);
     setMarkupSaving(true);
     try {
-      const res = await updateSuperadminMarkup(value);
-      setMarkup(res.superAdmin.markup);
+      const res = await updateSuperadminSettings({ markup: gbpValue });
+      setSettings((s) => ({ ...s, markupGBP: res?.superAdmin?.markup ?? gbpValue }));
       setShowMarkupForm(false);
       setMarkupInput('');
-      toast('success', 'Markup updated', res.message);
+      toast('success', 'Markup updated', 'Markup saved successfully.');
     } catch (err) {
       toast('error', 'Update failed', err instanceof Error ? err.message : 'Failed to update markup.');
     } finally {
       setMarkupSaving(false);
     }
+  };
+
+  const handleSaveCashback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(cashbackInput.trim());
+    if (isNaN(value) || value < 0) {
+      toast('error', 'Invalid cashback', 'Please enter a valid positive number.');
+      return;
+    }
+    if (!rates) return;
+    const gbpValue = convert(value, settings.baseCurrency, 'GBP', rates);
+    setCashbackSaving(true);
+    try {
+      const res = await updateSuperadminSettings({ cashback: gbpValue });
+      setSettings((s) => ({ ...s, cashbackGBP: res?.superAdmin?.cashback ?? gbpValue }));
+      setShowCashbackForm(false);
+      setCashbackInput('');
+      toast('success', 'Cashback updated', 'Cashback saved successfully.');
+    } catch (err) {
+      toast('error', 'Update failed', err instanceof Error ? err.message : 'Failed to update cashback.');
+    } finally {
+      setCashbackSaving(false);
+    }
+  };
+
+  const openMarkupForm = () => {
+    if (rates && settings.markupGBP != null) {
+      setMarkupInput(String(convert(settings.markupGBP, 'GBP', settings.baseCurrency, rates)));
+    } else {
+      setMarkupInput('');
+    }
+    setShowMarkupForm(true);
+  };
+
+  const openCashbackForm = () => {
+    if (rates && settings.cashbackGBP != null) {
+      setCashbackInput(String(convert(settings.cashbackGBP, 'GBP', settings.baseCurrency, rates)));
+    } else {
+      setCashbackInput('');
+    }
+    setShowCashbackForm(true);
   };
 
   return (
@@ -128,6 +225,26 @@ const SuperadminDashboard = () => {
           <h1 className="superadmin-dashboard-greeting">{getGreeting()}, Superadmin</h1>
           <p className="superadmin-dashboard-date">Today is {formatDate(new Date())}.</p>
         </div>
+        {rates && (
+          <div className="superadmin-base-currency">
+            <label htmlFor="base-currency" className="superadmin-base-currency-label">
+              Base currency
+            </label>
+            <select
+              id="base-currency"
+              className="superadmin-base-currency-select"
+              value={settings.baseCurrency}
+              onChange={(e) => handleCurrencyChange(e.target.value as CurrencyCode)}
+            >
+              {CURRENCY_LABELS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label} ({c.symbol})
+                </option>
+              ))}
+            </select>
+            <span className="superadmin-base-currency-hint">All values in this currency</span>
+          </div>
+        )}
       </header>
 
       {error && (
@@ -161,15 +278,15 @@ const SuperadminDashboard = () => {
                 <input
                   type="number"
                   min={0}
-                  max={100}
-                  step={0.1}
+                  step={0.01}
                   value={markupInput}
                   onChange={(e) => setMarkupInput(e.target.value)}
-                  placeholder="e.g. 15.5"
+                  placeholder={`e.g. 15.50 in ${settings.baseCurrency}`}
                   className="superadmin-markup-input"
                   autoFocus
                   disabled={markupSaving}
                 />
+                <span className="superadmin-input-currency-hint">{symbol} {settings.baseCurrency}</span>
                 <div className="superadmin-markup-actions">
                   <button type="submit" className="superadmin-markup-save" disabled={markupSaving}>
                     {markupSaving ? 'Saving…' : 'Save'}
@@ -187,18 +304,71 @@ const SuperadminDashboard = () => {
             ) : (
               <>
                 <span className="superadmin-dash-card-value">
-                  {markup != null ? `${markup}%` : '—'}
+                  {displayMarkup != null ? `${symbol}${displayMarkup.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                 </span>
                 <span className="superadmin-dash-card-label">MARKUP</span>
                 <button
                   type="button"
                   className="superadmin-markup-add-btn"
-                  onClick={() => setShowMarkupForm(true)}
+                  onClick={openMarkupForm}
                   title="Add markup"
                   aria-label="Add markup"
                 >
                   <Plus size={14} />
                   Add Markup
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="superadmin-dash-card superadmin-dash-card-cashback">
+          <div className="superadmin-dash-card-icon superadmin-dash-icon--emerald">
+            <BadgeDollarSign size={24} />
+          </div>
+          <div className="superadmin-dash-card-content">
+            {showCashbackForm ? (
+              <form className="superadmin-markup-form" onSubmit={handleSaveCashback}>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={cashbackInput}
+                  onChange={(e) => setCashbackInput(e.target.value)}
+                  placeholder={`e.g. 5.00 in ${settings.baseCurrency}`}
+                  className="superadmin-markup-input superadmin-cashback-input"
+                  autoFocus
+                  disabled={cashbackSaving}
+                />
+                <span className="superadmin-input-currency-hint superadmin-input-currency-hint--cashback">{symbol} {settings.baseCurrency}</span>
+                <div className="superadmin-markup-actions">
+                  <button type="submit" className="superadmin-markup-save superadmin-cashback-save" disabled={cashbackSaving}>
+                    {cashbackSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    className="superadmin-markup-cancel"
+                    onClick={() => { setShowCashbackForm(false); setCashbackInput(''); }}
+                    disabled={cashbackSaving}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="superadmin-dash-card-value">
+                  {displayCashback != null ? `${symbol}${displayCashback.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+                <span className="superadmin-dash-card-label">CASHBACK</span>
+                <button
+                  type="button"
+                  className="superadmin-markup-add-btn superadmin-cashback-add-btn"
+                  onClick={openCashbackForm}
+                  title="Add cashback"
+                  aria-label="Add cashback"
+                >
+                  <Plus size={14} />
+                  Add Cashback
                 </button>
               </>
             )}

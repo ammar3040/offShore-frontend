@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, ChevronDown, Menu, LogOut } from 'lucide-react';
+import { Search, Bell, ChevronDown, Menu, LogOut, Percent } from 'lucide-react';
 import { clearAccessToken, getAdminUserFromToken } from '../lib/auth';
+import { getAdminProfile } from '../api/admin';
 import './Header.css';
 
 interface HeaderProps {
@@ -10,12 +11,25 @@ interface HeaderProps {
 
 const Header = ({ onMenuClick }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [markup, setMarkup] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const user = getAdminUserFromToken();
   const email = user?.email ?? 'admin@gmail.com';
   const name = user?.name ?? 'Admin';
   const initials = name ? name.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase() : 'AD';
+
+  useEffect(() => {
+    let cancelled = false;
+    getAdminProfile()
+      .then((profile) => {
+        if (!cancelled && profile.markup != null) {
+          setMarkup(profile.markup);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -53,6 +67,13 @@ const Header = ({ onMenuClick }: HeaderProps) => {
       </div>
 
       <div className="header-right">
+        {markup != null && (
+          <div className="header-markup-badge" title="Markup balance">
+            <Percent size={14} />
+            <span className="header-markup-value">{markup}%</span>
+            <span className="header-markup-label">Markup</span>
+          </div>
+        )}
         <span className="secure-session-badge">SECURE SESSION</span>
         <button className="icon-button" aria-label="Notifications">
           <Bell size={20} />

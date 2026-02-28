@@ -5,6 +5,57 @@
 
 .superadmin-dashboard-header {
   margin-bottom: 32px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.superadmin-base-currency {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.superadmin-base-currency-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.03em;
+}
+
+.superadmin-base-currency-select {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.superadmin-base-currency-select:focus {
+  outline: none;
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+}
+
+.superadmin-base-currency-hint {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.superadmin-input-currency-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.superadmin-input-currency-hint--cashback {
+  color: #16a34a;
 }
 
 .superadmin-dashboard-greeting {
@@ -334,6 +385,55 @@
   background: #f5f5f4;
 }
 
+/* Cashback card */
+.superadmin-dash-card-cashback {
+  position: relative;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.superadmin-dash-card-cashback:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #86efac;
+}
+
+.superadmin-dash-icon--emerald {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.superadmin-dash-card-cashback .superadmin-dash-card-content {
+  position: relative;
+}
+
+.superadmin-cashback-add-btn {
+  color: #16a34a;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.superadmin-dash-card-cashback:hover .superadmin-cashback-add-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.superadmin-cashback-add-btn:hover {
+  background: #bbf7d0;
+  color: #15803d;
+}
+
+.superadmin-cashback-input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+.superadmin-cashback-save {
+  background: #16a34a;
+}
+
+.superadmin-cashback-save:hover:not(:disabled) {
+  background: #15803d;
+}
+
 /* ===== Tablet ===== */
 @media (max-width: 1024px) {
   .superadmin-dashboard-cards {
@@ -402,7 +502,8 @@
     gap: 4px;
   }
 
-  .superadmin-markup-add-btn {
+  .superadmin-markup-add-btn,
+  .superadmin-cashback-add-btn {
     opacity: 1;
     transform: none;
   }

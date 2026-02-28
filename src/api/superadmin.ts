@@ -19,6 +19,9 @@ export interface AdminAnalytics {
   totalCrew: number;
   totalTickets: number;
   adminsByActivity?: { adminId: string; email: string; projectsCount: number; crewCount: number }[];
+  markup?: number | null;
+  cashback?: number | null;
+  baseCurrency?: 'GBP' | 'USD' | 'INR';
 }
 
 export interface AdminApi {
@@ -210,10 +213,51 @@ export interface MarkupResponse {
     email: string;
     phone?: string;
     markup: number;
+    cashback?: number;
+    baseCurrency?: 'GBP' | 'USD' | 'INR';
   };
 }
 
-/** Update markup - POST /api/superadmin/markup */
+/** Update settings - PUT /api/superadmin/markup. markup and cashback must be in GBP. */
+export async function updateSuperadminSettings(payload: {
+  baseCurrency?: 'GBP' | 'USD' | 'INR';
+  markup?: number | null;
+  cashback?: number | null;
+}): Promise<{ message?: string; superAdmin?: MarkupResponse['superAdmin'] }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const body: Record<string, unknown> = {};
+  if (payload.baseCurrency != null) body.baseCurrency = payload.baseCurrency;
+  if (payload.markup != null) body.markup = payload.markup;
+  if (payload.cashback != null) body.cashback = payload.cashback;
+
+  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/markup`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let msg = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const err = JSON.parse(text);
+        msg = err?.message || err?.error || msg;
+      } catch {
+        msg = text;
+      }
+    }
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
+/** Update markup - PUT /api/superadmin/markup */
 export async function updateSuperadminMarkup(markup: number): Promise<MarkupResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
@@ -222,6 +266,36 @@ export async function updateSuperadminMarkup(markup: number): Promise<MarkupResp
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ markup }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let msg = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const err = JSON.parse(text);
+        msg = err?.message || err?.error || msg;
+      } catch {
+        msg = text;
+      }
+    }
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
+/** Update cashback - PUT /api/superadmin/markup */
+export async function updateSuperadminCashback(cashback: number): Promise<MarkupResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/markup`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ cashback }),
     signal: controller.signal,
   });
   clearTimeout(timeoutId);

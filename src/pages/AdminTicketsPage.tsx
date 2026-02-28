@@ -224,6 +224,9 @@ function FlightResultCard({
                 <span className="atfc-fare-basic">Base: {currency} {selectedFare.basicFare?.toLocaleString()}</span>
               )}
               <span className="atfc-fare-label">{selectedFare.name ?? selectedFare.type}</span>
+              {flight.cashback != null && flight.cashback > 0 && (
+                <span className="atfc-cashback">{currency} {flight.cashback.toLocaleString()} cashback</span>
+              )}
             </div>
           ) : (
             <span className="atfc-fare-empty">No fare</span>
