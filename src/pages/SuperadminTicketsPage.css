@@ -178,7 +178,7 @@
   pointer-events: none;
 }
 
-.superadmin-ticket-upload-btn {
+.superadmin-ticket-pdf-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -195,15 +195,20 @@
   white-space: nowrap;
 }
 
-.superadmin-ticket-upload-btn:hover:not(:disabled) {
+.superadmin-ticket-pdf-btn:hover:not(:disabled) {
   background: #fef3c7;
   border-color: #fcd34d;
   color: #b45309;
 }
 
-.superadmin-ticket-upload-btn:disabled {
+.superadmin-ticket-pdf-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.superadmin-ticket-pdf-btn:has(.superadmin-ticket-pdf-icon) .superadmin-ticket-pdf-icon {
+  display: inline-flex;
+  align-items: center;
 }
 
 .superadmin-ticket-upload-spinner {
@@ -263,7 +268,7 @@
     flex-wrap: wrap;
   }
 
-  .superadmin-ticket-upload-btn {
+  .superadmin-ticket-pdf-btn {
     width: 100%;
     justify-content: center;
   }
@@ -340,13 +345,13 @@
   color: #d1d5db;
 }
 
-.superadmin-panel-layout--dark .superadmin-ticket-upload-btn {
+.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn {
   color: #fbbf24;
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(253, 230, 138, 0.3);
 }
 
-.superadmin-panel-layout--dark .superadmin-ticket-upload-btn:hover:not(:disabled) {
+.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn:hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.2);
   color: #fde68a;
 }

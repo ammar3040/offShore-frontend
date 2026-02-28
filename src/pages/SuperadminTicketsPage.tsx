@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Ticket, ChevronDown, Upload } from 'lucide-react';
+import { ChevronDown, FileText, FileCheck } from 'lucide-react';
 import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf } from '../api/superadmin';
 import type { CrewTicketApi } from '../api/ticket';
 import { Toaster, useToast } from '../components/Toast';
@@ -99,7 +99,12 @@ const SuperadminTicketsPage = () => {
     setUploadingTicketId(ticketId);
     setUploadError(null);
     try {
-      await uploadSuperadminCrewTicketPdf(ticketId, file);
+      const res = await uploadSuperadminCrewTicketPdf(ticketId, file) as { crewTicket?: CrewTicketApi };
+      if (res?.crewTicket) {
+        setTickets((prev) =>
+          prev.map((t) => (t.id === ticketId ? { ...t, pdf: res.crewTicket!.pdf } : t))
+        );
+      }
       toast('success', 'PDF uploaded', 'Ticket PDF uploaded successfully.');
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
@@ -169,8 +174,8 @@ const SuperadminTicketsPage = () => {
           <div className="superadmin-tickets-list">
             {filteredTickets.map((t) => (
               <div key={t.id} className="superadmin-ticket-card">
-                <div className="superadmin-ticket-icon">
-                  <Ticket size={20} />
+                <div className="superadmin-ticket-icon" title="Crew ticket">
+                  <FileText size={20} />
                 </div>
                 <div className="superadmin-ticket-main">
                   <div className="superadmin-ticket-route">{getRoute(t)}</div>
@@ -186,16 +191,25 @@ const SuperadminTicketsPage = () => {
                 </div>
                 <button
                   type="button"
-                  className="superadmin-ticket-upload-btn"
+                  className="superadmin-ticket-pdf-btn"
                   onClick={(e) => { e.stopPropagation(); handleUploadClick(t.id); }}
                   disabled={uploadingTicketId === t.id}
-                  title="Upload ticket PDF"
+                  title={t.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
                 >
                   {uploadingTicketId === t.id ? (
                     <span className="superadmin-ticket-upload-spinner" />
+                  ) : t.pdf ? (
+                    <>
+                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
+                        <FileCheck size={16} />
+                      </span>
+                      PDF uploaded
+                    </>
                   ) : (
                     <>
-                      <Upload size={16} />
+                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
+                        <FileText size={16} />
+                      </span>
                       Upload PDF
                     </>
                   )}
