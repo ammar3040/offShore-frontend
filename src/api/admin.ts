@@ -95,6 +95,7 @@ export interface AdminProfile {
   email: string;
   phone?: string;
   markup?: number;
+  balance?: number;
 }
 
 export async function getAdminProfile(): Promise<AdminProfile> {
@@ -116,7 +117,8 @@ export async function getAdminProfile(): Promise<AdminProfile> {
     throw new Error(`Failed to fetch profile (${response.status})`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return (data.admin ?? data) as AdminProfile;
 }
 
 export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse> {

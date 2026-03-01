@@ -5,6 +5,7 @@ import { Toaster, useToast } from '../components/Toast';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import { getCrewTickets, createFlightTicket, uploadCrewTicketPdf, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
+import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
@@ -375,6 +376,7 @@ const AdminTicketsPage = () => {
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
   const [crewDropdownOpen, setCrewDropdownOpen] = useState(false);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
+  const [adminMarkup, setAdminMarkup] = useState<number | null>(null);
 
   /* PDF upload for crew tickets */
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
@@ -417,6 +419,16 @@ const AdminTicketsPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [crewDropdownOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAdminProfile()
+      .then((profile) => {
+        if (!cancelled && profile.markup != null) setAdminMarkup(profile.markup);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!searchProjectId) {
@@ -619,10 +631,20 @@ const AdminTicketsPage = () => {
       }
       setBookingFlightId(flight.id);
       try {
+        const firstFare = flight.fares?.[0];
+        const markupAmount =
+          flight.markup != null
+            ? flight.markup
+            : adminMarkup != null && firstFare?.totalFare != null
+              ? Math.round(firstFare.totalFare * adminMarkup / 100)
+              : undefined;
         const data = await bookFlight({
           project_id: searchProjectId,
           crew_ids: searchCrewIds,
           flight,
+          markup: markupAmount,
+          cashback: flight.cashback ?? 0,
+          originalCurrency: currency,
           adult: adults,
           children: childrenCount,
           infants,
@@ -637,7 +659,7 @@ const AdminTicketsPage = () => {
         setBookingFlightId(null);
       }
     },
-    [searchProjectId, searchCrewIds, adults, childrenCount, infants, toast]
+    [searchProjectId, searchCrewIds, adults, childrenCount, infants, currency, adminMarkup, toast]
   );
 
   const handleSearchBack = useCallback(() => {

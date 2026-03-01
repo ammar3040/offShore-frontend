@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, ChevronDown, Menu, LogOut, Percent } from 'lucide-react';
+import { Search, Bell, ChevronDown, Menu, LogOut, Percent, Wallet } from 'lucide-react';
 import { clearAccessToken, getAdminUserFromToken } from '../lib/auth';
 import { getAdminProfile } from '../api/admin';
+import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
 import './Header.css';
+
+const BALANCE_CURRENCIES: { value: CurrencyCode; label: string; symbol: string }[] = [
+  { value: 'GBP', label: 'GBP', symbol: '£' },
+  { value: 'USD', label: 'USD', symbol: '$' },
+  { value: 'INR', label: 'INR', symbol: '₹' },
+];
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -12,6 +19,9 @@ interface HeaderProps {
 const Header = ({ onMenuClick }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [markup, setMarkup] = useState<number | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [balanceCurrency, setBalanceCurrency] = useState<CurrencyCode>('GBP');
+  const [rates, setRates] = useState<Record<CurrencyCode, number> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const user = getAdminUserFromToken();
@@ -23,10 +33,19 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     let cancelled = false;
     getAdminProfile()
       .then((profile) => {
-        if (!cancelled && profile.markup != null) {
-          setMarkup(profile.markup);
+        if (!cancelled) {
+          if (profile.markup != null) setMarkup(profile.markup);
+          if (profile.balance != null) setBalance(profile.balance);
         }
       })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRates()
+      .then((r) => { if (!cancelled) setRates(r); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
@@ -74,7 +93,34 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             <span className="header-markup-label">Markup</span>
           </div>
         )}
-        <span className="secure-session-badge">SECURE SESSION</span>
+        <div className="admin-balance-badge" title="Admin balance">
+          <Wallet size={14} />
+          <span className="admin-balance-label">Admin Balance</span>
+          <span className="admin-balance-value">
+            {balance != null
+              ? (() => {
+                  const symbol = BALANCE_CURRENCIES.find((c) => c.value === balanceCurrency)?.symbol ?? '£';
+                  const displayAmount =
+                    rates && balanceCurrency !== 'GBP'
+                      ? convert(balance, 'GBP', balanceCurrency, rates)
+                      : balance;
+                  return `${symbol}${displayAmount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                })()
+              : '—'}
+          </span>
+          <select
+            className="admin-balance-currency-select"
+            value={balanceCurrency}
+            onChange={(e) => setBalanceCurrency(e.target.value as CurrencyCode)}
+            aria-label="Balance currency"
+          >
+            {BALANCE_CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <button className="icon-button" aria-label="Notifications">
           <Bell size={20} />
         </button>
