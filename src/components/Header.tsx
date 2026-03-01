@@ -4,6 +4,13 @@ import { Search, Bell, ChevronDown, Menu, LogOut, Percent, Wallet } from 'lucide
 import { clearAccessToken, getAdminUserFromToken } from '../lib/auth';
 import { getAdminProfile } from '../api/admin';
 import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import './Header.css';
 
 const BALANCE_CURRENCIES: { value: CurrencyCode; label: string; symbol: string }[] = [
@@ -109,19 +116,18 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               : '—'}
           </span>
           <div className="admin-balance-currency-wrap">
-            <select
-              className="admin-balance-currency-select"
-              value={balanceCurrency}
-              onChange={(e) => setBalanceCurrency(e.target.value as CurrencyCode)}
-              aria-label="Balance currency"
-            >
-              {BALANCE_CURRENCIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="admin-balance-currency-chevron" aria-hidden />
+            <Select value={balanceCurrency} onValueChange={(v) => setBalanceCurrency(v as CurrencyCode)}>
+              <SelectTrigger className="admin-balance-currency-select h-8 min-w-0 border-0 bg-transparent px-2 shadow-none focus:ring-0" aria-label="Balance currency">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BALANCE_CURRENCIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <button className="icon-button" aria-label="Notifications">

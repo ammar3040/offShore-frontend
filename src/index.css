@@ -76,6 +76,7 @@
   }
 
   .dark {
+    color-scheme: dark; /* native form controls (select, input) use dark styling */
     /* AMOLED: true black, neutral grays, no blue tint */
     --background: 0 0% 0%;
     --foreground: 0 0% 98%;

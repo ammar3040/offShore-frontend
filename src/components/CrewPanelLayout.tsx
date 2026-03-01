@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -36,6 +36,10 @@ const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [theme, setTheme] = useState<CrewPanelTheme>(() => getCrewPanelTheme());
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   const toggleTheme = () => {
     const next: CrewPanelTheme = theme === 'dark' ? 'light' : 'dark';

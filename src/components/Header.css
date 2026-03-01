@@ -147,45 +147,6 @@
 .admin-balance-currency-select {
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 8px;
-  padding: 6px 28px 6px 12px;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.admin-balance-currency-select:hover {
-  border-color: rgba(34, 197, 94, 0.5);
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15);
-}
-
-.admin-balance-currency-select:focus {
-  outline: none;
-  border-color: rgba(34, 197, 94, 0.6);
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
-}
-
-.admin-balance-currency-chevron {
-  position: absolute;
-  right: 10px;
-  pointer-events: none;
-  color: rgba(255, 255, 255, 0.7);
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.admin-balance-currency-select:hover + .admin-balance-currency-chevron,
-.admin-balance-currency-select:focus + .admin-balance-currency-chevron {
-  color: #86efac;
-}
-
-.admin-balance-currency-select option {
-  background-color: #1e293b;
-  color: #fff;
 }
 
 .icon-button {
@@ -404,27 +365,6 @@
 }
 
 .layout--dark .admin-balance-currency-select {
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
-}
-
-.layout--dark .admin-balance-currency-select option {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-}
-
-.layout--dark .admin-balance-currency-select:hover,
-.layout--dark .admin-balance-currency-select:focus {
-  border-color: hsl(var(--ring));
-}
-
-.layout--dark .admin-balance-currency-chevron {
-  color: hsl(var(--muted-foreground));
-}
-
-.layout--dark .admin-balance-currency-select:hover + .admin-balance-currency-chevron,
-.layout--dark .admin-balance-currency-select:focus + .admin-balance-currency-chevron {
   color: hsl(var(--foreground));
 }
 

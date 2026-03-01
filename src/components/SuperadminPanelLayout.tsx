@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Ticket, LogOut, Shield, Menu, X, Sun, Moon } from 'lucide-react';
 import { Toaster } from './ui/sonner';
@@ -21,6 +21,10 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState<SuperadminTheme>(() => getSuperadminTheme());
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   const toggleTheme = () => {
     const next: SuperadminTheme = theme === 'dark' ? 'light' : 'dark';
