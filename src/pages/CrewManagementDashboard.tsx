@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderKanban, Users, Ticket, Plus, Calendar } from 'lucide-react';
+import { FolderKanban, Users, Ticket, Plus, Calendar, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { getProjects } from '../api/project';
 import { getCrewList } from '../api/crew';
@@ -60,17 +61,37 @@ const CrewManagementDashboard = () => {
     return () => { cancelled = true; };
   }, []);
 
+  const fetchTickets = useCallback(() => {
+    getCrewTickets()
+      .then((res) => setTickets(res.crewTickets ?? []))
+      .catch((err) => {
+        setTickets([]);
+        toast.error('Failed to load tickets', { description: err instanceof Error ? err.message : 'Please try again.' });
+      });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     getCrewTickets()
       .then((res) => {
         if (!cancelled) setTickets(res.crewTickets ?? []);
       })
-      .catch(() => {
-        if (!cancelled) setTickets([]);
+      .catch((err) => {
+        if (!cancelled) {
+          setTickets([]);
+          toast.error('Failed to load tickets', { description: err instanceof Error ? err.message : 'Please try again.' });
+        }
       });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const onVisible = () => {
+      fetchTickets();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchTickets]);
 
   const creationChartData = useMemo(() => {
     const byMonth: Record<string, { month: string; projects: number; tickets: number }> = {};
@@ -140,7 +161,7 @@ const CrewManagementDashboard = () => {
             <span className="admin-stat-label">TOTAL CREWS</span>
           </div>
         </div>
-        <div className="admin-stat-card">
+        <div className="admin-stat-card admin-stat-card-tickets">
           <div className="admin-stat-icon admin-stat-icon-green">
             <Ticket size={20} />
           </div>
@@ -148,6 +169,15 @@ const CrewManagementDashboard = () => {
             <span className="admin-stat-value">{tickets === null ? '…' : tickets.length}</span>
             <span className="admin-stat-label">TOTAL TICKETS</span>
           </div>
+          <button
+            type="button"
+            className="admin-stat-refresh"
+            onClick={fetchTickets}
+            title="Refresh tickets"
+            aria-label="Refresh tickets"
+          >
+            <RefreshCw size={14} />
+          </button>
         </div>
       </div>
 

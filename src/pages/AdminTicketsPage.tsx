@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon, Upload } from 'lucide-react';
+import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
-import { getCrewTickets, createFlightTicket, uploadCrewTicketPdf, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
+import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
@@ -392,37 +392,6 @@ const AdminTicketsPage = () => {
   const [crewDropdownOpen, setCrewDropdownOpen] = useState(false);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
   const [adminMarkup, setAdminMarkup] = useState<number | null>(null);
-
-  /* PDF upload for crew tickets */
-  const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
-  const ticketPdfInputRef = useRef<HTMLInputElement>(null);
-  const pendingPdfUploadRef = useRef<string | null>(null);
-
-  const handleUploadPdfClick = useCallback((ticketId: string) => {
-    pendingPdfUploadRef.current = ticketId;
-    ticketPdfInputRef.current?.click();
-  }, []);
-
-  const handlePdfFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const ticketId = pendingPdfUploadRef.current;
-    pendingPdfUploadRef.current = null;
-    e.target.value = '';
-    if (!file || !ticketId) return;
-    if (!file.type.includes('pdf')) {
-      toast.error('Invalid file', { description: 'Only PDF files are allowed.' });
-      return;
-    }
-    setUploadingTicketId(ticketId);
-    try {
-      await uploadCrewTicketPdf(ticketId, file);
-      toast.success('PDF uploaded', { description: 'Ticket PDF uploaded successfully.' });
-    } catch (err) {
-      toast.error('Upload failed', { description: err instanceof Error ? err.message : 'Failed to upload PDF.' });
-    } finally {
-      setUploadingTicketId(null);
-    }
-  }, []);
 
   useEffect(() => {
     if (!crewDropdownOpen) return;
@@ -1079,14 +1048,6 @@ const AdminTicketsPage = () => {
           </TabsContent>
           <TabsContent value="tickets" className="mt-6">
         <>
-      <input
-        ref={ticketPdfInputRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="admin-tickets-file-input-hidden"
-        onChange={handlePdfFileChange}
-        aria-hidden
-      />
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="flex flex-col gap-2 min-w-[200px]">
           <label htmlFor="tickets-project-filter" className="text-sm font-medium">
@@ -1148,7 +1109,6 @@ const AdminTicketsPage = () => {
               <TableHead>Class</TableHead>
               <TableHead>Trip</TableHead>
               <TableHead>Passengers</TableHead>
-              <TableHead>PDF</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1177,24 +1137,6 @@ const AdminTicketsPage = () => {
                   {[ticket.adult, ticket.children, ticket.infants]
                     .filter((n) => n != null && n > 0)
                     .join(' / ') || '—'}
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleUploadPdfClick(ticket.id)}
-                    disabled={uploadingTicketId === ticket.id}
-                    title="Upload ticket PDF"
-                  >
-                    {uploadingTicketId === ticket.id ? (
-                      <span className="admin-tickets-upload-spinner" />
-                    ) : (
-                      <>
-                        <Upload size={16} />
-                        Upload
-                      </>
-                    )}
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
