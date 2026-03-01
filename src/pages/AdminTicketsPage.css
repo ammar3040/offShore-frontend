@@ -1685,500 +1685,520 @@
   text-align: center;
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (uses index.css theme variables) ----- */
+.layout--dark .admin-tickets-create-btn,
+.layout--dark .admin-tickets-create-inline {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.layout--dark .admin-tickets-create-btn:hover,
+.layout--dark .admin-tickets-create-inline:hover {
+  filter: brightness(0.95);
+}
+
+.layout--dark .admin-tickets-btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.layout--dark .admin-tickets-btn-primary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
 .layout--dark .admin-tickets-title {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-subtitle {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-header {
-  border-bottom-color: #374151;
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-tabs {
-  background: #1f2937;
-  border-color: #374151;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-tab {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-tab:hover {
-  color: #e5e7eb;
-  background: #374151;
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
 }
 
 .layout--dark .admin-tickets-tab-active {
-  color: #f9fafb;
-  background: #374151;
-  border-color: #4b5563;
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
   box-shadow: none;
 }
 
 .layout--dark .admin-tickets-filter-label {
-  color: #e5e7eb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-filter-select {
-  background: #1f2937;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-table-wrap {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .layout--dark .admin-tickets-table th {
-  background: #111827;
-  color: #9ca3af;
-  border-bottom-color: #374151;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-table td {
-  border-bottom-color: #374151;
-  color: #d1d5db;
+  border-bottom-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-table tbody tr:hover {
-  background: #374151;
+  background: hsl(var(--accent));
 }
 
 .layout--dark .admin-tickets-row-clickable:hover {
-  background: rgba(59, 130, 246, 0.1) !important;
+  background: hsl(var(--accent)) !important;
 }
 
 .layout--dark .admin-tickets-loading,
 .layout--dark .admin-tickets-empty {
-  background: #1f2937;
-  border-color: #374151;
-  color: #9ca3af;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-error {
-  background-color: rgba(185, 28, 28, 0.1);
-  color: #fca5a5;
+  background-color: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
 }
 
 .layout--dark .admin-tickets-empty-icon {
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-empty-hint {
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-project-card {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .layout--dark .admin-tickets-project-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  border-color: #3b82f6;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-project-icon {
-  background: rgba(37, 99, 235, 0.15);
+  background: hsl(var(--accent));
 }
 
 .layout--dark .admin-tickets-project-title {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-project-meta {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-project-status {
-  background: #374151;
-  color: #d1d5db;
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-detail-section {
-  background: #374151;
-  border-color: #4b5563;
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-detail-heading {
-  color: #e5e7eb;
-  border-bottom-color: #4b5563;
+  color: hsl(var(--foreground));
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-detail-item dt {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-detail-item dd {
-  color: #e5e7eb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-flights-hero {
-  background: linear-gradient(135deg, rgba(14, 116, 144, 0.2) 0%, rgba(6, 78, 97, 0.3) 50%, rgba(8, 51, 68, 0.4) 100%);
-  border-color: rgba(14, 116, 144, 0.3);
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-flights-hero-icon {
-  background: rgba(255, 255, 255, 0.1);
+  background: hsl(var(--accent));
 }
 
 .layout--dark .admin-tickets-flights-hero-title {
-  color: #67e8f9;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-flights-hero-subtitle {
-  color: #22d3ee;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-flights-hero-currency-label {
-  color: #a5f3fc;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-flights-hero-currency-select {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(34, 211, 238, 0.3);
-  color: #e0f2fe;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-form-card {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .layout--dark .admin-tickets-search-form-title {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-view .admin-tickets-search-field label {
-  color: #e5e7eb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-view .admin-tickets-search-field input,
 .layout--dark .admin-tickets-search-view .admin-tickets-search-field select {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-view .admin-tickets-search-field input:focus,
 .layout--dark .admin-tickets-search-view .admin-tickets-search-field select:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
 }
 
 .layout--dark .admin-tickets-search-row-label {
-  color: #e5e7eb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-radio {
-  color: #d1d5db;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-actions {
-  border-top-color: #374151;
+  border-top-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-search-crew-trigger {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-crew-dropdown {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 .layout--dark .admin-tickets-search-crew-actions {
-  border-bottom-color: #374151;
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-search-crew-item:hover {
-  background: #374151;
+  background: hsl(var(--accent));
 }
 
 .layout--dark .admin-tickets-search-crew-item-info span:first-child {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-crew-item-email {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-results-header {
-  border-bottom-color: #374151;
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-back-btn {
-  background: #374151;
-  border-color: #4b5563;
-  color: #d1d5db;
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-back-btn:hover {
-  background: #4b5563;
-  border-color: #6b7280;
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-results-summary {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-results-count {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-results-empty {
-  background: #1f2937;
-  border-color: #374151;
-  color: #9ca3af;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .atfc-card {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .layout--dark .atfc-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .layout--dark .atfc-airline-name {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-airline-code {
-  color: #9ca3af;
-  background: #374151;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--accent));
 }
 
 .layout--dark .atfc-time {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-date {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .atfc-airport {
-  color: #d1d5db;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-duration {
-  color: #d1d5db;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .atfc-route-dot {
-  background: #6b7280;
+  background: hsl(var(--muted-foreground));
 }
 
 .layout--dark .atfc-route-bar {
-  background: #4b5563;
+  background: hsl(var(--border));
 }
 
 .layout--dark .atfc-fare-total {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-fare-basic {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .atfc-cashback {
-  background: rgba(22, 163, 74, 0.15);
+  background: hsl(var(--chart-2) / 0.2);
 }
 
 .layout--dark .atfc-fare-tabs {
-  border-bottom-color: #374151;
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .atfc-fare-tab {
-  background: #374151;
-  border-color: #4b5563;
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .atfc-fare-tab:hover {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.15);
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted));
 }
 
 .layout--dark .atfc-fare-tab-active {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.15);
+  border-color: hsl(var(--ring));
+  background: hsl(var(--accent));
 }
 
 .layout--dark .atfc-fare-tab-price {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-fare-tab-seats {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .atfc-toggle {
-  border-top-color: #374151;
-  color: #93c5fd;
+  border-top-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-toggle:hover {
-  background: #374151;
+  background: hsl(var(--accent));
 }
 
 .layout--dark .atfc-segments {
-  border-top-color: #374151;
-  background: #111827;
+  border-top-color: hsl(var(--border));
+  background: hsl(var(--card));
 }
 
 .layout--dark .atfc-seg-airline {
-  color: #d1d5db;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-seg-time {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-seg-airport {
-  color: #d1d5db;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .atfc-seg-layover {
-  color: #fbbf24;
-  background: rgba(180, 83, 9, 0.2);
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--accent));
 }
 
 .layout--dark .admin-tickets-form-field label {
-  color: #e5e7eb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-form-field input,
 .layout--dark .admin-tickets-form-field select {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-form-field input:disabled,
 .layout--dark .admin-tickets-form-field select:disabled {
-  background: #1f2937;
+  background: hsl(var(--muted));
 }
 
 .layout--dark .admin-tickets-fieldset {
-  border-color: #374151;
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-fieldset legend {
-  color: #e5e7eb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-form-hint {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-form-error {
-  background: rgba(185, 28, 28, 0.1);
-  color: #fca5a5;
-  border-color: rgba(185, 28, 28, 0.3);
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.3);
 }
 
 .layout--dark .admin-tickets-modal-intro {
-  color: #d1d5db;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-modal-intro strong {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-crew-list {
-  border-color: #4b5563;
-  background: #374151;
+  border-color: hsl(var(--border));
+  background: hsl(var(--accent));
 }
 
 .layout--dark .admin-tickets-crew-item:hover {
-  background: #4b5563;
+  background: hsl(var(--muted));
 }
 
 .layout--dark .admin-tickets-crew-name {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-crew-email {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-tickets-modal-actions {
-  border-top-color: #374151;
+  border-top-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-btn-cancel {
-  background: #374151;
-  color: #d1d5db;
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-btn-cancel:hover:not(:disabled) {
-  background: #4b5563;
+  background: hsl(var(--muted));
 }
 
 .layout--dark .admin-tickets-project-select {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-upload-pdf-btn {
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-upload-pdf-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.25);
-  color: #bfdbfe;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-tickets-search-error {
-  background: rgba(185, 28, 28, 0.1);
-  color: #fca5a5;
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
 }
 
 .layout--dark .airport-combobox-input {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .airport-combobox-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
 }
 
 .layout--dark .airport-combobox-dropdown {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 .layout--dark .airport-combobox-option:hover {
-  background: #374151;
+  background: hsl(var(--accent));
 }
 
 .layout--dark .airport-combobox-option-active {
-  background: rgba(59, 130, 246, 0.15);
+  background: hsl(var(--accent));
 }
 
 .layout--dark .airport-combobox-option-name {
-  color: #f9fafb;
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .airport-combobox-option-country {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }

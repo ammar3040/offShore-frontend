@@ -304,10 +304,13 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.layout--dark .admin-stat-icon-blue { background-color: rgba(255, 255, 255, 0.08); }
-.layout--dark .admin-stat-icon-purple { background-color: rgba(255, 255, 255, 0.08); }
-.layout--dark .admin-stat-icon-green { background-color: rgba(255, 255, 255, 0.08); }
-.layout--dark .admin-stat-icon-teal { background-color: rgba(255, 255, 255, 0.08); }
+.layout--dark .admin-stat-icon-blue,
+.layout--dark .admin-stat-icon-purple,
+.layout--dark .admin-stat-icon-green,
+.layout--dark .admin-stat-icon-teal {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
 
 .layout--dark .admin-stat-value {
   color: hsl(var(--card-foreground));
