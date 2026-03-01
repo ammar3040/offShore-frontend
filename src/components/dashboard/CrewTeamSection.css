@@ -309,3 +309,35 @@
 .layout--dark .crew-indicator.active {
   background-color: hsl(var(--primary));
 }
+
+/* Crew card layers - use theme colors instead of blue gradient in dark mode */
+.layout--dark .crew-card-layer-1,
+.layout--dark .crew-card-layer-2 {
+  background: hsl(var(--card)) !important;
+  box-shadow: none;
+}
+
+.layout--dark .crew-card-layer-2 {
+  background: hsl(var(--accent)) !important;
+  border: 1px solid hsl(var(--border));
+}
+
+.layout--dark .crew-card-content {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .crew-avatar-large {
+  background-color: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+
+.layout--dark .crew-action-button {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.layout--dark .crew-action-button:hover {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}

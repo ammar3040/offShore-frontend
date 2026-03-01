@@ -1,16 +1,14 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plane, Upload } from 'lucide-react';
-import { toast } from 'sonner';
+import { Plane, FileCheck } from 'lucide-react';
 import { getCrewMe } from '../api/crew';
-import { getCrewTicketsByCrewId, uploadCrewTicketPdfByCrew, type CrewTicketApi } from '../api/ticket';
+import { getCrewTicketsByCrewId, type CrewTicketApi } from '../api/ticket';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
   Table,
@@ -29,10 +27,6 @@ const CrewTicketsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
-  const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
-  const pendingPdfRef = useRef<string | null>(null);
 
   const fetchTickets = useCallback(async () => {
     const crew = await getCrewMe();
@@ -68,34 +62,6 @@ const CrewTicketsPage = () => {
   const getProjectTitle = (t: CrewTicketApi) => {
     const p = t.project_id;
     return p?.title ?? (p as { title?: string })?.title ?? '—';
-  };
-
-  const handleUploadPdfClick = (ticketId: string) => {
-    setUploadError(null);
-    pendingPdfRef.current = ticketId;
-    pdfInputRef.current?.click();
-  };
-
-  const handlePdfChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const ticketId = pendingPdfRef.current;
-    pendingPdfRef.current = null;
-    e.target.value = '';
-    if (!file || !ticketId) return;
-    if (!file.type.includes('pdf')) {
-      setUploadError('Only PDF files are allowed');
-      return;
-    }
-    setUploadingTicketId(ticketId);
-    setUploadError(null);
-    try {
-      await uploadCrewTicketPdfByCrew(ticketId, file);
-      toast.success('PDF uploaded', { description: 'Ticket PDF uploaded successfully.' });
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setUploadingTicketId(null);
-    }
   };
 
   if (loading) {
@@ -134,17 +100,6 @@ const CrewTicketsPage = () => {
         </div>
       ) : (
         <Card className="crew-tickets-table-wrap overflow-hidden">
-          <input
-            ref={pdfInputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="crew-tickets-file-input"
-            onChange={handlePdfChange}
-            aria-hidden
-          />
-          {uploadError && (
-            <div className="crew-tickets-error mx-4 mt-4" role="alert">{uploadError}</div>
-          )}
           <Table>
             <TableHeader>
               <TableRow>
@@ -186,24 +141,15 @@ const CrewTicketsPage = () => {
                       .filter((n) => n != null && n > 0)
                       .join(' / ') || '—'}
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUploadPdfClick(ticket.id)}
-                      disabled={uploadingTicketId === ticket.id}
-                      title="Upload ticket PDF"
-                    >
-                      {uploadingTicketId === ticket.id ? (
-                        <span className="crew-tickets-upload-spinner" />
-                      ) : (
-                        <>
-                          <Upload size={16} className="mr-1" />
-                          Upload
-                        </>
-                      )}
-                    </Button>
+                  <TableCell>
+                    {ticket.pdf ? (
+                      <span className="crew-tickets-pdf-status" title="PDF uploaded by superadmin">
+                        <FileCheck size={16} className="mr-1" />
+                        Uploaded
+                      </span>
+                    ) : (
+                      <span className="crew-tickets-pdf-missing">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
