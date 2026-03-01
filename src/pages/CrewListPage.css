@@ -198,6 +198,10 @@
   letter-spacing: 0.03em;
 }
 
+.user-mgmt-row-clickable {
+  cursor: pointer;
+}
+
 .user-mgmt-table tbody tr:hover {
   background-color: #f9fafb;
 }
@@ -634,5 +638,169 @@
 
 .layout--dark .invite-to-project-cancel:hover:not(:disabled) {
   background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+/* Crew detail modal */
+.crew-detail-modal {
+  padding: 4px 0;
+}
+
+.crew-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.crew-detail-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.crew-detail-card--span-2 {
+  grid-column: span 2;
+}
+
+.crew-detail-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.crew-detail-card-title svg {
+  color: #3b82f6;
+}
+
+.crew-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px 24px;
+}
+
+.crew-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crew-detail-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.crew-detail-value {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.crew-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.crew-detail-invite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background-color: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.crew-detail-invite-btn:hover {
+  background-color: #2563eb;
+}
+
+.crew-detail-close-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.crew-detail-close-btn:hover {
+  background: #f9fafb;
+  color: #374151;
+}
+
+@media (max-width: 768px) {
+  .crew-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .crew-detail-card--span-2 {
+    grid-column: span 1;
+  }
+}
+
+.layout--dark .crew-detail-card {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+
+.layout--dark .crew-detail-card-title {
+  color: hsl(var(--foreground));
+  border-bottom-color: hsl(var(--border));
+}
+
+.layout--dark .crew-detail-card-title svg {
+  color: hsl(var(--primary));
+}
+
+.layout--dark .crew-detail-label {
+  color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .crew-detail-value {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .crew-detail-actions {
+  border-top-color: hsl(var(--border));
+}
+
+.layout--dark .crew-detail-invite-btn {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.layout--dark .crew-detail-invite-btn:hover {
+  filter: brightness(0.95);
+}
+
+.layout--dark .crew-detail-close-btn {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .crew-detail-close-btn:hover {
+  background: hsl(var(--accent));
   color: hsl(var(--foreground));
 }
