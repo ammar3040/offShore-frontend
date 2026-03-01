@@ -1,7 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Search } from 'lucide-react';
 import { getSuperadminAdmins, createSuperadminAdmin, type AdminApi } from '../api/superadmin';
-import Modal from '../components/Modal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import './SuperadminAdminsPage.css';
 
 const SuperadminAdminsPage = () => {
@@ -85,10 +94,10 @@ const SuperadminAdminsPage = () => {
             Manage platform admins. {admins.length} admin{admins.length !== 1 ? 's' : ''} total.
           </p>
         </div>
-        <button type="button" className="superadmin-admins-create-btn" onClick={handleOpenCreate}>
-          <UserPlus size={18} />
+        <Button onClick={handleOpenCreate}>
+          <UserPlus size={18} className="mr-2" />
           Create Admin
-        </button>
+        </Button>
       </header>
 
       {error && (
@@ -98,19 +107,20 @@ const SuperadminAdminsPage = () => {
       )}
 
       <div className="superadmin-admins-toolbar">
-        <div className="superadmin-admins-search">
-          <Search size={18} className="superadmin-admins-search-icon" />
-          <input
+        <div className="superadmin-admins-search relative">
+          <Search size={18} className="superadmin-admins-search-icon absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
             type="text"
             placeholder="Search admins..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="superadmin-admins-search-input"
+            className="superadmin-admins-search-input pl-9"
           />
         </div>
       </div>
 
-      <div className="superadmin-admins-table-wrap">
+      <Card className="superadmin-admins-table-wrap">
+        <CardContent className="p-0">
         {loading ? (
           <p className="superadmin-admins-empty">Loading…</p>
         ) : filteredAdmins.length === 0 ? (
@@ -141,19 +151,24 @@ const SuperadminAdminsPage = () => {
             </tbody>
           </table>
         )}
-      </div>
+        </CardContent>
+      </Card>
 
-      <Modal isOpen={isCreateOpen} onClose={handleCloseCreate} title="Create Admin" size="medium">
-        <form onSubmit={handleCreateAdmin} className="superadmin-create-admin-form">
+      <Dialog open={isCreateOpen} onOpenChange={(open) => !open && handleCloseCreate()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Admin</DialogTitle>
+          </DialogHeader>
+        <form onSubmit={handleCreateAdmin} className="superadmin-create-admin-form space-y-4">
           {createError && (
-            <div className="superadmin-create-admin-error" role="alert">
+            <div className="text-destructive text-sm p-3 rounded-md bg-destructive/10 border border-destructive/20" role="alert">
               {createError}
             </div>
           )}
-          <div className="superadmin-create-admin-row">
-            <div className="superadmin-create-admin-field">
-              <label htmlFor="sa-firstname">First name</label>
-              <input
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sa-firstname">First name</Label>
+              <Input
                 id="sa-firstname"
                 type="text"
                 value={formData.firstname}
@@ -162,9 +177,9 @@ const SuperadminAdminsPage = () => {
                 placeholder="John"
               />
             </div>
-            <div className="superadmin-create-admin-field">
-              <label htmlFor="sa-lastname">Last name</label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="sa-lastname">Last name</Label>
+              <Input
                 id="sa-lastname"
                 type="text"
                 value={formData.lastname}
@@ -174,9 +189,9 @@ const SuperadminAdminsPage = () => {
               />
             </div>
           </div>
-          <div className="superadmin-create-admin-field">
-            <label htmlFor="sa-email">Email</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="sa-email">Email</Label>
+            <Input
               id="sa-email"
               type="email"
               value={formData.email}
@@ -185,9 +200,9 @@ const SuperadminAdminsPage = () => {
               placeholder="admin@company.com"
             />
           </div>
-          <div className="superadmin-create-admin-field">
-            <label htmlFor="sa-password">Password</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="sa-password">Password</Label>
+            <Input
               id="sa-password"
               type="password"
               value={formData.password}
@@ -197,9 +212,9 @@ const SuperadminAdminsPage = () => {
               placeholder="••••••••"
             />
           </div>
-          <div className="superadmin-create-admin-field">
-            <label htmlFor="sa-phone">Phone (optional)</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="sa-phone">Phone (optional)</Label>
+            <Input
               id="sa-phone"
               type="tel"
               value={formData.phone}
@@ -207,16 +222,17 @@ const SuperadminAdminsPage = () => {
               placeholder="+1 234 567 8900"
             />
           </div>
-          <div className="superadmin-create-admin-actions">
-            <button type="button" className="superadmin-create-admin-cancel" onClick={handleCloseCreate} disabled={createLoading}>
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="outline" onClick={handleCloseCreate} disabled={createLoading}>
               Cancel
-            </button>
-            <button type="submit" className="superadmin-create-admin-submit" disabled={createLoading}>
+            </Button>
+            <Button type="submit" disabled={createLoading}>
               {createLoading ? 'Creating…' : 'Create Admin'}
-            </button>
+            </Button>
           </div>
         </form>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

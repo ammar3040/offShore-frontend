@@ -207,33 +207,33 @@
   font-size: 1.02rem;
 }
 
-/* Dark mode */
-.crew-panel-layout--dark .crew-enrolled-title { color: #f9fafb; }
+/* Dark mode (AMOLED, uses index.css theme) */
+.crew-panel-layout--dark .crew-enrolled-title { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-enrolled-subtitle,
 .crew-panel-layout--dark .crew-enrolled-section-title,
 .crew-panel-layout--dark .crew-enrolled-loading,
-.crew-panel-layout--dark .crew-enrolled-placeholder { color: #9ca3af; }
-.crew-panel-layout--dark .crew-enrolled-loading .crew-panel-dashboard-spinner { border-color: #374151; border-top-color: #93c5fd; }
+.crew-panel-layout--dark .crew-enrolled-placeholder { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-enrolled-loading .crew-panel-dashboard-spinner { border-color: hsl(var(--accent)); border-top-color: hsl(var(--primary)); }
 .crew-panel-layout--dark .crew-enrolled-empty {
-  background: #1f2937;
-  border-color: #4b5563;
-  color: #9ca3af;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
 }
-.crew-panel-layout--dark .crew-enrolled-empty svg { color: #6b7280; }
+.crew-panel-layout--dark .crew-enrolled-empty svg { color: hsl(var(--muted-foreground)); }
 .crew-panel-layout--dark .crew-enrolled-card {
-  background: #1f2937;
-  border-color: #374151;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
-.crew-panel-layout--dark .crew-enrolled-card--invitation { border-left-color: #60a5fa; }
-.crew-panel-layout--dark .crew-enrolled-card-header h3 { color: #f9fafb; }
+.crew-panel-layout--dark .crew-enrolled-card--invitation { border-left-color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-enrolled-card-header h3 { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-enrolled-card-desc,
-.crew-panel-layout--dark .crew-enrolled-card-meta { color: #9ca3af; }
-.crew-panel-layout--dark .crew-enrolled-invitation-actions { border-top-color: #374151; }
+.crew-panel-layout--dark .crew-enrolled-card-meta { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-enrolled-invitation-actions { border-top-color: hsl(var(--border)); }
 .crew-panel-layout--dark .crew-enrolled-btn--reject {
-  background: #374151;
-  color: #e5e7eb;
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
-.crew-panel-layout--dark .crew-enrolled-btn--reject:hover:not(:disabled) { background: #4b5563; }
+.crew-panel-layout--dark .crew-enrolled-btn--reject:hover:not(:disabled) { background: hsl(var(--muted)); }
 .crew-panel-layout--dark .crew-enrolled-error {
   background: rgba(220, 38, 38, 0.15);
   border-color: #7f1d1d;

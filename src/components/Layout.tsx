@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { Toaster } from './ui/sonner';
 import { getAdminTheme, setAdminTheme, type AdminTheme } from '../lib/adminTheme';
 import './Layout.css';
 
@@ -27,7 +28,7 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className={`layout${theme === 'dark' ? ' layout--dark' : ''}`}>
+    <div className={`layout${theme === 'dark' ? ' layout--dark dark' : ''}`}>
       <div 
         className={`sidebar-overlay ${isMobileMenuOpen ? 'active' : ''}`}
         onClick={closeMobileMenu}
@@ -39,6 +40,7 @@ const Layout = ({ children }: LayoutProps) => {
           {children}
         </main>
       </div>
+      <Toaster theme={getAdminTheme()} richColors position="bottom-right" />
     </div>
   );
 };

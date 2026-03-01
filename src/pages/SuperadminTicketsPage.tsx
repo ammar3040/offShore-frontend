@@ -1,13 +1,26 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronDown, FileText, FileCheck, Send } from 'lucide-react';
+import { FileText, FileCheck, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail } from '../api/superadmin';
 import type { CrewTicketApi } from '../api/ticket';
-import Modal from '../components/Modal';
-import { Toaster, useToast } from '../components/Toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import './SuperadminTicketsPage.css';
 
 const SuperadminTicketsPage = () => {
-  const { toasts, toast, dismiss } = useToast();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<{ id: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +128,7 @@ const SuperadminTicketsPage = () => {
           prev.map((t) => (t.id === ticketId ? { ...t, pdf: res.crewTicket!.pdf } : t))
         );
       }
-      toast('success', 'PDF uploaded', 'Ticket PDF uploaded successfully.');
+      toast.success('PDF uploaded', { description: 'Ticket PDF uploaded successfully.' });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -127,9 +140,9 @@ const SuperadminTicketsPage = () => {
     setSendingTicketId(ticketId);
     try {
       await sendSuperadminCrewTicketEmail(ticketId);
-      toast('success', 'Ticket sent', 'Ticket email sent to crew member successfully.');
+      toast.success('Ticket sent', { description: 'Ticket email sent to crew member successfully.' });
     } catch (err) {
-      toast('error', 'Send failed', err instanceof Error ? err.message : 'Failed to send ticket email.');
+      toast.error('Send failed', { description: err instanceof Error ? err.message : 'Failed to send ticket email.' });
     } finally {
       setSendingTicketId(null);
     }
@@ -137,7 +150,6 @@ const SuperadminTicketsPage = () => {
 
   return (
     <div className="superadmin-tickets-page">
-      <Toaster toasts={toasts} dismiss={dismiss} />
       <header className="superadmin-tickets-header">
         <div>
           <h1 className="superadmin-tickets-title">Crew Tickets</h1>
@@ -147,22 +159,19 @@ const SuperadminTicketsPage = () => {
         </div>
         <div className="superadmin-tickets-filter">
           <label htmlFor="sa-tickets-project">Filter by project</label>
-          <div className="superadmin-tickets-select-wrap">
-            <select
-              id="sa-tickets-project"
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="superadmin-tickets-select"
-            >
-              <option value="all">All projects</option>
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger id="sa-tickets-project" className="superadmin-tickets-select w-[240px]">
+              <SelectValue placeholder="All projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All projects</SelectItem>
               {projectOptions.map((p) => (
-                <option key={p.id} value={p.id}>
+                <SelectItem key={p.id} value={p.id}>
                   {p.title}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-            <ChevronDown size={18} className="superadmin-tickets-select-chevron" />
-          </div>
+            </SelectContent>
+          </Select>
         </div>
       </header>
 
@@ -187,7 +196,8 @@ const SuperadminTicketsPage = () => {
         </div>
       )}
 
-      <div className="superadmin-tickets-content">
+      <Card className="superadmin-tickets-content">
+        <CardContent className="p-0">
         {loading ? (
           <p className="superadmin-tickets-empty">Loading…</p>
         ) : filteredTickets.length === 0 ? (
@@ -225,9 +235,10 @@ const SuperadminTicketsPage = () => {
                   <span className="superadmin-ticket-trip">{t.trip}</span>
                 </div>
                 <div className="superadmin-ticket-actions">
-                  <button
-                    type="button"
-                    className={`superadmin-ticket-pdf-btn${t.pdf ? ' superadmin-ticket-pdf-btn--uploaded' : ''}`}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={t.pdf ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
                     onClick={(e) => { e.stopPropagation(); handleUploadClick(t.id); }}
                     disabled={uploadingTicketId === t.id}
                     title={t.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
@@ -249,10 +260,10 @@ const SuperadminTicketsPage = () => {
                         Upload PDF
                       </>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    className="superadmin-ticket-send-btn"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={(e) => { e.stopPropagation(); handleSendTicketClick(t.id); }}
                     disabled={sendingTicketId === t.id}
                     title="Send ticket to crew email"
@@ -265,20 +276,20 @@ const SuperadminTicketsPage = () => {
                         Send ticket
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
 
-      <Modal
-        isOpen={!!selectedTicket}
-        onClose={() => setSelectedTicket(null)}
-        title="Ticket details"
-        size="medium"
-      >
+      <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ticket details</DialogTitle>
+          </DialogHeader>
         {selectedTicket && (
           <div className="superadmin-tickets-detail-card">
             <section className="superadmin-tickets-detail-section">
@@ -345,9 +356,10 @@ const SuperadminTicketsPage = () => {
                 )}
               </p>
               <div className="superadmin-tickets-detail-actions">
-                <button
-                  type="button"
-                  className={`superadmin-ticket-pdf-btn${selectedTicket.pdf ? ' superadmin-ticket-pdf-btn--uploaded' : ''}`}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={selectedTicket.pdf ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
                   onClick={(e) => { e.stopPropagation(); handleUploadClick(selectedTicket.id); }}
                   disabled={uploadingTicketId === selectedTicket.id}
                   title={selectedTicket.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
@@ -368,11 +380,11 @@ const SuperadminTicketsPage = () => {
                       </span>
                       Upload PDF
                     </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="superadmin-ticket-send-btn"
+                    )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => { e.stopPropagation(); handleSendTicketClick(selectedTicket.id); }}
                   disabled={sendingTicketId === selectedTicket.id}
                   title="Send ticket to crew email"
@@ -385,12 +397,13 @@ const SuperadminTicketsPage = () => {
                       Send ticket
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </section>
           </div>
         )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

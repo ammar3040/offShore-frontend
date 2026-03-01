@@ -125,42 +125,49 @@
   to   { width: 0%; }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (uses index.css theme) ----- */
 .layout--dark .toast-success,
-.superadmin-panel-layout--dark .toast-success {
-  background: #1f2937;
+.superadmin-panel-layout--dark .toast-success,
+.crew-panel-layout--dark .toast-success {
+  background: hsl(var(--card));
   border-color: rgba(5, 150, 105, 0.3);
 }
 
 .layout--dark .toast-error,
-.superadmin-panel-layout--dark .toast-error {
-  background: #1f2937;
+.superadmin-panel-layout--dark .toast-error,
+.crew-panel-layout--dark .toast-error {
+  background: hsl(var(--card));
   border-color: rgba(220, 38, 38, 0.3);
 }
 
 .layout--dark .toast-info,
-.superadmin-panel-layout--dark .toast-info {
-  background: #1f2937;
-  border-color: rgba(37, 99, 235, 0.3);
+.superadmin-panel-layout--dark .toast-info,
+.crew-panel-layout--dark .toast-info {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .toast-title,
-.superadmin-panel-layout--dark .toast-title {
-  color: #f9fafb;
+.superadmin-panel-layout--dark .toast-title,
+.crew-panel-layout--dark .toast-title {
+  color: hsl(var(--card-foreground));
 }
 
 .layout--dark .toast-desc,
-.superadmin-panel-layout--dark .toast-desc {
-  color: #9ca3af;
+.superadmin-panel-layout--dark .toast-desc,
+.crew-panel-layout--dark .toast-desc {
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .toast-close,
-.superadmin-panel-layout--dark .toast-close {
-  color: #6b7280;
+.superadmin-panel-layout--dark .toast-close,
+.crew-panel-layout--dark .toast-close {
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .toast-close:hover,
-.superadmin-panel-layout--dark .toast-close:hover {
-  background: #374151;
-  color: #d1d5db;
+.superadmin-panel-layout--dark .toast-close:hover,
+.crew-panel-layout--dark .toast-close:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }

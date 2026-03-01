@@ -14,46 +14,24 @@
 .superadmin-admins-title {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: hsl(var(--foreground));
   margin: 0 0 4px;
 }
 
 .superadmin-admins-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin: 0;
-}
-
-.superadmin-admins-create-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.superadmin-admins-create-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
 }
 
 .superadmin-admins-error {
   padding: 12px 16px;
   margin-bottom: 20px;
   font-size: 14px;
-  color: #b91c1c;
-  background: #fef2f2;
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.1);
   border-radius: 8px;
-  border: 1px solid #fecaca;
+  border: 1px solid hsl(var(--destructive) / 0.3);
 }
 
 .superadmin-admins-toolbar {
@@ -71,32 +49,11 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
-}
-
-.superadmin-admins-search-input {
-  width: 100%;
-  padding: 10px 14px 10px 42px;
-  font-size: 14px;
-  border: 1px solid #e7e5e4;
-  border-radius: 8px;
-  background: #fff;
-  color: #1f2937;
-  box-sizing: border-box;
-}
-
-.superadmin-admins-search-input:focus {
-  outline: none;
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+  color: hsl(var(--muted-foreground));
 }
 
 .superadmin-admins-table-wrap {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e7e5e4;
   overflow-x: auto;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -104,7 +61,7 @@
   padding: 40px 20px;
   text-align: center;
   font-size: 14px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin: 0;
 }
 
@@ -119,13 +76,13 @@
   padding: 14px 18px;
   text-align: left;
   font-size: 14px;
-  border-bottom: 1px solid #f5f5f4;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .superadmin-admins-table th {
   font-weight: 600;
-  color: #374151;
-  background: #fafaf9;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
   white-space: nowrap;
 }
 
@@ -134,109 +91,16 @@
 }
 
 .superadmin-admins-table tbody tr:hover {
-  background: #fffbeb;
+  background: hsl(var(--accent));
 }
 
 .superadmin-admins-name {
   font-weight: 500;
-  color: #1f2937;
+  color: hsl(var(--foreground));
   white-space: nowrap;
 }
 
-/* Create Admin Form */
-.superadmin-create-admin-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.superadmin-create-admin-error {
-  padding: 10px 14px;
-  font-size: 13px;
-  color: #b91c1c;
-  background: #fef2f2;
-  border-radius: 8px;
-  border: 1px solid #fecaca;
-}
-
-.superadmin-create-admin-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.superadmin-create-admin-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.superadmin-create-admin-field label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.superadmin-create-admin-field input {
-  padding: 10px 14px;
-  font-size: 14px;
-  border: 1px solid #e7e5e4;
-  border-radius: 8px;
-  background: #fff;
-  color: #1f2937;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-.superadmin-create-admin-field input:focus {
-  outline: none;
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
-}
-
-.superadmin-create-admin-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
-  padding-top: 20px;
-  border-top: 1px solid #e7e5e4;
-}
-
-.superadmin-create-admin-cancel {
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #6b7280;
-  background: #fff;
-  border: 1px solid #e7e5e4;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.superadmin-create-admin-cancel:hover:not(:disabled) {
-  background: #f5f5f4;
-}
-
-.superadmin-create-admin-submit {
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.superadmin-create-admin-submit:hover:not(:disabled) {
-  opacity: 0.95;
-}
-
-.superadmin-create-admin-submit:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
+/* Create Admin Form - uses shadcn Input/Label/Button, minimal overrides */
 
 /* ===== Mobile ===== */
 @media (max-width: 768px) {
@@ -249,7 +113,7 @@
     font-size: 20px;
   }
 
-  .superadmin-admins-create-btn {
+  .superadmin-admins-header button {
     width: 100%;
     justify-content: center;
   }
@@ -264,108 +128,4 @@
     font-size: 13px;
   }
 
-  .superadmin-create-admin-row {
-    grid-template-columns: 1fr;
-  }
-
-  .superadmin-create-admin-actions {
-    flex-direction: column;
-  }
-
-  .superadmin-create-admin-cancel,
-  .superadmin-create-admin-submit {
-    width: 100%;
-    text-align: center;
-    justify-content: center;
-  }
-}
-
-/* ----- Dark mode ----- */
-.superadmin-panel-layout--dark .superadmin-admins-title {
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-subtitle {
-  color: #9ca3af;
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-error {
-  background: rgba(185, 28, 28, 0.1);
-  color: #fca5a5;
-  border-color: rgba(185, 28, 28, 0.3);
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-search-input {
-  background: #1f2937;
-  border-color: #4b5563;
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-search-input:focus {
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-table-wrap {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-table th {
-  background: #111827;
-  color: #9ca3af;
-  border-bottom-color: #374151;
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-table td {
-  border-bottom-color: #374151;
-  color: #d1d5db;
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-table tbody tr:hover {
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-name {
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-admins-empty {
-  color: #9ca3af;
-}
-
-.superadmin-panel-layout--dark .superadmin-create-admin-error {
-  background: rgba(185, 28, 28, 0.1);
-  color: #fca5a5;
-  border-color: rgba(185, 28, 28, 0.3);
-}
-
-.superadmin-panel-layout--dark .superadmin-create-admin-field label {
-  color: #e5e7eb;
-}
-
-.superadmin-panel-layout--dark .superadmin-create-admin-field input {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-create-admin-field input:focus {
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
-}
-
-.superadmin-panel-layout--dark .superadmin-create-admin-actions {
-  border-top-color: #374151;
-}
-
-.superadmin-panel-layout--dark .superadmin-create-admin-cancel {
-  background: #374151;
-  border-color: #4b5563;
-  color: #d1d5db;
-}
-
-.superadmin-panel-layout--dark .superadmin-create-admin-cancel:hover:not(:disabled) {
-  background: #4b5563;
 }

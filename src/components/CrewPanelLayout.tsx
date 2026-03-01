@@ -13,6 +13,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
+import { Toaster } from './ui/sonner';
 import { clearCrewSession } from '../lib/crewPanelAuth';
 import { getCrewPanelTheme, setCrewPanelTheme, type CrewPanelTheme } from '../lib/crewPanelTheme';
 import './CrewPanelLayout.css';
@@ -53,7 +54,7 @@ const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
   };
 
   return (
-    <div className={`crew-panel-layout${theme === 'dark' ? ' crew-panel-layout--dark' : ''}`}>
+    <div className={`crew-panel-layout${theme === 'dark' ? ' crew-panel-layout--dark dark' : ''}`}>
       <aside className="crew-panel-sidebar">
         <div className="crew-panel-sidebar-header">
           <div className="crew-panel-logo">
@@ -108,6 +109,7 @@ const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
       <div className="crew-panel-body">
         {children ?? <Outlet />}
       </div>
+      <Toaster theme={theme} richColors position="bottom-right" />
     </div>
   );
 };

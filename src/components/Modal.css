@@ -148,35 +148,41 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (uses index.css theme) ----- */
 .layout--dark .modal-overlay,
-.superadmin-panel-layout--dark .modal-overlay {
-  background-color: rgba(0, 0, 0, 0.7);
+.superadmin-panel-layout--dark .modal-overlay,
+.crew-panel-layout--dark .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.85);
 }
 
 .layout--dark .modal-content,
-.superadmin-panel-layout--dark .modal-content {
-  background-color: #1f2937;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+.superadmin-panel-layout--dark .modal-content,
+.crew-panel-layout--dark .modal-content {
+  background-color: hsl(var(--card));
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 }
 
 .layout--dark .modal-header,
-.superadmin-panel-layout--dark .modal-header {
-  border-bottom-color: #374151;
+.superadmin-panel-layout--dark .modal-header,
+.crew-panel-layout--dark .modal-header {
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .modal-title,
-.superadmin-panel-layout--dark .modal-title {
-  color: #f9fafb;
+.superadmin-panel-layout--dark .modal-title,
+.crew-panel-layout--dark .modal-title {
+  color: hsl(var(--card-foreground));
 }
 
 .layout--dark .modal-close-button,
-.superadmin-panel-layout--dark .modal-close-button {
-  color: #9ca3af;
+.superadmin-panel-layout--dark .modal-close-button,
+.crew-panel-layout--dark .modal-close-button {
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .modal-close-button:hover,
-.superadmin-panel-layout--dark .modal-close-button:hover {
-  background-color: #374151;
-  color: #f9fafb;
+.superadmin-panel-layout--dark .modal-close-button:hover,
+.crew-panel-layout--dark .modal-close-button:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }

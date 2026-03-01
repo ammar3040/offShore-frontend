@@ -15,13 +15,13 @@
 .superadmin-tickets-title {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: hsl(var(--foreground));
   margin: 0 0 4px;
 }
 
 .superadmin-tickets-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin: 0;
 }
 
@@ -34,64 +34,28 @@
 .superadmin-tickets-filter label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
-}
-
-.superadmin-tickets-select-wrap {
-  position: relative;
-  display: inline-block;
-}
-
-.superadmin-tickets-select {
-  appearance: none;
-  padding: 10px 36px 10px 14px;
-  font-size: 14px;
-  border: 1px solid #e7e5e4;
-  border-radius: 8px;
-  background: #fff;
-  color: #1f2937;
-  min-width: 240px;
-  cursor: pointer;
-}
-
-.superadmin-tickets-select:focus {
-  outline: none;
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
-}
-
-.superadmin-tickets-select-chevron {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-  pointer-events: none;
+  color: hsl(var(--muted-foreground));
 }
 
 .superadmin-tickets-error {
   padding: 12px 16px;
   margin-bottom: 20px;
   font-size: 14px;
-  color: #b91c1c;
-  background: #fef2f2;
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.1);
   border-radius: 8px;
-  border: 1px solid #fecaca;
+  border: 1px solid hsl(var(--destructive) / 0.3);
 }
 
 .superadmin-tickets-content {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e7e5e4;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .superadmin-tickets-empty {
   padding: 40px 20px;
   text-align: center;
   font-size: 14px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin: 0;
 }
 
@@ -107,14 +71,14 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #fafaf9;
+  background: hsl(var(--accent));
   border-radius: 8px;
-  border: 1px solid #e7e5e4;
+  border: 1px solid hsl(var(--border));
   transition: background 0.2s;
 }
 
 .superadmin-ticket-card:hover {
-  background: #fffbeb;
+  background: hsl(var(--muted));
 }
 
 .superadmin-ticket-card--clickable {
@@ -124,8 +88,8 @@
 .superadmin-ticket-icon {
   width: 40px;
   height: 40px;
-  background: #fffbeb;
-  color: #d97706;
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -141,21 +105,21 @@
 .superadmin-ticket-route {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: hsl(var(--foreground));
   margin-bottom: 4px;
   word-break: break-word;
 }
 
 .superadmin-ticket-meta {
   font-size: 13px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .superadmin-ticket-sep {
   margin: 0 6px;
-  color: #d1d5db;
+  color: hsl(var(--muted-foreground));
 }
 
 .superadmin-ticket-badges {
@@ -177,8 +141,8 @@
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 6px;
-  background: #e7e5e4;
-  color: #4b5563;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
 }
 
 .superadmin-tickets-file-input {
@@ -189,50 +153,15 @@
   pointer-events: none;
 }
 
-.superadmin-ticket-pdf-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #d97706;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.superadmin-ticket-pdf-btn:hover:not(:disabled) {
-  background: #fef3c7;
-  border-color: #fcd34d;
-  color: #b45309;
-}
-
-.superadmin-ticket-pdf-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 .superadmin-ticket-pdf-btn--uploaded {
-  color: #166534;
-  background: #dcfce7;
-  border-color: #86efac;
+  --btn-bg: hsl(var(--chart-2) / 0.2);
+  --btn-border: hsl(var(--chart-2) / 0.4);
+  color: hsl(142 76% 36%);
+}
+.dark .superadmin-ticket-pdf-btn--uploaded {
+  color: hsl(142 70% 55%);
 }
 
-.superadmin-ticket-pdf-btn--uploaded:hover:not(:disabled) {
-  background: #bbf7d0;
-  border-color: #4ade80;
-  color: #15803d;
-}
-
-.superadmin-ticket-pdf-btn:has(.superadmin-ticket-pdf-icon) .superadmin-ticket-pdf-icon {
-  display: inline-flex;
-  align-items: center;
-}
 
 .superadmin-ticket-upload-spinner {
   width: 16px;
@@ -256,16 +185,16 @@
 
 .superadmin-tickets-detail-section {
   padding: 16px;
-  background: #f9fafb;
+  background: hsl(var(--accent));
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid hsl(var(--border));
 }
 
 .superadmin-tickets-detail-heading {
   margin: 0 0 12px;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: hsl(var(--foreground));
 }
 
 .superadmin-tickets-detail-list {
@@ -282,19 +211,19 @@
 .superadmin-tickets-detail-item dt {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin-bottom: 4px;
 }
 
 .superadmin-tickets-detail-item dd {
   margin: 0;
   font-size: 14px;
-  color: #1f2937;
+  color: hsl(var(--foreground));
 }
 
 .superadmin-tickets-detail-meta {
   font-size: 12px !important;
-  color: #6b7280 !important;
+  color: hsl(var(--muted-foreground)) !important;
   margin-top: 2px !important;
 }
 
@@ -311,7 +240,7 @@
 }
 
 .superadmin-tickets-detail-pdf-missing {
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
 }
 
 .superadmin-tickets-detail-actions {
@@ -321,39 +250,12 @@
   margin-top: 8px;
 }
 
-.superadmin-ticket-send-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #2563eb;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.superadmin-ticket-send-btn:hover:not(:disabled) {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1d4ed8;
-}
-
-.superadmin-ticket-send-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
+.superadmin-ticket-upload-spinner,
 .superadmin-ticket-send-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(37, 99, 235, 0.3);
-  border-top-color: #2563eb;
+  border: 2px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
   border-radius: 50%;
   animation: superadmin-ticket-upload-spin 0.6s linear infinite;
 }
@@ -374,8 +276,7 @@
   }
 
   .superadmin-tickets-select {
-    width: 100%;
-    min-width: 0;
+    width: 100% !important;
   }
 
   .superadmin-tickets-list {
@@ -407,149 +308,11 @@
     width: 100%;
   }
 
-  .superadmin-ticket-pdf-btn,
-  .superadmin-ticket-send-btn {
+  .superadmin-ticket-actions button {
     flex: 1;
     min-width: 120px;
     justify-content: center;
   }
 }
 
-/* ----- Dark mode ----- */
-.superadmin-panel-layout--dark .superadmin-tickets-title {
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-subtitle {
-  color: #9ca3af;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-filter label {
-  color: #9ca3af;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-select {
-  background: #1f2937;
-  border-color: #4b5563;
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-select:focus {
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-error {
-  background: rgba(185, 28, 28, 0.1);
-  color: #fca5a5;
-  border-color: rgba(185, 28, 28, 0.3);
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-content {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-empty {
-  color: #9ca3af;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-card {
-  background: #374151;
-  border-color: #4b5563;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-card:hover {
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-icon {
-  background: rgba(245, 158, 11, 0.15);
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-route {
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-meta {
-  color: #9ca3af;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-sep {
-  color: #4b5563;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-class,
-.superadmin-panel-layout--dark .superadmin-ticket-trip {
-  background: #1f2937;
-  color: #d1d5db;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(253, 230, 138, 0.3);
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn:hover:not(:disabled) {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fde68a;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn--uploaded {
-  color: #4ade80;
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(74, 222, 128, 0.3);
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-pdf-btn--uploaded:hover:not(:disabled) {
-  background: rgba(34, 197, 94, 0.3);
-  color: #86efac;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-send-btn {
-  color: #60a5fa;
-  background: rgba(37, 99, 235, 0.15);
-  border-color: rgba(96, 165, 250, 0.3);
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-send-btn:hover:not(:disabled) {
-  background: rgba(37, 99, 235, 0.25);
-  border-color: rgba(96, 165, 250, 0.5);
-  color: #93c5fd;
-}
-
-.superadmin-panel-layout--dark .superadmin-ticket-send-spinner {
-  border-color: rgba(96, 165, 250, 0.3);
-  border-top-color: #60a5fa;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-detail-section {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-detail-heading {
-  color: #e5e7eb;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-detail-item dt {
-  color: #9ca3af;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-detail-item dd {
-  color: #f9fafb;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-detail-meta {
-  color: #9ca3af !important;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-detail-pdf-uploaded {
-  color: #4ade80;
-}
-
-.superadmin-panel-layout--dark .superadmin-tickets-detail-pdf-missing {
-  color: #9ca3af;
-}
+/* Dark mode: theme variables from index.css apply automatically when .dark is present */

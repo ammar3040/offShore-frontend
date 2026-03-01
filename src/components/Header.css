@@ -365,37 +365,38 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (AMOLED) ----- */
 .layout--dark .header {
-  background-color: #0b1120;
-  border-bottom: 1px solid #1e293b;
+  background-color: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .layout--dark .search-input {
-  background-color: rgba(15, 23, 42, 0.8);
-  border-color: rgba(71, 85, 105, 0.5);
+  background-color: hsl(var(--input));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .search-input:focus {
-  background-color: rgba(15, 23, 42, 0.95);
+  background-color: hsl(var(--input));
+  border-color: hsl(var(--ring));
 }
 
 .layout--dark .user-profile-dropdown {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .layout--dark .user-profile-dropdown-item {
-  color: #d1d5db;
+  color: hsl(var(--popover-foreground));
 }
 
 .layout--dark .user-profile-dropdown-item:hover {
-  background-color: #374151;
+  background-color: hsl(var(--accent));
 }
 
 .layout--dark .user-profile-dropdown-item.logout {
-  color: #f87171;
+  color: hsl(var(--destructive));
 }
 
 .layout--dark .user-profile-dropdown-item.logout:hover {
@@ -403,26 +404,42 @@
 }
 
 .layout--dark .admin-balance-currency-select {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.98) 100%);
-  color: #f1f5f9;
-  border-color: rgba(71, 85, 105, 0.4);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .admin-balance-currency-select option {
-  background-color: #0f172a;
-  color: #f1f5f9;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .admin-balance-currency-select:hover,
 .layout--dark .admin-balance-currency-select:focus {
-  border-color: rgba(34, 197, 94, 0.5);
+  border-color: hsl(var(--ring));
 }
 
 .layout--dark .admin-balance-currency-chevron {
-  color: rgba(241, 245, 249, 0.6);
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .admin-balance-currency-select:hover + .admin-balance-currency-chevron,
 .layout--dark .admin-balance-currency-select:focus + .admin-balance-currency-chevron {
-  color: #86efac;
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .avatar {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .header-brand,
+.layout--dark .mobile-menu-button,
+.layout--dark .search-input,
+.layout--dark .search-input::placeholder {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .search-icon {
+  color: hsl(var(--muted-foreground));
 }

@@ -262,23 +262,23 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (AMOLED) ----- */
 .layout--dark .crew-team-section {
-  background-color: #1f2937;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: hsl(var(--card));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .layout--dark .section-title {
-  color: #f9fafb;
+  color: hsl(var(--card-foreground));
 }
 
 .layout--dark .section-description {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .crew-team-loading {
-  color: #9ca3af;
-  background-color: #374151;
+  color: hsl(var(--muted-foreground));
+  background-color: hsl(var(--accent));
 }
 
 .layout--dark .crew-team-error {
@@ -287,25 +287,25 @@
 }
 
 .layout--dark .crew-team-empty {
-  color: #9ca3af;
-  background-color: #374151;
+  color: hsl(var(--muted-foreground));
+  background-color: hsl(var(--accent));
 }
 
 .layout--dark .crew-nav-button {
-  background-color: #374151;
-  border-color: #4b5563;
-  color: #d1d5db;
+  background-color: hsl(var(--accent));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .crew-nav-button:hover {
-  background-color: #4b5563;
-  color: #f9fafb;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .layout--dark .crew-indicator {
-  background-color: #4b5563;
+  background-color: hsl(var(--muted));
 }
 
 .layout--dark .crew-indicator.active {
-  background-color: #3b82f6;
+  background-color: hsl(var(--primary));
 }

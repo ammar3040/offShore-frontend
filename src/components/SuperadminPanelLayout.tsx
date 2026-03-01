@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Ticket, LogOut, Shield, Menu, X, Sun, Moon } from 'lucide-react';
+import { Toaster } from './ui/sonner';
 import { clearSuperadminSession } from '../lib/superadminAuth';
 import { getSuperadminTheme, setSuperadminTheme, type SuperadminTheme } from '../lib/superadminTheme';
 import './SuperadminPanelLayout.css';
@@ -36,7 +37,7 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <div className={`superadmin-panel-layout${theme === 'dark' ? ' superadmin-panel-layout--dark' : ''}`}>
+    <div className={`superadmin-panel-layout${theme === 'dark' ? ' superadmin-panel-layout--dark dark' : ''}`}>
       <div
         className={`superadmin-panel-overlay${mobileOpen ? ' open' : ''}`}
         onClick={() => setMobileOpen(false)}
@@ -120,6 +121,7 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
           {children ?? <Outlet />}
         </div>
       </div>
+      <Toaster theme={theme} richColors position="bottom-right" />
     </div>
   );
 };

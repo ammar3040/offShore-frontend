@@ -1,9 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, FolderKanban, Ship, Ticket, Percent, Plus, BadgeDollarSign } from 'lucide-react';
+import { toast } from 'sonner';
 import { getSuperadminAnalytics, updateSuperadminSettings } from '../api/superadmin';
 import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
-import { Toaster, useToast } from '../components/Toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import './SuperadminDashboard.css';
 
 const CURRENCY_LABELS: { value: CurrencyCode; label: string; symbol: string }[] = [
@@ -33,7 +43,6 @@ function getCurrencySymbol(code: CurrencyCode): string {
 }
 
 const SuperadminDashboard = () => {
-  const { toasts, toast, dismiss } = useToast();
   const [settings, setSettings] = useState<{
     baseCurrency: CurrencyCode;
     markupGBP: number | null;
@@ -143,7 +152,7 @@ const SuperadminDashboard = () => {
     e.preventDefault();
     const value = parseFloat(markupInput.trim());
     if (isNaN(value) || value < 0) {
-      toast('error', 'Invalid markup', 'Please enter a valid positive number.');
+      toast.error('Invalid markup', { description: 'Please enter a valid positive number.' });
       return;
     }
     if (!rates) return;
@@ -154,9 +163,9 @@ const SuperadminDashboard = () => {
       setSettings((s) => ({ ...s, markupGBP: res?.superAdmin?.markup ?? gbpValue }));
       setShowMarkupForm(false);
       setMarkupInput('');
-      toast('success', 'Markup updated', 'Markup saved successfully.');
+      toast.success('Markup updated', { description: 'Markup saved successfully.' });
     } catch (err) {
-      toast('error', 'Update failed', err instanceof Error ? err.message : 'Failed to update markup.');
+      toast.error('Update failed', { description: err instanceof Error ? err.message : 'Failed to update markup.' });
     } finally {
       setMarkupSaving(false);
     }
@@ -166,7 +175,7 @@ const SuperadminDashboard = () => {
     e.preventDefault();
     const value = parseFloat(cashbackInput.trim());
     if (isNaN(value) || value < 0) {
-      toast('error', 'Invalid cashback', 'Please enter a valid positive number.');
+      toast.error('Invalid cashback', { description: 'Please enter a valid positive number.' });
       return;
     }
     if (!rates) return;
@@ -177,9 +186,9 @@ const SuperadminDashboard = () => {
       setSettings((s) => ({ ...s, cashbackGBP: res?.superAdmin?.cashback ?? gbpValue }));
       setShowCashbackForm(false);
       setCashbackInput('');
-      toast('success', 'Cashback updated', 'Cashback saved successfully.');
+      toast.success('Cashback updated', { description: 'Cashback saved successfully.' });
     } catch (err) {
-      toast('error', 'Update failed', err instanceof Error ? err.message : 'Failed to update cashback.');
+      toast.error('Update failed', { description: err instanceof Error ? err.message : 'Failed to update cashback.' });
     } finally {
       setCashbackSaving(false);
     }
@@ -205,7 +214,6 @@ const SuperadminDashboard = () => {
 
   return (
     <div className="superadmin-dashboard">
-      <Toaster toasts={toasts} dismiss={dismiss} />
       <header className="superadmin-dashboard-header">
         <div>
           <h1 className="superadmin-dashboard-greeting">{getGreeting()}, Superadmin</h1>
@@ -216,18 +224,18 @@ const SuperadminDashboard = () => {
             <label htmlFor="base-currency" className="superadmin-base-currency-label">
               Base currency
             </label>
-            <select
-              id="base-currency"
-              className="superadmin-base-currency-select"
-              value={settings.baseCurrency}
-              onChange={(e) => handleCurrencyChange(e.target.value as CurrencyCode)}
-            >
-              {CURRENCY_LABELS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label} ({c.symbol})
-                </option>
-              ))}
-            </select>
+            <Select value={settings.baseCurrency} onValueChange={(v) => handleCurrencyChange(v as CurrencyCode)}>
+              <SelectTrigger id="base-currency" className="w-[180px]">
+                <SelectValue placeholder="Base currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCY_LABELS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label} ({c.symbol})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <span className="superadmin-base-currency-hint">All values in this currency</span>
           </div>
         )}
@@ -243,7 +251,7 @@ const SuperadminDashboard = () => {
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="superadmin-dash-card">
+            <Card key={s.label} className="superadmin-dash-card">
               <div className={`superadmin-dash-card-icon ${s.iconClass}`}>
                 <Icon size={24} />
               </div>
@@ -251,17 +259,17 @@ const SuperadminDashboard = () => {
                 <span className="superadmin-dash-card-value">{s.value}</span>
                 <span className="superadmin-dash-card-label">{s.label}</span>
               </div>
-            </div>
+            </Card>
           );
         })}
-        <div className="superadmin-dash-card superadmin-dash-card-markup">
+        <Card className="superadmin-dash-card superadmin-dash-card-markup">
           <div className="superadmin-dash-card-icon superadmin-dash-icon--teal">
             <Percent size={24} />
           </div>
           <div className="superadmin-dash-card-content">
             {showMarkupForm ? (
               <form className="superadmin-markup-form" onSubmit={handleSaveMarkup}>
-                <input
+                <Input
                   type="number"
                   min={0}
                   step={0.01}
@@ -274,17 +282,18 @@ const SuperadminDashboard = () => {
                 />
                 <span className="superadmin-input-currency-hint">{symbol} {settings.baseCurrency}</span>
                 <div className="superadmin-markup-actions">
-                  <button type="submit" className="superadmin-markup-save" disabled={markupSaving}>
+                  <Button type="submit" size="sm" disabled={markupSaving}>
                     {markupSaving ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="superadmin-markup-cancel"
+                    variant="outline"
+                    size="sm"
                     onClick={() => { setShowMarkupForm(false); setMarkupInput(''); }}
                     disabled={markupSaving}
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             ) : (
@@ -293,8 +302,10 @@ const SuperadminDashboard = () => {
                   {displayMarkup != null ? `${symbol}${displayMarkup.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                 </span>
                 <span className="superadmin-dash-card-label">MARKUP</span>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   className="superadmin-markup-add-btn"
                   onClick={openMarkupForm}
                   title="Add markup"
@@ -302,19 +313,19 @@ const SuperadminDashboard = () => {
                 >
                   <Plus size={14} />
                   Add Markup
-                </button>
+                </Button>
               </>
             )}
           </div>
-        </div>
-        <div className="superadmin-dash-card superadmin-dash-card-cashback">
+        </Card>
+        <Card className="superadmin-dash-card superadmin-dash-card-cashback">
           <div className="superadmin-dash-card-icon superadmin-dash-icon--emerald">
             <BadgeDollarSign size={24} />
           </div>
           <div className="superadmin-dash-card-content">
             {showCashbackForm ? (
               <form className="superadmin-markup-form" onSubmit={handleSaveCashback}>
-                <input
+                <Input
                   type="number"
                   min={0}
                   step={0.01}
@@ -327,17 +338,18 @@ const SuperadminDashboard = () => {
                 />
                 <span className="superadmin-input-currency-hint superadmin-input-currency-hint--cashback">{symbol} {settings.baseCurrency}</span>
                 <div className="superadmin-markup-actions">
-                  <button type="submit" className="superadmin-markup-save superadmin-cashback-save" disabled={cashbackSaving}>
+                  <Button type="submit" size="sm" className="superadmin-cashback-save" disabled={cashbackSaving}>
                     {cashbackSaving ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="superadmin-markup-cancel"
+                    variant="outline"
+                    size="sm"
                     onClick={() => { setShowCashbackForm(false); setCashbackInput(''); }}
                     disabled={cashbackSaving}
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             ) : (
@@ -346,8 +358,10 @@ const SuperadminDashboard = () => {
                   {displayCashback != null ? `${symbol}${displayCashback.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                 </span>
                 <span className="superadmin-dash-card-label">CASHBACK</span>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   className="superadmin-markup-add-btn superadmin-cashback-add-btn"
                   onClick={openCashbackForm}
                   title="Add cashback"
@@ -355,15 +369,15 @@ const SuperadminDashboard = () => {
                 >
                   <Plus size={14} />
                   Add Cashback
-                </button>
+                </Button>
               </>
             )}
           </div>
-        </div>
+        </Card>
       </div>
 
       <div className="superadmin-dashboard-panels">
-        <div className="superadmin-dashboard-panel">
+        <Card className="superadmin-dashboard-panel">
           <div className="superadmin-panel-header">
             <h2 className="superadmin-panel-title">Admins by Activity</h2>
             <Link to="/panel/superadmin/admins" className="superadmin-panel-view-all">
@@ -391,9 +405,9 @@ const SuperadminDashboard = () => {
               </ul>
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="superadmin-dashboard-panel">
+        <Card className="superadmin-dashboard-panel">
           <div className="superadmin-panel-header">
             <h2 className="superadmin-panel-title">Quick Actions</h2>
           </div>
@@ -409,7 +423,7 @@ const SuperadminDashboard = () => {
               </Link>
             </nav>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
