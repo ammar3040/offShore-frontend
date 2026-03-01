@@ -375,3 +375,82 @@
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+
+/* ----- Dark theme (used by LoginPage when .dark on document) ----- */
+.dark .admin-login-error {
+  color: hsl(0 84% 60%);
+  background: hsl(var(--destructive) / 0.15);
+  border-color: hsl(var(--destructive) / 0.3);
+}
+
+.dark .admin-login-field label {
+  color: hsl(var(--foreground));
+}
+
+.dark .admin-login-input-icon {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .admin-login-input-wrapper input {
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.dark .admin-login-input-wrapper input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .admin-login-input-wrapper input:hover {
+  border-color: hsl(var(--border));
+}
+
+.dark .admin-login-input-wrapper input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+}
+
+.dark .admin-login-input-wrapper input:disabled {
+  background: hsl(var(--muted));
+  opacity: 0.7;
+}
+
+.dark .admin-login-forgot {
+  color: hsl(221 83% 53%);
+}
+
+.dark .admin-login-password-toggle {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .admin-login-password-toggle:hover {
+  color: hsl(var(--foreground));
+}
+
+.dark .admin-login-form-split .admin-login-input-wrapper input {
+  background: hsl(var(--input));
+  border-color: hsl(var(--border));
+}
+
+.dark .admin-login-form-split .admin-login-input-wrapper input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+}
+
+.dark .admin-login-button {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.dark .admin-login-button:hover:not(:disabled) {
+  background: hsl(var(--primary) / 0.9);
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.25);
+}
+
+.dark .admin-login-form-split .admin-login-button {
+  background: hsl(var(--primary));
+}
+
+.dark .admin-login-form-split .admin-login-button:hover:not(:disabled) {
+  background: hsl(var(--primary) / 0.9);
+}
