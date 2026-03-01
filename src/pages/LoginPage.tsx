@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plane, Check, Lock, ArrowRight, Mail, Eye, EyeOff } from 'lucide-react';
+import { Plane, Check, Lock, ArrowRight, Mail, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { authLogin } from '../api/auth';
+import { getAdminTheme, setAdminTheme, type AdminTheme } from '../lib/adminTheme';
 import './LoginPage.css';
 import './AdminLoginPage.css';
 
@@ -11,7 +12,18 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<AdminTheme>(() => getAdminTheme());
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const next: AdminTheme = theme === 'dark' ? 'light' : 'dark';
+    setAdminTheme(next);
+    setTheme(next);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +77,14 @@ const LoginPage = () => {
       </div>
 
       <div className="login-page-right">
+        <button
+          type="button"
+          className="login-page-theme-toggle"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
         <div className="login-page-right-inner">
           <h1 className="login-page-welcome">Welcome Back</h1>
           <p className="login-page-subtitle">Please enter your credentials to access the secure portal.</p>
