@@ -507,7 +507,7 @@ const ProjectsPage = () => {
             </div>
           </div>
           <div className="projects-page-form-field">
-            <label htmlFor="project-span">Span</label>
+            <label htmlFor="project-span">Description</label>
             <input
               id="project-span"
               name="span"
