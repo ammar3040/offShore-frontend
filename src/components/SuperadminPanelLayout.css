@@ -268,64 +268,64 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (AMOLED, uses index.css theme) ----- */
 .superadmin-panel-layout--dark {
-  background-color: #111827;
+  background-color: hsl(var(--background));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-sidebar {
-  background-color: #1f2937;
-  border-right-color: #374151;
+  background-color: hsl(var(--sidebar));
+  border-right-color: hsl(var(--sidebar-border));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-sidebar-header {
-  border-bottom-color: #374151;
+  border-bottom-color: hsl(var(--sidebar-border));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-logo-text {
-  color: #f9fafb;
+  color: hsl(var(--sidebar-foreground));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-badge {
-  color: #fbbf24;
-  background-color: rgba(245, 158, 11, 0.2);
+  color: hsl(var(--primary));
+  background-color: hsl(var(--accent));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-nav-item {
-  color: #d1d5db;
+  color: hsl(var(--sidebar-foreground));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-nav-item:hover {
-  background-color: #374151;
-  color: #f9fafb;
+  background-color: hsl(var(--sidebar-accent));
+  color: hsl(var(--sidebar-foreground));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-nav-item.active {
-  background-color: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  background-color: hsl(var(--sidebar-accent));
+  color: hsl(var(--sidebar-primary));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-nav-item.active svg {
-  color: #fbbf24;
+  color: hsl(var(--sidebar-primary));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-sidebar-footer {
-  border-top-color: #374151;
+  border-top-color: hsl(var(--sidebar-border));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-theme-toggle {
-  color: #9ca3af;
-  border-color: #4b5563;
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-theme-toggle:hover {
-  background-color: #374151;
-  color: #e5e7eb;
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-logout {
-  color: #9ca3af;
-  border-color: #4b5563;
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-logout:hover {
@@ -335,18 +335,18 @@
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-sidebar-close {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-mobile-header {
-  background: #1f2937;
-  border-bottom-color: #374151;
+  background: hsl(var(--sidebar));
+  border-bottom-color: hsl(var(--sidebar-border));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-hamburger {
-  color: #f9fafb;
+  color: hsl(var(--sidebar-foreground));
 }
 
 .superadmin-panel-layout--dark .superadmin-panel-mobile-logo {
-  color: #fbbf24;
+  color: hsl(var(--sidebar-primary));
 }

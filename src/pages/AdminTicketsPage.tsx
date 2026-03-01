@@ -1,10 +1,27 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon, Upload } from 'lucide-react';
-import Modal from '../components/Modal';
-import { Toaster, useToast } from '../components/Toast';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import { getCrewTickets, createFlightTicket, uploadCrewTicketPdf, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
+import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
@@ -231,16 +248,16 @@ function FlightResultCard({
           ) : (
             <span className="atfc-fare-empty">No fare</span>
           )}
-          <button
+          <Button
             type="button"
-            className="atfc-book-btn"
+            size="sm"
             onClick={() => onBook(flight)}
             disabled={isBooking || fares.length === 0}
           >
             {isBooking ? (
               <><span className="admin-tickets-spinner admin-tickets-spinner-inline" />Booking…</>
             ) : 'Book Now'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -311,7 +328,6 @@ function FlightResultCard({
 }
 
 const AdminTicketsPage = () => {
-  const { toasts, toast, dismiss } = useToast();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -375,6 +391,7 @@ const AdminTicketsPage = () => {
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
   const [crewDropdownOpen, setCrewDropdownOpen] = useState(false);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
+  const [adminMarkup, setAdminMarkup] = useState<number | null>(null);
 
   /* PDF upload for crew tickets */
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
@@ -393,19 +410,19 @@ const AdminTicketsPage = () => {
     e.target.value = '';
     if (!file || !ticketId) return;
     if (!file.type.includes('pdf')) {
-      toast('error', 'Invalid file', 'Only PDF files are allowed.');
+      toast.error('Invalid file', { description: 'Only PDF files are allowed.' });
       return;
     }
     setUploadingTicketId(ticketId);
     try {
       await uploadCrewTicketPdf(ticketId, file);
-      toast('success', 'PDF uploaded', 'Ticket PDF uploaded successfully.');
+      toast.success('PDF uploaded', { description: 'Ticket PDF uploaded successfully.' });
     } catch (err) {
-      toast('error', 'Upload failed', err instanceof Error ? err.message : 'Failed to upload PDF.');
+      toast.error('Upload failed', { description: err instanceof Error ? err.message : 'Failed to upload PDF.' });
     } finally {
       setUploadingTicketId(null);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (!crewDropdownOpen) return;
@@ -417,6 +434,16 @@ const AdminTicketsPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [crewDropdownOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAdminProfile()
+      .then((profile) => {
+        if (!cancelled && profile.markup != null) setAdminMarkup(profile.markup);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!searchProjectId) {
@@ -610,34 +637,44 @@ const AdminTicketsPage = () => {
   const handleBookNow = useCallback(
     async (flight: Flight) => {
       if (!searchProjectId) {
-        toast('error', 'No project selected', 'Please select a project in the search form before booking.');
+        toast.error('No project selected', { description: 'Please select a project in the search form before booking.' });
         return;
       }
       if (searchCrewIds.length === 0) {
-        toast('error', 'No crew selected', 'Please select at least one crew member in the search form.');
+        toast.error('No crew selected', { description: 'Please select at least one crew member in the search form.' });
         return;
       }
       setBookingFlightId(flight.id);
       try {
+        const firstFare = flight.fares?.[0];
+        const markupAmount =
+          flight.markup != null
+            ? flight.markup
+            : adminMarkup != null && firstFare?.totalFare != null
+              ? Math.round(firstFare.totalFare * adminMarkup / 100)
+              : undefined;
         const data = await bookFlight({
           project_id: searchProjectId,
           crew_ids: searchCrewIds,
           flight,
+          markup: markupAmount,
+          cashback: flight.cashback ?? 0,
+          originalCurrency: currency,
           adult: adults,
           children: childrenCount,
           infants,
         });
         const ticketCount = Array.isArray(data.tickets) ? data.tickets.length : searchCrewIds.length;
         const desc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${data.bookingReference ? ` Ref: ${data.bookingReference}` : ''}`;
-        toast('success', 'Ticket booked successfully!', desc);
+        toast.success('Ticket booked successfully!', { description: desc });
         setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
       } catch (err) {
-        toast('error', 'Booking failed', err instanceof Error ? err.message : 'Unable to complete booking. Please try again.');
+        toast.error('Booking failed', { description: err instanceof Error ? err.message : 'Unable to complete booking. Please try again.' });
       } finally {
         setBookingFlightId(null);
       }
     },
-    [searchProjectId, searchCrewIds, adults, childrenCount, infants, toast]
+    [searchProjectId, searchCrewIds, adults, childrenCount, infants, currency, adminMarkup]
   );
 
   const handleSearchBack = useCallback(() => {
@@ -720,46 +757,34 @@ const AdminTicketsPage = () => {
 
   return (
     <div className="admin-tickets-page">
-      <div className="admin-tickets-header">
+      <div className="flex flex-col gap-6 pb-6">
         <div>
-          <h1 className="admin-tickets-title">Flight Tickets</h1>
-          <p className="admin-tickets-subtitle">
+          <h1 className="text-2xl font-semibold tracking-tight">Flight Tickets</h1>
+          <p className="text-muted-foreground mt-1">
             View and manage flight tickets for crew on projects.
           </p>
         </div>
-        <div className="admin-tickets-header-actions">
-          <div className="admin-tickets-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'tickets'}
-              className={'admin-tickets-tab' + (activeTab === 'tickets' ? ' admin-tickets-tab-active' : '')}
-              onClick={() => setActiveTab('tickets')}
-            >
-              <TicketIcon size={18} />
-              Tickets
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'search'}
-              className={'admin-tickets-tab' + (activeTab === 'search' ? ' admin-tickets-tab-active' : '')}
-              onClick={() => setActiveTab('search')}
-            >
-              <Search size={18} />
-              Search & Book
-            </button>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TicketsTab)}>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+            <TabsList className="h-10">
+              <TabsTrigger value="tickets" className="gap-2">
+                <TicketIcon size={18} />
+                Tickets
+              </TabsTrigger>
+              <TabsTrigger value="search" className="gap-2">
+                <Search size={18} />
+                Search & Book
+              </TabsTrigger>
+            </TabsList>
+            {activeTab === 'tickets' && (
+              <Button onClick={openCreateModal}>
+                <Plus size={18} />
+                Create ticket
+              </Button>
+            )}
           </div>
-          {activeTab === 'tickets' && (
-            <button type="button" className="admin-tickets-create-btn" onClick={openCreateModal}>
-              <Plus size={18} />
-              Create ticket
-            </button>
-          )}
-        </div>
-      </div>
 
-      {activeTab === 'search' ? (
+          <TabsContent value="search" className="mt-6">
         <div className="admin-tickets-search-view">
           {searchResults == null ? (
             <>
@@ -789,7 +814,8 @@ const AdminTicketsPage = () => {
                   </select>
                 </div>
               </div>
-              <div className="admin-tickets-search-form-card">
+              <Card>
+                <CardContent className="pt-6">
                 <div className="admin-tickets-search-form">
                   <div className="admin-tickets-search-row admin-tickets-search-row-trip">
                     <span className="admin-tickets-search-row-label">Trip type</span>
@@ -994,9 +1020,8 @@ const AdminTicketsPage = () => {
                   </div>
                 )}
                 <div className="admin-tickets-search-actions">
-                  <button
+                  <Button
                     type="button"
-                    className="admin-tickets-search-btn admin-tickets-search-btn-primary"
                     onClick={handleSearch}
                     disabled={isSearching || !searchFrom || !searchTo}
                   >
@@ -1011,17 +1036,18 @@ const AdminTicketsPage = () => {
                         Search flights
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </CardContent>
+              </Card>
             </>
           ) : (
             <div className="admin-tickets-results-wrap">
               <div className="admin-tickets-results-header">
-                <button type="button" className="admin-tickets-back-btn" onClick={handleSearchBack}>
+                <Button variant="outline" type="button" onClick={handleSearchBack}>
                   <ChevronLeft size={18} />
                   Back to search
-                </button>
+                </Button>
                 {searchCriteria && (
                   <p className="admin-tickets-results-summary">
                     {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
@@ -1050,7 +1076,8 @@ const AdminTicketsPage = () => {
             </div>
           )}
         </div>
-      ) : (
+          </TabsContent>
+          <TabsContent value="tickets" className="mt-6">
         <>
       <input
         ref={ticketPdfInputRef}
@@ -1060,25 +1087,24 @@ const AdminTicketsPage = () => {
         onChange={handlePdfFileChange}
         aria-hidden
       />
-      <div className="admin-tickets-toolbar">
-        <div className="admin-tickets-filter-wrap">
-          <label htmlFor="tickets-project-filter" className="admin-tickets-filter-label">
+      <div className="flex flex-wrap items-center gap-4 mb-6">
+        <div className="flex flex-col gap-2 min-w-[200px]">
+          <label htmlFor="tickets-project-filter" className="text-sm font-medium">
             Filter by project
           </label>
-          <select
-            id="tickets-project-filter"
-            className="admin-tickets-filter-select"
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-          >
-            <option value="all">All projects</option>
-            {uniqueProjectsFromTickets.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={18} className="admin-tickets-filter-chevron" />
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger id="tickets-project-filter" className="w-full">
+              <SelectValue placeholder="All projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All projects</SelectItem>
+              {uniqueProjectsFromTickets.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -1104,92 +1130,89 @@ const AdminTicketsPage = () => {
               : 'Try selecting "All projects" or create new tickets.'}
           </p>
           {projectFilter === 'all' && (
-            <button type="button" className="admin-tickets-create-inline" onClick={openCreateModal}>
+                <Button onClick={openCreateModal}>
               <Plus size={18} />
               Create ticket
-            </button>
+            </Button>
           )}
         </div>
       ) : (
-        <div className="admin-tickets-table-wrap">
-          <table className="admin-tickets-table">
-            <thead>
-              <tr>
-                <th>Crew</th>
-                <th>Project</th>
-                <th>From → To</th>
-                <th>Class</th>
-                <th>Trip</th>
-                <th>Passengers</th>
-                <th>PDF</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickets.map((ticket) => (
-                <tr
-                  key={ticket.id}
-                  className="admin-tickets-row-clickable"
-                  onClick={() => setSelectedTicket(ticket)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedTicket(ticket);
-                    }
-                  }}
-                >
-                  <td>
-                    <span className="admin-tickets-cell-crew">{getCrewName(ticket)}</span>
-                  </td>
-                  <td>
-                    <span className="admin-tickets-cell-project">{getProjectTitle(ticket)}</span>
-                  </td>
-                  <td>
-                    <span className="admin-tickets-cell-route" title={`${ticket.from?.Name ?? ''} → ${ticket.to?.Name ?? ''}`}>
-                      {ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}
-                    </span>
-                  </td>
-                  <td>{ticket.class ?? '—'}</td>
-                  <td>{ticket.trip?.replace('_', ' ') ?? '—'}</td>
-                  <td>
-                    {[ticket.adult, ticket.children, ticket.infants]
-                      .filter((n) => n != null && n > 0)
-                      .join(' / ') || '—'}
-                  </td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="admin-tickets-upload-pdf-btn"
-                      onClick={() => handleUploadPdfClick(ticket.id)}
-                      disabled={uploadingTicketId === ticket.id}
-                      title="Upload ticket PDF"
-                    >
-                      {uploadingTicketId === ticket.id ? (
-                        <span className="admin-tickets-upload-spinner" />
-                      ) : (
-                        <>
-                          <Upload size={16} />
-                          Upload
-                        </>
-                      )}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card>
+          <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Crew</TableHead>
+              <TableHead>Project</TableHead>
+              <TableHead>From → To</TableHead>
+              <TableHead>Class</TableHead>
+              <TableHead>Trip</TableHead>
+              <TableHead>Passengers</TableHead>
+              <TableHead>PDF</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredTickets.map((ticket) => (
+              <TableRow
+                key={ticket.id}
+                className="cursor-pointer"
+                onClick={() => setSelectedTicket(ticket)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedTicket(ticket);
+                  }
+                }}
+              >
+                <TableCell className="font-medium">{getCrewName(ticket)}</TableCell>
+                <TableCell>{getProjectTitle(ticket)}</TableCell>
+                <TableCell title={`${ticket.from?.Name ?? ''} → ${ticket.to?.Name ?? ''}`}>
+                  {ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}
+                </TableCell>
+                <TableCell>{ticket.class ?? '—'}</TableCell>
+                <TableCell>{ticket.trip?.replace('_', ' ') ?? '—'}</TableCell>
+                <TableCell>
+                  {[ticket.adult, ticket.children, ticket.infants]
+                    .filter((n) => n != null && n > 0)
+                    .join(' / ') || '—'}
+                </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleUploadPdfClick(ticket.id)}
+                    disabled={uploadingTicketId === ticket.id}
+                    title="Upload ticket PDF"
+                  >
+                    {uploadingTicketId === ticket.id ? (
+                      <span className="admin-tickets-upload-spinner" />
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Upload
+                      </>
+                    )}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+          </CardContent>
+        </Card>
       )}
         </>
-      )}
+          </TabsContent>
+        </Tabs>
+      </div>
 
-      <Modal
-        isOpen={!!selectedTicket}
-        onClose={() => setSelectedTicket(null)}
-        title="Ticket details"
-        size="medium"
-      >
+      <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ticket details</DialogTitle>
+          </DialogHeader>
         {selectedTicket && (
           <div className="admin-tickets-detail-card">
             <section className="admin-tickets-detail-section">
@@ -1275,20 +1298,20 @@ const AdminTicketsPage = () => {
             </section>
           </div>
         )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
 
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={closeCreateModal}
-        title={
-          modalStep === 'project'
-            ? 'Create ticket — Select project'
-            : modalStep === 'crew'
-              ? `Select crew — ${selectedProject?.title ?? ''}`
-              : 'Create flight tickets'
-        }
-        size="medium"
-      >
+      <Dialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {modalStep === 'project'
+                ? 'Create ticket — Select project'
+                : modalStep === 'crew'
+                  ? `Select crew — ${selectedProject?.title ?? ''}`
+                  : 'Create flight tickets'}
+            </DialogTitle>
+          </DialogHeader>
         <div className="admin-tickets-modal">
           {submitSuccess ? (
             <div className="admin-tickets-success" role="status">
@@ -1318,18 +1341,17 @@ const AdminTicketsPage = () => {
               {projects.length === 0 && (
                 <p className="admin-tickets-crew-empty">No projects available.</p>
               )}
-              <div className="admin-tickets-modal-actions">
-                <button type="button" className="admin-tickets-btn admin-tickets-btn-cancel" onClick={closeCreateModal}>
+              <div className="admin-tickets-modal-actions flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeCreateModal}>
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="admin-tickets-btn admin-tickets-btn-primary"
                   onClick={handleProjectSelectAndContinue}
                   disabled={!createProjectId}
                 >
                   Continue
-                </button>
+                </Button>
               </div>
             </>
           ) : modalStep === 'crew' ? (
@@ -1375,26 +1397,25 @@ const AdminTicketsPage = () => {
                     )}
                   </>
                 )}
-                <div className="admin-tickets-modal-actions">
-                  <button type="button" className="admin-tickets-btn admin-tickets-btn-cancel" onClick={closeCreateModal}>
+                <div className="admin-tickets-modal-actions flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={closeCreateModal}>
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="admin-tickets-btn admin-tickets-btn-primary"
                     onClick={goToForm}
                     disabled={crewLoading || crew.length === 0 || selectedCrewIds.length === 0}
                   >
                     Continue to flight details
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : (
               <>
-                <button type="button" className="admin-tickets-back" onClick={goBackToCrew}>
+                <Button type="button" variant="ghost" size="sm" onClick={goBackToCrew} className="-ml-2">
                   <ChevronLeft size={16} />
                   Back to crew selection
-                </button>
+                </Button>
 
                 {submitError && (
                   <div className="admin-tickets-form-error" role="alert">
@@ -1562,24 +1583,23 @@ const AdminTicketsPage = () => {
                     Creating tickets for {selectedCrewIds.length} crew member{selectedCrewIds.length !== 1 ? 's' : ''}
                   </p>
 
-                  <div className="admin-tickets-modal-actions">
-                    <button type="button" className="admin-tickets-btn admin-tickets-btn-cancel" onClick={closeCreateModal} disabled={submitLoading}>
+                  <div className="admin-tickets-modal-actions flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={closeCreateModal} disabled={submitLoading}>
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
-                      className="admin-tickets-btn admin-tickets-btn-primary"
                       disabled={submitLoading}
                     >
                       {submitLoading ? 'Creating…' : `Create ${selectedCrewIds.length} ticket${selectedCrewIds.length !== 1 ? 's' : ''}`}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </>
             )}
           </div>
-      </Modal>
-      <Toaster toasts={toasts} dismiss={dismiss} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

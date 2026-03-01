@@ -112,15 +112,41 @@
   opacity: 0.8;
 }
 
-.secure-session-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: #fff;
-  background-color: #16a34a;
-  padding: 6px 12px;
+/* Admin balance badge */
+.admin-balance-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(22, 163, 74, 0.15);
+  border: 1px solid rgba(22, 163, 74, 0.3);
   border-radius: 9999px;
-  letter-spacing: 0.03em;
   white-space: nowrap;
+}
+
+.admin-balance-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #86efac;
+  letter-spacing: 0.03em;
+}
+
+.admin-balance-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #86efac;
+}
+
+.admin-balance-currency-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+}
+
+.admin-balance-currency-select {
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .icon-button {
@@ -261,7 +287,7 @@
     max-width: none;
   }
 
-  .secure-session-badge {
+  .admin-balance-badge {
     display: none;
   }
 
@@ -300,39 +326,60 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (AMOLED) ----- */
 .layout--dark .header {
-  background-color: #0b1120;
-  border-bottom: 1px solid #1e293b;
+  background-color: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .layout--dark .search-input {
-  background-color: rgba(15, 23, 42, 0.8);
-  border-color: rgba(71, 85, 105, 0.5);
+  background-color: hsl(var(--input));
+  border-color: hsl(var(--border));
 }
 
 .layout--dark .search-input:focus {
-  background-color: rgba(15, 23, 42, 0.95);
+  background-color: hsl(var(--input));
+  border-color: hsl(var(--ring));
 }
 
 .layout--dark .user-profile-dropdown {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .layout--dark .user-profile-dropdown-item {
-  color: #d1d5db;
+  color: hsl(var(--popover-foreground));
 }
 
 .layout--dark .user-profile-dropdown-item:hover {
-  background-color: #374151;
+  background-color: hsl(var(--accent));
 }
 
 .layout--dark .user-profile-dropdown-item.logout {
-  color: #f87171;
+  color: hsl(var(--destructive));
 }
 
 .layout--dark .user-profile-dropdown-item.logout:hover {
   background-color: rgba(220, 38, 38, 0.15);
+}
+
+.layout--dark .admin-balance-currency-select {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .avatar {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .header-brand,
+.layout--dark .mobile-menu-button,
+.layout--dark .search-input,
+.layout--dark .search-input::placeholder {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .search-icon {
+  color: hsl(var(--muted-foreground));
 }

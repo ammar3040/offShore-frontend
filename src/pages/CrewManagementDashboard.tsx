@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderKanban, Users, Plane, Plus, Calendar } from 'lucide-react';
+import { FolderKanban, Users, Ticket, Plus, Calendar } from 'lucide-react';
 import { getProjects } from '../api/project';
 import { getCrewList } from '../api/crew';
+import { getCrewTickets } from '../api/ticket';
 import type { ProjectApi } from '../api/project';
 import './CrewManagementDashboard.css';
 
@@ -25,6 +26,7 @@ function formatDate(d: Date): string {
 const CrewManagementDashboard = () => {
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [crewCount, setCrewCount] = useState(0);
+  const [ticketCount, setTicketCount] = useState<number | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
   useEffect(() => {
@@ -45,6 +47,16 @@ const CrewManagementDashboard = () => {
     getCrewList()
       .then((res) => {
         if (!cancelled) setCrewCount((res.crew ?? []).length);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCrewTickets()
+      .then((res) => {
+        if (!cancelled) setTicketCount((res.crewTickets ?? []).length);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -89,11 +101,11 @@ const CrewManagementDashboard = () => {
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-icon admin-stat-icon-green">
-            <Plane size={24} />
+            <Ticket size={24} />
           </div>
           <div className="admin-stat-content">
-            <span className="admin-stat-value">—</span>
-            <span className="admin-stat-label">TOTAL FLIGHTS</span>
+            <span className="admin-stat-value">{ticketCount ?? '…'}</span>
+            <span className="admin-stat-label">TOTAL TICKETS</span>
           </div>
         </div>
       </div>

@@ -66,15 +66,15 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (AMOLED) ----- */
 .layout--dark {
-  background-color: #111827;
+  background-color: hsl(var(--background));
 }
 
 .layout--dark .main-content {
-  background-color: #111827;
+  background-color: hsl(var(--background));
 }
 
 .layout--dark .sidebar-overlay.active {
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.85);
 }

@@ -55,6 +55,7 @@ export interface Flight {
   legs: Journey[];
   fares: Fare[];
   cashback?: number | null;
+  markup?: number | null;
 }
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';

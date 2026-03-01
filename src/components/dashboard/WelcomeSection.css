@@ -121,7 +121,13 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (AMOLED) ----- */
+.layout--dark .welcome-section {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 .layout--dark .form-error-message {
   background-color: rgba(185, 28, 28, 0.1);
   color: #fca5a5;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Calendar, Users, FolderKanban, Plus, Search, ChevronDown, RefreshCw, UserPlus } from 'lucide-react';
+import { Calendar, Users, FolderKanban, Plus, Search, ChevronDown, UserPlus } from 'lucide-react';
 import Modal from '../components/Modal';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
 import { getCrewAvailableForProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
@@ -357,11 +357,6 @@ const ProjectsPage = () => {
           )}
         </>
       )}
-
-      <button type="button" className="projects-switch-view" aria-label="Switch view">
-        <RefreshCw size={18} />
-        Switch View
-      </button>
 
       <footer className="projects-footer">
         <p className="projects-footer-copy">© 2023 Offshore CRM. All rights reserved.</p>

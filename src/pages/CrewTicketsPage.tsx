@@ -1,16 +1,30 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plane, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 import { getCrewMe } from '../api/crew';
 import { getCrewTicketsByCrewId, uploadCrewTicketPdfByCrew, type CrewTicketApi } from '../api/ticket';
-import Modal from '../components/Modal';
-import { Toaster, useToast } from '../components/Toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
 import './CrewTicketsPage.css';
 
 const CrewTicketsPage = () => {
   const navigate = useNavigate();
-  const { toasts, toast, dismiss } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
@@ -76,7 +90,7 @@ const CrewTicketsPage = () => {
     setUploadError(null);
     try {
       await uploadCrewTicketPdfByCrew(ticketId, file);
-      toast('success', 'PDF uploaded', 'Ticket PDF uploaded successfully.');
+      toast.success('PDF uploaded', { description: 'Ticket PDF uploaded successfully.' });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -107,7 +121,6 @@ const CrewTicketsPage = () => {
 
   return (
     <div className="crew-tickets-page">
-      <Toaster toasts={toasts} dismiss={dismiss} />
       <header className="crew-tickets-header">
         <h1 className="crew-tickets-title">Tickets</h1>
         <p className="crew-tickets-subtitle">Your flight tickets for assigned projects</p>
@@ -120,7 +133,7 @@ const CrewTicketsPage = () => {
           <p className="crew-tickets-placeholder-hint">Enroll in a project to receive flight tickets.</p>
         </div>
       ) : (
-        <div className="crew-tickets-table-wrap">
+        <Card className="crew-tickets-table-wrap overflow-hidden">
           <input
             ref={pdfInputRef}
             type="file"
@@ -130,24 +143,24 @@ const CrewTicketsPage = () => {
             aria-hidden
           />
           {uploadError && (
-            <div className="crew-tickets-error" role="alert">{uploadError}</div>
+            <div className="crew-tickets-error mx-4 mt-4" role="alert">{uploadError}</div>
           )}
-          <table className="crew-tickets-table">
-            <thead>
-              <tr>
-                <th>Project</th>
-                <th>From → To</th>
-                <th>Class</th>
-                <th>Trip</th>
-                <th>Passengers</th>
-                <th>PDF</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Project</TableHead>
+                <TableHead>From → To</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead>Trip</TableHead>
+                <TableHead>Passengers</TableHead>
+                <TableHead>PDF</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {tickets.map((ticket) => (
-                <tr
+                <TableRow
                   key={ticket.id}
-                  className="crew-tickets-row-clickable"
+                  className="crew-tickets-row-clickable cursor-pointer"
                   onClick={() => setSelectedTicket(ticket)}
                   role="button"
                   tabIndex={0}
@@ -158,25 +171,26 @@ const CrewTicketsPage = () => {
                     }
                   }}
                 >
-                  <td>
+                  <TableCell>
                     <span className="crew-tickets-cell-project">{getProjectTitle(ticket)}</span>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <span className="crew-tickets-cell-route" title={`${ticket.from?.Name ?? ''} → ${ticket.to?.Name ?? ''}`}>
                       {ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}
                     </span>
-                  </td>
-                  <td>{ticket.class ?? '—'}</td>
-                  <td>{ticket.trip?.replace('_', ' ') ?? '—'}</td>
-                  <td>
+                  </TableCell>
+                  <TableCell>{ticket.class ?? '—'}</TableCell>
+                  <TableCell>{ticket.trip?.replace('_', ' ') ?? '—'}</TableCell>
+                  <TableCell>
                     {[ticket.adult, ticket.children, ticket.infants]
                       .filter((n) => n != null && n > 0)
                       .join(' / ') || '—'}
-                  </td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <button
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Button
                       type="button"
-                      className="crew-tickets-upload-pdf-btn"
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleUploadPdfClick(ticket.id)}
                       disabled={uploadingTicketId === ticket.id}
                       title="Upload ticket PDF"
@@ -185,25 +199,24 @@ const CrewTicketsPage = () => {
                         <span className="crew-tickets-upload-spinner" />
                       ) : (
                         <>
-                          <Upload size={16} />
+                          <Upload size={16} className="mr-1" />
                           Upload
                         </>
                       )}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       )}
 
-      <Modal
-        isOpen={!!selectedTicket}
-        onClose={() => setSelectedTicket(null)}
-        title="Ticket details"
-        size="medium"
-      >
+      <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ticket details</DialogTitle>
+          </DialogHeader>
         {selectedTicket && (
           <div className="crew-tickets-detail-card">
             <section className="crew-tickets-detail-section">
@@ -247,7 +260,8 @@ const CrewTicketsPage = () => {
             </section>
           </div>
         )}
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

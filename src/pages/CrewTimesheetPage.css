@@ -244,58 +244,68 @@
 
 .crew-timesheet-no-dates svg { color: #d1d5db; margin-bottom: 18px; }
 
-/* Dark mode */
-.crew-panel-layout--dark .crew-timesheet-title { color: #f9fafb; }
+/* Dark mode (AMOLED, uses index.css theme) */
+.crew-panel-layout--dark .crew-timesheet-title { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-timesheet-subtitle,
 .crew-panel-layout--dark .crew-timesheet-loading,
 .crew-panel-layout--dark .crew-timesheet-pagination-info,
-.crew-panel-layout--dark .crew-timesheet-pagination-ellipsis { color: #9ca3af; }
-.crew-panel-layout--dark .crew-timesheet-spinner { border-color: #374151; border-top-color: #93c5fd; }
+.crew-panel-layout--dark .crew-timesheet-pagination-ellipsis { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-timesheet-spinner { border-color: hsl(var(--accent)); border-top-color: hsl(var(--primary)); }
 .crew-panel-layout--dark .crew-timesheet-empty,
 .crew-panel-layout--dark .crew-timesheet-no-dates {
-  background: #1f2937;
-  border-color: #4b5563;
-  color: #9ca3af;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
 }
 .crew-panel-layout--dark .crew-timesheet-empty svg,
-.crew-panel-layout--dark .crew-timesheet-no-dates svg { color: #6b7280; }
-.crew-panel-layout--dark .crew-timesheet-link { color: #93c5fd; }
-.crew-panel-layout--dark .crew-timesheet-select-wrap label { color: #d1d5db; }
+.crew-panel-layout--dark .crew-timesheet-no-dates svg { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-timesheet-link { color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-timesheet-select-wrap label { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-timesheet-select-wrap select {
-  background: #111827;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.crew-panel-layout--dark .crew-timesheet-select-wrap select:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+}
+.crew-panel-layout--dark .crew-timesheet-select-loading { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-timesheet-error {
+  background: rgba(220, 38, 38, 0.15);
+  border-color: #7f1d1d;
+  color: #fca5a5;
 }
 .crew-panel-layout--dark .crew-timesheet-table-wrap {
-  background: #1f2937;
-  border-color: #374151;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
 .crew-panel-layout--dark .crew-timesheet-table th,
-.crew-panel-layout--dark .crew-timesheet-table td { border-bottom-color: #374151; }
+.crew-panel-layout--dark .crew-timesheet-table td { border-bottom-color: hsl(var(--border)); }
 .crew-panel-layout--dark .crew-timesheet-table th {
-  background: #111827;
-  color: #d1d5db;
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 .crew-panel-layout--dark .crew-timesheet-table td {
-  color: #e5e7eb;
+  color: hsl(var(--foreground));
 }
-.crew-panel-layout--dark .crew-timesheet-table tbody tr:hover { background: #374151; }
+.crew-panel-layout--dark .crew-timesheet-table tbody tr:hover { background: hsl(var(--accent)); }
 .crew-panel-layout--dark .crew-timesheet-pagination-btn {
-  background: #1f2937;
-  border-color: #4b5563;
-  color: #e5e7eb;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 .crew-panel-layout--dark .crew-timesheet-pagination-btn:hover:not(:disabled) {
-  background: #374151;
-  border-color: #6b7280;
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
 }
 .crew-panel-layout--dark .crew-timesheet-pagination-btn.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: #fff;
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
-.crew-panel-layout--dark .crew-timesheet-attendance--placeholder { background: #374151; color: #9ca3af; }
+.crew-panel-layout--dark .crew-timesheet-attendance--placeholder { background: hsl(var(--accent)); color: hsl(var(--muted-foreground)); }
 .crew-panel-layout--dark .crew-timesheet-attendance--present { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
 .crew-panel-layout--dark .crew-timesheet-attendance--absent { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
 .crew-panel-layout--dark .crew-timesheet-attendance--leave { background: rgba(245, 158, 11, 0.3); color: #fcd34d; }
-.crew-panel-layout--dark .crew-timesheet-empty-hint { color: #9ca3af; }
+.crew-panel-layout--dark .crew-timesheet-empty-hint { color: hsl(var(--muted-foreground)); }

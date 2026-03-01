@@ -94,18 +94,18 @@
   }
 }
 
-/* ----- Dark mode ----- */
+/* ----- Dark mode (AMOLED) ----- */
 .layout--dark .kpi-card {
-  background-color: #1f2937;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: hsl(var(--card));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .layout--dark .kpi-title {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .kpi-value {
-  color: #f9fafb;
+  color: hsl(var(--card-foreground));
 }
 
 .layout--dark .kpi-change-purple {
@@ -119,5 +119,5 @@
 }
 
 .layout--dark .kpi-last-period {
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
 }

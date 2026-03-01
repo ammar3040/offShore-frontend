@@ -55,6 +55,9 @@ export interface BookFlightPayload {
     legs: BookLeg[];
     fares?: BookFare[];
   };
+  markup?: number;
+  cashback?: number;
+  originalCurrency?: string;
   adult: number;
   children: number;
   infants: number;
@@ -120,6 +123,9 @@ export async function bookFlight(params: {
   project_id: string;
   crew_ids: string[];
   flight: Flight;
+  markup?: number;
+  cashback?: number;
+  originalCurrency?: string;
   adult?: number;
   children?: number;
   infants?: number;
@@ -177,6 +183,9 @@ export async function bookFlight(params: {
         cabin: f.cabin,
       })),
     },
+    markup: params.markup ?? 0,
+    cashback: params.cashback ?? 0,
+    originalCurrency: params.originalCurrency ?? 'USD',
     adult: params.adult ?? 1,
     children: params.children ?? 0,
     infants: params.infants ?? 0,

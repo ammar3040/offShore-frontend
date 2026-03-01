@@ -228,31 +228,31 @@
   }
 }
 
-/* Dark mode */
-.crew-panel-layout--dark .crew-availability-title { color: #f9fafb; }
+/* Dark mode (AMOLED, uses index.css theme) */
+.crew-panel-layout--dark .crew-availability-title { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-availability-subtitle,
 .crew-panel-layout--dark .crew-availability-loading,
 .crew-panel-layout--dark .crew-availability-range,
 .crew-panel-layout--dark .crew-availability-label,
 .crew-panel-layout--dark .crew-availability-sep,
-.crew-panel-layout--dark .crew-availability-empty { color: #9ca3af; }
-.crew-panel-layout--dark .crew-availability-spinner { border-color: #374151; border-top-color: #93c5fd; }
+.crew-panel-layout--dark .crew-availability-empty { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-availability-spinner { border-color: hsl(var(--accent)); border-top-color: hsl(var(--primary)); }
 .crew-panel-layout--dark .crew-availability-card {
-  background: #1f2937;
-  border-color: #374151;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
-.crew-panel-layout--dark .crew-availability-card-header { border-bottom-color: #374151; }
-.crew-panel-layout--dark .crew-availability-card-title { color: #f9fafb; }
-.crew-panel-layout--dark .crew-availability-card-icon { color: #93c5fd; }
-.crew-panel-layout--dark .crew-availability-field label { color: #d1d5db; }
+.crew-panel-layout--dark .crew-availability-card-header { border-bottom-color: hsl(var(--border)); }
+.crew-panel-layout--dark .crew-availability-card-title { color: hsl(var(--foreground)); }
+.crew-panel-layout--dark .crew-availability-card-icon { color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-availability-field label { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-availability-field input {
-  background: #111827;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 .crew-panel-layout--dark .crew-availability-field input:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
 }
 .crew-panel-layout--dark .crew-availability-error {
   background: rgba(220, 38, 38, 0.15);
@@ -260,10 +260,26 @@
 }
 .crew-panel-layout--dark .crew-availability-success {
   background: rgba(22, 163, 74, 0.2);
-  color: #86efac;
+  color: #4ade80;
+}
+.crew-panel-layout--dark .crew-availability-add-btn {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.crew-panel-layout--dark .crew-availability-add-btn:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 .crew-panel-layout--dark .crew-availability-cancel {
-  background: #374151;
-  color: #e5e7eb;
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
-.crew-panel-layout--dark .crew-availability-cancel:hover { background: #4b5563; }
+.crew-panel-layout--dark .crew-availability-cancel:hover { background: hsl(var(--muted)); }
+.crew-panel-layout--dark .crew-availability-submit {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.crew-panel-layout--dark .crew-availability-submit:hover:not(:disabled) {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
