@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FolderKanban, Ship, Ticket, Percent, Plus, BadgeDollarSign } from 'lucide-react';
+import { Users, FolderKanban, Ship, Ticket, TrendingUp, Plus, BadgeDollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSuperadminAnalytics, updateSuperadminSettings } from '../api/superadmin';
 import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
@@ -264,7 +264,7 @@ const SuperadminDashboard = () => {
         })}
         <Card className="superadmin-dash-card superadmin-dash-card-markup">
           <div className="superadmin-dash-card-icon superadmin-dash-icon--teal">
-            <Percent size={24} />
+            <TrendingUp size={24} />
           </div>
           <div className="superadmin-dash-card-content">
             {showMarkupForm ? (
