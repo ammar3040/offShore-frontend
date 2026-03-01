@@ -35,6 +35,7 @@ export interface CrewTicketApi {
   trip: string;
   /** URL to uploaded ticket PDF when present */
   pdf?: string;
+  createdAt?: string;
 }
 
 export interface GetCrewTicketsResponse {

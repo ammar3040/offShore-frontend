@@ -507,12 +507,12 @@ const ProjectsPage = () => {
             </div>
           </div>
           <div className="projects-page-form-field">
-            <label htmlFor="project-span">Span</label>
+            <label htmlFor="project-span">Message to Crew</label>
             <input
               id="project-span"
               name="span"
               type="text"
-              placeholder="e.g. 1 month"
+              placeholder="e.g. We are starting a new project on March 1st. Please join us."
               disabled={createLoading}
             />
           </div>

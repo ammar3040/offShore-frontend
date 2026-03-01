@@ -14,6 +14,7 @@ export interface ProjectApi {
   status: string;
   createdBy: string;
   participants: string[];
+  createdAt?: string;
 }
 
 export interface GetProjectsResponse {
