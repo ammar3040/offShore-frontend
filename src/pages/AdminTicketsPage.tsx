@@ -23,6 +23,7 @@ import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
+import { searchAirportsApi } from '../api/airports';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
 import './AdminTicketsPage.css';
@@ -75,6 +76,8 @@ function fmtDate(iso: string): string {
   }
 }
 
+const SEARCH_DEBOUNCE_MS = 300;
+
 function AirportCombobox({
   id,
   value,
@@ -86,10 +89,30 @@ function AirportCombobox({
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [apiAirports, setApiAirports] = useState<Airport[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = useMemo(() => searchAirports(query), [query]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setApiAirports([]);
+      return;
+    }
+    const tid = setTimeout(async () => {
+      const results = await searchAirportsApi(q);
+      setApiAirports(results);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(tid);
+  }, [query]);
+
+  const filtered = useMemo(() => {
+    const staticFiltered = searchAirports(query);
+    const apiFiltered = apiAirports.filter(
+      (apiA) => !staticFiltered.some((s) => s.Name === apiA.Name)
+    );
+    return [...staticFiltered, ...apiFiltered];
+  }, [query, apiAirports]);
 
   useEffect(() => {
     if (!open) return;

@@ -25,6 +25,18 @@ export const AIRPORTS: Airport[] = [
   { Name: 'Amsterdam [AMS] - Amsterdam Schiphol Airport', COUNTRY: 'NL', COUNTRYNAME: 'Netherlands' },
   { Name: 'Frankfurt [FRA] - Frankfurt Airport', COUNTRY: 'DE', COUNTRYNAME: 'Germany' },
   { Name: 'Paris [CDG] - Charles de Gaulle Airport', COUNTRY: 'FR', COUNTRYNAME: 'France' },
+  { Name: 'Edinburgh [EDI] - Edinburgh Airport', COUNTRY: 'GB', COUNTRYNAME: 'United Kingdom' },
+  { Name: 'Manchester [MAN] - Manchester Airport', COUNTRY: 'GB', COUNTRYNAME: 'United Kingdom' },
+  { Name: 'Glasgow [GLA] - Glasgow International Airport', COUNTRY: 'GB', COUNTRYNAME: 'United Kingdom' },
+  { Name: 'Birmingham [BHX] - Birmingham Airport', COUNTRY: 'GB', COUNTRYNAME: 'United Kingdom' },
+  { Name: 'Dublin [DUB] - Dublin Airport', COUNTRY: 'IE', COUNTRYNAME: 'Ireland' },
+  { Name: 'Zurich [ZRH] - Zurich Airport', COUNTRY: 'CH', COUNTRYNAME: 'Switzerland' },
+  { Name: 'Munich [MUC] - Munich Airport', COUNTRY: 'DE', COUNTRYNAME: 'Germany' },
+  { Name: 'Toronto [YYZ] - Toronto Pearson International Airport', COUNTRY: 'CA', COUNTRYNAME: 'Canada' },
+  { Name: 'Sydney [SYD] - Sydney Kingsford Smith Airport', COUNTRY: 'AU', COUNTRYNAME: 'Australia' },
+  { Name: 'Melbourne [MEL] - Melbourne Airport', COUNTRY: 'AU', COUNTRYNAME: 'Australia' },
+  { Name: 'Tokyo [NRT] - Narita International Airport', COUNTRY: 'JP', COUNTRYNAME: 'Japan' },
+  { Name: 'Tokyo [HND] - Tokyo Haneda Airport', COUNTRY: 'JP', COUNTRYNAME: 'Japan' },
 ];
 
 /**
