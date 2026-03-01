@@ -928,7 +928,8 @@
   cursor: not-allowed;
 }
 
-.admin-tickets-search-crew-trigger[aria-expanded="true"] {
+.admin-tickets-search-crew-trigger[aria-expanded="true"],
+.admin-tickets-search-crew-trigger[data-state="open"] {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
@@ -946,7 +947,8 @@
   transition: transform 0.2s;
 }
 
-.admin-tickets-search-crew-trigger[aria-expanded="true"] .admin-tickets-search-crew-chevron {
+.admin-tickets-search-crew-trigger[aria-expanded="true"] .admin-tickets-search-crew-chevron,
+.admin-tickets-search-crew-trigger[data-state="open"] .admin-tickets-search-crew-chevron {
   transform: rotate(180deg);
 }
 

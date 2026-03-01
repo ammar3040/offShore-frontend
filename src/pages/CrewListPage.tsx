@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send } from 'lucide-react';
+import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send, User, Mail, MapPin, FileText, CreditCard } from 'lucide-react';
 import { getCrewList, createCrewMember, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import Modal from '../components/Modal';
@@ -12,6 +12,10 @@ function getInitials(firstname: string, lastname: string): string {
   return (f + l).toUpperCase() || '?';
 }
 
+function field(value: string | undefined): string {
+  return value?.trim() || '—';
+}
+
 const CrewListPage = () => {
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +26,7 @@ const CrewListPage = () => {
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
+  const [selectedCrew, setSelectedCrew] = useState<CrewMemberApi | null>(null);
   const [inviteCrewMember, setInviteCrewMember] = useState<CrewMemberApi | null>(null);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -234,7 +239,11 @@ const CrewListPage = () => {
                 </tr>
               ) : (
                 paginatedCrew.map((member) => (
-                  <tr key={member.id}>
+                  <tr
+                    key={member.id}
+                    className="user-mgmt-row-clickable"
+                    onClick={() => setSelectedCrew(member)}
+                  >
                     <td>
                       <div className="user-mgmt-user-cell">
                         <div className="user-mgmt-avatar">
@@ -250,7 +259,7 @@ const CrewListPage = () => {
                     <td>{member.address || '—'}</td>
                     <td>{member.city || '—'}</td>
                     <td>{member.country || '—'}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <div className="user-mgmt-actions">
                         <button
                           type="button"
@@ -394,6 +403,145 @@ const CrewListPage = () => {
                 </div>
               </>
             )}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!selectedCrew}
+        onClose={() => setSelectedCrew(null)}
+        title={selectedCrew ? `${selectedCrew.firstname} ${selectedCrew.lastname} — Crew Details` : 'Crew Details'}
+        size="xlarge"
+      >
+        {selectedCrew && (
+          <div className="crew-detail-modal">
+            <div className="crew-detail-grid">
+              <section className="crew-detail-card crew-detail-card--span-2">
+                <h3 className="crew-detail-card-title"><User size={20} /> Personal</h3>
+                <div className="crew-detail-fields">
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">First name</span>
+                    <span className="crew-detail-value">{field(selectedCrew.firstname)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Last name</span>
+                    <span className="crew-detail-value">{field(selectedCrew.lastname)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Date of birth</span>
+                    <span className="crew-detail-value">{field(selectedCrew.dateOfBirth)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Nationality</span>
+                    <span className="crew-detail-value">{field(selectedCrew.nationality)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Gender</span>
+                    <span className="crew-detail-value">{field(selectedCrew.gender)}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className="crew-detail-card">
+                <h3 className="crew-detail-card-title"><Mail size={20} /> Contact</h3>
+                <div className="crew-detail-fields">
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Email</span>
+                    <span className="crew-detail-value">{field(selectedCrew.email)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Phone</span>
+                    <span className="crew-detail-value">{field(selectedCrew.phone)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Alternate phone</span>
+                    <span className="crew-detail-value">{field(selectedCrew.alternate_phone)}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className="crew-detail-card">
+                <h3 className="crew-detail-card-title"><MapPin size={20} /> Address</h3>
+                <div className="crew-detail-fields">
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Address</span>
+                    <span className="crew-detail-value">{field(selectedCrew.address)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">City</span>
+                    <span className="crew-detail-value">{field(selectedCrew.city)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Country</span>
+                    <span className="crew-detail-value">{field(selectedCrew.country)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Postal code</span>
+                    <span className="crew-detail-value">{field(selectedCrew.postal_code)}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className="crew-detail-card crew-detail-card--span-2">
+                <h3 className="crew-detail-card-title"><FileText size={20} /> Passport</h3>
+                <div className="crew-detail-fields">
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Passport number</span>
+                    <span className="crew-detail-value">{field(selectedCrew.passport?.passport_number)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Issuing country</span>
+                    <span className="crew-detail-value">{field(selectedCrew.passport?.issuing_country)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Issue date</span>
+                    <span className="crew-detail-value">{field(selectedCrew.passport?.issue_date)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Expiry date</span>
+                    <span className="crew-detail-value">{field(selectedCrew.passport?.expiry_date)}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className="crew-detail-card crew-detail-card--span-2">
+                <h3 className="crew-detail-card-title"><CreditCard size={20} /> Identity</h3>
+                <div className="crew-detail-fields">
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Identity type</span>
+                    <span className="crew-detail-value">{field(selectedCrew.identity?.identity_type)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Identity number</span>
+                    <span className="crew-detail-value">{field(selectedCrew.identity?.identity_number)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Issue date</span>
+                    <span className="crew-detail-value">{field(selectedCrew.identity?.issue_date)}</span>
+                  </div>
+                  <div className="crew-detail-field">
+                    <span className="crew-detail-label">Expiry date</span>
+                    <span className="crew-detail-value">{field(selectedCrew.identity?.expiry_date)}</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <div className="crew-detail-actions">
+              <button
+                type="button"
+                className="crew-detail-invite-btn"
+                onClick={() => {
+                  setSelectedCrew(null);
+                  openInviteModal(selectedCrew);
+                }}
+              >
+                <Send size={16} />
+                Invite to project
+              </button>
+              <button type="button" className="crew-detail-close-btn" onClick={() => setSelectedCrew(null)}>
+                Close
+              </button>
+            </div>
           </div>
         )}
       </Modal>

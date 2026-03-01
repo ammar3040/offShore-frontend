@@ -16,6 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getProjects, type ProjectApi } from '../api/project';
@@ -23,6 +33,7 @@ import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
+import { searchAirportsApi } from '../api/airports';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
 import './AdminTicketsPage.css';
@@ -75,6 +86,8 @@ function fmtDate(iso: string): string {
   }
 }
 
+const SEARCH_DEBOUNCE_MS = 300;
+
 function AirportCombobox({
   id,
   value,
@@ -86,10 +99,30 @@ function AirportCombobox({
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [apiAirports, setApiAirports] = useState<Airport[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = useMemo(() => searchAirports(query), [query]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setApiAirports([]);
+      return;
+    }
+    const tid = setTimeout(async () => {
+      const results = await searchAirportsApi(q);
+      setApiAirports(results);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(tid);
+  }, [query]);
+
+  const filtered = useMemo(() => {
+    const staticFiltered = searchAirports(query);
+    const apiFiltered = apiAirports.filter(
+      (apiA) => !staticFiltered.some((s) => s.Name === apiA.Name)
+    );
+    return [...staticFiltered, ...apiFiltered];
+  }, [query, apiAirports]);
 
   useEffect(() => {
     if (!open) return;
@@ -389,20 +422,7 @@ const AdminTicketsPage = () => {
   const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
-  const [crewDropdownOpen, setCrewDropdownOpen] = useState(false);
-  const crewDropdownRef = useRef<HTMLDivElement>(null);
   const [adminMarkup, setAdminMarkup] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!crewDropdownOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (crewDropdownRef.current && !crewDropdownRef.current.contains(e.target as Node)) {
-        setCrewDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [crewDropdownOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -826,77 +846,63 @@ const AdminTicketsPage = () => {
                   </div>
                   <div className="admin-tickets-search-field admin-tickets-search-field-crew">
                     <label htmlFor="search-crew-toggle">Crew members</label>
-                    <div className="admin-tickets-search-crew-wrap" ref={crewDropdownRef}>
-                      <button
-                        id="search-crew-toggle"
-                        type="button"
-                        className="admin-tickets-search-crew-trigger"
-                        onClick={() => setCrewDropdownOpen((o) => !o)}
-                        disabled={!searchProjectId}
-                        aria-expanded={crewDropdownOpen}
-                        aria-haspopup="listbox"
-                      >
-                        <span className="admin-tickets-search-crew-trigger-text">
-                          {!searchProjectId
-                            ? 'Select a project first'
-                            : searchCrewLoading
-                              ? 'Loading…'
-                              : searchCrewIds.length === 0
-                                ? 'Select crew members…'
-                                : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
-                        </span>
-                        <ChevronDown size={18} className="admin-tickets-search-crew-chevron" />
-                      </button>
-                      {crewDropdownOpen && searchProjectId && (
-                        <div
-                          className="admin-tickets-search-crew-dropdown"
-                          role="listbox"
-                          aria-multiselectable
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          id="search-crew-toggle"
+                          variant="outline"
+                          role="combobox"
+                          disabled={!searchProjectId}
+                          className="admin-tickets-search-crew-trigger w-full justify-between font-normal"
                         >
-                          {searchCrewList.length === 0 ? (
-                            <p className="admin-tickets-search-crew-empty">No crew enrolled in this project.</p>
-                          ) : (
-                            <>
-                              <div className="admin-tickets-search-crew-actions">
-                                <button
-                                  type="button"
-                                  className="admin-tickets-search-crew-select-all"
-                                  onClick={() => setSearchCrewIds(searchCrewList.map((c) => c.id))}
+                          <span className="admin-tickets-search-crew-trigger-text truncate">
+                            {!searchProjectId
+                              ? 'Select a project first'
+                              : searchCrewLoading
+                                ? 'Loading…'
+                                : searchCrewIds.length === 0
+                                  ? 'Select crew members…'
+                                  : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
+                          </span>
+                          <ChevronDown size={18} className="admin-tickets-search-crew-chevron shrink-0" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
+                        align="start"
+                      >
+                        {!searchProjectId ? null : searchCrewLoading && searchCrewList.length === 0 ? (
+                          <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
+                        ) : searchCrewList.length === 0 ? (
+                          <DropdownMenuLabel>No crew enrolled in this project.</DropdownMenuLabel>
+                        ) : (
+                          <>
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel>Crew members</DropdownMenuLabel>
+                              {searchCrewList.map((c) => (
+                                <DropdownMenuCheckboxItem
+                                  key={c.id}
+                                  checked={searchCrewIds.includes(c.id)}
+                                  onCheckedChange={() => toggleCrewSearch(c.id)}
+                                  onSelect={(e) => e.preventDefault()}
                                 >
-                                  Select all
-                                </button>
-                                <button
-                                  type="button"
-                                  className="admin-tickets-search-crew-clear"
-                                  onClick={() => setSearchCrewIds([])}
-                                >
-                                  Clear
-                                </button>
-                              </div>
-                              <ul className="admin-tickets-search-crew-list">
-                                {searchCrewList.map((c) => (
-                                  <li key={c.id}>
-                                    <label className="admin-tickets-search-crew-item">
-                                      <div className="admin-tickets-search-crew-item-info">
-                                        <span>
-                                          {c.firstname} {c.lastname}
-                                        </span>
-                                        <span className="admin-tickets-search-crew-item-email">{c.email}</span>
-                                      </div>
-                                      <input
-                                        type="checkbox"
-                                        checked={searchCrewIds.includes(c.id)}
-                                        onChange={() => toggleCrewSearch(c.id)}
-                                      />
-                                    </label>
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span>
+                                      {c.firstname} {c.lastname}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground truncate">{c.email}</span>
+                                  </div>
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuGroup>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuGroup>
+                              <DropdownMenuItem>Close</DropdownMenuItem>
+                            </DropdownMenuGroup>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <div className="admin-tickets-search-airports-row">
                     <div className="admin-tickets-search-field">
