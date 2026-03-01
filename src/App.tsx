@@ -86,13 +86,8 @@ function App() {
               <Routes>
                 <Route path="/" element={<CrewManagementDashboard />} />
                 <Route path="/crew" element={<CrewListPage />} />
-                <Route path="/leads" element={<div className="page-placeholder">Leads — Coming soon</div>} />
-                <Route path="/people" element={<div className="page-placeholder">People</div>} />
-                <Route path="/companies" element={<div className="page-placeholder">Companies</div>} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/tickets" element={<AdminTicketsPage />} />
-                <Route path="/schedule" element={<div className="page-placeholder">Schedule</div>} />
-                <Route path="/settings" element={<div className="page-placeholder">Settings</div>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>

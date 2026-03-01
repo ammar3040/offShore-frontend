@@ -322,30 +322,6 @@
   cursor: not-allowed;
 }
 
-.user-mgmt-switch-view {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  background-color: #3b82f6;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
-  transition: background 0.2s, transform 0.2s;
-}
-
-.user-mgmt-switch-view:hover {
-  background-color: #2563eb;
-  transform: translateY(-2px);
-}
-
 @media (max-width: 1024px) {
   .user-mgmt-cards {
     grid-template-columns: repeat(2, 1fr);

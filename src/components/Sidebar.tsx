@@ -3,12 +3,7 @@ import { clearAccessToken } from '../lib/auth';
 import {
   LayoutDashboard,
   Ship,
-  Search,
-  Users,
-  Building2,
   FolderKanban,
-  Calendar,
-  Settings,
   LogOut,
   X,
   HelpCircle,
@@ -29,13 +24,8 @@ interface SidebarProps {
 const mainNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Ship, label: 'Crew', path: '/crew' },
-  { icon: Search, label: 'Leads', path: '/leads' },
-  { icon: Users, label: 'People', path: '/people' },
-  { icon: Building2, label: 'Companies', path: '/companies' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: Ticket, label: 'Tickets', path: '/tickets' },
-  { icon: Calendar, label: 'Schedule', path: '/schedule' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
 const Sidebar = ({ isOpen = true, onClose, theme = 'light', onToggleTheme }: SidebarProps) => {

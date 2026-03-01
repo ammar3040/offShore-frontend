@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, RefreshCw, Send } from 'lucide-react';
+import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send } from 'lucide-react';
 import { getCrewList, createCrewMember, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import Modal from '../components/Modal';
@@ -315,11 +315,6 @@ const CrewListPage = () => {
           </div>
         </div>
       )}
-
-      <button type="button" className="user-mgmt-switch-view" aria-label="Switch view">
-        <RefreshCw size={18} />
-        Switch View
-      </button>
 
       <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge">
         {addError && (
