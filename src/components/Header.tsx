@@ -108,18 +108,21 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                 })()
               : '—'}
           </span>
-          <select
-            className="admin-balance-currency-select"
-            value={balanceCurrency}
-            onChange={(e) => setBalanceCurrency(e.target.value as CurrencyCode)}
-            aria-label="Balance currency"
-          >
-            {BALANCE_CURRENCIES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <div className="admin-balance-currency-wrap">
+            <select
+              className="admin-balance-currency-select"
+              value={balanceCurrency}
+              onChange={(e) => setBalanceCurrency(e.target.value as CurrencyCode)}
+              aria-label="Balance currency"
+            >
+              {BALANCE_CURRENCIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="admin-balance-currency-chevron" aria-hidden />
+          </div>
         </div>
         <button className="icon-button" aria-label="Notifications">
           <Bell size={20} />
