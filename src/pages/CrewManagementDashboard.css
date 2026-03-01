@@ -71,6 +71,32 @@
   gap: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.admin-stat-card-tickets {
+  padding-right: 38px;
+}
+
+.admin-stat-refresh {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+.admin-stat-refresh:hover {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.1);
 }
 
 .admin-stat-icon {
@@ -344,6 +370,15 @@
 
 .layout--dark .admin-stat-label {
   color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .admin-stat-refresh {
+  color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .admin-stat-refresh:hover {
+  color: hsl(142 76% 36%);
+  background: hsl(142 76% 36% / 0.15);
 }
 
 .layout--dark .admin-dashboard-panel {
