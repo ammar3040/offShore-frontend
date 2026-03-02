@@ -1,54 +1,56 @@
-import { env } from '../config/env';
 import type { Airport } from '../types/flight';
 
-const API_BASE = env.apiBaseUrl || '';
+/** Country code (ISO 3166-1 alpha-2) to country name mapping */
+const COUNTRY_NAMES: Record<string, string> = {
+  IN: "India", US: "United States", GB: "United Kingdom", AE: "United Arab Emirates",
+  FR: "France", DE: "Germany", NL: "Netherlands", SG: "Singapore", AU: "Australia",
+  CA: "Canada", CN: "China", JP: "Japan", KR: "South Korea", PK: "Pakistan",
+  BD: "Bangladesh", LK: "Sri Lanka", NP: "Nepal", MY: "Malaysia", TH: "Thailand",
+  ID: "Indonesia", NO: "Norway", ES: "Spain", IT: "Italy", SA: "Saudi Arabia",
+};
 
-/**
- * Raw response item from airport search API (backend or Riya getcity).
- * Supports both { Name, COUNTRY, COUNTRYNAME } and { name, country, countryName }.
- */
-interface AirportSearchResult {
-  Name?: string;
-  name?: string;
-  COUNTRY?: string;
-  country?: string;
-  COUNTRYNAME?: string;
-  countryName?: string;
-}
-
-function toAirport(item: AirportSearchResult): Airport {
-  const name = item.Name ?? item.name ?? '';
-  const country = item.COUNTRY ?? item.country ?? '';
-  const countryName = item.COUNTRYNAME ?? item.countryName ?? '';
-  return { Name: name, COUNTRY: country, COUNTRYNAME: countryName };
+interface ExternalAirportHit {
+  name: string;
+  city: string;
+  iata: string;
+  icao: string;
+  country_code: string;
 }
 
 /**
- * Search airports via backend API (e.g. /api/airports/search proxying to Riya getcity).
- * Returns [] if the endpoint is not implemented or on error.
- * When the backend exposes this endpoint, it enables dynamic results (e.g. Edinburgh).
+ * Search airports directly from the frontend via airportroutes.com.
+ * Returns [] on error or when no results are found.
  */
 export async function searchAirportsApi(query: string): Promise<Airport[]> {
   const q = query.trim();
-  if (!q) return [];
+  if (!q || q.length < 2) return [];
 
   try {
-    const token = localStorage.getItem(env.authTokenKey);
-    const headers: HeadersInit = {};
-    if (token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-    }
-
     const res = await fetch(
-      `${API_BASE}/api/airports/search?query=${encodeURIComponent(q)}`,
-      { headers, signal: AbortSignal.timeout(8000) }
+      `https://www.airportroutes.com/api/search-airports/?q=${encodeURIComponent(q)}&limit=20`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(8000),
+      }
     );
 
     if (!res.ok) return [];
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : (data?.data ?? data?.airports ?? []);
-    if (!Array.isArray(list)) return [];
-    return list.map((item: AirportSearchResult) => toAirport(item)).filter((a: Airport) => a.Name);
+
+    const data = await res.json() as { hits?: ExternalAirportHit[] };
+    const hits = data.hits ?? [];
+
+    return hits
+      .map((hit): Airport => {
+        const code = hit.iata || hit.icao || '';
+        const countryCode = hit.country_code || '';
+        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
+        const name = `${hit.city} [${code}] - ${hit.name}, ${countryName}`;
+        return { Name: name, COUNTRY: countryCode, COUNTRYNAME: countryName };
+      })
+      .filter((a) => a.Name);
   } catch {
     return [];
   }
