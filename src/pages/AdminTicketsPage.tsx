@@ -10,13 +10,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -830,32 +823,55 @@ const AdminTicketsPage = () => {
                     </div>
                   </div>
                   <div className="admin-tickets-search-field">
-                    <label htmlFor="search-project">Project</label>
-                    <select
-                      id="search-project"
-                      value={searchProjectId}
-                      onChange={(e) => setSearchProjectId(e.target.value)}
-                    >
-                      <option value="">Select project</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="admin-tickets-search-field admin-tickets-search-field-crew">
-                    <label htmlFor="search-crew-toggle">Crew members</label>
+                    <label className="block text-xs font-semibold text-[#374151] mb-2">Project</label>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
-                          id="search-crew-toggle"
                           variant="outline"
-                          role="combobox"
-                          disabled={!searchProjectId}
-                          className="admin-tickets-search-crew-trigger w-full justify-between font-normal"
+                          className="w-full justify-between font-normal"
                         >
-                          <span className="admin-tickets-search-crew-trigger-text truncate">
+                          <span className="truncate">
+                            {searchProjectId
+                              ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
+                              : 'Select project'}
+                          </span>
+                          <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
+                        align="start"
+                      >
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem
+                            onSelect={() => setSearchProjectId('')}
+                            className={!searchProjectId ? 'bg-accent' : ''}
+                          >
+                            Select project
+                          </DropdownMenuItem>
+                          {projects.map((p) => (
+                            <DropdownMenuItem
+                              key={p.id}
+                              onSelect={() => setSearchProjectId(p.id)}
+                              className={searchProjectId === p.id ? 'bg-accent' : ''}
+                            >
+                              {p.title}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="admin-tickets-search-field admin-tickets-search-field-crew">
+                    <label className="block text-xs font-semibold text-[#374151] mb-2">Crew members</label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          disabled={!searchProjectId}
+                          className="w-full justify-between font-normal"
+                        >
+                          <span className="truncate">
                             {!searchProjectId
                               ? 'Select a project first'
                               : searchCrewLoading
@@ -864,42 +880,33 @@ const AdminTicketsPage = () => {
                                   ? 'Select crew members…'
                                   : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
                           </span>
-                          <ChevronDown size={18} className="admin-tickets-search-crew-chevron shrink-0" />
+                          <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
                         align="start"
                       >
-                        {!searchProjectId ? null : searchCrewLoading && searchCrewList.length === 0 ? (
+                        {searchCrewLoading && searchCrewList.length === 0 ? (
                           <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
                         ) : searchCrewList.length === 0 ? (
                           <DropdownMenuLabel>No crew enrolled in this project.</DropdownMenuLabel>
                         ) : (
-                          <>
-                            <DropdownMenuGroup>
-                              <DropdownMenuLabel>Crew members</DropdownMenuLabel>
-                              {searchCrewList.map((c) => (
-                                <DropdownMenuCheckboxItem
-                                  key={c.id}
-                                  checked={searchCrewIds.includes(c.id)}
-                                  onCheckedChange={() => toggleCrewSearch(c.id)}
-                                  onSelect={(e) => e.preventDefault()}
-                                >
-                                  <div className="flex flex-col min-w-0">
-                                    <span>
-                                      {c.firstname} {c.lastname}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground truncate">{c.email}</span>
-                                  </div>
-                                </DropdownMenuCheckboxItem>
-                              ))}
-                            </DropdownMenuGroup>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuGroup>
-                              <DropdownMenuItem>Close</DropdownMenuItem>
-                            </DropdownMenuGroup>
-                          </>
+                          <DropdownMenuGroup>
+                            {searchCrewList.map((c) => (
+                              <DropdownMenuCheckboxItem
+                                key={c.id}
+                                checked={searchCrewIds.includes(c.id)}
+                                onCheckedChange={() => toggleCrewSearch(c.id)}
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                <div className="flex flex-col min-w-0">
+                                  <span>{c.firstname} {c.lastname}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{c.email}</span>
+                                </div>
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuGroup>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1056,22 +1063,42 @@ const AdminTicketsPage = () => {
         <>
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="flex flex-col gap-2 min-w-[200px]">
-          <label htmlFor="tickets-project-filter" className="text-sm font-medium">
+          <label className="text-sm font-medium">
             Filter by project
           </label>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger id="tickets-project-filter" className="w-full">
-              <SelectValue placeholder="All projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All projects</SelectItem>
-              {uniqueProjectsFromTickets.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between font-normal">
+                <span className="truncate">
+                  {projectFilter === 'all'
+                    ? 'All projects'
+                    : (uniqueProjectsFromTickets.find((p) => p.id === projectFilter)?.title ?? 'All projects')}
+                </span>
+                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]" align="start">
+              <DropdownMenuLabel>Projects</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onSelect={() => setProjectFilter('all')}
+                  className={projectFilter === 'all' ? 'bg-accent' : ''}
+                >
+                  All projects
+                </DropdownMenuItem>
+                {uniqueProjectsFromTickets.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onSelect={() => setProjectFilter(p.id)}
+                    className={projectFilter === p.id ? 'bg-accent' : ''}
+                  >
+                    {p.title}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
