@@ -280,9 +280,6 @@ function FlightResultCard({
           {selectedFare ? (
             <div className="atfc-fare-price">
               <span className="atfc-fare-total">{getCurrencySymbol(currency)}{selectedFare.totalFare?.toLocaleString() ?? '—'}</span>
-              {selectedFare.basicFare !== selectedFare.totalFare && (
-                <span className="atfc-fare-basic">Base: {getCurrencySymbol(currency)}{selectedFare.basicFare?.toLocaleString()}</span>
-              )}
               <span className="atfc-fare-label">{selectedFare.name ?? selectedFare.type}</span>
               {flight.cashback != null && flight.cashback > 0 && (
                 <span className="atfc-cashback">{getCurrencySymbol(currency)}{flight.cashback.toLocaleString()} cashback</span>
