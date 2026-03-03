@@ -59,6 +59,16 @@ const CURRENCY_OPTIONS: Array<{ value: CurrencyCode; label: string }> = [
   { value: 'INR', label: 'INR' },
 ];
 
+const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+  USD: '$',
+  GBP: '£',
+  INR: '₹',
+};
+
+function getCurrencySymbol(code: CurrencyCode): string {
+  return CURRENCY_SYMBOLS[code] ?? code;
+}
+
 function toYYYYMMDD(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -262,13 +272,13 @@ function FlightResultCard({
         <div className="atfc-fare-action">
           {selectedFare ? (
             <div className="atfc-fare-price">
-              <span className="atfc-fare-total">{currency} {selectedFare.totalFare?.toLocaleString() ?? '—'}</span>
+              <span className="atfc-fare-total">{getCurrencySymbol(currency)}{selectedFare.totalFare?.toLocaleString() ?? '—'}</span>
               {selectedFare.basicFare !== selectedFare.totalFare && (
-                <span className="atfc-fare-basic">Base: {currency} {selectedFare.basicFare?.toLocaleString()}</span>
+                <span className="atfc-fare-basic">Base: {getCurrencySymbol(currency)}{selectedFare.basicFare?.toLocaleString()}</span>
               )}
               <span className="atfc-fare-label">{selectedFare.name ?? selectedFare.type}</span>
               {flight.cashback != null && flight.cashback > 0 && (
-                <span className="atfc-cashback">{currency} {flight.cashback.toLocaleString()} cashback</span>
+                <span className="atfc-cashback">{getCurrencySymbol(currency)}{flight.cashback.toLocaleString()} cashback</span>
               )}
             </div>
           ) : (
@@ -298,7 +308,7 @@ function FlightResultCard({
               onClick={() => setSelectedFare(f)}
             >
               <span className="atfc-fare-tab-name">{f.name ?? f.type}</span>
-              <span className="atfc-fare-tab-price">{currency} {f.totalFare?.toLocaleString() ?? '—'}</span>
+              <span className="atfc-fare-tab-price">{getCurrencySymbol(currency)}{f.totalFare?.toLocaleString() ?? '—'}</span>
               <span className="atfc-fare-tab-seats">{f.seats} seats</span>
             </button>
           ))}
