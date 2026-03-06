@@ -180,12 +180,39 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   formData.append('identity_number', data.identityNumber);
   formData.append('identity_issue_date', data.identityIssueDate);
   formData.append('identity_expiry_date', data.identityExpiryDate);
+  formData.append('certificate_issue_date', data.certificateIssueDate);
+  formData.append('certificate_expiry_date', data.certificateExpiryDate);
+
+  if (data.azerbaijanVantageNumber?.trim()) {
+    formData.append('azerbaijan_vantage_number', data.azerbaijanVantageNumber.trim());
+  }
+  if (data.norwegianDNumber?.trim()) {
+    formData.append('norwegian_d_number', data.norwegianDNumber.trim());
+  }
+  if (data.dawinciNumber?.trim()) {
+    formData.append('dawinci_number', data.dawinciNumber.trim());
+  }
+  if (data.vantageNumber?.trim()) {
+    formData.append('vantage_number', data.vantageNumber.trim());
+  }
+  if (data.organization?.trim()) {
+    formData.append('organization', data.organization.trim());
+  }
+  if (data.linkedin?.trim()) {
+    formData.append('linkedin', data.linkedin.trim());
+  }
+  if (data.visa?.trim()) {
+    formData.append('visa', data.visa.trim());
+  }
 
   data.passportDocuments.forEach((file) => {
     formData.append('passport_document', file);
   });
   data.identityDocuments.forEach((file) => {
     formData.append('identity_document', file);
+  });
+  data.certificateDocuments.forEach((file) => {
+    formData.append('certificate_document', file);
   });
 
   return formData;

@@ -32,6 +32,20 @@ export interface CrewMemberFormData {
   identityIssueDate: string;
   identityExpiryDate: string;
   identityDocuments: File[];
+
+  // Crew Certificate
+  certificateIssueDate: string;
+  certificateExpiryDate: string;
+  certificateDocuments: File[];
+
+  // Professional & Compliance (optional)
+  azerbaijanVantageNumber: string;
+  norwegianDNumber: string;
+  dawinciNumber: string;
+  vantageNumber: string;
+  organization: string;
+  linkedin: string;
+  visa: string;
 }
 
 interface CrewMemberFormProps {
@@ -64,10 +78,21 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
     identityIssueDate: '',
     identityExpiryDate: '',
     identityDocuments: [],
+    certificateIssueDate: '',
+    certificateExpiryDate: '',
+    certificateDocuments: [],
+    azerbaijanVantageNumber: '',
+    norwegianDNumber: '',
+    dawinciNumber: '',
+    vantageNumber: '',
+    organization: '',
+    linkedin: '',
+    visa: '',
   });
 
   const passportFileInputRef = useRef<HTMLInputElement>(null);
   const identityFileInputRef = useRef<HTMLInputElement>(null);
+  const certificateFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -78,7 +103,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    type: 'passport' | 'identity'
+    type: 'passport' | 'identity' | 'certificate'
   ) => {
     const files = Array.from(e.target.files || []);
     if (type === 'passport') {
@@ -86,24 +111,35 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
         ...prev,
         passportDocuments: [...prev.passportDocuments, ...files],
       }));
-    } else {
+    } else if (type === 'identity') {
       setFormData((prev) => ({
         ...prev,
         identityDocuments: [...prev.identityDocuments, ...files],
       }));
+    } else {
+      // certificate: maxCount 1, replace existing
+      setFormData((prev) => ({
+        ...prev,
+        certificateDocuments: files.slice(0, 1),
+      }));
     }
   };
 
-  const removeFile = (index: number, type: 'passport' | 'identity') => {
+  const removeFile = (index: number, type: 'passport' | 'identity' | 'certificate') => {
     if (type === 'passport') {
       setFormData((prev) => ({
         ...prev,
         passportDocuments: prev.passportDocuments.filter((_, i) => i !== index),
       }));
-    } else {
+    } else if (type === 'identity') {
       setFormData((prev) => ({
         ...prev,
         identityDocuments: prev.identityDocuments.filter((_, i) => i !== index),
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        certificateDocuments: [],
       }));
     }
   };
@@ -437,6 +473,150 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Crew Certificate Section */}
+        <div className="form-section">
+          <h3 className="form-section-title">Crew Certificate</h3>
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="certificateIssueDate">Issue Date *</label>
+              <input
+                type="date"
+                id="certificateIssueDate"
+                name="certificateIssueDate"
+                value={formData.certificateIssueDate}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="certificateExpiryDate">Expiry Date *</label>
+              <input
+                type="date"
+                id="certificateExpiryDate"
+                name="certificateExpiryDate"
+                value={formData.certificateExpiryDate}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+          </div>
+          <div className="file-upload-section">
+            <label className="file-upload-label">Certificate Document *</label>
+            <div className="file-upload-area">
+              <input
+                ref={certificateFileInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => handleFileUpload(e, 'certificate')}
+                className="file-input-hidden"
+              />
+              <button
+                type="button"
+                className="file-upload-button"
+                onClick={() => certificateFileInputRef.current?.click()}
+              >
+                <Upload size={18} />
+                Upload Certificate Document
+              </button>
+              <p className="file-upload-hint">PDF, JPG, PNG (Max 10MB, one file)</p>
+            </div>
+            {formData.certificateDocuments.length > 0 && (
+              <div className="uploaded-files">
+                {formData.certificateDocuments.map((file, index) => (
+                  <div key={index} className="uploaded-file-item">
+                    <span className="file-name">{file.name}</span>
+                    <button
+                      type="button"
+                      className="file-remove-button"
+                      onClick={() => removeFile(index, 'certificate')}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Professional & Compliance Section */}
+        <div className="form-section">
+          <h3 className="form-section-title">Professional & Compliance</h3>
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="azerbaijanVantageNumber">Azerbaijan Vantage Number</label>
+              <input
+                type="text"
+                id="azerbaijanVantageNumber"
+                name="azerbaijanVantageNumber"
+                value={formData.azerbaijanVantageNumber}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="norwegianDNumber">Norwegian D Number</label>
+              <input
+                type="text"
+                id="norwegianDNumber"
+                name="norwegianDNumber"
+                value={formData.norwegianDNumber}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="dawinciNumber">DaWinci Number</label>
+              <input
+                type="text"
+                id="dawinciNumber"
+                name="dawinciNumber"
+                value={formData.dawinciNumber}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="vantageNumber">Vantage Number</label>
+              <input
+                type="text"
+                id="vantageNumber"
+                name="vantageNumber"
+                value={formData.vantageNumber}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="organization">Organization</label>
+              <input
+                type="text"
+                id="organization"
+                name="organization"
+                value={formData.organization}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="form-group form-group-full">
+              <label htmlFor="linkedin">LinkedIn URL</label>
+              <input
+                type="url"
+                id="linkedin"
+                name="linkedin"
+                placeholder="https://linkedin.com/in/..."
+                value={formData.linkedin}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="form-group form-group-full">
+              <label htmlFor="visa">Visa Info</label>
+              <input
+                type="text"
+                id="visa"
+                name="visa"
+                value={formData.visa}
+                onChange={handleInputChange}
+              />
+            </div>
           </div>
         </div>
       </div>
