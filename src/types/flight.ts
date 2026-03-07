@@ -82,4 +82,15 @@ export interface SearchPayload {
   /** Optional: project and crew context (admin portal) */
   project_id?: string;
   crew_ids?: string[];
+  /** Pagination (backend returns paginated results) */
+  page?: number;
+  limit?: number;
+}
+
+/** Result of searchFlights when API returns paginated response */
+export interface SearchFlightsResult {
+  flights: Flight[];
+  total: number;
+  page?: number;
+  limit?: number;
 }

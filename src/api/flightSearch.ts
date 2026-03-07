@@ -1,5 +1,5 @@
 import { env } from '../config/env';
-import type { Flight, SearchPayload } from '../types/flight';
+import type { Flight, SearchPayload, SearchFlightsResult } from '../types/flight';
 
 /** Full itinerary segment shape sent to POST /api/crew-ticket/book */
 export interface BookItinerarySegment {
@@ -81,10 +81,10 @@ function getHeaders(): HeadersInit {
 const API_BASE = env.apiBaseUrl || '';
 
 /**
- * POST /api/search – search flights with given criteria.
- * Returns array of Flight. On error throws with message.
+ * POST /api/crew-ticket/search-flights – search flights with given criteria.
+ * Returns paginated result: { flights, total, page?, limit? }. On error throws with message.
  */
-export async function searchFlights(payload: SearchPayload): Promise<Flight[]> {
+export async function searchFlights(payload: SearchPayload): Promise<SearchFlightsResult> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
@@ -108,10 +108,23 @@ export async function searchFlights(payload: SearchPayload): Promise<Flight[]> {
   }
 
   const data = await response.json();
-  // Response envelope: { flights: Flight[], pagination: {...} }  or a plain Flight[]
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.flights)) return data.flights;
-  return [];
+
+  // Paginated envelope: { flights: Flight[], pagination: { total, page, limit } } or { flights, total, page?, limit? }
+  if (Array.isArray(data)) {
+    return { flights: data, total: data.length };
+  }
+  const flights = Array.isArray(data?.flights) ? data.flights : [];
+  const pagination = data?.pagination;
+  const total =
+    typeof pagination?.total === 'number'
+      ? pagination.total
+      : typeof data?.total === 'number'
+        ? data.total
+        : flights.length;
+  const page = typeof pagination?.page === 'number' ? pagination.page : data?.page;
+  const limit = typeof pagination?.limit === 'number' ? pagination.limit : data?.limit;
+
+  return { flights, total, page, limit };
 }
 
 /**

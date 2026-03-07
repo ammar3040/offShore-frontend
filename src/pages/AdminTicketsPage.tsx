@@ -412,8 +412,11 @@ const AdminTicketsPage = () => {
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
   const [currency, setCurrency] = useState<CurrencyCode>('USD');
   const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
+  const [searchTotalCount, setSearchTotalCount] = useState<number>(0);
+  const [searchPage, setSearchPage] = useState<number>(1);
   const [searchCriteria, setSearchCriteria] = useState<SearchPayload | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [bookingFlightId, setBookingFlightId] = useState<string | null>(null);
 
@@ -593,16 +596,21 @@ const AdminTicketsPage = () => {
       infants,
       cabinClass,
       currency,
+      page: 1,
       ...(searchProjectId ? { project_id: searchProjectId } : {}),
       ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
     };
     setSearchCriteria(criteria);
     setSearchResults(null);
+    setSearchTotalCount(0);
+    setSearchPage(1);
     setSearchError(null);
     setIsSearching(true);
     try {
       const data = await searchFlights(criteria);
-      setSearchResults(data);
+      setSearchResults(data.flights);
+      setSearchTotalCount(data.total);
+      setSearchPage(data.page ?? 1);
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : 'Search failed');
     } finally {
@@ -622,6 +630,26 @@ const AdminTicketsPage = () => {
     searchProjectId,
     searchCrewIds,
   ]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!searchCriteria || !searchFrom || !searchTo || isLoadingMore) return;
+    const nextPage = searchPage + 1;
+    const criteria: SearchPayload = {
+      ...searchCriteria,
+      page: nextPage,
+    };
+    setIsLoadingMore(true);
+    try {
+      const data = await searchFlights(criteria);
+      setSearchResults((prev) => (prev ? [...prev, ...data.flights] : data.flights));
+      setSearchTotalCount(data.total);
+      setSearchPage(data.page ?? nextPage);
+    } catch (e) {
+      toast.error('Failed to load more', { description: e instanceof Error ? e.message : 'Please try again.' });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [searchCriteria, searchFrom, searchTo, searchPage, isLoadingMore]);
 
   const handleBookNow = useCallback(
     async (flight: Flight) => {
@@ -657,6 +685,7 @@ const AdminTicketsPage = () => {
         const desc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${data.bookingReference ? ` Ref: ${data.bookingReference}` : ''}`;
         toast.success('Ticket booked successfully!', { description: desc });
         setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
+        setSearchTotalCount((prev) => Math.max(0, prev - 1));
       } catch (err) {
         toast.error('Booking failed', { description: err instanceof Error ? err.message : 'Unable to complete booking. Please try again.' });
       } finally {
@@ -668,6 +697,8 @@ const AdminTicketsPage = () => {
 
   const handleSearchBack = useCallback(() => {
     setSearchResults(null);
+    setSearchTotalCount(0);
+    setSearchPage(1);
     setSearchCriteria(null);
     setSearchError(null);
   }, []);
@@ -1044,22 +1075,44 @@ const AdminTicketsPage = () => {
                   </p>
                 )}
                 <p className="admin-tickets-results-count">
-                  {searchResults.length} flight{searchResults.length !== 1 ? 's' : ''} found
+                  {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
                 </p>
               </div>
               <div className="admin-tickets-results-list">
                 {searchResults.length === 0 ? (
                   <p className="admin-tickets-results-empty">No flights match your criteria.</p>
                 ) : (
-                  searchResults.map((flight) => (
-                    <FlightResultCard
-                      key={flight.id}
-                      flight={flight}
-                      currency={currency}
-                      onBook={handleBookNow}
-                      isBooking={bookingFlightId === flight.id}
-                    />
-                  ))
+                  <>
+                    {searchResults.map((flight) => (
+                      <FlightResultCard
+                        key={flight.id}
+                        flight={flight}
+                        currency={currency}
+                        onBook={handleBookNow}
+                        isBooking={bookingFlightId === flight.id}
+                      />
+                    ))}
+                    {searchResults.length < searchTotalCount && (
+                      <div className="admin-tickets-load-more-wrap">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleLoadMore}
+                          disabled={isLoadingMore}
+                          className="admin-tickets-load-more-btn"
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
+                              Loading…
+                            </>
+                          ) : (
+                            `Load more (showing ${searchResults.length} of ${searchTotalCount})`
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
