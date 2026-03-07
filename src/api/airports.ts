@@ -38,6 +38,7 @@ export async function searchAirportsApi(query: string): Promise<Airport[]> {
     );
 
     if (!res.ok) return [];
+    //deplyment fix
 
     const data = await res.json() as { hits?: ExternalAirportHit[] };
     const hits = data.hits ?? [];
