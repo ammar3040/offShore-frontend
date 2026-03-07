@@ -23,7 +23,7 @@
 }
 
 .modal-content {
-  background-color: #ffffff;
+  background-color: hsl(var(--card));
   border-radius: 16px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-height: 90vh;
@@ -69,13 +69,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .modal-title {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: hsl(var(--card-foreground));
   margin: 0;
 }
 
@@ -84,7 +84,7 @@
   border: none;
   padding: 8px;
   border-radius: 8px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -93,8 +93,8 @@
 }
 
 .modal-close-button:hover {
-  background-color: #f3f4f6;
-  color: #1f2937;
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 
 .modal-body {
@@ -185,4 +185,11 @@
 .crew-panel-layout--dark .modal-close-button:hover {
   background-color: hsl(var(--accent));
   color: hsl(var(--foreground));
+}
+
+/* Ensure native form controls (select dropdowns, etc.) use dark styling in modals */
+.layout--dark .modal-body,
+.superadmin-panel-layout--dark .modal-body,
+.crew-panel-layout--dark .modal-body {
+  color-scheme: dark;
 }
