@@ -201,12 +201,13 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
               />
             </div>
             <div className="form-group">
-              <label htmlFor="gender">Gender</label>
+              <label htmlFor="gender">Gender *</label>
               <select
                 id="gender"
                 name="gender"
                 value={formData.gender}
                 onChange={handleInputChange}
+                required
               >
                 <option value="">Select</option>
                 <option value="male">Male</option>
@@ -245,53 +246,58 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
               />
             </div>
             <div className="form-group">
-              <label htmlFor="alternatePhone">Alternate Phone</label>
+              <label htmlFor="alternatePhone">Alternate Phone *</label>
               <input
                 type="tel"
                 id="alternatePhone"
                 name="alternatePhone"
                 value={formData.alternatePhone}
                 onChange={handleInputChange}
+                required
               />
             </div>
             <div className="form-group form-group-full">
-              <label htmlFor="address">Address</label>
+              <label htmlFor="address">Address *</label>
               <input
                 type="text"
                 id="address"
                 name="address"
                 value={formData.address}
                 onChange={handleInputChange}
+                required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="city">City</label>
+              <label htmlFor="city">City *</label>
               <input
                 type="text"
                 id="city"
                 name="city"
                 value={formData.city}
                 onChange={handleInputChange}
+                required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="country">Country</label>
+              <label htmlFor="country">Country *</label>
               <input
                 type="text"
                 id="country"
                 name="country"
                 value={formData.country}
                 onChange={handleInputChange}
+                required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="postalCode">Postal Code</label>
+              <label htmlFor="postalCode">Postal Code *</label>
               <input
                 type="text"
                 id="postalCode"
                 name="postalCode"
                 value={formData.postalCode}
                 onChange={handleInputChange}
+                required
               />
             </div>
           </div>
@@ -313,13 +319,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
               />
             </div>
             <div className="form-group">
-              <label htmlFor="passportIssueDate">Issue Date</label>
+              <label htmlFor="passportIssueDate">Issue Date *</label>
               <input
                 type="date"
                 id="passportIssueDate"
                 name="passportIssueDate"
                 value={formData.passportIssueDate}
                 onChange={handleInputChange}
+                required
               />
             </div>
             <div className="form-group">
@@ -334,19 +341,20 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
               />
             </div>
             <div className="form-group">
-              <label htmlFor="passportIssuingCountry">Issuing Country</label>
+              <label htmlFor="passportIssuingCountry">Issuing Country *</label>
               <input
                 type="text"
                 id="passportIssuingCountry"
                 name="passportIssuingCountry"
                 value={formData.passportIssuingCountry}
                 onChange={handleInputChange}
+                required
               />
             </div>
           </div>
           
           <div className="file-upload-section">
-            <label className="file-upload-label">Passport Documents</label>
+            <label className="file-upload-label">Passport Document *</label>
             <div className="file-upload-area">
               <input
                 ref={passportFileInputRef}
@@ -390,54 +398,58 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
           <h3 className="form-section-title">Identity Information</h3>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="identityType">Identity Type</label>
+              <label htmlFor="identityType">Identity Type *</label>
               <select
                 id="identityType"
                 name="identityType"
                 value={formData.identityType}
                 onChange={handleInputChange}
+                required
               >
                 <option value="">Select</option>
                 <option value="national_id">National ID</option>
                 <option value="driving_license">Driving License</option>
-                <option value="seaman-book">Seaman Book</option>
+                <option value="identity_number">Identity Number</option>
                 <option value="other">Other</option>
               </select>
             </div>
             <div className="form-group">
-              <label htmlFor="identityNumber">Identity Number</label>
+              <label htmlFor="identityNumber">Identity Number *</label>
               <input
                 type="text"
                 id="identityNumber"
                 name="identityNumber"
                 value={formData.identityNumber}
                 onChange={handleInputChange}
+                required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="identityIssueDate">Issue Date</label>
+              <label htmlFor="identityIssueDate">Issue Date *</label>
               <input
                 type="date"
                 id="identityIssueDate"
                 name="identityIssueDate"
                 value={formData.identityIssueDate}
                 onChange={handleInputChange}
+                required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="identityExpiryDate">Expiry Date</label>
+              <label htmlFor="identityExpiryDate">Expiry Date *</label>
               <input
                 type="date"
                 id="identityExpiryDate"
                 name="identityExpiryDate"
                 value={formData.identityExpiryDate}
                 onChange={handleInputChange}
+                required
               />
             </div>
           </div>
           
           <div className="file-upload-section">
-            <label className="file-upload-label">Identity Documents</label>
+            <label className="file-upload-label">Identity Document *</label>
             <div className="file-upload-area">
               <input
                 ref={identityFileInputRef}
