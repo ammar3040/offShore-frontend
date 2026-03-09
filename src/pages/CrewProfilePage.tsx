@@ -150,19 +150,19 @@ const CrewProfilePage = () => {
           <div className="crew-profile-fields">
             <div className="crew-profile-field">
               <span className="crew-profile-label">Passport number</span>
-              <span className="crew-profile-value">{field(crew.passport.passport_number)}</span>
+              <span className="crew-profile-value">{field(crew.passport?.passport_number ?? '')}</span>
             </div>
             <div className="crew-profile-field">
               <span className="crew-profile-label">Issuing country</span>
-              <span className="crew-profile-value">{field(crew.passport.issuing_country)}</span>
+              <span className="crew-profile-value">{field(crew.passport?.issuing_country ?? '')}</span>
             </div>
             <div className="crew-profile-field">
               <span className="crew-profile-label">Issue date</span>
-              <span className="crew-profile-value">{field(crew.passport.issue_date)}</span>
+              <span className="crew-profile-value">{field(crew.passport?.issue_date ?? '')}</span>
             </div>
             <div className="crew-profile-field">
               <span className="crew-profile-label">Expiry date</span>
-              <span className="crew-profile-value">{field(crew.passport.expiry_date)}</span>
+              <span className="crew-profile-value">{field(crew.passport?.expiry_date ?? '')}</span>
             </div>
           </div>
         </section>
@@ -172,19 +172,19 @@ const CrewProfilePage = () => {
           <div className="crew-profile-fields">
             <div className="crew-profile-field">
               <span className="crew-profile-label">Identity type</span>
-              <span className="crew-profile-value">{field(crew.identity.identity_type)}</span>
+              <span className="crew-profile-value">{field(crew.identity?.identity_type ?? '')}</span>
             </div>
             <div className="crew-profile-field">
               <span className="crew-profile-label">Identity number</span>
-              <span className="crew-profile-value">{field(crew.identity.identity_number)}</span>
+              <span className="crew-profile-value">{field(crew.identity?.identity_number ?? '')}</span>
             </div>
             <div className="crew-profile-field">
               <span className="crew-profile-label">Issue date</span>
-              <span className="crew-profile-value">{field(crew.identity.issue_date)}</span>
+              <span className="crew-profile-value">{field(crew.identity?.issue_date ?? '')}</span>
             </div>
             <div className="crew-profile-field">
               <span className="crew-profile-label">Expiry date</span>
-              <span className="crew-profile-value">{field(crew.identity.expiry_date)}</span>
+              <span className="crew-profile-value">{field(crew.identity?.expiry_date ?? '')}</span>
             </div>
           </div>
         </section>

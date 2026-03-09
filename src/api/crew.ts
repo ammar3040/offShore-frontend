@@ -6,8 +6,8 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
   const raw = crew as Record<string, unknown> & CrewMemberApi;
   const p = crew.passport ?? raw.passport;
   const i = crew.identity ?? raw.identity;
-  const passport = typeof p === 'object' && p !== null ? (p as Record<string, unknown>) : {};
-  const identity = typeof i === 'object' && i !== null ? (i as Record<string, unknown>) : {};
+  const passport = typeof p === 'object' && p !== null ? (p as unknown as Record<string, unknown>) : {};
+  const identity = typeof i === 'object' && i !== null ? (i as unknown as Record<string, unknown>) : {};
   const cert = raw.crew_certificate as { issue_date?: string; expiry_date?: string } | undefined;
 
   return {
