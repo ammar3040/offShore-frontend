@@ -104,6 +104,74 @@
   min-height: 100px;
 }
 
+/* Country/City Combobox */
+.form-combobox {
+  position: relative;
+}
+
+.form-combobox-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+  transition: all 0.2s ease;
+}
+
+.form-combobox-input:focus {
+  outline: none;
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+}
+
+.form-combobox-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: hsl(var(--muted));
+}
+
+.form-combobox-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.form-combobox-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+}
+
+.form-combobox-option {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.form-combobox-option:hover {
+  background: hsl(var(--accent));
+}
+
+.form-combobox-empty {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+}
+
 /* File Upload Styles */
 .file-upload-section {
   margin-top: 20px;

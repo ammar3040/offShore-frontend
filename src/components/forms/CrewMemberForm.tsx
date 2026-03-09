@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Upload, X } from 'lucide-react';
+import { Country, City } from 'country-state-city';
+import type { ICountry, ICity } from 'country-state-city';
 import './CrewMemberForm.css';
 
 export interface CrewMemberFormData {
@@ -91,20 +93,89 @@ const defaultFormData: CrewMemberFormData = {
   visa: '',
 };
 
+const ALL_COUNTRIES = Country.getAllCountries();
+
 const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member' }: CrewMemberFormProps) => {
   const [formData, setFormData] = useState<CrewMemberFormData>(() => initialData ?? defaultFormData);
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [cityOpen, setCityOpen] = useState(false);
+  const [countryQuery, setCountryQuery] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
   const hasPrefilled = useRef(false);
+  const countryWrapRef = useRef<HTMLDivElement>(null);
+  const cityWrapRef = useRef<HTMLDivElement>(null);
+
+  const filteredCountries = useMemo(() => {
+    const q = countryQuery.trim().toLowerCase();
+    if (!q) return ALL_COUNTRIES.slice(0, 50);
+    return ALL_COUNTRIES.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 50);
+  }, [countryQuery]);
+
+  const cities = useMemo(() => {
+    if (!selectedCountryCode) return [];
+    return City.getCitiesOfCountry(selectedCountryCode) ?? [];
+  }, [selectedCountryCode]);
+
+  const filteredCities = useMemo(() => {
+    const q = cityQuery.trim().toLowerCase();
+    if (!q) return cities.slice(0, 50);
+    return cities.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 50);
+  }, [cities, cityQuery]);
 
   // Pre-fill form when opening edit modal; sync once per mount when initialData exists
   useEffect(() => {
     if (initialData && !hasPrefilled.current) {
       setFormData(initialData);
+      if (initialData.country) {
+        const match = ALL_COUNTRIES.find(
+          (c) =>
+            c.name.toLowerCase() === initialData.country.toLowerCase() ||
+            c.name.toLowerCase().includes(initialData.country.toLowerCase())
+        );
+        if (match) setSelectedCountryCode(match.isoCode);
+      }
       hasPrefilled.current = true;
     }
     return () => {
       hasPrefilled.current = false;
     };
   }, [initialData]);
+
+  useEffect(() => {
+    if (!countryOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (countryWrapRef.current && !countryWrapRef.current.contains(e.target as Node)) {
+        setCountryOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [countryOpen]);
+
+  useEffect(() => {
+    if (!cityOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (cityWrapRef.current && !cityWrapRef.current.contains(e.target as Node)) {
+        setCityOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [cityOpen]);
+
+  const handleCountrySelect = (country: ICountry) => {
+    setFormData((prev) => ({ ...prev, country: country.name, city: '' }));
+    setSelectedCountryCode(country.isoCode);
+    setCountryOpen(false);
+    setCountryQuery('');
+  };
+
+  const handleCitySelect = (city: ICity) => {
+    setFormData((prev) => ({ ...prev, city: city.name }));
+    setCityOpen(false);
+    setCityQuery('');
+  };
 
   const passportFileInputRef = useRef<HTMLInputElement>(null);
   const identityFileInputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +233,8 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.country?.trim()) return;
+    if (!formData.city?.trim()) return;
     await onSubmit(formData);
   };
 
@@ -284,26 +357,90 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               />
             </div>
             <div className="form-group">
-              <label htmlFor="city">City *</label>
-              <input
-                type="text"
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleInputChange}
-                required
-              />
+              <label htmlFor="country">Country *</label>
+              <div className="form-combobox" ref={countryWrapRef}>
+                <input
+                  id="country"
+                  type="text"
+                  className="form-combobox-input"
+                  value={countryOpen ? countryQuery : formData.country}
+                  onChange={(e) => {
+                    setCountryQuery(e.target.value);
+                    if (!countryOpen) setCountryOpen(true);
+                    if (formData.country || selectedCountryCode) {
+                      setFormData((prev) => ({ ...prev, country: '', city: '' }));
+                      setSelectedCountryCode('');
+                    }
+                  }}
+                  onFocus={() => {
+                    setCountryOpen(true);
+                    if (formData.country) setCountryQuery('');
+                  }}
+                  placeholder="Type to search country…"
+                  autoComplete="off"
+                  required={!formData.country}
+                />
+                {countryOpen && (
+                  <ul className="form-combobox-dropdown">
+                    {filteredCountries.length === 0 ? (
+                      <li className="form-combobox-empty">No countries found</li>
+                    ) : (
+                      filteredCountries.map((c) => (
+                        <li
+                          key={c.isoCode}
+                          className="form-combobox-option"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleCountrySelect(c)}
+                        >
+                          {c.name}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
             </div>
             <div className="form-group">
-              <label htmlFor="country">Country *</label>
-              <input
-                type="text"
-                id="country"
-                name="country"
-                value={formData.country}
-                onChange={handleInputChange}
-                required
-              />
+              <label htmlFor="city">City *</label>
+              <div className="form-combobox" ref={cityWrapRef}>
+                <input
+                  id="city"
+                  type="text"
+                  className="form-combobox-input"
+                  value={cityOpen ? cityQuery : formData.city}
+                  onChange={(e) => {
+                    setCityQuery(e.target.value);
+                    if (!cityOpen) setCityOpen(true);
+                    if (formData.city) setFormData((prev) => ({ ...prev, city: '' }));
+                  }}
+                  onFocus={() => {
+                    setCityOpen(true);
+                    if (formData.city) setCityQuery('');
+                  }}
+                  placeholder={selectedCountryCode ? 'Type to search city…' : 'Select country first'}
+                  autoComplete="off"
+                  required={!formData.city}
+                  disabled={!selectedCountryCode}
+                />
+                {cityOpen && selectedCountryCode && (
+                  <ul className="form-combobox-dropdown">
+                    {filteredCities.length === 0 ? (
+                      <li className="form-combobox-empty">No cities found</li>
+                    ) : (
+                      filteredCities.map((c) => (
+                        <li
+                          key={`${c.countryCode}-${c.stateCode}-${c.name}`}
+                          className="form-combobox-option"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleCitySelect(c)}
+                        >
+                          {c.name}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <label htmlFor="postalCode">Postal Code *</label>
