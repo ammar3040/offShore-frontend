@@ -2,7 +2,23 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Upload, X } from 'lucide-react';
 import { Country, City } from 'country-state-city';
 import type { ICountry, ICity } from 'country-state-city';
-import './CrewMemberForm.css';
+import { countries as phoneCountries } from 'country-codes-flags-phone-codes';
+import { cn } from '@/lib/utils';
+
+function parsePhoneValue(value: string): { dialCode: string; number: string } {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return { dialCode: '+1', number: '' };
+  if (!trimmed.startsWith('+')) return { dialCode: '+1', number: trimmed.replace(/\D/g, '') };
+  const sorted = [...phoneCountries].sort((a, b) => (b.dialCode?.length ?? 0) - (a.dialCode?.length ?? 0));
+  for (const c of sorted) {
+    const dc = c.dialCode ?? '';
+    if (dc && trimmed.startsWith(dc)) {
+      const rest = trimmed.slice(dc.length).replace(/\D/g, '');
+      return { dialCode: dc, number: rest };
+    }
+  }
+  return { dialCode: '+1', number: trimmed.replace(/\D/g, '') };
+}
 
 export interface CrewMemberFormData {
   // Personal Details
@@ -95,6 +111,9 @@ const defaultFormData: CrewMemberFormData = {
 
 const ALL_COUNTRIES = Country.getAllCountries();
 
+const inputClass =
+  'border border-input rounded-lg px-3.5 py-2.5 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-muted';
+
 const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member' }: CrewMemberFormProps) => {
   const [formData, setFormData] = useState<CrewMemberFormData>(() => initialData ?? defaultFormData);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
@@ -102,7 +121,39 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   const [cityOpen, setCityOpen] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
   const [cityQuery, setCityQuery] = useState('');
+  const [phoneDialCode, setPhoneDialCode] = useState(() => parsePhoneValue(initialData?.phone ?? '').dialCode);
+  const [phoneNumber, setPhoneNumber] = useState(() => parsePhoneValue(initialData?.phone ?? '').number);
+  const [altPhoneDialCode, setAltPhoneDialCode] = useState(() => parsePhoneValue(initialData?.alternatePhone ?? '').dialCode);
+  const [altPhoneNumber, setAltPhoneNumber] = useState(() => parsePhoneValue(initialData?.alternatePhone ?? '').number);
+  const [phoneCountryOpen, setPhoneCountryOpen] = useState(false);
+  const [altPhoneCountryOpen, setAltPhoneCountryOpen] = useState(false);
+  const [phoneCountryQuery, setPhoneCountryQuery] = useState('');
+  const [altPhoneCountryQuery, setAltPhoneCountryQuery] = useState('');
+  const phoneCountryWrapRef = useRef<HTMLDivElement>(null);
+  const altPhoneCountryWrapRef = useRef<HTMLDivElement>(null);
   const hasPrefilled = useRef(false);
+
+  const filteredPhoneCountries = useMemo(() => {
+    const q = phoneCountryQuery.trim().toLowerCase();
+    if (!q) return phoneCountries.slice(0, 30);
+    return phoneCountries.filter(
+      (c) =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.dialCode || '').toLowerCase().includes(q) ||
+        (c.code || '').toLowerCase().includes(q)
+    ).slice(0, 50);
+  }, [phoneCountryQuery]);
+
+  const filteredAltPhoneCountries = useMemo(() => {
+    const q = altPhoneCountryQuery.trim().toLowerCase();
+    if (!q) return phoneCountries.slice(0, 30);
+    return phoneCountries.filter(
+      (c) =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.dialCode || '').toLowerCase().includes(q) ||
+        (c.code || '').toLowerCase().includes(q)
+    ).slice(0, 50);
+  }, [altPhoneCountryQuery]);
   const countryWrapRef = useRef<HTMLDivElement>(null);
   const cityWrapRef = useRef<HTMLDivElement>(null);
 
@@ -135,12 +186,29 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         );
         if (match) setSelectedCountryCode(match.isoCode);
       }
+      const phoneParsed = parsePhoneValue(initialData.phone ?? '');
+      setPhoneDialCode(phoneParsed.dialCode);
+      setPhoneNumber(phoneParsed.number);
+      const altParsed = parsePhoneValue(initialData.alternatePhone ?? '');
+      setAltPhoneDialCode(altParsed.dialCode);
+      setAltPhoneNumber(altParsed.number);
       hasPrefilled.current = true;
     }
     return () => {
       hasPrefilled.current = false;
     };
   }, [initialData]);
+
+  // Sync phone values into formData
+  useEffect(() => {
+    const full = phoneNumber ? `${phoneDialCode}${phoneNumber}` : '';
+    setFormData((prev) => (prev.phone !== full ? { ...prev, phone: full } : prev));
+  }, [phoneDialCode, phoneNumber]);
+
+  useEffect(() => {
+    const full = altPhoneNumber ? `${altPhoneDialCode}${altPhoneNumber}` : '';
+    setFormData((prev) => (prev.alternatePhone !== full ? { ...prev, alternatePhone: full } : prev));
+  }, [altPhoneDialCode, altPhoneNumber]);
 
   useEffect(() => {
     if (!countryOpen) return;
@@ -163,6 +231,28 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [cityOpen]);
+
+  useEffect(() => {
+    if (!phoneCountryOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (phoneCountryWrapRef.current && !phoneCountryWrapRef.current.contains(e.target as Node)) {
+        setPhoneCountryOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [phoneCountryOpen]);
+
+  useEffect(() => {
+    if (!altPhoneCountryOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (altPhoneCountryWrapRef.current && !altPhoneCountryWrapRef.current.contains(e.target as Node)) {
+        setAltPhoneCountryOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [altPhoneCountryOpen]);
 
   const handleCountrySelect = (country: ICountry) => {
     setFormData((prev) => ({ ...prev, country: country.name, city: '' }));
@@ -239,14 +329,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   };
 
   return (
-    <form className="crew-member-form" onSubmit={handleSubmit}>
-      <div className="form-sections">
+    <form className="flex flex-col gap-0" onSubmit={handleSubmit}>
+      <div className="flex flex-col gap-8 max-h-[calc(90vh-200px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/50">
         {/* Personal Details Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Personal Details</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="firstName">First Name *</label>
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Personal Details</h3>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="firstName" className="text-sm font-semibold text-foreground">First Name *</label>
               <input
                 type="text"
                 id="firstName"
@@ -254,10 +344,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.firstName}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="lastName">Last Name *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="lastName" className="text-sm font-semibold text-foreground">Last Name *</label>
               <input
                 type="text"
                 id="lastName"
@@ -265,10 +356,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.lastName}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="dateOfBirth">Date of Birth *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="dateOfBirth" className="text-sm font-semibold text-foreground">Date of Birth *</label>
               <input
                 type="date"
                 id="dateOfBirth"
@@ -276,10 +368,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.dateOfBirth}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="nationality">Nationality *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="nationality" className="text-sm font-semibold text-foreground">Nationality *</label>
               <input
                 type="text"
                 id="nationality"
@@ -287,16 +380,18 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.nationality}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="gender">Gender *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="gender" className="text-sm font-semibold text-foreground">Gender *</label>
               <select
                 id="gender"
                 name="gender"
                 value={formData.gender}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               >
                 <option value="">Select</option>
                 <option value="male">Male</option>
@@ -309,11 +404,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         </div>
 
         {/* Contact Details Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Contact Details</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="email">Email *</label>
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Contact Details</h3>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="email" className="text-sm font-semibold text-foreground">Email *</label>
               <input
                 type="email"
                 id="email"
@@ -321,32 +416,147 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.email}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="phone">Phone *</label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                required
-              />
+            <div className="flex flex-col gap-2">
+              <label htmlFor="phone" className="text-sm font-semibold text-foreground">Phone *</label>
+              <div className="flex gap-2 items-center">
+                <div className="relative shrink-0 w-[98px]" ref={phoneCountryWrapRef}>
+                  <div
+                    className="flex items-center justify-between gap-1 min-h-[42px] w-full cursor-pointer rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground hover:border-ring/50"
+                    onClick={() => {
+                      setPhoneCountryOpen(!phoneCountryOpen);
+                      if (phoneCountryOpen) setPhoneCountryQuery('');
+                    }}
+                    aria-expanded={phoneCountryOpen}
+                  >
+                    {(() => {
+                      const sel = phoneCountries.find((c) => c.dialCode === phoneDialCode);
+                      return phoneCountryOpen ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
+                          value={phoneCountryQuery}
+                          onChange={(e) => {
+                            setPhoneCountryQuery(e.target.value);
+                            if (!phoneCountryOpen) setPhoneCountryOpen(true);
+                          }}
+                          onFocus={() => setPhoneCountryOpen(true)}
+                          placeholder="Search..."
+                          autoComplete="off"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span>{sel ? `${sel.flag} ${sel.dialCode}` : phoneDialCode}</span>
+                      );
+                    })()}
+                  </div>
+                  {phoneCountryOpen && (
+                    <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                      {filteredPhoneCountries.map((c) => (
+                        <li
+                          key={c.code}
+                          className={cn(
+                          'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted',
+                          c.dialCode === phoneDialCode && 'bg-muted'
+                        )}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setPhoneDialCode(c.dialCode);
+                            setPhoneCountryOpen(false);
+                            setPhoneCountryQuery('');
+                          }}
+                        >
+                          {c.flag} {c.dialCode} {c.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  className={cn(inputClass, 'flex-1 min-w-0')}
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                  placeholder="5551234567"
+                  autoComplete="tel-national"
+                  required
+                />
+              </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="alternatePhone">Alternate Phone *</label>
-              <input
-                type="tel"
-                id="alternatePhone"
-                name="alternatePhone"
-                value={formData.alternatePhone}
-                onChange={handleInputChange}
-                required
-              />
+            <div className="flex flex-col gap-2">
+              <label htmlFor="alternatePhone" className="text-sm font-semibold text-foreground">Alternate Phone *</label>
+              <div className="flex gap-2 items-center">
+                <div className="relative shrink-0 w-[98px]" ref={altPhoneCountryWrapRef}>
+                  <div
+                    className="flex items-center justify-between gap-1 min-h-[42px] w-full cursor-pointer rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground hover:border-ring/50"
+                    onClick={() => {
+                      setAltPhoneCountryOpen(!altPhoneCountryOpen);
+                      if (altPhoneCountryOpen) setAltPhoneCountryQuery('');
+                    }}
+                    aria-expanded={altPhoneCountryOpen}
+                  >
+                    {(() => {
+                      const sel = phoneCountries.find((c) => c.dialCode === altPhoneDialCode);
+                      return altPhoneCountryOpen ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
+                          value={altPhoneCountryQuery}
+                          onChange={(e) => {
+                            setAltPhoneCountryQuery(e.target.value);
+                            if (!altPhoneCountryOpen) setAltPhoneCountryOpen(true);
+                          }}
+                          onFocus={() => setAltPhoneCountryOpen(true)}
+                          placeholder="Search..."
+                          autoComplete="off"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span>{sel ? `${sel.flag} ${sel.dialCode}` : altPhoneDialCode}</span>
+                      );
+                    })()}
+                  </div>
+                  {altPhoneCountryOpen && (
+                    <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                      {filteredAltPhoneCountries.map((c) => (
+                        <li
+                          key={c.code}
+                          className={cn(
+                          'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted',
+                          c.dialCode === altPhoneDialCode && 'bg-muted'
+                        )}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setAltPhoneDialCode(c.dialCode);
+                            setAltPhoneCountryOpen(false);
+                            setAltPhoneCountryQuery('');
+                          }}
+                        >
+                          {c.flag} {c.dialCode} {c.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <input
+                  type="tel"
+                  id="alternatePhone"
+                  name="alternatePhone"
+                  className={cn(inputClass, 'flex-1 min-w-0')}
+                  value={altPhoneNumber}
+                  onChange={(e) => setAltPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                  placeholder="5551234567"
+                  autoComplete="tel-national"
+                  required
+                />
+              </div>
             </div>
-            <div className="form-group form-group-full">
-              <label htmlFor="address">Address *</label>
+            <div className={cn("flex flex-col gap-2", "col-span-full")}>
+              <label htmlFor="address" className="text-sm font-semibold text-foreground">Address *</label>
               <input
                 type="text"
                 id="address"
@@ -354,15 +564,16 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.address}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="country">Country *</label>
-              <div className="form-combobox" ref={countryWrapRef}>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="country" className="text-sm font-semibold text-foreground">Country *</label>
+              <div className="relative" ref={countryWrapRef}>
                 <input
                   id="country"
                   type="text"
-                  className="form-combobox-input"
+                  className={inputClass}
                   value={countryOpen ? countryQuery : formData.country}
                   onChange={(e) => {
                     setCountryQuery(e.target.value);
@@ -381,14 +592,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   required={!formData.country}
                 />
                 {countryOpen && (
-                  <ul className="form-combobox-dropdown">
+                  <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
                     {filteredCountries.length === 0 ? (
-                      <li className="form-combobox-empty">No countries found</li>
+                      <li className="px-3 py-2 text-sm text-muted-foreground">No countries found</li>
                     ) : (
                       filteredCountries.map((c) => (
                         <li
                           key={c.isoCode}
-                          className="form-combobox-option"
+                          className="cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleCountrySelect(c)}
                         >
@@ -400,13 +611,13 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 )}
               </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="city">City *</label>
-              <div className="form-combobox" ref={cityWrapRef}>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="city" className="text-sm font-semibold text-foreground">City *</label>
+              <div className="relative" ref={cityWrapRef}>
                 <input
                   id="city"
                   type="text"
-                  className="form-combobox-input"
+                  className={inputClass}
                   value={cityOpen ? cityQuery : formData.city}
                   onChange={(e) => {
                     setCityQuery(e.target.value);
@@ -423,14 +634,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   disabled={!selectedCountryCode}
                 />
                 {cityOpen && selectedCountryCode && (
-                  <ul className="form-combobox-dropdown">
+                  <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
                     {filteredCities.length === 0 ? (
-                      <li className="form-combobox-empty">No cities found</li>
+                      <li className="px-3 py-2 text-sm text-muted-foreground">No cities found</li>
                     ) : (
                       filteredCities.map((c) => (
                         <li
                           key={`${c.countryCode}-${c.stateCode}-${c.name}`}
-                          className="form-combobox-option"
+                          className="cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleCitySelect(c)}
                         >
@@ -442,8 +653,8 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 )}
               </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="postalCode">Postal Code *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="postalCode" className="text-sm font-semibold text-foreground">Postal Code *</label>
               <input
                 type="text"
                 id="postalCode"
@@ -451,17 +662,18 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.postalCode}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
           </div>
         </div>
 
         {/* Passport Information Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Passport Information</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="passportNumber">Passport Number *</label>
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Passport Information</h3>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="passportNumber" className="text-sm font-semibold text-foreground">Passport Number *</label>
               <input
                 type="text"
                 id="passportNumber"
@@ -469,10 +681,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.passportNumber}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="passportIssueDate">Issue Date *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="passportIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
               <input
                 type="date"
                 id="passportIssueDate"
@@ -480,10 +693,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.passportIssueDate}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="passportExpiryDate">Expiry Date *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="passportExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date *</label>
               <input
                 type="date"
                 id="passportExpiryDate"
@@ -491,10 +705,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.passportExpiryDate}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="passportIssuingCountry">Issuing Country *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="passportIssuingCountry" className="text-sm font-semibold text-foreground">Issuing Country *</label>
               <input
                 type="text"
                 id="passportIssuingCountry"
@@ -502,39 +717,40 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.passportIssuingCountry}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
           </div>
           
-          <div className="file-upload-section">
-            <label className="file-upload-label">Passport Document *</label>
-            <div className="file-upload-area">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-foreground">Passport Document *</label>
+            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-6 hover:border-muted-foreground/50">
               <input
                 ref={passportFileInputRef}
                 type="file"
                 multiple
                 accept="image/*,.pdf"
                 onChange={(e) => handleFileUpload(e, 'passport')}
-                className="file-input-hidden"
+                className="sr-only"
               />
               <button
                 type="button"
-                className="file-upload-button"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 onClick={() => passportFileInputRef.current?.click()}
               >
                 <Upload size={18} />
                 Upload Passport Documents
               </button>
-              <p className="file-upload-hint">PDF, JPG, PNG (Max 10MB per file)</p>
+              <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 10MB per file)</p>
             </div>
             {formData.passportDocuments.length > 0 && (
-              <div className="uploaded-files">
+              <div className="flex flex-col gap-2 mt-2">
                 {formData.passportDocuments.map((file, index) => (
-                  <div key={index} className="uploaded-file-item">
-                    <span className="file-name">{file.name}</span>
+                  <div key={index} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                    <span className="text-sm text-foreground truncate">{file.name}</span>
                     <button
                       type="button"
-                      className="file-remove-button"
+                      className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                       onClick={() => removeFile(index, 'passport')}
                     >
                       <X size={16} />
@@ -547,17 +763,18 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         </div>
 
         {/* Identity Information Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Identity Information</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="identityType">Identity Type *</label>
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Identity Information</h3>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="identityType" className="text-sm font-semibold text-foreground">Identity Type *</label>
               <select
                 id="identityType"
                 name="identityType"
                 value={formData.identityType}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               >
                 <option value="">Select</option>
                 <option value="national_id">National ID</option>
@@ -566,8 +783,8 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 <option value="other">Other</option>
               </select>
             </div>
-            <div className="form-group">
-              <label htmlFor="identityNumber">Identity Number *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="identityNumber" className="text-sm font-semibold text-foreground">Identity Number *</label>
               <input
                 type="text"
                 id="identityNumber"
@@ -575,10 +792,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.identityNumber}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="identityIssueDate">Issue Date *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="identityIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
               <input
                 type="date"
                 id="identityIssueDate"
@@ -586,10 +804,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.identityIssueDate}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="identityExpiryDate">Expiry Date *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="identityExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date *</label>
               <input
                 type="date"
                 id="identityExpiryDate"
@@ -597,39 +816,40 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.identityExpiryDate}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
           </div>
           
-          <div className="file-upload-section">
-            <label className="file-upload-label">Identity Document *</label>
-            <div className="file-upload-area">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-foreground">Identity Document *</label>
+            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-6 hover:border-muted-foreground/50">
               <input
                 ref={identityFileInputRef}
                 type="file"
                 multiple
                 accept="image/*,.pdf"
                 onChange={(e) => handleFileUpload(e, 'identity')}
-                className="file-input-hidden"
+                className="sr-only"
               />
               <button
                 type="button"
-                className="file-upload-button"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 onClick={() => identityFileInputRef.current?.click()}
               >
                 <Upload size={18} />
                 Upload Identity Documents
               </button>
-              <p className="file-upload-hint">PDF, JPG, PNG (Max 10MB per file)</p>
+              <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 10MB per file)</p>
             </div>
             {formData.identityDocuments.length > 0 && (
-              <div className="uploaded-files">
+              <div className="flex flex-col gap-2 mt-2">
                 {formData.identityDocuments.map((file, index) => (
-                  <div key={index} className="uploaded-file-item">
-                    <span className="file-name">{file.name}</span>
+                  <div key={index} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                    <span className="text-sm text-foreground truncate">{file.name}</span>
                     <button
                       type="button"
-                      className="file-remove-button"
+                      className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                       onClick={() => removeFile(index, 'identity')}
                     >
                       <X size={16} />
@@ -642,11 +862,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         </div>
 
         {/* Crew Certificate Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Crew Certificate</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="certificateIssueDate">Issue Date *</label>
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Crew Certificate</h3>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="certificateIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
               <input
                 type="date"
                 id="certificateIssueDate"
@@ -654,10 +874,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.certificateIssueDate}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="certificateExpiryDate">Expiry Date *</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="certificateExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date *</label>
               <input
                 type="date"
                 id="certificateExpiryDate"
@@ -665,37 +886,38 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 value={formData.certificateExpiryDate}
                 onChange={handleInputChange}
                 required
+                className={inputClass}
               />
             </div>
           </div>
-          <div className="file-upload-section">
-            <label className="file-upload-label">Certificate Document *</label>
-            <div className="file-upload-area">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-foreground">Certificate Document *</label>
+            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-6 hover:border-muted-foreground/50">
               <input
                 ref={certificateFileInputRef}
                 type="file"
                 accept="image/*,.pdf"
                 onChange={(e) => handleFileUpload(e, 'certificate')}
-                className="file-input-hidden"
+                className="sr-only"
               />
               <button
                 type="button"
-                className="file-upload-button"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 onClick={() => certificateFileInputRef.current?.click()}
               >
                 <Upload size={18} />
                 Upload Certificate Document
               </button>
-              <p className="file-upload-hint">PDF, JPG, PNG (Max 10MB, one file)</p>
+              <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 10MB, one file)</p>
             </div>
             {formData.certificateDocuments.length > 0 && (
-              <div className="uploaded-files">
+              <div className="flex flex-col gap-2 mt-2">
                 {formData.certificateDocuments.map((file, index) => (
-                  <div key={index} className="uploaded-file-item">
-                    <span className="file-name">{file.name}</span>
+                  <div key={index} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                    <span className="text-sm text-foreground truncate">{file.name}</span>
                     <button
                       type="button"
-                      className="file-remove-button"
+                      className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                       onClick={() => removeFile(index, 'certificate')}
                     >
                       <X size={16} />
@@ -708,61 +930,66 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         </div>
 
         {/* Professional & Compliance Section */}
-        <div className="form-section">
-          <h3 className="form-section-title">Professional & Compliance</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="azerbaijanVantageNumber">Azerbaijan Vantage Number</label>
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Professional & Compliance</h3>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="azerbaijanVantageNumber" className="text-sm font-semibold text-foreground">Azerbaijan Vantage Number</label>
               <input
                 type="text"
                 id="azerbaijanVantageNumber"
                 name="azerbaijanVantageNumber"
                 value={formData.azerbaijanVantageNumber}
                 onChange={handleInputChange}
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="norwegianDNumber">Norwegian D Number</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="norwegianDNumber" className="text-sm font-semibold text-foreground">Norwegian D Number</label>
               <input
                 type="text"
                 id="norwegianDNumber"
                 name="norwegianDNumber"
                 value={formData.norwegianDNumber}
                 onChange={handleInputChange}
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="dawinciNumber">DaWinci Number</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="dawinciNumber" className="text-sm font-semibold text-foreground">DaWinci Number</label>
               <input
                 type="text"
                 id="dawinciNumber"
                 name="dawinciNumber"
                 value={formData.dawinciNumber}
                 onChange={handleInputChange}
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="vantageNumber">Vantage Number</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="vantageNumber" className="text-sm font-semibold text-foreground">Vantage Number</label>
               <input
                 type="text"
                 id="vantageNumber"
                 name="vantageNumber"
                 value={formData.vantageNumber}
                 onChange={handleInputChange}
+                className={inputClass}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="organization">Organization</label>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="organization" className="text-sm font-semibold text-foreground">Organization</label>
               <input
                 type="text"
                 id="organization"
                 name="organization"
                 value={formData.organization}
                 onChange={handleInputChange}
+                className={inputClass}
               />
             </div>
-            <div className="form-group form-group-full">
-              <label htmlFor="linkedin">LinkedIn URL</label>
+            <div className={cn("flex flex-col gap-2", "col-span-full")}>
+              <label htmlFor="linkedin" className="text-sm font-semibold text-foreground">LinkedIn URL</label>
               <input
                 type="url"
                 id="linkedin"
@@ -770,16 +997,18 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 placeholder="https://linkedin.com/in/..."
                 value={formData.linkedin}
                 onChange={handleInputChange}
+                className={inputClass}
               />
             </div>
-            <div className="form-group form-group-full">
-              <label htmlFor="visa">Visa Info</label>
+            <div className={cn("flex flex-col gap-2", "col-span-full")}>
+              <label htmlFor="visa" className="text-sm font-semibold text-foreground">Visa Info</label>
               <input
                 type="text"
                 id="visa"
                 name="visa"
                 value={formData.visa}
                 onChange={handleInputChange}
+                className={inputClass}
               />
             </div>
           </div>
@@ -787,11 +1016,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
       </div>
 
       {/* Form Actions */}
-      <div className="form-actions">
-        <button type="button" className="button-secondary" onClick={onCancel} disabled={isLoading}>
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        <button type="button" className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50" onClick={onCancel} disabled={isLoading}>
           Cancel
         </button>
-        <button type="submit" className="button-primary" disabled={isLoading}>
+        <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={isLoading}>
           {isLoading ? 'Saving...' : submitLabel}
         </button>
       </div>
