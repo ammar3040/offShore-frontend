@@ -3,6 +3,7 @@ import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send,
 import { getCrewList, createCrewMember, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import Modal from '../components/Modal';
+import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import './CrewListPage.css';
 
@@ -327,7 +328,7 @@ const CrewListPage = () => {
 
       <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge">
         {addError && (
-          <div className="form-error-message" role="alert">{addError}</div>
+          <ErrorAlertPopup message={addError} onDismiss={() => setAddError(null)} />
         )}
         <CrewMemberForm
           onSubmit={handleSubmitCrewMember}
@@ -354,9 +355,7 @@ const CrewListPage = () => {
             ) : (
               <>
                 {inviteError && (
-                  <div className="form-error-message invite-to-project-error" role="alert">
-                    {inviteError}
-                  </div>
+                  <ErrorAlertPopup message={inviteError} onDismiss={() => setInviteError(null)} />
                 )}
                 <div className="invite-to-project-field">
                   <label htmlFor="invite-project-select" className="invite-to-project-label">

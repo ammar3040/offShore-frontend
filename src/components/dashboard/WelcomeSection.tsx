@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import Modal from '../Modal';
+import ErrorAlertPopup from '../ErrorAlertPopup';
 import CrewMemberForm, { type CrewMemberFormData } from '../forms/CrewMemberForm';
 import { createCrewMember } from '../../api/crew';
 import './WelcomeSection.css';
@@ -95,9 +96,7 @@ const WelcomeSection = () => {
         size="xlarge"
       >
         {error && (
-          <div className="form-error-message" role="alert">
-            {error}
-          </div>
+          <ErrorAlertPopup message={error} onDismiss={() => setError(null)} />
         )}
         <CrewMemberForm
           onSubmit={handleSubmitCrewMember}

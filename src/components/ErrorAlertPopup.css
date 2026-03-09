@@ -1,0 +1,117 @@
+.error-alert-popup {
+  animation: error-alert-shake 0.5s ease-in-out;
+  margin-bottom: 20px;
+}
+
+@keyframes error-alert-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-6px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(6px);
+  }
+}
+
+.error-alert-popup-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 2px solid #fecaca;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.15);
+}
+
+.error-alert-popup-icon {
+  flex-shrink: 0;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.error-alert-popup-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-alert-popup-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #b91c1c;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.error-alert-popup-message {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #991b1b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.error-alert-popup-dismiss {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(220, 38, 38, 0.15);
+  border: none;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.error-alert-popup-dismiss:hover {
+  background: rgba(220, 38, 38, 0.25);
+  color: #7f1d1d;
+}
+
+/* Dark mode */
+.layout--dark .error-alert-popup-inner,
+.superadmin-panel-layout--dark .error-alert-popup-inner,
+.crew-panel-layout--dark .error-alert-popup-inner {
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.15) 0%, rgba(185, 28, 28, 0.25) 100%);
+  border-color: rgba(248, 113, 113, 0.4);
+  box-shadow: 0 4px 20px rgba(185, 28, 28, 0.3);
+}
+
+.layout--dark .error-alert-popup-icon,
+.superadmin-panel-layout--dark .error-alert-popup-icon,
+.crew-panel-layout--dark .error-alert-popup-icon {
+  color: #fca5a5;
+}
+
+.layout--dark .error-alert-popup-title,
+.superadmin-panel-layout--dark .error-alert-popup-title,
+.crew-panel-layout--dark .error-alert-popup-title {
+  color: #fca5a5;
+}
+
+.layout--dark .error-alert-popup-message,
+.superadmin-panel-layout--dark .error-alert-popup-message,
+.crew-panel-layout--dark .error-alert-popup-message {
+  color: #fecaca;
+}
+
+.layout--dark .error-alert-popup-dismiss,
+.superadmin-panel-layout--dark .error-alert-popup-dismiss,
+.crew-panel-layout--dark .error-alert-popup-dismiss {
+  background: rgba(248, 113, 113, 0.2);
+  color: #fca5a5;
+}
+
+.layout--dark .error-alert-popup-dismiss:hover,
+.superadmin-panel-layout--dark .error-alert-popup-dismiss:hover,
+.crew-panel-layout--dark .error-alert-popup-dismiss:hover {
+  background: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
