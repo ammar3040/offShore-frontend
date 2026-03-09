@@ -1,6 +1,51 @@
 import { env } from '../config/env';
 import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 
+/** Converts crew API response to CrewMemberFormData for edit form pre-fill. Handles both camelCase and snake_case. */
+export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
+  const raw = crew as Record<string, unknown> & CrewMemberApi;
+  const p = crew.passport ?? raw.passport;
+  const i = crew.identity ?? raw.identity;
+  const passport = typeof p === 'object' && p !== null ? (p as Record<string, unknown>) : {};
+  const identity = typeof i === 'object' && i !== null ? (i as Record<string, unknown>) : {};
+  const cert = raw.crew_certificate as { issue_date?: string; expiry_date?: string } | undefined;
+
+  return {
+    firstName: String(crew.firstname ?? raw.firstname ?? '').trim(),
+    lastName: String(crew.lastname ?? raw.lastname ?? '').trim(),
+    dateOfBirth: String(crew.dateOfBirth ?? raw.date_of_birth ?? '').trim(),
+    nationality: String(crew.nationality ?? raw.nationality ?? '').trim(),
+    gender: String(crew.gender ?? raw.gender ?? '').trim(),
+    email: String(crew.email ?? raw.email ?? '').trim(),
+    phone: String(crew.phone ?? raw.phone ?? '').trim(),
+    alternatePhone: String(crew.alternate_phone ?? raw.alternate_phone ?? '').trim(),
+    address: String(crew.address ?? raw.address ?? '').trim(),
+    city: String(crew.city ?? raw.city ?? '').trim(),
+    country: String(crew.country ?? raw.country ?? '').trim(),
+    postalCode: String(crew.postal_code ?? raw.postal_code ?? '').trim(),
+    passportNumber: String(passport.passport_number ?? '').trim(),
+    passportIssueDate: String(passport.issue_date ?? '').trim(),
+    passportExpiryDate: String(passport.expiry_date ?? '').trim(),
+    passportIssuingCountry: String(passport.issuing_country ?? '').trim(),
+    passportDocuments: [],
+    identityType: String(identity.identity_type ?? '').trim(),
+    identityNumber: String(identity.identity_number ?? '').trim(),
+    identityIssueDate: String(identity.issue_date ?? '').trim(),
+    identityExpiryDate: String(identity.expiry_date ?? '').trim(),
+    identityDocuments: [],
+    certificateIssueDate: String(crew.certificate_issue_date ?? raw.certificate_issue_date ?? cert?.issue_date ?? '').trim(),
+    certificateExpiryDate: String(crew.certificate_expiry_date ?? raw.certificate_expiry_date ?? cert?.expiry_date ?? '').trim(),
+    certificateDocuments: [],
+    azerbaijanVantageNumber: String(crew.azerbaijan_vantage_number ?? raw.azerbaijan_vantage_number ?? '').trim(),
+    norwegianDNumber: String(crew.norwegian_d_number ?? raw.norwegian_d_number ?? '').trim(),
+    dawinciNumber: String(crew.dawinci_number ?? raw.dawinci_number ?? '').trim(),
+    vantageNumber: String(crew.vantage_number ?? raw.vantage_number ?? '').trim(),
+    organization: String(crew.organization ?? raw.organization ?? '').trim(),
+    linkedin: String(crew.linkedin ?? raw.linkedin ?? '').trim(),
+    visa: String(crew.visa ?? raw.visa ?? '').trim(),
+  };
+}
+
 /** Crew list API response and related types */
 export interface CrewPassport {
   passport_number: string;
@@ -32,8 +77,19 @@ export interface CrewMemberApi {
   city: string;
   country: string;
   postal_code: string;
-  passport: CrewPassport;
-  identity: CrewIdentity;
+  passport?: CrewPassport | null;
+  identity?: CrewIdentity | null;
+  /** Optional fields the API may return */
+  azerbaijan_vantage_number?: string;
+  norwegian_d_number?: string;
+  dawinci_number?: string;
+  vantage_number?: string;
+  organization?: string;
+  linkedin?: string;
+  visa?: string;
+  certificate_issue_date?: string;
+  certificate_expiry_date?: string;
+  crew_certificate?: { issue_date?: string; expiry_date?: string };
 }
 
 export interface GetCrewResponse {
@@ -220,6 +276,66 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
 
 function getAuthToken(): string | null {
   return localStorage.getItem(env.authTokenKey);
+}
+
+/** Project from GET /api/crew/:crew_id response (assigned projects) */
+export interface CrewAssignedProject {
+  id: string;
+  title: string;
+  description?: string;
+  duration?: { startDate?: string; endDate?: string };
+  span?: string;
+  status?: string;
+  participants?: unknown[];
+}
+
+/** Response from GET /api/crew/:crew_id - crew details and assigned projects */
+export interface GetCrewByIdResponse {
+  crew: CrewMemberApi;
+  projects: CrewAssignedProject[];
+}
+
+/**
+ * Fetches a crew member by ID with their assigned projects (admin).
+ * GET /api/crew/:crew_id
+ */
+export async function getCrewById(crewId: string): Promise<GetCrewByIdResponse> {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew/${encodeURIComponent(crewId)}`, {
+    method: 'GET',
+    headers,
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  const crewData = data?.crew ?? data;
+  const projectsList = Array.isArray(data?.projects) ? data.projects : [];
+  return { crew: crewData, projects: projectsList };
 }
 
 export async function getCrewList(): Promise<GetCrewResponse> {
@@ -891,6 +1007,65 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
   }
 }
 
+/**
+ * Updates a crew member. PATCH /api/crew/:id
+ */
+export async function updateCrewMember(id: string, data: CrewMemberFormData): Promise<Response> {
+  const formData = buildCrewFormData(data);
+  const token = getAuthToken();
+
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/api/crew/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Deletes a crew member. DELETE /api/crew/:id
+ */
+export async function deleteCrewMember(id: string): Promise<void> {
+  const token = getAuthToken();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const j = JSON.parse(text);
+        message = (j?.message ?? j?.error) || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+}
+
 /** Response from inviting crew to a project (POST /api/crew-invite/project/:project_id) */
 export interface CrewInviteToProjectItem {
   id: string;
@@ -943,4 +1118,40 @@ export async function inviteCrewToProject(
   }
 
   return response.json();
+}
+
+/**
+ * Removes/unassigns a crew member from a project (admin).
+ * DELETE /api/crew/:crew_id/project/:project_id
+ */
+export async function removeCrewFromProject(projectId: string, crewId: string): Promise<void> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/api/crew/${encodeURIComponent(crewId)}/project/${encodeURIComponent(projectId)}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    }
+  );
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const j = JSON.parse(text);
+        message = (j?.message ?? j?.error) || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
 }

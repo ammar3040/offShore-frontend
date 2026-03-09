@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, X } from 'lucide-react';
 import './CrewMemberForm.css';
 
@@ -52,43 +52,59 @@ interface CrewMemberFormProps {
   onSubmit: (data: CrewMemberFormData) => void | Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  initialData?: CrewMemberFormData;
+  submitLabel?: string;
 }
 
-const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFormProps) => {
-  const [formData, setFormData] = useState<CrewMemberFormData>({
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    nationality: '',
-    gender: '',
-    email: '',
-    phone: '',
-    alternatePhone: '',
-    address: '',
-    city: '',
-    country: '',
-    postalCode: '',
-    passportNumber: '',
-    passportIssueDate: '',
-    passportExpiryDate: '',
-    passportIssuingCountry: '',
-    passportDocuments: [],
-    identityType: '',
-    identityNumber: '',
-    identityIssueDate: '',
-    identityExpiryDate: '',
-    identityDocuments: [],
-    certificateIssueDate: '',
-    certificateExpiryDate: '',
-    certificateDocuments: [],
-    azerbaijanVantageNumber: '',
-    norwegianDNumber: '',
-    dawinciNumber: '',
-    vantageNumber: '',
-    organization: '',
-    linkedin: '',
-    visa: '',
-  });
+const defaultFormData: CrewMemberFormData = {
+  firstName: '',
+  lastName: '',
+  dateOfBirth: '',
+  nationality: '',
+  gender: '',
+  email: '',
+  phone: '',
+  alternatePhone: '',
+  address: '',
+  city: '',
+  country: '',
+  postalCode: '',
+  passportNumber: '',
+  passportIssueDate: '',
+  passportExpiryDate: '',
+  passportIssuingCountry: '',
+  passportDocuments: [],
+  identityType: '',
+  identityNumber: '',
+  identityIssueDate: '',
+  identityExpiryDate: '',
+  identityDocuments: [],
+  certificateIssueDate: '',
+  certificateExpiryDate: '',
+  certificateDocuments: [],
+  azerbaijanVantageNumber: '',
+  norwegianDNumber: '',
+  dawinciNumber: '',
+  vantageNumber: '',
+  organization: '',
+  linkedin: '',
+  visa: '',
+};
+
+const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member' }: CrewMemberFormProps) => {
+  const [formData, setFormData] = useState<CrewMemberFormData>(() => initialData ?? defaultFormData);
+  const hasPrefilled = useRef(false);
+
+  // Pre-fill form when opening edit modal; sync once per mount when initialData exists
+  useEffect(() => {
+    if (initialData && !hasPrefilled.current) {
+      setFormData(initialData);
+      hasPrefilled.current = true;
+    }
+    return () => {
+      hasPrefilled.current = false;
+    };
+  }, [initialData]);
 
   const passportFileInputRef = useRef<HTMLInputElement>(null);
   const identityFileInputRef = useRef<HTMLInputElement>(null);
@@ -639,7 +655,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false }: CrewMemberFor
           Cancel
         </button>
         <button type="submit" className="button-primary" disabled={isLoading}>
-          {isLoading ? 'Adding...' : 'Add Crew Member'}
+          {isLoading ? 'Saving...' : submitLabel}
         </button>
       </div>
     </form>

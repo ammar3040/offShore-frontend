@@ -1,9 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send, User, Mail, MapPin, FileText, CreditCard } from 'lucide-react';
-import { getCrewList, createCrewMember, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
+import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send, User, Mail, MapPin, FileText, CreditCard, UserMinus } from 'lucide-react';
+import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import Modal from '../components/Modal';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import './CrewListPage.css';
 
@@ -35,6 +41,22 @@ const CrewListPage = () => {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+
+  const [editingCrew, setEditingCrew] = useState<CrewMemberApi | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const [deleteCrewId, setDeleteCrewId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [removeFromProjectCrew, setRemoveFromProjectCrew] = useState<CrewMemberApi | null>(null);
+  const [assignedProjects, setAssignedProjects] = useState<CrewAssignedProject[]>([]);
+  const [assignedProjectsLoading, setAssignedProjectsLoading] = useState(false);
+  const [removeFromProjectId, setRemoveFromProjectId] = useState('');
+  const [removeLoading, setRemoveLoading] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removeSuccess, setRemoveSuccess] = useState(false);
 
   const pageSize = 5;
 
@@ -148,6 +170,121 @@ const CrewListPage = () => {
       setAddError(err instanceof Error ? err.message : 'Failed to add crew member');
     } finally {
       setAddLoading(false);
+    }
+  };
+
+  const openEditModal = (member: CrewMemberApi) => {
+    setEditingCrew(member);
+    setEditError(null);
+  };
+
+  const closeEditModal = () => {
+    if (!editLoading) {
+      setEditingCrew(null);
+      setEditError(null);
+    }
+  };
+
+  const handleSubmitEdit = async (data: CrewMemberFormData) => {
+    if (!editingCrew) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const res = await updateCrewMember(editingCrew.id, data);
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = `Request failed (${res.status})`;
+        if (text) {
+          try {
+            const j = JSON.parse(text);
+            msg = j?.message || j?.error || msg;
+          } catch {
+            msg = text;
+          }
+          setEditError(msg);
+          return;
+        }
+      }
+      closeEditModal();
+      setSelectedCrew(null);
+      const list = await getCrewList();
+      setCrew(list.crew ?? []);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update crew member');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const openDeleteConfirm = (member: CrewMemberApi) => {
+    setDeleteCrewId(member.id);
+    setDeleteError(null);
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!deleteLoading) {
+      setDeleteCrewId(null);
+      setDeleteError(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteCrewId) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await deleteCrewMember(deleteCrewId);
+      closeDeleteConfirm();
+      setSelectedCrew(null);
+      const list = await getCrewList();
+      setCrew(list.crew ?? []);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete crew member');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const memberToDelete = crew.find((c) => c.id === deleteCrewId);
+
+  const openRemoveFromProjectModal = useCallback((member: CrewMemberApi) => {
+    setRemoveFromProjectCrew(member);
+    setRemoveFromProjectId('');
+    setRemoveError(null);
+    setRemoveSuccess(false);
+    setAssignedProjects([]);
+    setAssignedProjectsLoading(true);
+    getCrewById(member.id)
+      .then((res) => setAssignedProjects(res.projects ?? []))
+      .catch(() => setAssignedProjects([]))
+      .finally(() => setAssignedProjectsLoading(false));
+  }, []);
+
+  const closeRemoveFromProjectModal = useCallback(() => {
+    if (!removeLoading) {
+      setRemoveFromProjectCrew(null);
+      setAssignedProjects([]);
+      setRemoveFromProjectId('');
+      setRemoveError(null);
+      setRemoveSuccess(false);
+    }
+  }, [removeLoading]);
+
+  const handleRemoveFromProject = async () => {
+    if (!removeFromProjectCrew || !removeFromProjectId) return;
+    setRemoveLoading(true);
+    setRemoveError(null);
+    try {
+      await removeCrewFromProject(removeFromProjectId, removeFromProjectCrew.id);
+      setRemoveSuccess(true);
+      setTimeout(() => {
+        closeRemoveFromProjectModal();
+        getCrewList().then((res) => setCrew(res.crew ?? []));
+      }, 1200);
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : 'Failed to remove crew from project');
+    } finally {
+      setRemoveLoading(false);
     }
   };
 
@@ -266,20 +403,48 @@ const CrewListPage = () => {
                           type="button"
                           className="user-mgmt-action-btn user-mgmt-action-btn-invite"
                           aria-label="Invite to project"
-                          onClick={() => openInviteModal(member)}
+                          onClick={(e) => { e.stopPropagation(); openInviteModal(member); }}
                           title="Invite to project"
                         >
                           <Send size={16} />
                         </button>
-                        <button type="button" className="user-mgmt-action-btn" aria-label="Edit">
+                        <button
+                          type="button"
+                          className="user-mgmt-action-btn"
+                          aria-label="Edit"
+                          onClick={(e) => { e.stopPropagation(); openEditModal(member); }}
+                          title="Edit crew member"
+                        >
                           <Pencil size={16} />
                         </button>
-                        <button type="button" className="user-mgmt-action-btn" aria-label="Delete">
+                        <button
+                          type="button"
+                          className="user-mgmt-action-btn"
+                          aria-label="Delete"
+                          onClick={(e) => { e.stopPropagation(); openDeleteConfirm(member); }}
+                          title="Delete crew member"
+                        >
                           <Trash2 size={16} />
                         </button>
-                        <button type="button" className="user-mgmt-action-btn" aria-label="More">
-                          <MoreVertical size={16} />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="user-mgmt-action-btn"
+                              aria-label="More options"
+                              onClick={(e) => e.stopPropagation()}
+                              title="More options"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={() => openRemoveFromProjectModal(member)}>
+                              <UserMinus size={16} />
+                              Remove from project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </td>
                   </tr>
@@ -335,6 +500,129 @@ const CrewListPage = () => {
           onCancel={handleCloseAddModal}
           isLoading={addLoading}
         />
+      </Modal>
+
+      <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge">
+        {editingCrew && (
+          <>
+            {editError && (
+              <ErrorAlertPopup message={editError} onDismiss={() => setEditError(null)} />
+            )}
+            <CrewMemberForm
+              key={editingCrew.id}
+              onSubmit={handleSubmitEdit}
+              onCancel={closeEditModal}
+              isLoading={editLoading}
+              initialData={crewApiToFormData(editingCrew)}
+              submitLabel="Save Changes"
+            />
+          </>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!deleteCrewId}
+        onClose={closeDeleteConfirm}
+        title="Delete Crew Member"
+        size="small"
+      >
+        {memberToDelete && (
+          <div className="delete-crew-modal">
+            <p className="delete-crew-message">
+              Are you sure you want to delete <strong>{memberToDelete.firstname} {memberToDelete.lastname}</strong>? This action cannot be undone.
+            </p>
+            {deleteError && (
+              <ErrorAlertPopup message={deleteError} onDismiss={() => setDeleteError(null)} />
+            )}
+            <div className="delete-crew-actions">
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={closeDeleteConfirm}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button-primary"
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!removeFromProjectCrew}
+        onClose={closeRemoveFromProjectModal}
+        title="Remove from Project"
+        size="medium"
+      >
+        {removeFromProjectCrew && (
+          <div className="invite-to-project-modal">
+            <p className="invite-to-project-intro">
+              Remove <strong>{removeFromProjectCrew.firstname} {removeFromProjectCrew.lastname}</strong> from a project. They will no longer be assigned to the selected project.
+            </p>
+            {removeSuccess ? (
+              <div className="invite-to-project-success" role="status">
+                Crew member removed from project successfully.
+              </div>
+            ) : (
+              <>
+                {removeError && (
+                  <ErrorAlertPopup message={removeError} onDismiss={() => setRemoveError(null)} />
+                )}
+                <div className="invite-to-project-field">
+                  <label htmlFor="remove-project-select" className="invite-to-project-label">
+                    Assigned project
+                  </label>
+                  {assignedProjectsLoading ? (
+                    <p className="invite-to-project-loading">Loading assigned projects…</p>
+                  ) : assignedProjects.length === 0 ? (
+                    <p className="invite-to-project-loading">This crew member is not assigned to any project.</p>
+                  ) : (
+                    <select
+                      id="remove-project-select"
+                      className="invite-to-project-select"
+                      value={removeFromProjectId}
+                      onChange={(e) => setRemoveFromProjectId(e.target.value)}
+                      disabled={removeLoading}
+                    >
+                      <option value="">Select a project</option>
+                      {assignedProjects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} {p.status ? `(${p.status})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div className="invite-to-project-actions">
+                  <button
+                    type="button"
+                    className="invite-to-project-cancel"
+                    onClick={closeRemoveFromProjectModal}
+                    disabled={removeLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="invite-to-project-submit"
+                    onClick={handleRemoveFromProject}
+                    disabled={removeLoading || !removeFromProjectId || assignedProjectsLoading || assignedProjects.length === 0}
+                  >
+                    {removeLoading ? 'Removing…' : 'Remove from project'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </Modal>
 
       <Modal
@@ -526,6 +814,17 @@ const CrewListPage = () => {
               </section>
             </div>
             <div className="crew-detail-actions">
+              <button
+                type="button"
+                className="crew-detail-edit-btn"
+                onClick={() => {
+                  openEditModal(selectedCrew);
+                  setSelectedCrew(null);
+                }}
+              >
+                <Pencil size={16} />
+                Edit
+              </button>
               <button
                 type="button"
                 className="crew-detail-invite-btn"

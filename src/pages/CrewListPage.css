@@ -641,6 +641,93 @@
   color: hsl(var(--foreground));
 }
 
+/* Delete crew modal */
+.delete-crew-modal {
+  padding: 4px 0;
+}
+
+.delete-crew-message {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 20px;
+  line-height: 1.6;
+}
+
+.delete-crew-message strong {
+  color: #1f2937;
+}
+
+.delete-crew-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.delete-crew-actions .button-secondary {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.delete-crew-actions .button-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+  color: #374151;
+}
+
+.delete-crew-actions .button-primary {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #dc2626;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.delete-crew-actions .button-primary:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.delete-crew-actions .button-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.layout--dark .delete-crew-message {
+  color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .delete-crew-message strong {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .delete-crew-actions .button-secondary {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .delete-crew-actions .button-secondary:hover:not(:disabled) {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .delete-crew-actions .button-primary {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+.layout--dark .delete-crew-actions .button-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
 /* Crew detail modal */
 .crew-detail-modal {
   padding: 4px 0;
@@ -714,6 +801,26 @@
   border-top: 1px solid #e5e7eb;
 }
 
+.crew-detail-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b82f6;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.crew-detail-edit-btn:hover {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
 .crew-detail-invite-btn {
   display: inline-flex;
   align-items: center;
@@ -783,6 +890,17 @@
 
 .layout--dark .crew-detail-actions {
   border-top-color: hsl(var(--border));
+}
+
+.layout--dark .crew-detail-edit-btn {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+  color: hsl(var(--primary));
+}
+
+.layout--dark .crew-detail-edit-btn:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--primary));
 }
 
 .layout--dark .crew-detail-invite-btn {
