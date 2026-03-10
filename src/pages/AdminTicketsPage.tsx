@@ -1067,9 +1067,7 @@ const AdminTicketsPage = () => {
                         hasValue={!!returnTime}
                       />
                     </div>
-                  ) : (
-                    <div className="admin-tickets-search-field" aria-hidden />
-                  )}
+                  ) : null}
                   <div className="admin-tickets-search-field">
                     <label htmlFor="search-adults">Adults</label>
                     <Input

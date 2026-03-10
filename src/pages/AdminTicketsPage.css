@@ -806,15 +806,9 @@
 
 .admin-tickets-search-form {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px 32px;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .admin-tickets-search-form {
-    grid-template-columns: 1fr 1fr;
-  }
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 24px;
+  align-items: end;
 }
 
 @media (max-width: 639px) {
@@ -893,13 +887,21 @@
 
 .admin-tickets-search-date-picker {
   min-width: 0;
+  grid-column: 1 / -1;
 }
 
 .admin-tickets-search-date-picker [data-slot="field-group"] {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(100px, 1fr);
+  gap: 16px 24px;
+  align-items: end;
   width: 100%;
+}
+
+@media (max-width: 639px) {
+  .admin-tickets-search-date-picker [data-slot="field-group"] {
+    grid-template-columns: 1fr;
+  }
 }
 
 .admin-tickets-results-filter-date-picker {
@@ -1078,7 +1080,8 @@
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px 32px;
+  gap: 20px 24px;
+  align-items: end;
 }
 
 @media (max-width: 639px) {
@@ -1144,8 +1147,13 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.admin-tickets-search-view .admin-tickets-search-input {
+.admin-tickets-search-view .admin-tickets-search-input,
+.admin-tickets-search-view .admin-tickets-search-field [data-slot="select-trigger"] {
   height: auto;
+  min-height: 44px;
+}
+
+.admin-tickets-search-view .admin-tickets-search-field .admin-tickets-search-field-with-clear > [data-slot="button"] {
   min-height: 44px;
 }
 
@@ -1160,8 +1168,13 @@
 .admin-tickets-search-view .admin-tickets-search-field {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 8px;
   min-width: 0;
+}
+
+.admin-tickets-search-view .admin-tickets-search-field label {
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .admin-tickets-search-error {
