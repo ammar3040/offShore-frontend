@@ -3,6 +3,7 @@ import { Upload, X, Plus } from 'lucide-react';
 import { Country, City } from 'country-state-city';
 import type { ICountry, ICity } from 'country-state-city';
 import { countries as phoneCountries } from 'country-codes-flags-phone-codes';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 function parsePhoneValue(value: string): { dialCode: string; number: string } {
@@ -163,7 +164,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   }, [altPhoneCountryQuery]);
   const countryWrapRef = useRef<HTMLDivElement>(null);
   const cityWrapRef = useRef<HTMLDivElement>(null);
-  const visaCountryWrapRef = useRef<HTMLDivElement>(null);
+  const visaCountryInputRef = useRef<HTMLInputElement>(null);
   const [visaCountryOpen, setVisaCountryOpen] = useState(false);
   const [visaCountryQuery, setVisaCountryQuery] = useState('');
 
@@ -260,17 +261,6 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [cityOpen]);
-
-  useEffect(() => {
-    if (!visaCountryOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (visaCountryWrapRef.current && !visaCountryWrapRef.current.contains(e.target as Node)) {
-        setVisaCountryOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [visaCountryOpen]);
 
   useEffect(() => {
     if (!phoneCountryOpen) return;
@@ -1126,28 +1116,46 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
           <div className="grid grid-cols-2 gap-5">
             <div className="flex flex-col gap-2">
               <label htmlFor="visaCountry" className="text-sm font-semibold text-foreground">Visa Country</label>
-              <div className="relative" ref={visaCountryWrapRef}>
-                <input
-                  id="visaCountry"
-                  type="text"
-                  className={inputClass}
-                  value={visaCountryOpen ? visaCountryQuery : formData.visaCountry}
-                  onChange={(e) => {
-                    setVisaCountryQuery(e.target.value);
-                    if (!visaCountryOpen) setVisaCountryOpen(true);
-                    if (formData.visaCountry) {
-                      setFormData((prev) => ({ ...prev, visaCountry: '' }));
+              <Popover open={visaCountryOpen} onOpenChange={setVisaCountryOpen} modal={false}>
+                <PopoverAnchor asChild>
+                  <input
+                    ref={visaCountryInputRef}
+                    id="visaCountry"
+                    type="text"
+                    className={inputClass}
+                    value={visaCountryOpen ? visaCountryQuery : formData.visaCountry}
+                    onChange={(e) => {
+                      setVisaCountryQuery(e.target.value);
+                      setVisaCountryOpen(true);
+                      if (formData.visaCountry) {
+                        setFormData((prev) => ({ ...prev, visaCountry: '' }));
+                      }
+                    }}
+                    onFocus={() => {
+                      setVisaCountryOpen(true);
+                      if (formData.visaCountry) setVisaCountryQuery('');
+                    }}
+                    placeholder="Type to search country…"
+                    autoComplete="off"
+                  />
+                </PopoverAnchor>
+                <PopoverContent
+                  className="z-[1100] w-[var(--radix-popover-trigger-width)] min-w-[200px] max-h-[200px] overflow-y-auto p-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30"
+                  align="start"
+                  sideOffset={4}
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  onPointerDownOutside={(e) => {
+                    if (visaCountryInputRef.current?.contains(e.target as Node)) {
+                      e.preventDefault();
                     }
                   }}
-                  onFocus={() => {
-                    setVisaCountryOpen(true);
-                    if (formData.visaCountry) setVisaCountryQuery('');
+                  onFocusOutside={(e) => {
+                    if (visaCountryInputRef.current?.contains(e.target as Node)) {
+                      e.preventDefault();
+                    }
                   }}
-                  placeholder="Type to search country…"
-                  autoComplete="off"
-                />
-                {visaCountryOpen && (
-                  <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                >
+                  <ul className="py-1">
                     {filteredVisaCountries.length === 0 ? (
                       <li className="px-3 py-2 text-sm text-muted-foreground">No countries found</li>
                     ) : (
@@ -1163,8 +1171,8 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                       ))
                     )}
                   </ul>
-                )}
-              </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="visaIssueDate" className="text-sm font-semibold text-foreground">Visa Issue Date</label>
