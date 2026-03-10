@@ -83,6 +83,11 @@ const API_BASE = env.apiBaseUrl || '';
 /**
  * POST /api/crew-ticket/search-flights – search flights with given criteria.
  * Returns paginated result: { flights, total, page?, limit? }. On error throws with message.
+ *
+ * Optional time-based filters (backend applies to first leg):
+ * - departureTime: HH:mm – minimum departure time
+ * - arrivalDate: YYYY-MM-DD – arrival date at destination
+ * - arrivalTime: HH:mm – maximum arrival time at destination
  */
 export async function searchFlights(payload: SearchPayload): Promise<SearchFlightsResult> {
   const controller = new AbortController();

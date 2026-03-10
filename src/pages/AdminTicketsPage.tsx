@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon } from 'lucide-react';
+import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -406,6 +406,9 @@ const AdminTicketsPage = () => {
     d.setDate(d.getDate() + 7);
     return toYYYYMMDD(d);
   });
+  const [departureTime, setDepartureTime] = useState('');
+  const [arrivalDate, setArrivalDate] = useState('');
+  const [arrivalTime, setArrivalTime] = useState('');
   const [adults, setAdults] = useState(1);
   const [childrenCount, setChildrenCount] = useState(0);
   const [infants, setInfants] = useState(0);
@@ -599,6 +602,9 @@ const AdminTicketsPage = () => {
       page: 1,
       ...(searchProjectId ? { project_id: searchProjectId } : {}),
       ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
+      ...(departureTime.trim() ? { departureTime: departureTime.trim() } : {}),
+      ...(arrivalDate.trim() ? { arrivalDate: arrivalDate.trim() } : {}),
+      ...(arrivalTime.trim() ? { arrivalTime: arrivalTime.trim() } : {}),
     };
     setSearchCriteria(criteria);
     setSearchResults(null);
@@ -622,6 +628,9 @@ const AdminTicketsPage = () => {
     searchTripType,
     departureDate,
     returnDate,
+    departureTime,
+    arrivalDate,
+    arrivalTime,
     adults,
     childrenCount,
     infants,
@@ -862,20 +871,21 @@ const AdminTicketsPage = () => {
                   </div>
                   <div className="admin-tickets-search-field">
                     <label className="block text-xs font-semibold text-[#374151] mb-2">Project</label>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-between font-normal"
-                        >
-                          <span className="truncate">
-                            {searchProjectId
-                              ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
-                              : 'Select project'}
-                          </span>
-                          <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
+                    <div className="admin-tickets-search-field-with-clear">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between font-normal"
+                          >
+                            <span className="truncate">
+                              {searchProjectId
+                                ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
+                                : 'Select project'}
+                            </span>
+                            <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
                       <DropdownMenuContent
                         className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
                         align="start"
@@ -899,9 +909,22 @@ const AdminTicketsPage = () => {
                         </DropdownMenuGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                      {searchProjectId ? (
+                        <button
+                          type="button"
+                          className="admin-tickets-search-clear-btn"
+                          onClick={() => setSearchProjectId('')}
+                          title="Clear"
+                          aria-label="Clear project"
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="admin-tickets-search-field admin-tickets-search-field-crew">
                     <label className="block text-xs font-semibold text-[#374151] mb-2">Crew members</label>
+                    <div className="admin-tickets-search-field-with-clear">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -948,6 +971,18 @@ const AdminTicketsPage = () => {
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                      {searchCrewIds.length > 0 ? (
+                        <button
+                          type="button"
+                          className="admin-tickets-search-clear-btn"
+                          onClick={() => setSearchCrewIds([])}
+                          title="Clear"
+                          aria-label="Clear crew members"
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="admin-tickets-search-airports-row">
                     <div className="admin-tickets-search-field">
@@ -976,15 +1011,92 @@ const AdminTicketsPage = () => {
                       onChange={(e) => setDepartureDate(e.target.value)}
                     />
                   </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-departure-time">Min. departure time</label>
+                    <div className="admin-tickets-search-field-with-clear">
+                      <input
+                        id="search-departure-time"
+                        type="time"
+                        value={departureTime}
+                        onChange={(e) => setDepartureTime(e.target.value)}
+                      />
+                      {departureTime ? (
+                        <button
+                          type="button"
+                          className="admin-tickets-search-clear-btn"
+                          onClick={() => setDepartureTime('')}
+                          title="Clear"
+                          aria-label="Clear min. departure time"
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-arrival-date">Arrival date</label>
+                    <div className="admin-tickets-search-field-with-clear">
+                      <input
+                        id="search-arrival-date"
+                        type="date"
+                        value={arrivalDate}
+                        onChange={(e) => setArrivalDate(e.target.value)}
+                      />
+                      {arrivalDate ? (
+                        <button
+                          type="button"
+                          className="admin-tickets-search-clear-btn"
+                          onClick={() => setArrivalDate('')}
+                          title="Clear"
+                          aria-label="Clear arrival date"
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label htmlFor="search-arrival-time">Max. arrival time</label>
+                    <div className="admin-tickets-search-field-with-clear">
+                      <input
+                        id="search-arrival-time"
+                        type="time"
+                        value={arrivalTime}
+                        onChange={(e) => setArrivalTime(e.target.value)}
+                      />
+                      {arrivalTime ? (
+                        <button
+                          type="button"
+                          className="admin-tickets-search-clear-btn"
+                          onClick={() => setArrivalTime('')}
+                          title="Clear"
+                          aria-label="Clear max. arrival time"
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                   {searchTripType === 'round-trip' ? (
                     <div className="admin-tickets-search-field">
                       <label htmlFor="search-return">Return date</label>
-                      <input
-                        id="search-return"
-                        type="date"
-                        value={returnDate}
-                        onChange={(e) => setReturnDate(e.target.value)}
-                      />
+                      <div className="admin-tickets-search-field-with-clear">
+                        <input
+                          id="search-return"
+                          type="date"
+                          value={returnDate}
+                          onChange={(e) => setReturnDate(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="admin-tickets-search-clear-btn"
+                          onClick={() => setReturnDate('')}
+                          title="Clear"
+                          aria-label="Clear return date"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="admin-tickets-search-field" aria-hidden />

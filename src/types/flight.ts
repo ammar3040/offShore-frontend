@@ -85,6 +85,13 @@ export interface SearchPayload {
   /** Pagination (backend returns paginated results) */
   page?: number;
   limit?: number;
+  /** Optional time-based filters (backend filters first leg) */
+  /** Minimum departure time, HH:mm (e.g. "08:00") */
+  departureTime?: string;
+  /** Arrival date at destination, YYYY-MM-DD (e.g. "2025-03-15") */
+  arrivalDate?: string;
+  /** Maximum arrival time at destination, HH:mm (e.g. "18:00") */
+  arrivalTime?: string;
 }
 
 /** Result of searchFlights when API returns paginated response */
