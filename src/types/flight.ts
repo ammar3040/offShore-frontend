@@ -67,6 +67,8 @@ export interface SearchPayload {
   to: Airport | null;
   departureDate: string;
   returnDate?: string;
+  /** Return time for round-trip, HH:mm (e.g. "18:00") */
+  returnTime?: string;
   connectingDate?: string;
   adults: number;
   children: number;

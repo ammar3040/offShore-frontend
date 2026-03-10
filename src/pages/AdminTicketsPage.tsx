@@ -29,6 +29,15 @@ import { searchFlights, bookFlight } from '../api/flightSearch';
 import { searchAirportsApi } from '../api/airports';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
+import { DatePickerTime } from '@/components/ui/date-picker-time';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import './AdminTicketsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
@@ -406,6 +415,7 @@ const AdminTicketsPage = () => {
     d.setDate(d.getDate() + 7);
     return toYYYYMMDD(d);
   });
+  const [returnTime, setReturnTime] = useState('');
   const [departureTime, setDepartureTime] = useState('');
   const [arrivalDate, setArrivalDate] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
@@ -583,17 +593,24 @@ const AdminTicketsPage = () => {
     setSubmitError(null);
   }, []);
 
-  const handleSearch = useCallback(async () => {
+  const handleSearch = useCallback(async (overrides?: { departureDate?: string; departureTime?: string; arrivalDate?: string; arrivalTime?: string; returnDate?: string; returnTime?: string }) => {
     if (!searchFrom || !searchTo) {
       setSearchError('Please select From and To airports.');
       return;
     }
+    const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : departureDate;
+    const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : departureTime;
+    const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : arrivalDate;
+    const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : arrivalTime;
+    const rDate = overrides?.returnDate !== undefined ? overrides.returnDate : returnDate;
+    const rTime = overrides?.returnTime !== undefined ? overrides.returnTime : returnTime;
     const criteria: SearchPayload = {
       tripType: searchTripType,
       from: searchFrom,
       to: searchTo,
-      departureDate,
-      returnDate: searchTripType === 'round-trip' ? returnDate : undefined,
+      departureDate: dDate,
+      returnDate: searchTripType === 'round-trip' ? rDate : undefined,
+      ...(searchTripType === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
       adults,
       children: childrenCount,
       infants,
@@ -602,9 +619,9 @@ const AdminTicketsPage = () => {
       page: 1,
       ...(searchProjectId ? { project_id: searchProjectId } : {}),
       ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-      ...(departureTime.trim() ? { departureTime: departureTime.trim() } : {}),
-      ...(arrivalDate.trim() ? { arrivalDate: arrivalDate.trim() } : {}),
-      ...(arrivalTime.trim() ? { arrivalTime: arrivalTime.trim() } : {}),
+      ...(searchTripType === 'one-way' && dTime.trim() ? { departureTime: dTime.trim() } : {}),
+      ...(searchTripType === 'one-way' && aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
+      ...(searchTripType === 'one-way' && aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
     };
     setSearchCriteria(criteria);
     setSearchResults(null);
@@ -628,6 +645,7 @@ const AdminTicketsPage = () => {
     searchTripType,
     departureDate,
     returnDate,
+    returnTime,
     departureTime,
     arrivalDate,
     arrivalTime,
@@ -1002,148 +1020,110 @@ const AdminTicketsPage = () => {
                       />
                     </div>
                   </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-departure">Departure date</label>
-                    <input
-                      id="search-departure"
-                      type="date"
-                      value={departureDate}
-                      onChange={(e) => setDepartureDate(e.target.value)}
+                  <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                    <DatePickerTime
+                      date={departureDate}
+                      time={departureTime}
+                      onDateChange={setDepartureDate}
+                      onTimeChange={setDepartureTime}
+                      dateLabel="Departure date"
+                      timeLabel="Min. departure time"
+                      datePlaceholder="Select date"
+                      showTime={searchTripType === 'one-way'}
+                      idPrefix="search-departure"
+                      onClear={searchTripType === 'one-way' ? () => { setDepartureTime(''); } : undefined}
+                      hasValue={!!departureTime}
                     />
                   </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-departure-time">Min. departure time</label>
-                    <div className="admin-tickets-search-field-with-clear">
-                      <input
-                        id="search-departure-time"
-                        type="time"
-                        value={departureTime}
-                        onChange={(e) => setDepartureTime(e.target.value)}
+                  {searchTripType === 'one-way' ? (
+                    <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                      <DatePickerTime
+                        date={arrivalDate}
+                        time={arrivalTime}
+                        onDateChange={setArrivalDate}
+                        onTimeChange={setArrivalTime}
+                        dateLabel="Arrival date"
+                        timeLabel="Max. arrival time"
+                        datePlaceholder="Select date"
+                        showTime={true}
+                        idPrefix="search-arrival"
+                        onClear={() => {
+                          setArrivalDate('');
+                          setArrivalTime('');
+                        }}
+                        hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
                       />
-                      {departureTime ? (
-                        <button
-                          type="button"
-                          className="admin-tickets-search-clear-btn"
-                          onClick={() => setDepartureTime('')}
-                          title="Clear"
-                          aria-label="Clear min. departure time"
-                        >
-                          <X size={14} />
-                        </button>
-                      ) : null}
                     </div>
-                  </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-arrival-date">Arrival date</label>
-                    <div className="admin-tickets-search-field-with-clear">
-                      <input
-                        id="search-arrival-date"
-                        type="date"
-                        value={arrivalDate}
-                        onChange={(e) => setArrivalDate(e.target.value)}
-                      />
-                      {arrivalDate ? (
-                        <button
-                          type="button"
-                          className="admin-tickets-search-clear-btn"
-                          onClick={() => setArrivalDate('')}
-                          title="Clear"
-                          aria-label="Clear arrival date"
-                        >
-                          <X size={14} />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-arrival-time">Max. arrival time</label>
-                    <div className="admin-tickets-search-field-with-clear">
-                      <input
-                        id="search-arrival-time"
-                        type="time"
-                        value={arrivalTime}
-                        onChange={(e) => setArrivalTime(e.target.value)}
-                      />
-                      {arrivalTime ? (
-                        <button
-                          type="button"
-                          className="admin-tickets-search-clear-btn"
-                          onClick={() => setArrivalTime('')}
-                          title="Clear"
-                          aria-label="Clear max. arrival time"
-                        >
-                          <X size={14} />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
+                  ) : null}
                   {searchTripType === 'round-trip' ? (
-                    <div className="admin-tickets-search-field">
-                      <label htmlFor="search-return">Return date</label>
-                      <div className="admin-tickets-search-field-with-clear">
-                        <input
-                          id="search-return"
-                          type="date"
-                          value={returnDate}
-                          onChange={(e) => setReturnDate(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="admin-tickets-search-clear-btn"
-                          onClick={() => setReturnDate('')}
-                          title="Clear"
-                          aria-label="Clear return date"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
+                    <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                      <DatePickerTime
+                        date={returnDate}
+                        time={returnTime}
+                        onDateChange={setReturnDate}
+                        onTimeChange={setReturnTime}
+                        dateLabel="Return date"
+                        timeLabel="Return time"
+                        datePlaceholder="Select date"
+                        showTime={true}
+                        idPrefix="search-return"
+                        onClear={() => setReturnTime('')}
+                        hasValue={!!returnTime}
+                      />
                     </div>
                   ) : (
                     <div className="admin-tickets-search-field" aria-hidden />
                   )}
                   <div className="admin-tickets-search-field">
                     <label htmlFor="search-adults">Adults</label>
-                    <input
+                    <Input
                       id="search-adults"
                       type="number"
                       min={0}
                       value={adults}
                       onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="admin-tickets-search-input"
                     />
                   </div>
                   <div className="admin-tickets-search-field">
                     <label htmlFor="search-children">Children</label>
-                    <input
+                    <Input
                       id="search-children"
                       type="number"
                       min={0}
                       value={childrenCount}
                       onChange={(e) => setChildrenCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="admin-tickets-search-input"
                     />
                   </div>
                   <div className="admin-tickets-search-field">
                     <label htmlFor="search-infants">Infants</label>
-                    <input
+                    <Input
                       id="search-infants"
                       type="number"
                       min={0}
                       value={infants}
                       onChange={(e) => setInfants(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="admin-tickets-search-input"
                     />
                   </div>
                   <div className="admin-tickets-search-field admin-tickets-search-field-cabin">
                     <label htmlFor="search-cabin">Cabin class</label>
-                    <select
-                      id="search-cabin"
+                    <Select
                       value={cabinClass}
-                      onChange={(e) => setCabinClass(e.target.value as CabinClass)}
+                      onValueChange={(v) => setCabinClass(v as CabinClass)}
                     >
-                      {CABIN_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="search-cabin" className="admin-tickets-search-input w-full">
+                        <SelectValue placeholder="Select cabin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CABIN_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 {searchError && (
@@ -1154,7 +1134,7 @@ const AdminTicketsPage = () => {
                 <div className="admin-tickets-search-actions">
                   <Button
                     type="button"
-                    onClick={handleSearch}
+                    onClick={() => handleSearch()}
                     disabled={isSearching || !searchFrom || !searchTo}
                   >
                     {isSearching ? (
@@ -1190,6 +1170,59 @@ const AdminTicketsPage = () => {
                   {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
                 </p>
               </div>
+              {searchTripType === 'one-way' && (
+                <div className="admin-tickets-results-filters">
+                  <div className="admin-tickets-results-filter-date-picker">
+                    <DatePickerTime
+                      date={departureDate}
+                      time={departureTime}
+                      onDateChange={(v) => {
+                        setDepartureDate(v);
+                        handleSearch({ departureDate: v });
+                      }}
+                      onTimeChange={(v) => {
+                        setDepartureTime(v);
+                        handleSearch({ departureTime: v });
+                      }}
+                      dateLabel="Departure date"
+                      timeLabel="Min. departure time"
+                      datePlaceholder="Select date"
+                      showTime={true}
+                      idPrefix="results-departure"
+                      onClear={() => {
+                        setDepartureTime('');
+                        handleSearch({ departureTime: '' });
+                      }}
+                      hasValue={!!departureTime}
+                    />
+                  </div>
+                  <div className="admin-tickets-results-filter-date-picker">
+                    <DatePickerTime
+                      date={arrivalDate}
+                      time={arrivalTime}
+                      onDateChange={(v) => {
+                        setArrivalDate(v);
+                        handleSearch({ arrivalDate: v });
+                      }}
+                      onTimeChange={(v) => {
+                        setArrivalTime(v);
+                        handleSearch({ arrivalTime: v });
+                      }}
+                      dateLabel="Arrival date"
+                      timeLabel="Max. arrival time"
+                      datePlaceholder="Select date"
+                      showTime={true}
+                      idPrefix="results-arrival"
+                      onClear={() => {
+                        setArrivalDate('');
+                        setArrivalTime('');
+                        handleSearch({ arrivalDate: '', arrivalTime: '' });
+                      }}
+                      hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="admin-tickets-results-list">
                 {searchResults.length === 0 ? (
                   <p className="admin-tickets-results-empty">No flights match your criteria.</p>
