@@ -420,8 +420,6 @@ const AdminTicketsPage = () => {
   const [arrivalDate, setArrivalDate] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
   const [adults, setAdults] = useState(1);
-  const [childrenCount, setChildrenCount] = useState(0);
-  const [infants, setInfants] = useState(0);
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
   const [currency, setCurrency] = useState<CurrencyCode>('USD');
   const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
@@ -612,8 +610,8 @@ const AdminTicketsPage = () => {
       returnDate: searchTripType === 'round-trip' ? rDate : undefined,
       ...(searchTripType === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
       adults,
-      children: childrenCount,
-      infants,
+      children: 0,
+      infants: 0,
       cabinClass,
       currency,
       page: 1,
@@ -650,8 +648,6 @@ const AdminTicketsPage = () => {
     arrivalDate,
     arrivalTime,
     adults,
-    childrenCount,
-    infants,
     cabinClass,
     currency,
     searchProjectId,
@@ -705,8 +701,8 @@ const AdminTicketsPage = () => {
           cashback: flight.cashback ?? 0,
           originalCurrency: currency,
           adult: adults,
-          children: childrenCount,
-          infants,
+          children: 0,
+          infants: 0,
         });
         const ticketCount = Array.isArray(data.tickets) ? data.tickets.length : searchCrewIds.length;
         const desc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${data.bookingReference ? ` Ref: ${data.bookingReference}` : ''}`;
@@ -719,7 +715,7 @@ const AdminTicketsPage = () => {
         setBookingFlightId(null);
       }
     },
-    [searchProjectId, searchCrewIds, adults, childrenCount, infants, currency, adminMarkup]
+    [searchProjectId, searchCrewIds, adults, currency, adminMarkup]
   );
 
   const handleSearchBack = useCallback(() => {
@@ -1085,28 +1081,6 @@ const AdminTicketsPage = () => {
                       className="admin-tickets-search-input"
                     />
                   </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-children">Children</label>
-                    <Input
-                      id="search-children"
-                      type="number"
-                      min={0}
-                      value={childrenCount}
-                      onChange={(e) => setChildrenCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="admin-tickets-search-input"
-                    />
-                  </div>
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-infants">Infants</label>
-                    <Input
-                      id="search-infants"
-                      type="number"
-                      min={0}
-                      value={infants}
-                      onChange={(e) => setInfants(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="admin-tickets-search-input"
-                    />
-                  </div>
                   <div className="admin-tickets-search-field admin-tickets-search-field-cabin">
                     <label htmlFor="search-cabin">Cabin class</label>
                     <Select
@@ -1170,59 +1144,6 @@ const AdminTicketsPage = () => {
                   {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
                 </p>
               </div>
-              {searchTripType === 'one-way' && (
-                <div className="admin-tickets-results-filters">
-                  <div className="admin-tickets-results-filter-date-picker">
-                    <DatePickerTime
-                      date={departureDate}
-                      time={departureTime}
-                      onDateChange={(v) => {
-                        setDepartureDate(v);
-                        handleSearch({ departureDate: v });
-                      }}
-                      onTimeChange={(v) => {
-                        setDepartureTime(v);
-                        handleSearch({ departureTime: v });
-                      }}
-                      dateLabel="Departure date"
-                      timeLabel="Min. departure time"
-                      datePlaceholder="Select date"
-                      showTime={true}
-                      idPrefix="results-departure"
-                      onClear={() => {
-                        setDepartureTime('');
-                        handleSearch({ departureTime: '' });
-                      }}
-                      hasValue={!!departureTime}
-                    />
-                  </div>
-                  <div className="admin-tickets-results-filter-date-picker">
-                    <DatePickerTime
-                      date={arrivalDate}
-                      time={arrivalTime}
-                      onDateChange={(v) => {
-                        setArrivalDate(v);
-                        handleSearch({ arrivalDate: v });
-                      }}
-                      onTimeChange={(v) => {
-                        setArrivalTime(v);
-                        handleSearch({ arrivalTime: v });
-                      }}
-                      dateLabel="Arrival date"
-                      timeLabel="Max. arrival time"
-                      datePlaceholder="Select date"
-                      showTime={true}
-                      idPrefix="results-arrival"
-                      onClear={() => {
-                        setArrivalDate('');
-                        setArrivalTime('');
-                        handleSearch({ arrivalDate: '', arrivalTime: '' });
-                      }}
-                      hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
-                    />
-                  </div>
-                </div>
-              )}
               <div className="admin-tickets-results-list">
                 {searchResults.length === 0 ? (
                   <p className="admin-tickets-results-empty">No flights match your criteria.</p>
