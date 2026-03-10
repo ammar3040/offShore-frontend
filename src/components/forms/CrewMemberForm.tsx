@@ -67,6 +67,9 @@ export interface CrewMemberFormData {
   organization: string;
   linkedin: string;
   visa: string;
+  visaCountry: string;
+  visaIssueDate: string;
+  visaExpiryDate: string;
 }
 
 interface CrewMemberFormProps {
@@ -108,6 +111,9 @@ const defaultFormData: CrewMemberFormData = {
   organization: '',
   linkedin: '',
   visa: '',
+  visaCountry: '',
+  visaIssueDate: '',
+  visaExpiryDate: '',
 };
 
 const ALL_COUNTRIES = Country.getAllCountries();
@@ -157,6 +163,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   }, [altPhoneCountryQuery]);
   const countryWrapRef = useRef<HTMLDivElement>(null);
   const cityWrapRef = useRef<HTMLDivElement>(null);
+  const visaCountryWrapRef = useRef<HTMLDivElement>(null);
+  const [visaCountryOpen, setVisaCountryOpen] = useState(false);
+  const [visaCountryQuery, setVisaCountryQuery] = useState('');
 
   const filteredCountries = useMemo(() => {
     const q = countryQuery.trim().toLowerCase();
@@ -174,6 +183,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
     if (!q) return cities.slice(0, 50);
     return cities.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 50);
   }, [cities, cityQuery]);
+
+  const filteredVisaCountries = useMemo(() => {
+    const q = visaCountryQuery.trim().toLowerCase();
+    if (!q) return ALL_COUNTRIES.slice(0, 50);
+    return ALL_COUNTRIES.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 50);
+  }, [visaCountryQuery]);
 
   // Pre-fill form when opening edit modal; sync once per mount when initialData exists
   useEffect(() => {
@@ -247,6 +262,17 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   }, [cityOpen]);
 
   useEffect(() => {
+    if (!visaCountryOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (visaCountryWrapRef.current && !visaCountryWrapRef.current.contains(e.target as Node)) {
+        setVisaCountryOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [visaCountryOpen]);
+
+  useEffect(() => {
     if (!phoneCountryOpen) return;
     const handler = (e: MouseEvent) => {
       if (phoneCountryWrapRef.current && !phoneCountryWrapRef.current.contains(e.target as Node)) {
@@ -279,6 +305,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
     setFormData((prev) => ({ ...prev, city: city.name }));
     setCityOpen(false);
     setCityQuery('');
+  };
+
+  const handleVisaCountrySelect = (country: ICountry) => {
+    setFormData((prev) => ({ ...prev, visaCountry: country.name }));
+    setVisaCountryOpen(false);
+    setVisaCountryQuery('');
   };
 
   const passportFileInputRef = useRef<HTMLInputElement>(null);
@@ -1085,13 +1117,73 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 className={inputClass}
               />
             </div>
-            <div className={cn("flex flex-col gap-2", "col-span-full")}>
-              <label htmlFor="visa" className="text-sm font-semibold text-foreground">Visa Info</label>
+          </div>
+        </div>
+
+        {/* Visa Details Section */}
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Visa Details</h3>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="visaCountry" className="text-sm font-semibold text-foreground">Visa Country</label>
+              <div className="relative" ref={visaCountryWrapRef}>
+                <input
+                  id="visaCountry"
+                  type="text"
+                  className={inputClass}
+                  value={visaCountryOpen ? visaCountryQuery : formData.visaCountry}
+                  onChange={(e) => {
+                    setVisaCountryQuery(e.target.value);
+                    if (!visaCountryOpen) setVisaCountryOpen(true);
+                    if (formData.visaCountry) {
+                      setFormData((prev) => ({ ...prev, visaCountry: '' }));
+                    }
+                  }}
+                  onFocus={() => {
+                    setVisaCountryOpen(true);
+                    if (formData.visaCountry) setVisaCountryQuery('');
+                  }}
+                  placeholder="Type to search country…"
+                  autoComplete="off"
+                />
+                {visaCountryOpen && (
+                  <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                    {filteredVisaCountries.length === 0 ? (
+                      <li className="px-3 py-2 text-sm text-muted-foreground">No countries found</li>
+                    ) : (
+                      filteredVisaCountries.map((c) => (
+                        <li
+                          key={c.isoCode}
+                          className="cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleVisaCountrySelect(c)}
+                        >
+                          {c.name}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="visaIssueDate" className="text-sm font-semibold text-foreground">Visa Issue Date</label>
               <input
-                type="text"
-                id="visa"
-                name="visa"
-                value={formData.visa}
+                type="date"
+                id="visaIssueDate"
+                name="visaIssueDate"
+                value={formData.visaIssueDate}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="visaExpiryDate" className="text-sm font-semibold text-foreground">Visa Expiry Date</label>
+              <input
+                type="date"
+                id="visaExpiryDate"
+                name="visaExpiryDate"
+                value={formData.visaExpiryDate}
                 onChange={handleInputChange}
                 className={inputClass}
               />

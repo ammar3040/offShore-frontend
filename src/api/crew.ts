@@ -58,6 +58,9 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
     organization: String(crew.organization ?? raw.organization ?? '').trim(),
     linkedin: String(crew.linkedin ?? raw.linkedin ?? '').trim(),
     visa: String(crew.visa ?? raw.visa ?? '').trim(),
+    visaCountry: String(crew.visa_country ?? raw.visa_country ?? '').trim(),
+    visaIssueDate: String(crew.visa_issue_date ?? raw.visa_issue_date ?? '').trim(),
+    visaExpiryDate: String(crew.visa_expiry_date ?? raw.visa_expiry_date ?? '').trim(),
   };
 }
 
@@ -102,6 +105,9 @@ export interface CrewMemberApi {
   organization?: string;
   linkedin?: string;
   visa?: string;
+  visa_country?: string;
+  visa_issue_date?: string;
+  visa_expiry_date?: string;
   certificate_issue_date?: string;
   certificate_expiry_date?: string;
   crew_certificate?: { issue_date?: string; expiry_date?: string };
@@ -295,6 +301,15 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   }
   if (data.visa?.trim()) {
     formData.append('visa', data.visa.trim());
+  }
+  if (data.visaCountry?.trim()) {
+    formData.append('visa_country', data.visaCountry.trim());
+  }
+  if (data.visaIssueDate?.trim()) {
+    formData.append('visa_issue_date', data.visaIssueDate.trim());
+  }
+  if (data.visaExpiryDate?.trim()) {
+    formData.append('visa_expiry_date', data.visaExpiryDate.trim());
   }
 
   data.passportDocuments.forEach((file) => {
