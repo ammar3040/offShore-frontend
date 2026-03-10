@@ -1,6 +1,9 @@
 import { env } from '../config/env';
 import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 
+/** Single certificate from API (array or legacy single object) */
+type CrewCertApi = { certificate_name?: string; issue_date?: string; expiry_date?: string; certificate_document?: string };
+
 /** Converts crew API response to CrewMemberFormData for edit form pre-fill. Handles both camelCase and snake_case. */
 export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
   const raw = crew as Record<string, unknown> & CrewMemberApi;
@@ -8,7 +11,21 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
   const i = crew.identity ?? raw.identity;
   const passport = typeof p === 'object' && p !== null ? (p as unknown as Record<string, unknown>) : {};
   const identity = typeof i === 'object' && i !== null ? (i as unknown as Record<string, unknown>) : {};
-  const cert = raw.crew_certificate as { issue_date?: string; expiry_date?: string } | undefined;
+  const certRaw = raw.crew_certificate;
+  const certs: CrewCertApi[] = Array.isArray(certRaw)
+    ? certRaw
+    : certRaw && typeof certRaw === 'object'
+      ? [certRaw as CrewCertApi]
+      : [];
+
+  const certificates = certs.length > 0
+    ? certs.map((c) => ({
+        certificateName: String(c.certificate_name ?? 'Certificate').trim(),
+        issueDate: String(c.issue_date ?? '').trim(),
+        expiryDate: String(c.expiry_date ?? '').trim(),
+        document: null as File | null,
+      }))
+    : [{ certificateName: '', issueDate: '', expiryDate: '', document: null }];
 
   return {
     firstName: String(crew.firstname ?? raw.firstname ?? '').trim(),
@@ -33,9 +50,7 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
     identityIssueDate: String(identity.issue_date ?? '').trim(),
     identityExpiryDate: String(identity.expiry_date ?? '').trim(),
     identityDocuments: [],
-    certificateIssueDate: String(crew.certificate_issue_date ?? raw.certificate_issue_date ?? cert?.issue_date ?? '').trim(),
-    certificateExpiryDate: String(crew.certificate_expiry_date ?? raw.certificate_expiry_date ?? cert?.expiry_date ?? '').trim(),
-    certificateDocuments: [],
+    certificates,
     azerbaijanVantageNumber: String(crew.azerbaijan_vantage_number ?? raw.azerbaijan_vantage_number ?? '').trim(),
     norwegianDNumber: String(crew.norwegian_d_number ?? raw.norwegian_d_number ?? '').trim(),
     dawinciNumber: String(crew.dawinci_number ?? raw.dawinci_number ?? '').trim(),
@@ -236,8 +251,29 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   formData.append('identity_number', data.identityNumber);
   formData.append('identity_issue_date', data.identityIssueDate);
   formData.append('identity_expiry_date', data.identityExpiryDate);
-  formData.append('certificate_issue_date', data.certificateIssueDate);
-  formData.append('certificate_expiry_date', data.certificateExpiryDate);
+
+  const validCerts = data.certificates.filter(
+    (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document
+  );
+  if (validCerts.length === 1) {
+    const cert = validCerts[0]!;
+    formData.append('certificate_name', cert.certificateName.trim());
+    formData.append('certificate_issue_date', cert.issueDate);
+    formData.append('certificate_expiry_date', cert.expiryDate);
+    formData.append('certificate_document', cert.document!);
+  } else if (validCerts.length > 1) {
+    formData.append(
+      'certificates',
+      JSON.stringify(
+        validCerts.map((c) => ({
+          certificate_name: c.certificateName.trim(),
+          issue_date: c.issueDate,
+          expiry_date: c.expiryDate,
+        }))
+      )
+    );
+    validCerts.forEach((c) => formData.append('certificate_document', c.document!));
+  }
 
   if (data.azerbaijanVantageNumber?.trim()) {
     formData.append('azerbaijan_vantage_number', data.azerbaijanVantageNumber.trim());
@@ -266,9 +302,6 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   });
   data.identityDocuments.forEach((file) => {
     formData.append('identity_document', file);
-  });
-  data.certificateDocuments.forEach((file) => {
-    formData.append('certificate_document', file);
   });
 
   return formData;

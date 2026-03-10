@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Plus } from 'lucide-react';
 import { Country, City } from 'country-state-city';
 import type { ICountry, ICity } from 'country-state-city';
 import { countries as phoneCountries } from 'country-codes-flags-phone-codes';
@@ -51,10 +51,13 @@ export interface CrewMemberFormData {
   identityExpiryDate: string;
   identityDocuments: File[];
 
-  // Crew Certificate
-  certificateIssueDate: string;
-  certificateExpiryDate: string;
-  certificateDocuments: File[];
+  // Crew Certificates (multiple)
+  certificates: Array<{
+    certificateName: string;
+    issueDate: string;
+    expiryDate: string;
+    document: File | null;
+  }>;
 
   // Professional & Compliance (optional)
   azerbaijanVantageNumber: string;
@@ -97,9 +100,7 @@ const defaultFormData: CrewMemberFormData = {
   identityIssueDate: '',
   identityExpiryDate: '',
   identityDocuments: [],
-  certificateIssueDate: '',
-  certificateExpiryDate: '',
-  certificateDocuments: [],
+  certificates: [{ certificateName: '', issueDate: '', expiryDate: '', document: null }],
   azerbaijanVantageNumber: '',
   norwegianDNumber: '',
   dawinciNumber: '',
@@ -177,7 +178,20 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   // Pre-fill form when opening edit modal; sync once per mount when initialData exists
   useEffect(() => {
     if (initialData && !hasPrefilled.current) {
-      setFormData(initialData);
+      // Normalize legacy single-certificate shape to certificates array
+      const data = { ...initialData };
+      if (!data.certificates?.length && (initialData as unknown as Record<string, unknown>).certificateIssueDate != null) {
+        const leg = initialData as typeof initialData & { certificateIssueDate?: string; certificateExpiryDate?: string; certificateDocuments?: File[] };
+        data.certificates = [{
+          certificateName: 'Certificate',
+          issueDate: leg.certificateIssueDate ?? '',
+          expiryDate: leg.certificateExpiryDate ?? '',
+          document: leg.certificateDocuments?.[0] ?? null,
+        }];
+      } else if (!data.certificates?.length) {
+        data.certificates = [{ certificateName: '', issueDate: '', expiryDate: '', document: null }];
+      }
+      setFormData(data);
       if (initialData.country) {
         const match = ALL_COUNTRIES.find(
           (c) =>
@@ -269,7 +283,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
   const passportFileInputRef = useRef<HTMLInputElement>(null);
   const identityFileInputRef = useRef<HTMLInputElement>(null);
-  const certificateFileInputRef = useRef<HTMLInputElement>(null);
+  const certificateFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -280,7 +294,8 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    type: 'passport' | 'identity' | 'certificate'
+    type: 'passport' | 'identity' | 'certificate',
+    certIndex?: number
   ) => {
     const files = Array.from(e.target.files || []);
     if (type === 'passport') {
@@ -293,16 +308,18 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         ...prev,
         identityDocuments: [...prev.identityDocuments, ...files],
       }));
-    } else {
-      // certificate: maxCount 1, replace existing
+    } else if (type === 'certificate' && certIndex !== undefined) {
+      const file = files[0] ?? null;
       setFormData((prev) => ({
         ...prev,
-        certificateDocuments: files.slice(0, 1),
+        certificates: prev.certificates.map((cert, i) =>
+          i === certIndex ? { ...cert, document: file } : cert
+        ),
       }));
     }
   };
 
-  const removeFile = (index: number, type: 'passport' | 'identity' | 'certificate') => {
+  const removeFile = (index: number, type: 'passport' | 'identity' | 'certificate', certIndex?: number) => {
     if (type === 'passport') {
       setFormData((prev) => ({
         ...prev,
@@ -313,18 +330,47 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         ...prev,
         identityDocuments: prev.identityDocuments.filter((_, i) => i !== index),
       }));
-    } else {
+    } else if (type === 'certificate' && certIndex !== undefined) {
       setFormData((prev) => ({
         ...prev,
-        certificateDocuments: [],
+        certificates: prev.certificates.map((cert, i) =>
+          i === certIndex ? { ...cert, document: null } : cert
+        ),
       }));
     }
+  };
+
+  const updateCertificate = (index: number, field: 'certificateName' | 'issueDate' | 'expiryDate', value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      certificates: prev.certificates.map((cert, i) =>
+        i === index ? { ...cert, [field]: value } : cert
+      ),
+    }));
+  };
+
+  const addCertificate = () => {
+    setFormData((prev) => ({
+      ...prev,
+      certificates: [...prev.certificates, { certificateName: '', issueDate: '', expiryDate: '', document: null }],
+    }));
+  };
+
+  const removeCertificate = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      certificates: prev.certificates.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.country?.trim()) return;
     if (!formData.city?.trim()) return;
+    const validCerts = formData.certificates.filter(
+      (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document
+    );
+    if (validCerts.length === 0) return;
     await onSubmit(formData);
   };
 
@@ -861,71 +907,110 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
           </div>
         </div>
 
-        {/* Crew Certificate Section */}
+        {/* Crew Certificates Section */}
         <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Crew Certificate</h3>
-          <div className="grid grid-cols-2 gap-5">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="certificateIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
-              <input
-                type="date"
-                id="certificateIssueDate"
-                name="certificateIssueDate"
-                value={formData.certificateIssueDate}
-                onChange={handleInputChange}
-                required
-                className={inputClass}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="certificateExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date *</label>
-              <input
-                type="date"
-                id="certificateExpiryDate"
-                name="certificateExpiryDate"
-                value={formData.certificateExpiryDate}
-                onChange={handleInputChange}
-                required
-                className={inputClass}
-              />
-            </div>
+          <div className="flex items-center justify-between mb-5 pb-3 border-b-2 border-muted">
+            <h3 className="text-lg font-bold text-foreground">Crew Certificates</h3>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
+              onClick={addCertificate}
+            >
+              <Plus size={16} />
+              Add certificate
+            </button>
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-foreground">Certificate Document *</label>
-            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-6 hover:border-muted-foreground/50">
-              <input
-                ref={certificateFileInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                onChange={(e) => handleFileUpload(e, 'certificate')}
-                className="sr-only"
-              />
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                onClick={() => certificateFileInputRef.current?.click()}
+          <div className="flex flex-col gap-6">
+            {formData.certificates.map((cert, certIndex) => (
+              <div
+                key={certIndex}
+                className="rounded-lg border border-border bg-muted/20 p-4 space-y-4"
               >
-                <Upload size={18} />
-                Upload Certificate Document
-              </button>
-              <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 10MB, one file)</p>
-            </div>
-            {formData.certificateDocuments.length > 0 && (
-              <div className="flex flex-col gap-2 mt-2">
-                {formData.certificateDocuments.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
-                    <span className="text-sm text-foreground truncate">{file.name}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-foreground">
+                    Certificate {certIndex + 1}
+                  </span>
+                  {formData.certificates.length > 1 && (
                     <button
                       type="button"
-                      className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      onClick={() => removeFile(index, 'certificate')}
+                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                      onClick={() => removeCertificate(certIndex)}
+                      aria-label={`Remove certificate ${certIndex + 1}`}
                     >
                       <X size={16} />
                     </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="flex flex-col gap-2 col-span-full">
+                    <label className="text-sm font-semibold text-foreground">Certificate Name *</label>
+                    <input
+                      type="text"
+                      value={cert.certificateName}
+                      onChange={(e) => updateCertificate(certIndex, 'certificateName', e.target.value)}
+                      placeholder="e.g. STCW Basic Safety"
+                      required
+                      className={inputClass}
+                    />
                   </div>
-                ))}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-foreground">Issue Date *</label>
+                    <input
+                      type="date"
+                      value={cert.issueDate}
+                      onChange={(e) => updateCertificate(certIndex, 'issueDate', e.target.value)}
+                      required
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-foreground">Expiry Date *</label>
+                    <input
+                      type="date"
+                      value={cert.expiryDate}
+                      onChange={(e) => updateCertificate(certIndex, 'expiryDate', e.target.value)}
+                      required
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-foreground">Certificate Document *</label>
+                  <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-4 hover:border-muted-foreground/50">
+                    <input
+                      ref={(el) => {
+                        certificateFileInputRefs.current[certIndex] = el;
+                      }}
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleFileUpload(e, 'certificate', certIndex)}
+                      className="sr-only"
+                    />
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      onClick={() => certificateFileInputRefs.current[certIndex]?.click()}
+                    >
+                      <Upload size={18} />
+                      Upload Certificate Document
+                    </button>
+                    <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 10MB)</p>
+                  </div>
+                  {cert.document && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 mt-2">
+                      <span className="text-sm text-foreground truncate">{cert.document.name}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={() => removeFile(0, 'certificate', certIndex)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
 
