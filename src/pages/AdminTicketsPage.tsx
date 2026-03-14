@@ -1182,6 +1182,7 @@ const AdminTicketsPage = () => {
           <TabsContent value="tickets" className="mt-6">
         <>
       <div className="flex flex-wrap items-center gap-4 mb-6">
+        <Button onClick={openCreateModal}>Create ticket</Button>
         <div className="flex flex-col gap-2 min-w-[200px]">
           <label className="text-sm font-medium">
             Filter by project
