@@ -353,6 +353,36 @@ export async function sendSuperadminCrewTicketEmail(ticketId: string): Promise<u
   return response.json();
 }
 
+/** Delete a crew ticket. DELETE /api/crew/:crew_id/ticket/:ticket_id (superadmin only) */
+export async function deleteSuperadminCrewTicket(crewId: string, ticketId: string): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/api/crew/${encodeURIComponent(crewId)}/ticket/${encodeURIComponent(ticketId)}`,
+    {
+      method: 'DELETE',
+      headers: getHeaders(),
+      signal: controller.signal,
+    }
+  );
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let msg = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const err = JSON.parse(text);
+        msg = err?.message || err?.error || msg;
+      } catch {
+        msg = text;
+      }
+    }
+    throw new Error(msg);
+  }
+}
+
 /** Crew tickets for superadmin - GET /api/crew-ticket (uses superadmin token; project filter applied client-side if backend omits it) */
 export async function getSuperadminCrewTickets(projectId?: string): Promise<{ crewTickets: import('./ticket').CrewTicketApi[] }> {
   const controller = new AbortController();

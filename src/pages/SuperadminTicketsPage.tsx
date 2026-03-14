@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, FileCheck, Send } from 'lucide-react';
+import { FileText, FileCheck, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail } from '../api/superadmin';
+import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket } from '../api/superadmin';
 import type { CrewTicketApi } from '../api/ticket';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +30,8 @@ const SuperadminTicketsPage = () => {
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
   const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
+  const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
+  const [ticketToDelete, setTicketToDelete] = useState<CrewTicketApi | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +149,42 @@ const SuperadminTicketsPage = () => {
       toast.error('Send failed', { description: err instanceof Error ? err.message : 'Failed to send ticket email.' });
     } finally {
       setSendingTicketId(null);
+    }
+  };
+
+  const getCrewId = (t: CrewTicketApi) =>
+    t.crew_id?._id ?? (t.crew_id as { id?: string; _id?: string })?.id ?? (t.crew_id as { id?: string; _id?: string })?._id ?? '';
+
+  const handleDeleteTicketClick = (t: CrewTicketApi, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const crewId = getCrewId(t);
+    if (!crewId) {
+      toast.error('Delete failed', { description: 'Could not determine crew ID for this ticket.' });
+      return;
+    }
+    setTicketToDelete(t);
+  };
+
+  const handleConfirmDelete = async () => {
+    const t = ticketToDelete;
+    if (!t) return;
+    const crewId = getCrewId(t);
+    if (!crewId) {
+      toast.error('Delete failed', { description: 'Could not determine crew ID for this ticket.' });
+      setTicketToDelete(null);
+      return;
+    }
+    setTicketToDelete(null);
+    setDeletingTicketId(t.id);
+    try {
+      await deleteSuperadminCrewTicket(crewId, t.id);
+      setTickets((prev) => prev.filter((x) => x.id !== t.id));
+      setSelectedTicket((current) => (current?.id === t.id ? null : current));
+      toast.success('Ticket deleted', { description: 'The ticket was deleted successfully.' });
+    } catch (err) {
+      toast.error('Delete failed', { description: err instanceof Error ? err.message : 'Failed to delete ticket.' });
+    } finally {
+      setDeletingTicketId(null);
     }
   };
 
@@ -277,6 +317,23 @@ const SuperadminTicketsPage = () => {
                       </>
                     )}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => handleDeleteTicketClick(t, e)}
+                    disabled={deletingTicketId === t.id}
+                    title="Delete ticket"
+                    className="text-destructive hover:text-destructive"
+                  >
+                    {deletingTicketId === t.id ? (
+                      <span className="superadmin-ticket-send-spinner" />
+                    ) : (
+                      <>
+                        <Trash2 size={16} />
+                        Delete
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             ))}
@@ -398,10 +455,54 @@ const SuperadminTicketsPage = () => {
                     </>
                   )}
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteTicketClick(selectedTicket, e); }}
+                  disabled={deletingTicketId === selectedTicket.id}
+                  title="Delete ticket"
+                  className="text-destructive hover:text-destructive"
+                >
+                  {deletingTicketId === selectedTicket.id ? (
+                    <span className="superadmin-ticket-send-spinner" />
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      Delete
+                    </>
+                  )}
+                </Button>
               </div>
             </section>
           </div>
         )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!ticketToDelete} onOpenChange={(open) => !open && setTicketToDelete(null)}>
+        <DialogContent className="max-w-sm" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete ticket</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this ticket? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={() => setTicketToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={!!ticketToDelete && deletingTicketId === ticketToDelete.id}
+            >
+              {ticketToDelete && deletingTicketId === ticketToDelete.id ? (
+                <span className="superadmin-ticket-send-spinner" />
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

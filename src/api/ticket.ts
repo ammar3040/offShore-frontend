@@ -33,6 +33,10 @@ export interface CrewTicketApi {
   children: number;
   infants: number;
   trip: string;
+  /** Price in GBP (backend converts from original currency) */
+  price?: number;
+  /** Cashback in GBP */
+  cashback?: number;
   /** URL to uploaded ticket PDF when present */
   pdf?: string;
   createdAt?: string;

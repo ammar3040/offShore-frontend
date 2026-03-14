@@ -57,6 +57,7 @@ export interface BookFlightPayload {
   };
   markup?: number;
   cashback?: number;
+  price?: number;
   originalCurrency?: string;
   adult: number;
   children: number;
@@ -143,6 +144,7 @@ export async function bookFlight(params: {
   flight: Flight;
   markup?: number;
   cashback?: number;
+  price?: number;
   originalCurrency?: string;
   adult?: number;
   children?: number;
@@ -203,6 +205,7 @@ export async function bookFlight(params: {
     },
     markup: params.markup ?? 0,
     cashback: params.cashback ?? 0,
+    price: params.price ?? 0,
     originalCurrency: params.originalCurrency ?? 'USD',
     adult: params.adult ?? 1,
     children: params.children ?? 0,

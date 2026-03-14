@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, Plus, ChevronDown, Search, Ticket as TicketIcon, X } from 'lucide-react';
+import { Plane, ChevronLeft, ChevronDown, Search, Ticket as TicketIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -693,12 +693,14 @@ const AdminTicketsPage = () => {
             : adminMarkup != null && firstFare?.totalFare != null
               ? Math.round(firstFare.totalFare * adminMarkup / 100)
               : undefined;
+        const priceAmount = firstFare?.totalFare ?? 0;
         const data = await bookFlight({
           project_id: searchProjectId,
           crew_ids: searchCrewIds,
           flight,
           markup: markupAmount,
           cashback: flight.cashback ?? 0,
+          price: priceAmount,
           originalCurrency: currency,
           adult: adults,
           children: 0,
@@ -819,12 +821,6 @@ const AdminTicketsPage = () => {
                 Search & Book
               </TabsTrigger>
             </TabsList>
-            {activeTab === 'tickets' && (
-              <Button onClick={openCreateModal}>
-                <Plus size={18} />
-                Create ticket
-              </Button>
-            )}
           </div>
 
           <TabsContent value="search" className="mt-6">
@@ -1247,12 +1243,6 @@ const AdminTicketsPage = () => {
               ? 'Create tickets for crew on your projects.'
               : 'Try selecting "All projects" or create new tickets.'}
           </p>
-          {projectFilter === 'all' && (
-                <Button onClick={openCreateModal}>
-              <Plus size={18} />
-              Create ticket
-            </Button>
-          )}
         </div>
       ) : (
         <Card>
@@ -1266,6 +1256,8 @@ const AdminTicketsPage = () => {
               <TableHead>Class</TableHead>
               <TableHead>Trip</TableHead>
               <TableHead>Passengers</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Cashback</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1294,6 +1286,12 @@ const AdminTicketsPage = () => {
                   {[ticket.adult, ticket.children, ticket.infants]
                     .filter((n) => n != null && n > 0)
                     .join(' / ') || '—'}
+                </TableCell>
+                <TableCell>
+                  {ticket.price != null ? `£${ticket.price.toLocaleString()}` : '—'}
+                </TableCell>
+                <TableCell>
+                  {ticket.cashback != null ? `£${ticket.cashback.toLocaleString()}` : '—'}
                 </TableCell>
               </TableRow>
             ))}
@@ -1346,6 +1344,14 @@ const AdminTicketsPage = () => {
                       .filter(Boolean)
                       .join(', ') || '—'}
                   </dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Price</dt>
+                  <dd>{selectedTicket.price != null ? `£${selectedTicket.price.toLocaleString()}` : '—'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Cashback</dt>
+                  <dd>{selectedTicket.cashback != null ? `£${selectedTicket.cashback.toLocaleString()}` : '—'}</dd>
                 </div>
               </dl>
             </section>
