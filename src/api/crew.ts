@@ -299,17 +299,18 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   if (data.linkedin?.trim()) {
     formData.append('linkedin', data.linkedin.trim());
   }
-  if (data.visa?.trim()) {
-    formData.append('visa', data.visa.trim());
-  }
-  if (data.visaCountry?.trim()) {
-    formData.append('visa_country', data.visaCountry.trim());
-  }
-  if (data.visaIssueDate?.trim()) {
-    formData.append('visa_issue_date', data.visaIssueDate.trim());
-  }
-  if (data.visaExpiryDate?.trim()) {
-    formData.append('visa_expiry_date', data.visaExpiryDate.trim());
+  // Visa: backend expects single 'visa' string; combine country + issue + expiry dates
+  const hasVisaCountry = data.visaCountry?.trim();
+  const hasVisaIssueDate = data.visaIssueDate?.trim();
+  const hasVisaExpiryDate = data.visaExpiryDate?.trim();
+  const hasVisaFreeform = data.visa?.trim();
+  if (hasVisaCountry || hasVisaIssueDate || hasVisaExpiryDate || hasVisaFreeform) {
+    const visaParts: string[] = [];
+    if (hasVisaCountry) visaParts.push(`Country: ${data.visaCountry!.trim()}`);
+    if (hasVisaIssueDate) visaParts.push(`Issue: ${data.visaIssueDate!.trim()}`);
+    if (hasVisaExpiryDate) visaParts.push(`Expiry: ${data.visaExpiryDate!.trim()}`);
+    if (hasVisaFreeform) visaParts.push(data.visa!.trim());
+    formData.append('visa', visaParts.join(' | ').trim());
   }
 
   data.passportDocuments.forEach((file) => {

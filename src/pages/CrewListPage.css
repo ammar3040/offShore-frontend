@@ -733,6 +733,69 @@
   padding: 4px 0;
 }
 
+.crew-detail-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 24px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.crew-detail-spinner {
+  animation: crew-detail-spin 0.8s linear infinite;
+  color: #3b82f6;
+}
+
+@keyframes crew-detail-spin {
+  to { transform: rotate(360deg); }
+}
+
+.crew-detail-error {
+  padding: 24px 0;
+}
+
+.crew-detail-link {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.crew-detail-link:hover {
+  text-decoration: underline;
+}
+
+.crew-detail-field--wide {
+  grid-column: 1 / -1;
+}
+
+.crew-detail-projects-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crew-detail-project-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.crew-detail-project-title {
+  font-weight: 500;
+}
+
+.crew-detail-project-status {
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .crew-detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -769,7 +832,7 @@
 
 .crew-detail-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 14px 24px;
 }
 
@@ -777,6 +840,11 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+}
+
+.crew-detail-field--wide .crew-detail-value {
+  word-break: break-word;
 }
 
 .crew-detail-label {
@@ -791,7 +859,11 @@
   font-size: 14px;
   color: #1f2937;
   font-weight: 500;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
+
 
 .crew-detail-actions {
   display: flex;
@@ -921,4 +993,24 @@
 .layout--dark .crew-detail-close-btn:hover {
   background: hsl(var(--accent));
   color: hsl(var(--foreground));
+}
+
+.layout--dark .crew-detail-loading {
+  color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .crew-detail-spinner {
+  color: hsl(var(--primary));
+}
+
+.layout--dark .crew-detail-link {
+  color: hsl(var(--primary));
+}
+
+.layout--dark .crew-detail-project-item {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .crew-detail-project-status {
+  color: hsl(var(--muted-foreground));
 }

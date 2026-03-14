@@ -1111,7 +1111,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
         </div>
 
         {/* Visa Details Section */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+        <div className="border-b border-border pb-6 mb-6 last:border-b-0 last:pb-0">
           <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Visa Details</h3>
           <div className="grid grid-cols-2 gap-5">
             <div className="flex flex-col gap-2">
