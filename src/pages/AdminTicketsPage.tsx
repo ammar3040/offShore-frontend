@@ -436,7 +436,7 @@ const AdminTicketsPage = () => {
   const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
-  const [adminMarkup, setAdminMarkup] = useState<number | null>(null);
+  const [_adminMarkup, setAdminMarkup] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
