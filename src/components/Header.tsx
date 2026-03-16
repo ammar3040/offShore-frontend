@@ -36,17 +36,23 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   const name = user?.name ?? 'Admin';
   const initials = name ? name.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase() : 'AD';
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchProfile = () => {
     getAdminProfile()
       .then((profile) => {
-        if (!cancelled) {
-          if (profile.markup != null) setMarkup(profile.markup);
-          if (profile.balance != null) setBalance(profile.balance);
-        }
+        if (profile.markup != null) setMarkup(profile.markup);
+        if (profile.balance != null) setBalance(profile.balance);
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    const handleBalanceRefresh = () => fetchProfile();
+    window.addEventListener('admin-balance-refresh', handleBalanceRefresh);
+    return () => window.removeEventListener('admin-balance-refresh', handleBalanceRefresh);
   }, []);
 
   useEffect(() => {

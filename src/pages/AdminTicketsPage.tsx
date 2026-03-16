@@ -687,21 +687,14 @@ const AdminTicketsPage = () => {
       setBookingFlightId(flight.id);
       try {
         const firstFare = flight.fares?.[0];
-        const markupAmount =
-          flight.markup != null
-            ? flight.markup
-            : adminMarkup != null && firstFare?.totalFare != null
-              ? Math.round(firstFare.totalFare * adminMarkup / 100)
-              : undefined;
         const priceAmount = firstFare?.totalFare ?? 0;
         const data = await bookFlight({
           project_id: searchProjectId,
           crew_ids: searchCrewIds,
           flight,
-          markup: markupAmount,
           cashback: flight.cashback ?? 0,
           price: priceAmount,
-          originalCurrency: currency,
+          currency,
           adult: adults,
           children: 0,
           infants: 0,
@@ -709,6 +702,7 @@ const AdminTicketsPage = () => {
         const ticketCount = Array.isArray(data.tickets) ? data.tickets.length : searchCrewIds.length;
         const desc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${data.bookingReference ? ` Ref: ${data.bookingReference}` : ''}`;
         toast.success('Ticket booked successfully!', { description: desc });
+        window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
         setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
         setSearchTotalCount((prev) => Math.max(0, prev - 1));
       } catch (err) {
@@ -717,7 +711,7 @@ const AdminTicketsPage = () => {
         setBookingFlightId(null);
       }
     },
-    [searchProjectId, searchCrewIds, adults, currency, adminMarkup]
+    [searchProjectId, searchCrewIds, adults, currency]
   );
 
   const handleSearchBack = useCallback(() => {
