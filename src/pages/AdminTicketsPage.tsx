@@ -421,7 +421,7 @@ const AdminTicketsPage = () => {
   const [arrivalTime, setArrivalTime] = useState('');
   const [adults, setAdults] = useState(1);
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
-  const [currency, setCurrency] = useState<CurrencyCode>('USD');
+  const [currency, setCurrency] = useState<CurrencyCode>('GBP');
   const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
   const [searchTotalCount, setSearchTotalCount] = useState<number>(0);
   const [searchPage, setSearchPage] = useState<number>(1);
