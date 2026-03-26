@@ -91,14 +91,26 @@ const API_BASE = env.apiBaseUrl || '';
  */
 export async function searchFlights(payload: SearchPayload): Promise<SearchFlightsResult> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(
+    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+    env.apiTimeout,
+  );
 
-  const response = await fetch(`${API_BASE}/api/crew-ticket/search-flights`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(payload),
-    signal: controller.signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/api/crew-ticket/search-flights`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
+      throw new Error(`Flight search timed out after ${env.apiTimeout / 1000}s. Please try again.`);
+    }
+    throw err;
+  }
   clearTimeout(timeoutId);
 
   if (!response.ok) {
@@ -155,7 +167,10 @@ export async function bookFlight(params: {
   [key: string]: unknown;
 }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(
+    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+    env.apiTimeout,
+  );
 
   const body: BookFlightPayload = {
     project_id: params.project_id,
@@ -209,12 +224,21 @@ export async function bookFlight(params: {
     infants: params.infants ?? 0,
   };
 
-  const response = await fetch(`${API_BASE}/api/crew-ticket/book`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/api/crew-ticket/book`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
+      throw new Error(`Booking request timed out after ${env.apiTimeout / 1000}s. Please try again.`);
+    }
+    throw err;
+  }
   clearTimeout(timeoutId);
 
   const data = await response.json().catch(() => ({}));
