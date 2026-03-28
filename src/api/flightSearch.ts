@@ -80,77 +80,9 @@ function getHeaders(): HeadersInit {
 
 const API_BASE = env.apiBaseUrl || '';
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Paginated envelope: { flights: Flight[], pagination: { total, page, limit } } or { flights, total, page?, limit? }
-function parseSearchResult(data: unknown): SearchFlightsResult {
-  if (Array.isArray(data)) {
-    return { flights: data as Flight[], total: (data as Flight[]).length };
-  }
-  const d = data as Record<string, unknown>;
-  const flights = Array.isArray(d?.flights) ? (d.flights as Flight[]) : [];
-  const pagination = d?.pagination as Record<string, number> | undefined;
-  const total =
-    typeof pagination?.total === 'number'
-      ? pagination.total
-      : typeof d?.total === 'number'
-        ? (d.total as number)
-        : flights.length;
-  const page = typeof pagination?.page === 'number' ? pagination.page : (typeof d?.page === 'number' ? (d.page as number) : undefined);
-  const limit = typeof pagination?.limit === 'number' ? pagination.limit : (typeof d?.limit === 'number' ? (d.limit as number) : undefined);
-  return { flights, total, page, limit };
-}
-
-async function pollSearchResult(jobId: string): Promise<SearchFlightsResult> {
-  const POLL_INTERVAL_MS = 2000;
-  const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-
-  while (Date.now() < deadline) {
-    await sleep(POLL_INTERVAL_MS);
-
-    const pollController = new AbortController();
-    const pollTimeoutId = setTimeout(() => pollController.abort(), 10_000);
-
-    let res: Response;
-    try {
-      res = await fetch(`${API_BASE}/api/crew-ticket/search-flights/result/${jobId}`, {
-        headers: getHeaders(),
-        signal: pollController.signal,
-      });
-    } catch {
-      clearTimeout(pollTimeoutId);
-      continue; // transient network error — retry
-    }
-    clearTimeout(pollTimeoutId);
-
-    if (res.status === 202) continue; // still pending
-
-    if (!res.ok) {
-      let message = `Search failed (${res.status})`;
-      try {
-        const err = await res.json();
-        message = (err as { error?: string }).error || message;
-      } catch {
-        // ignore
-      }
-      throw new Error(message);
-    }
-
-    return parseSearchResult(await res.json());
-  }
-
-  throw new Error('Flight search timed out waiting for results. Please try again.');
-}
-
 /**
  * POST /api/crew-ticket/search-flights – search flights with given criteria.
  * Returns paginated result: { flights, total, page?, limit? }. On error throws with message.
- *
- * Cache hit  → 200 with flights immediately.
- * Cache miss → 202 with { jobId } → polls GET /result/:jobId every 2s until 200.
  *
  * Optional time-based filters (backend applies to first leg):
  * - departureTime: HH:mm – minimum departure time
@@ -159,35 +91,15 @@ async function pollSearchResult(jobId: string): Promise<SearchFlightsResult> {
  */
 export async function searchFlights(payload: SearchPayload): Promise<SearchFlightsResult> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
-    env.apiTimeout,
-  );
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}/api/crew-ticket/search-flights`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
-      throw new Error(`Flight search timed out after ${env.apiTimeout / 1000}s. Please try again.`);
-    }
-    throw err;
-  }
+  const response = await fetch(`${API_BASE}/api/crew-ticket/search-flights`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(payload),
+    signal: controller.signal,
+  });
   clearTimeout(timeoutId);
-
-  // Cache miss: backend is fetching from Riya API asynchronously
-  if (response.status === 202) {
-    const pending = await response.json();
-    const jobId = (pending as { jobId?: string }).jobId;
-    if (!jobId) throw new Error('Search is processing but no job ID was returned.');
-    return pollSearchResult(jobId);
-  }
 
   if (!response.ok) {
     let message = `Search failed (${response.status})`;
@@ -200,7 +112,24 @@ export async function searchFlights(payload: SearchPayload): Promise<SearchFligh
     throw new Error(message);
   }
 
-  return parseSearchResult(await response.json());
+  const data = await response.json();
+
+  // Paginated envelope: { flights: Flight[], pagination: { total, page, limit } } or { flights, total, page?, limit? }
+  if (Array.isArray(data)) {
+    return { flights: data, total: data.length };
+  }
+  const flights = Array.isArray(data?.flights) ? data.flights : [];
+  const pagination = data?.pagination;
+  const total =
+    typeof pagination?.total === 'number'
+      ? pagination.total
+      : typeof data?.total === 'number'
+        ? data.total
+        : flights.length;
+  const page = typeof pagination?.page === 'number' ? pagination.page : data?.page;
+  const limit = typeof pagination?.limit === 'number' ? pagination.limit : data?.limit;
+
+  return { flights, total, page, limit };
 }
 
 /**
@@ -226,10 +155,7 @@ export async function bookFlight(params: {
   [key: string]: unknown;
 }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
-    env.apiTimeout,
-  );
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const body: BookFlightPayload = {
     project_id: params.project_id,
@@ -283,21 +209,12 @@ export async function bookFlight(params: {
     infants: params.infants ?? 0,
   };
 
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}/api/crew-ticket/book`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
-      throw new Error(`Booking request timed out after ${env.apiTimeout / 1000}s. Please try again.`);
-    }
-    throw err;
-  }
+  const response = await fetch(`${API_BASE}/api/crew-ticket/book`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  });
   clearTimeout(timeoutId);
 
   const data = await response.json().catch(() => ({}));
