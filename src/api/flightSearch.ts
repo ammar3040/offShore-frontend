@@ -219,7 +219,9 @@ export async function bookFlight(params: {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = (data as { error?: string }).error || `Booking failed (${response.status})`;
+    const errBody = data as { error?: string; message?: string };
+    const message =
+      errBody.error || errBody.message || `Booking failed (${response.status})`;
     throw new Error(message);
   }
 
