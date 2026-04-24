@@ -111,6 +111,10 @@ export interface CrewMemberApi {
   certificate_issue_date?: string;
   certificate_expiry_date?: string;
   crew_certificate?: { issue_date?: string; expiry_date?: string };
+  /** Server-computed availability for list views: GREEN / RED / YELLOW (some responses use ORANGE for "ending soon"). */
+  signal?: string;
+  /** Active project assignments when returned on the crew list payload. */
+  activeProjects?: CrewAssignedProject[];
 }
 
 export interface GetCrewResponse {

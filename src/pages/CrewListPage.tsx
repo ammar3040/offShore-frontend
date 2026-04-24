@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send, User, Mail, MapPin, FileText, CreditCard, UserMinus, Briefcase, Award, FolderOpen, Loader2 } from 'lucide-react';
 import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
+import { availabilityFromCrewSignal, getCrewAvailabilityLabel, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import {
@@ -22,6 +23,12 @@ function getInitials(firstname: string, lastname: string): string {
 function field(value: string | undefined): string {
   return value?.trim() || '—';
 }
+
+const AVAILABILITY_DOT: Record<CrewAvailability, { className: string }> = {
+  available: { className: 'user-mgmt-availability-dot user-mgmt-availability-dot--available' },
+  onProject: { className: 'user-mgmt-availability-dot user-mgmt-availability-dot--on-project' },
+  endingSoon: { className: 'user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon' },
+};
 
 const CrewListPage = () => {
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
@@ -63,22 +70,30 @@ const CrewListPage = () => {
 
   const pageSize = 5;
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getCrewList()
-      .then((res) => {
-        if (!cancelled) setCrew(res.crew ?? []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load crew');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
+  const loadCrew = useCallback(async (withListLoading: boolean) => {
+    if (withListLoading) {
+      setLoading(true);
+      setError(null);
+    }
+    try {
+      const crewRes = await getCrewList();
+      setCrew(crewRes.crew ?? []);
+    } catch (err) {
+      if (withListLoading) {
+        setError(err instanceof Error ? err.message : 'Failed to load crew');
+      }
+    } finally {
+      if (withListLoading) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadCrew(true);
+  }, [loadCrew]);
+
+  const refreshCrewData = useCallback(() => {
+    return loadCrew(false);
+  }, [loadCrew]);
 
   const filteredCrew = useMemo(() => {
     let list = crew;
@@ -139,6 +154,7 @@ const CrewListPage = () => {
     try {
       await inviteCrewToProject(selectedProjectId, [inviteCrewMember.id]);
       setInviteSuccess(true);
+      void refreshCrewData();
       setTimeout(closeInviteModal, 1200);
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : 'Failed to send invitation');
@@ -167,8 +183,7 @@ const CrewListPage = () => {
         }
       }
       handleCloseAddModal();
-      const list = await getCrewList();
-      setCrew(list.crew ?? []);
+      await refreshCrewData();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Failed to add crew member');
     } finally {
@@ -210,8 +225,7 @@ const CrewListPage = () => {
       }
       closeEditModal();
       closeCrewDetail();
-      const list = await getCrewList();
-      setCrew(list.crew ?? []);
+      await refreshCrewData();
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Failed to update crew member');
     } finally {
@@ -239,8 +253,7 @@ const CrewListPage = () => {
       await deleteCrewMember(deleteCrewId);
       closeDeleteConfirm();
       closeCrewDetail();
-      const list = await getCrewList();
-      setCrew(list.crew ?? []);
+      await refreshCrewData();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete crew member');
     } finally {
@@ -282,7 +295,7 @@ const CrewListPage = () => {
       setRemoveSuccess(true);
       setTimeout(() => {
         closeRemoveFromProjectModal();
-        getCrewList().then((res) => setCrew(res.crew ?? []));
+        void refreshCrewData();
       }, 1200);
     } catch (err) {
       setRemoveError(err instanceof Error ? err.message : 'Failed to remove crew from project');
@@ -368,6 +381,20 @@ const CrewListPage = () => {
             }}
           />
         </div>
+        <div className="user-mgmt-availability-legend" role="list" aria-label="Availability legend">
+          <span className="user-mgmt-availability-legend-item" role="listitem">
+            <span className="user-mgmt-availability-dot user-mgmt-availability-dot--available" aria-hidden />
+            <span>Available</span>
+          </span>
+          <span className="user-mgmt-availability-legend-item" role="listitem">
+            <span className="user-mgmt-availability-dot user-mgmt-availability-dot--on-project" aria-hidden />
+            <span>On project</span>
+          </span>
+          <span className="user-mgmt-availability-legend-item" role="listitem">
+            <span className="user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon" aria-hidden />
+            <span>On project, ends in ≤7 days</span>
+          </span>
+        </div>
       </div>
 
       <div className="user-mgmt-table-wrap">
@@ -396,7 +423,10 @@ const CrewListPage = () => {
                   </td>
                 </tr>
               ) : (
-                paginatedCrew.map((member) => (
+                paginatedCrew.map((member) => {
+                  const kind = availabilityFromCrewSignal(member.signal);
+                  const label = getCrewAvailabilityLabel(kind);
+                  return (
                   <tr
                     key={member.id}
                     className="user-mgmt-row-clickable"
@@ -404,6 +434,11 @@ const CrewListPage = () => {
                   >
                     <td>
                       <div className="user-mgmt-user-cell">
+                        <span
+                          className={AVAILABILITY_DOT[kind].className}
+                          title={label}
+                          aria-label={label}
+                        />
                         <div className="user-mgmt-avatar">
                           {getInitials(member.firstname, member.lastname)}
                         </div>
@@ -468,7 +503,8 @@ const CrewListPage = () => {
                       </div>
                     </td>
                   </tr>
-                ))
+                );
+                })
               )}
             </tbody>
           </table>

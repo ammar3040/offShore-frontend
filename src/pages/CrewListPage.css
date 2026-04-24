@@ -132,6 +132,41 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
+.user-mgmt-availability-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.user-mgmt-availability-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-mgmt-availability-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.user-mgmt-availability-dot--available {
+  background-color: #22c55e;
+}
+
+.user-mgmt-availability-dot--on-project {
+  background-color: #ef4444;
+}
+
+.user-mgmt-availability-dot--ending-soon {
+  background-color: #eab308;
+}
+
 .user-mgmt-select-wrap {
   position: relative;
 }
