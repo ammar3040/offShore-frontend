@@ -1372,6 +1372,38 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.2s, border-color 0.2s;
 }
+
+/* Marine fare — vertical ribbon along the left edge */
+.atfc-card--marine {
+  position: relative;
+  padding-left: 28px;
+  border-left: none;
+}
+
+.atfc-card--marine::before {
+  content: 'MARINE';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 55%, #0c4a6e 100%);
+  color: #f0f9ff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  border-radius: 16px 0 0 16px;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
 .atfc-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); }
 
 /* Main row */
@@ -2139,6 +2171,16 @@
   background: hsl(var(--card));
   border-color: hsl(var(--border));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.layout--dark .atfc-card--marine::before {
+  background: linear-gradient(
+    180deg,
+    hsl(199 89% 35%) 0%,
+    hsl(201 80% 28%) 55%,
+    hsl(203 76% 20%) 100%
+  );
+  color: hsl(204 94% 96%);
 }
 
 .layout--dark .atfc-card:hover {

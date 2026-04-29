@@ -219,6 +219,13 @@ function FlightResultCard({
   const [expanded, setExpanded] = useState(false);
   const fares = flight.fares ?? [];
 
+  const hasMarineFare = fares.some((f) => {
+    const ind = typeof f.indicator === 'string' ? f.indicator.trim().toUpperCase() : '';
+    if (ind === 'M') return true;
+    const label = `${f.name ?? ''} ${f.type ?? ''}`;
+    return /\bmarine\b/i.test(label);
+  });
+
   const firstLeg = flight.legs?.[0];
   const lastLeg = flight.legs?.[flight.legs.length - 1];
   const firstSeg = firstLeg?.itinerary?.[0];
@@ -236,7 +243,7 @@ function FlightResultCard({
   const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
 
   return (
-    <div className="atfc-card">
+    <div className={'atfc-card' + (hasMarineFare ? ' atfc-card--marine' : '')}>
       {/* ── Main row ── */}
       <div className="atfc-main">
         {/* Airline */}
