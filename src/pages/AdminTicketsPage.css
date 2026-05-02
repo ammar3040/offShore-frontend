@@ -865,6 +865,110 @@
   cursor: pointer;
 }
 
+.admin-tickets-search-radio-group-trip {
+  gap: 16px 20px;
+}
+
+.admin-tickets-multi-hint {
+  grid-column: 1 / -1;
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.admin-tickets-multi-nonstop {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.admin-tickets-multi-nonstop-label {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #374151;
+  cursor: pointer;
+  padding-top: 1px;
+}
+
+.admin-tickets-multi-active-hint {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  font-size: 0.8125rem;
+  color: #4b5563;
+}
+
+.admin-tickets-multi-segments {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-tickets-multi-seg-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.admin-tickets-multi-seg-card:hover {
+  border-color: #d1d5db;
+}
+
+.admin-tickets-multi-seg-card-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.admin-tickets-multi-seg-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.admin-tickets-multi-seg-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.admin-tickets-multi-seg-remove {
+  color: #6b7280;
+}
+
+.admin-tickets-multi-seg-remove:hover {
+  color: #b91c1c;
+}
+
+.admin-tickets-multi-add-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-tickets-multi-add-cap {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.admin-tickets-results-count-note {
+  font-weight: 400;
+  color: #6b7280;
+}
+
 .admin-tickets-search-row-2 {
   display: contents;
 }
@@ -2382,6 +2486,42 @@
 .layout--dark .admin-tickets-search-error {
   background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
+}
+
+.layout--dark .admin-tickets-multi-hint,
+.layout--dark .admin-tickets-multi-active-hint {
+  color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .admin-tickets-multi-nonstop {
+  background: hsl(var(--muted) / 0.35);
+  border-color: hsl(var(--border));
+}
+
+.layout--dark .admin-tickets-multi-nonstop-label {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .admin-tickets-multi-seg-card {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.layout--dark .admin-tickets-multi-seg-card:hover {
+  border-color: hsl(var(--muted-foreground) / 0.35);
+}
+
+.layout--dark .admin-tickets-multi-seg-card-active {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25);
+}
+
+.layout--dark .admin-tickets-multi-seg-title {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .admin-tickets-results-count-note {
+  color: hsl(var(--muted-foreground));
 }
 
 .layout--dark .airport-combobox-input {

@@ -1,6 +1,8 @@
 .superadmin-dashboard {
   max-width: 1200px;
   margin: 0 auto;
+  container-type: inline-size;
+  container-name: superadmin-dashboard;
 }
 
 .superadmin-dashboard-header {
@@ -69,9 +71,42 @@
 
 .superadmin-dashboard-cards {
   display: grid;
+  /* Same as original: wrap when not enough width */
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 20px;
   margin-bottom: 32px;
+}
+
+.superadmin-dashboard-cards > .superadmin-dash-card {
+  min-width: 0;
+}
+
+/* Wide content area: all seven cards on one row (sidebar-aware via container query) */
+@container superadmin-dashboard (min-width: 900px) {
+  .superadmin-dashboard-cards {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .superadmin-dashboard-cards .superadmin-dash-card {
+    padding: 14px 10px;
+    gap: 10px;
+  }
+
+  .superadmin-dashboard-cards .superadmin-dash-card-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .superadmin-dashboard-cards .superadmin-dash-card-value {
+    font-size: clamp(14px, 2.2cqw, 20px);
+  }
+
+  .superadmin-dashboard-cards .superadmin-dash-card-label {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
 }
 
 .superadmin-dash-card {
@@ -355,11 +390,6 @@
 
   .superadmin-dashboard-greeting {
     font-size: 20px;
-  }
-
-  .superadmin-dashboard-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
   }
 
   .superadmin-dash-card {

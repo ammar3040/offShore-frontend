@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, ChevronDown, Search, Ticket as TicketIcon, X } from 'lucide-react';
+import { Plane, ChevronLeft, ChevronDown, Search, Ticket as TicketIcon, X, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -38,10 +38,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import './AdminTicketsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
 type TicketsTab = 'tickets' | 'search';
+
+/** Search tab trip UI; API uses SearchPayload tripType (`multi-city` maps to `one-way` per leg). */
+type SearchUITripType = 'one-way' | 'round-trip' | 'multi-city';
+
+const MAX_MULTI_SEGMENTS = 6;
+
+type MultiFlightSegment = {
+  id: string;
+  from: Airport | null;
+  to: Airport | null;
+  departureDate: string;
+  departureTime: string;
+  arrivalDate: string;
+  arrivalTime: string;
+};
+
+function newSegmentId(): string {
+  return `seg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isFlightNonStop(flight: Flight): boolean {
+  const firstLeg = flight.legs?.[0];
+  const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
+  return stops === 0;
+}
 
 const TRIP_OPTIONS: Array<{ value: CreateFlightTicketPayload['trip']; label: string }> = [
   { value: 'ONE_WAY', label: 'One way' },
@@ -80,6 +106,32 @@ function getCurrencySymbol(code: CurrencyCode): string {
 
 function toYYYYMMDD(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function initialMultiSegments(): MultiFlightSegment[] {
+  const a0 = AIRPORTS[0] ?? null;
+  const a1 = AIRPORTS[1] ?? null;
+  const dep = toYYYYMMDD(new Date());
+  return [
+    {
+      id: newSegmentId(),
+      from: a0,
+      to: a1,
+      departureDate: dep,
+      departureTime: '',
+      arrivalDate: '',
+      arrivalTime: '',
+    },
+    {
+      id: newSegmentId(),
+      from: a1,
+      to: a0,
+      departureDate: dep,
+      departureTime: '',
+      arrivalDate: '',
+      arrivalTime: '',
+    },
+  ];
 }
 
 function fmtTime(iso: string): string {
@@ -413,7 +465,10 @@ const AdminTicketsPage = () => {
 
   /* Search & Book tab state */
   const [activeTab, setActiveTab] = useState<TicketsTab>('search');
-  const [searchTripType, setSearchTripType] = useState<SearchPayload['tripType']>('one-way');
+  const [searchTripTypeUI, setSearchTripTypeUI] = useState<SearchUITripType>('one-way');
+  const [multiSegments, setMultiSegments] = useState<MultiFlightSegment[]>(() => initialMultiSegments());
+  const [activeMultiLegIndex, setActiveMultiLegIndex] = useState(0);
+  const [preferNonStopPerLeg, setPreferNonStopPerLeg] = useState(false);
   const [searchFrom, setSearchFrom] = useState<Airport | null>(() => AIRPORTS[0] ?? null);
   const [searchTo, setSearchTo] = useState<Airport | null>(() => AIRPORTS[1] ?? null);
   const [departureDate, setDepartureDate] = useState(() => toYYYYMMDD(new Date()));
@@ -436,7 +491,7 @@ const AdminTicketsPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [bookingFlightId, setBookingFlightId] = useState<string | null>(null);
+  const [bookingFlightKey, setBookingFlightKey] = useState<string | null>(null);
 
   /* Project & crew for search form */
   const [searchProjectId, setSearchProjectId] = useState<string>('');
@@ -474,6 +529,87 @@ const AdminTicketsPage = () => {
       prev.includes(crewId) ? prev.filter((id) => id !== crewId) : [...prev, crewId]
     );
   }, []);
+
+  const updateMultiSegment = useCallback((index: number, patch: Partial<MultiFlightSegment>) => {
+    setMultiSegments((prev) => {
+      const next = prev.map((s, i) => (i === index ? { ...s, ...patch } : s));
+      if (patch.to != null && index + 1 < next.length) {
+        next[index + 1] = { ...next[index + 1], from: patch.to };
+      }
+      return next;
+    });
+  }, []);
+
+  const addMultiSegment = useCallback(() => {
+    setMultiSegments((prev) => {
+      if (prev.length >= MAX_MULTI_SEGMENTS) return prev;
+      const last = prev[prev.length - 1];
+      return [
+        ...prev,
+        {
+          id: newSegmentId(),
+          from: last.to,
+          to: null,
+          departureDate: last.departureDate,
+          departureTime: '',
+          arrivalDate: '',
+          arrivalTime: '',
+        },
+      ];
+    });
+  }, []);
+
+  const removeMultiSegment = useCallback((index: number) => {
+    if (multiSegments.length <= 2) return;
+    const newLen = multiSegments.length - 1;
+    setMultiSegments((prev) => prev.filter((_, i) => i !== index));
+    setActiveMultiLegIndex((idx) => {
+      if (index < idx) return idx - 1;
+      return Math.max(0, Math.min(idx, newLen - 1));
+    });
+  }, [multiSegments.length]);
+
+  const changeSearchTripType = useCallback(
+    (next: SearchUITripType) => {
+      setSearchTripTypeUI(next);
+      setSearchResults(null);
+      setSearchTotalCount(0);
+      setSearchPage(1);
+      setSearchCriteria(null);
+      setSearchError(null);
+      if (next !== 'multi-city') {
+        setPreferNonStopPerLeg(false);
+      }
+      if (next === 'multi-city') {
+        setActiveMultiLegIndex(0);
+        if (searchFrom && searchTo) {
+          setMultiSegments([
+            {
+              id: newSegmentId(),
+              from: searchFrom,
+              to: searchTo,
+              departureDate,
+              departureTime,
+              arrivalDate,
+              arrivalTime,
+            },
+            {
+              id: newSegmentId(),
+              from: searchTo,
+              to: searchFrom,
+              departureDate,
+              departureTime,
+              arrivalDate,
+              arrivalTime,
+            },
+          ]);
+        } else {
+          setMultiSegments(initialMultiSegments());
+        }
+      }
+    },
+    [searchFrom, searchTo, departureDate, departureTime, arrivalDate, arrivalTime]
+  );
 
   const fetchTickets = useCallback(() => {
     setTicketsLoading(true);
@@ -598,71 +734,122 @@ const AdminTicketsPage = () => {
     setSubmitError(null);
   }, []);
 
-  const handleSearch = useCallback(async (overrides?: { departureDate?: string; departureTime?: string; arrivalDate?: string; arrivalTime?: string; returnDate?: string; returnTime?: string }) => {
-    if (!searchFrom || !searchTo) {
-      setSearchError('Please select From and To airports.');
-      return;
-    }
-    const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : departureDate;
-    const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : departureTime;
-    const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : arrivalDate;
-    const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : arrivalTime;
-    const rDate = overrides?.returnDate !== undefined ? overrides.returnDate : returnDate;
-    const rTime = overrides?.returnTime !== undefined ? overrides.returnTime : returnTime;
-    const criteria: SearchPayload = {
-      tripType: searchTripType,
-      from: searchFrom,
-      to: searchTo,
-      departureDate: dDate,
-      returnDate: searchTripType === 'round-trip' ? rDate : undefined,
-      ...(searchTripType === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
+  const handleSearch = useCallback(
+    async (overrides?: {
+      departureDate?: string;
+      departureTime?: string;
+      arrivalDate?: string;
+      arrivalTime?: string;
+      returnDate?: string;
+      returnTime?: string;
+    }) => {
+      let criteria: SearchPayload;
+
+      if (searchTripTypeUI === 'multi-city') {
+        const seg = multiSegments[activeMultiLegIndex];
+        if (!seg?.from || !seg?.to) {
+          setSearchError('Please select From and To airports for this flight.');
+          return;
+        }
+        const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : seg.departureDate;
+        const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : seg.departureTime;
+        const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : seg.arrivalDate;
+        const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : seg.arrivalTime;
+        criteria = {
+          tripType: 'one-way',
+          from: seg.from,
+          to: seg.to,
+          departureDate: dDate,
+          adults,
+          children: 0,
+          infants: 0,
+          cabinClass,
+          currency,
+          page: 1,
+          ...(searchProjectId ? { project_id: searchProjectId } : {}),
+          ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
+          ...(dTime.trim() ? { departureTime: dTime.trim() } : {}),
+          ...(aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
+          ...(aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
+          ...(preferNonStopPerLeg ? { stops: ['0'] } : {}),
+        };
+      } else {
+        if (!searchFrom || !searchTo) {
+          setSearchError('Please select From and To airports.');
+          return;
+        }
+        const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : departureDate;
+        const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : departureTime;
+        const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : arrivalDate;
+        const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : arrivalTime;
+        const rDate = overrides?.returnDate !== undefined ? overrides.returnDate : returnDate;
+        const rTime = overrides?.returnTime !== undefined ? overrides.returnTime : returnTime;
+        criteria = {
+          tripType: searchTripTypeUI,
+          from: searchFrom,
+          to: searchTo,
+          departureDate: dDate,
+          returnDate: searchTripTypeUI === 'round-trip' ? rDate : undefined,
+          ...(searchTripTypeUI === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
+          adults,
+          children: 0,
+          infants: 0,
+          cabinClass,
+          currency,
+          page: 1,
+          ...(searchProjectId ? { project_id: searchProjectId } : {}),
+          ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
+          ...(searchTripTypeUI === 'one-way' && dTime.trim() ? { departureTime: dTime.trim() } : {}),
+          ...(searchTripTypeUI === 'one-way' && aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
+          ...(searchTripTypeUI === 'one-way' && aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
+        };
+      }
+
+      setSearchCriteria(criteria);
+      setSearchResults(null);
+      setSearchTotalCount(0);
+      setSearchPage(1);
+      setSearchError(null);
+      setIsSearching(true);
+      try {
+        const data = await searchFlights(criteria);
+        setSearchResults(data.flights);
+        setSearchTotalCount(data.total);
+        setSearchPage(data.page ?? 1);
+      } catch (e) {
+        setSearchError(e instanceof Error ? e.message : 'Search failed');
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [
+      searchTripTypeUI,
+      multiSegments,
+      activeMultiLegIndex,
+      preferNonStopPerLeg,
+      searchFrom,
+      searchTo,
+      departureDate,
+      returnDate,
+      returnTime,
+      departureTime,
+      arrivalDate,
+      arrivalTime,
       adults,
-      children: 0,
-      infants: 0,
       cabinClass,
       currency,
-      page: 1,
-      ...(searchProjectId ? { project_id: searchProjectId } : {}),
-      ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-      ...(searchTripType === 'one-way' && dTime.trim() ? { departureTime: dTime.trim() } : {}),
-      ...(searchTripType === 'one-way' && aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
-      ...(searchTripType === 'one-way' && aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
-    };
-    setSearchCriteria(criteria);
-    setSearchResults(null);
-    setSearchTotalCount(0);
-    setSearchPage(1);
-    setSearchError(null);
-    setIsSearching(true);
-    try {
-      const data = await searchFlights(criteria);
-      setSearchResults(data.flights);
-      setSearchTotalCount(data.total);
-      setSearchPage(data.page ?? 1);
-    } catch (e) {
-      setSearchError(e instanceof Error ? e.message : 'Search failed');
-    } finally {
-      setIsSearching(false);
-    }
-  }, [
-    searchFrom,
-    searchTo,
-    searchTripType,
-    departureDate,
-    returnDate,
-    returnTime,
-    departureTime,
-    arrivalDate,
-    arrivalTime,
-    adults,
-    cabinClass,
-    currency,
-    searchProjectId,
-    searchCrewIds,
-  ]);
+      searchProjectId,
+      searchCrewIds,
+    ]
+  );
 
   const handleLoadMore = useCallback(async () => {
-    if (!searchCriteria || !searchFrom || !searchTo || isLoadingMore) return;
+    if (!searchCriteria || isLoadingMore) return;
+    if (searchTripTypeUI !== 'multi-city' && (!searchFrom || !searchTo)) return;
+    if (searchTripTypeUI === 'multi-city') {
+      const seg = multiSegments[activeMultiLegIndex];
+      if (!seg?.from || !seg?.to) return;
+    }
     const nextPage = searchPage + 1;
     const criteria: SearchPayload = {
       ...searchCriteria,
@@ -679,7 +866,16 @@ const AdminTicketsPage = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [searchCriteria, searchFrom, searchTo, searchPage, isLoadingMore]);
+  }, [
+    searchCriteria,
+    searchFrom,
+    searchTo,
+    searchPage,
+    isLoadingMore,
+    searchTripTypeUI,
+    multiSegments,
+    activeMultiLegIndex,
+  ]);
 
   const handleBookNow = useCallback(
     async (flight: Flight) => {
@@ -691,7 +887,9 @@ const AdminTicketsPage = () => {
         toast.error('No crew selected', { description: 'Please select at least one crew member in the search form.' });
         return;
       }
-      setBookingFlightId(flight.id);
+      const bookKey =
+        searchTripTypeUI === 'multi-city' ? `${activeMultiLegIndex}::${flight.id}` : flight.id;
+      setBookingFlightKey(bookKey);
       try {
         const firstFare = flight.fares?.[0];
         const priceAmount = firstFare?.totalFare ?? 0;
@@ -707,18 +905,62 @@ const AdminTicketsPage = () => {
           infants: 0,
         });
         const ticketCount = Array.isArray(data.tickets) ? data.tickets.length : searchCrewIds.length;
-        const desc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${data.bookingReference ? ` Ref: ${data.bookingReference}` : ''}`;
-        toast.success('Ticket booked successfully!', { description: desc });
-        window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
-        setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
-        setSearchTotalCount((prev) => Math.max(0, prev - 1));
+        const refNote = data.bookingReference ? ` Ref: ${data.bookingReference}` : '';
+        const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${refNote}`;
+
+        if (searchTripTypeUI === 'multi-city') {
+          const n = multiSegments.length;
+          const legDone = activeMultiLegIndex + 1;
+          if (activeMultiLegIndex < n - 1) {
+            toast.success(`Leg ${legDone} of ${n} booked (separate ticket).`, {
+              description: `${baseDesc} Search and book leg ${legDone + 1}.`,
+            });
+            window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
+            setActiveMultiLegIndex((i) => i + 1);
+            setSearchResults(null);
+            setSearchTotalCount(0);
+            setSearchPage(1);
+            setSearchCriteria(null);
+          } else {
+            toast.success(`All ${n} flight${n !== 1 ? 's' : ''} booked (separate tickets).`, {
+              description: baseDesc,
+            });
+            window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
+            setSearchResults(null);
+            setSearchTotalCount(0);
+            setSearchPage(1);
+            setSearchCriteria(null);
+            setActiveMultiLegIndex(0);
+            setMultiSegments(initialMultiSegments());
+          }
+        } else {
+          toast.success('Ticket booked successfully!', { description: baseDesc });
+          window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
+          setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
+          setSearchTotalCount((prev) => Math.max(0, prev - 1));
+        }
       } catch (err) {
-        toast.error('Booking failed', { description: err instanceof Error ? err.message : 'Unable to complete booking. Please try again.' });
+        const msg = err instanceof Error ? err.message : 'Unable to complete booking. Please try again.';
+        if (searchTripTypeUI === 'multi-city') {
+          toast.error('Booking failed for this leg', {
+            description: `${msg} Earlier legs in this flow are already separate bookings and are not undone.`,
+          });
+        } else {
+          toast.error('Booking failed', { description: msg });
+        }
       } finally {
-        setBookingFlightId(null);
+        setBookingFlightKey(null);
       }
     },
-    [searchProjectId, searchCrewIds, adults, currency]
+    [
+      searchProjectId,
+      searchCrewIds,
+      adults,
+      currency,
+      searchTripTypeUI,
+      activeMultiLegIndex,
+      multiSegments.length,
+    ]
   );
 
   const handleSearchBack = useCallback(() => {
@@ -728,6 +970,14 @@ const AdminTicketsPage = () => {
     setSearchCriteria(null);
     setSearchError(null);
   }, []);
+
+  const displayedSearchFlights = useMemo(() => {
+    if (!searchResults) return null;
+    if (searchTripTypeUI === 'multi-city' && preferNonStopPerLeg) {
+      return searchResults.filter(isFlightNonStop);
+    }
+    return searchResults;
+  }, [searchResults, searchTripTypeUI, preferNonStopPerLeg]);
 
   const handleSubmitTickets = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -859,13 +1109,13 @@ const AdminTicketsPage = () => {
                 <div className="admin-tickets-search-form">
                   <div className="admin-tickets-search-row admin-tickets-search-row-trip">
                     <span className="admin-tickets-search-row-label">Trip type</span>
-                    <div className="admin-tickets-search-radio-group">
+                    <div className="admin-tickets-search-radio-group admin-tickets-search-radio-group-trip">
                       <label className="admin-tickets-search-radio">
                         <input
                           type="radio"
                           name="trip-type"
-                          checked={searchTripType === 'one-way'}
-                          onChange={() => setSearchTripType('one-way')}
+                          checked={searchTripTypeUI === 'one-way'}
+                          onChange={() => changeSearchTripType('one-way')}
                         />
                         <span>One way</span>
                       </label>
@@ -873,13 +1123,27 @@ const AdminTicketsPage = () => {
                         <input
                           type="radio"
                           name="trip-type"
-                          checked={searchTripType === 'round-trip'}
-                          onChange={() => setSearchTripType('round-trip')}
+                          checked={searchTripTypeUI === 'round-trip'}
+                          onChange={() => changeSearchTripType('round-trip')}
                         />
-                        <span>Round Trip</span>
+                        <span>Round trip</span>
+                      </label>
+                      <label className="admin-tickets-search-radio">
+                        <input
+                          type="radio"
+                          name="trip-type"
+                          checked={searchTripTypeUI === 'multi-city'}
+                          onChange={() => changeSearchTripType('multi-city')}
+                        />
+                        <span>Multiple flights</span>
                       </label>
                     </div>
                   </div>
+                  {searchTripTypeUI === 'multi-city' ? (
+                    <p className="admin-tickets-multi-hint">
+                      Book each leg as its own ticket in one flow (separate from connecting flights sold as one itinerary).
+                    </p>
+                  ) : null}
                   <div className="admin-tickets-search-field">
                     <label className="block text-xs font-semibold text-[#374151] mb-2">Project</label>
                     <div className="admin-tickets-search-field-with-clear">
@@ -995,76 +1259,195 @@ const AdminTicketsPage = () => {
                       ) : null}
                     </div>
                   </div>
-                  <div className="admin-tickets-search-airports-row">
-                    <div className="admin-tickets-search-field">
-                      <label htmlFor="search-from">From</label>
-                      <AirportCombobox
-                        id="search-from"
-                        value={searchFrom}
-                        onChange={setSearchFrom}
-                      />
-                    </div>
-                    <div className="admin-tickets-search-field">
-                      <label htmlFor="search-to">To</label>
-                      <AirportCombobox
-                        id="search-to"
-                        value={searchTo}
-                        onChange={setSearchTo}
-                      />
-                    </div>
-                  </div>
-                  <div className="admin-tickets-search-field admin-tickets-search-date-picker">
-                    <DatePickerTime
-                      date={departureDate}
-                      time={departureTime}
-                      onDateChange={setDepartureDate}
-                      onTimeChange={setDepartureTime}
-                      dateLabel="Departure date"
-                      timeLabel="Min. departure time"
-                      datePlaceholder="Select date"
-                      showTime={searchTripType === 'one-way'}
-                      idPrefix="search-departure"
-                      onClear={searchTripType === 'one-way' ? () => { setDepartureTime(''); } : undefined}
-                      hasValue={!!departureTime}
-                    />
-                  </div>
-                  {searchTripType === 'one-way' ? (
-                    <div className="admin-tickets-search-field admin-tickets-search-date-picker">
-                      <DatePickerTime
-                        date={arrivalDate}
-                        time={arrivalTime}
-                        onDateChange={setArrivalDate}
-                        onTimeChange={setArrivalTime}
-                        dateLabel="Arrival date"
-                        timeLabel="Max. arrival time"
-                        datePlaceholder="Select date"
-                        showTime={true}
-                        idPrefix="search-arrival"
-                        onClear={() => {
-                          setArrivalDate('');
-                          setArrivalTime('');
-                        }}
-                        hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
-                      />
-                    </div>
-                  ) : null}
-                  {searchTripType === 'round-trip' ? (
-                    <div className="admin-tickets-search-field admin-tickets-search-date-picker">
-                      <DatePickerTime
-                        date={returnDate}
-                        time={returnTime}
-                        onDateChange={setReturnDate}
-                        onTimeChange={setReturnTime}
-                        dateLabel="Return date"
-                        timeLabel="Return time"
-                        datePlaceholder="Select date"
-                        showTime={true}
-                        idPrefix="search-return"
-                        onClear={() => setReturnTime('')}
-                        hasValue={!!returnTime}
-                      />
-                    </div>
-                  ) : null}
+                  {searchTripTypeUI === 'multi-city' ? (
+                    <>
+                      <div className="admin-tickets-multi-nonstop">
+                        <Checkbox
+                          id="prefer-nonstop-legs"
+                          checked={preferNonStopPerLeg}
+                          onCheckedChange={(c) => setPreferNonStopPerLeg(c === true)}
+                        />
+                        <label htmlFor="prefer-nonstop-legs" className="admin-tickets-multi-nonstop-label">
+                          Prefer non-stop for each leg (search requests direct-only when supported; list is filtered to non-stop).
+                        </label>
+                      </div>
+                      <p className="admin-tickets-multi-active-hint">
+                        Active leg for search: <strong>{activeMultiLegIndex + 1}</strong> of {multiSegments.length}. Click a leg card to change it (when not viewing results).
+                      </p>
+                      <div className="admin-tickets-multi-segments">
+                        {multiSegments.map((seg, i) => (
+                          <div
+                            key={seg.id}
+                            className={
+                              'admin-tickets-multi-seg-card' +
+                              (i === activeMultiLegIndex ? ' admin-tickets-multi-seg-card-active' : '')
+                            }
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              if (searchResults == null) setActiveMultiLegIndex(i);
+                            }}
+                            onKeyDown={(e) => {
+                              if (searchResults != null) return;
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setActiveMultiLegIndex(i);
+                              }
+                            }}
+                          >
+                            <div className="admin-tickets-multi-seg-card-head">
+                              <span className="admin-tickets-multi-seg-title">Leg {i + 1}</span>
+                              {multiSegments.length > 2 ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="admin-tickets-multi-seg-remove"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeMultiSegment(i);
+                                  }}
+                                  aria-label={`Remove leg ${i + 1}`}
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              ) : null}
+                            </div>
+                            <div className="admin-tickets-search-airports-row">
+                              <div className="admin-tickets-search-field">
+                                <label htmlFor={`multi-from-${seg.id}`}>From</label>
+                                <AirportCombobox
+                                  id={`multi-from-${seg.id}`}
+                                  value={seg.from}
+                                  onChange={(a) => updateMultiSegment(i, { from: a })}
+                                />
+                              </div>
+                              <div className="admin-tickets-search-field">
+                                <label htmlFor={`multi-to-${seg.id}`}>To</label>
+                                <AirportCombobox
+                                  id={`multi-to-${seg.id}`}
+                                  value={seg.to}
+                                  onChange={(a) => updateMultiSegment(i, { to: a })}
+                                />
+                              </div>
+                            </div>
+                            <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                              <DatePickerTime
+                                date={seg.departureDate}
+                                time={seg.departureTime}
+                                onDateChange={(d) => updateMultiSegment(i, { departureDate: d })}
+                                onTimeChange={(t) => updateMultiSegment(i, { departureTime: t })}
+                                dateLabel="Departure date"
+                                timeLabel="Min. departure time"
+                                datePlaceholder="Select date"
+                                showTime={true}
+                                idPrefix={`multi-dep-${seg.id}`}
+                                onClear={() => updateMultiSegment(i, { departureTime: '' })}
+                                hasValue={!!seg.departureTime}
+                              />
+                            </div>
+                            <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                              <DatePickerTime
+                                date={seg.arrivalDate}
+                                time={seg.arrivalTime}
+                                onDateChange={(d) => updateMultiSegment(i, { arrivalDate: d })}
+                                onTimeChange={(t) => updateMultiSegment(i, { arrivalTime: t })}
+                                dateLabel="Arrival date (optional)"
+                                timeLabel="Max. arrival time"
+                                datePlaceholder="Select date"
+                                showTime={true}
+                                idPrefix={`multi-arr-${seg.id}`}
+                                onClear={() => updateMultiSegment(i, { arrivalDate: '', arrivalTime: '' })}
+                                hasValue={!!seg.arrivalDate?.trim() || !!seg.arrivalTime?.trim()}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {multiSegments.length < MAX_MULTI_SEGMENTS ? (
+                        <div className="admin-tickets-multi-add-row">
+                          <Button type="button" variant="outline" size="sm" onClick={addMultiSegment}>
+                            <Plus size={16} className="mr-1" />
+                            Add flight
+                          </Button>
+                          <span className="admin-tickets-multi-add-cap">Up to {MAX_MULTI_SEGMENTS} legs</span>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <div className="admin-tickets-search-airports-row">
+                        <div className="admin-tickets-search-field">
+                          <label htmlFor="search-from">From</label>
+                          <AirportCombobox
+                            id="search-from"
+                            value={searchFrom}
+                            onChange={setSearchFrom}
+                          />
+                        </div>
+                        <div className="admin-tickets-search-field">
+                          <label htmlFor="search-to">To</label>
+                          <AirportCombobox
+                            id="search-to"
+                            value={searchTo}
+                            onChange={setSearchTo}
+                          />
+                        </div>
+                      </div>
+                      <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                        <DatePickerTime
+                          date={departureDate}
+                          time={departureTime}
+                          onDateChange={setDepartureDate}
+                          onTimeChange={setDepartureTime}
+                          dateLabel="Departure date"
+                          timeLabel="Min. departure time"
+                          datePlaceholder="Select date"
+                          showTime={searchTripTypeUI === 'one-way'}
+                          idPrefix="search-departure"
+                          onClear={searchTripTypeUI === 'one-way' ? () => { setDepartureTime(''); } : undefined}
+                          hasValue={!!departureTime}
+                        />
+                      </div>
+                      {searchTripTypeUI === 'one-way' ? (
+                        <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                          <DatePickerTime
+                            date={arrivalDate}
+                            time={arrivalTime}
+                            onDateChange={setArrivalDate}
+                            onTimeChange={setArrivalTime}
+                            dateLabel="Arrival date"
+                            timeLabel="Max. arrival time"
+                            datePlaceholder="Select date"
+                            showTime={true}
+                            idPrefix="search-arrival"
+                            onClear={() => {
+                              setArrivalDate('');
+                              setArrivalTime('');
+                            }}
+                            hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
+                          />
+                        </div>
+                      ) : null}
+                      {searchTripTypeUI === 'round-trip' ? (
+                        <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                          <DatePickerTime
+                            date={returnDate}
+                            time={returnTime}
+                            onDateChange={setReturnDate}
+                            onTimeChange={setReturnTime}
+                            dateLabel="Return date"
+                            timeLabel="Return time"
+                            datePlaceholder="Select date"
+                            showTime={true}
+                            idPrefix="search-return"
+                            onClear={() => setReturnTime('')}
+                            hasValue={!!returnTime}
+                          />
+                        </div>
+                      ) : null}
+                    </>
+                  )}
                   <div className="admin-tickets-search-field">
                     <label htmlFor="search-adults">Adults</label>
                     <Input
@@ -1104,7 +1487,12 @@ const AdminTicketsPage = () => {
                   <Button
                     type="button"
                     onClick={() => handleSearch()}
-                    disabled={isSearching || !searchFrom || !searchTo}
+                    disabled={
+                      isSearching ||
+                      (searchTripTypeUI === 'multi-city'
+                        ? !(multiSegments[activeMultiLegIndex]?.from && multiSegments[activeMultiLegIndex]?.to)
+                        : !searchFrom || !searchTo)
+                    }
                   >
                     {isSearching ? (
                       <>
@@ -1114,7 +1502,9 @@ const AdminTicketsPage = () => {
                     ) : (
                       <>
                         <Search size={18} />
-                        Search flights
+                        {searchTripTypeUI === 'multi-city'
+                          ? `Search leg ${activeMultiLegIndex + 1}`
+                          : 'Search flights'}
                       </>
                     )}
                   </Button>
@@ -1131,26 +1521,55 @@ const AdminTicketsPage = () => {
                 </Button>
                 {searchCriteria && (
                   <p className="admin-tickets-results-summary">
-                    {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
-                    {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                    {searchTripTypeUI === 'multi-city' ? (
+                      <>
+                        Leg {activeMultiLegIndex + 1} of {multiSegments.length}:{' '}
+                        {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
+                        {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                      </>
+                    ) : (
+                      <>
+                        {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
+                        {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                      </>
+                    )}
                   </p>
                 )}
                 <p className="admin-tickets-results-count">
                   {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
+                  {searchTripTypeUI === 'multi-city' &&
+                    preferNonStopPerLeg &&
+                    displayedSearchFlights &&
+                    searchResults &&
+                    displayedSearchFlights.length !== searchResults.length && (
+                      <span className="admin-tickets-results-count-note">
+                        {' '}
+                        · {displayedSearchFlights.length} non-stop shown from {searchResults.length} loaded
+                      </span>
+                    )}
                 </p>
               </div>
               <div className="admin-tickets-results-list">
                 {searchResults.length === 0 ? (
                   <p className="admin-tickets-results-empty">No flights match your criteria.</p>
+                ) : (displayedSearchFlights?.length ?? 0) === 0 ? (
+                  <p className="admin-tickets-results-empty">
+                    No non-stop flights in the loaded results. Clear the non-stop filter or try Load more.
+                  </p>
                 ) : (
                   <>
-                    {searchResults.map((flight) => (
+                    {(displayedSearchFlights ?? searchResults).map((flight) => (
                       <FlightResultCard
                         key={flight.id}
                         flight={flight}
                         currency={currency}
                         onBook={handleBookNow}
-                        isBooking={bookingFlightId === flight.id}
+                        isBooking={
+                          bookingFlightKey ===
+                          (searchTripTypeUI === 'multi-city'
+                            ? `${activeMultiLegIndex}::${flight.id}`
+                            : flight.id)
+                        }
                       />
                     ))}
                     {searchResults.length < searchTotalCount && (
