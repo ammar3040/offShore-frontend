@@ -75,14 +75,14 @@ function getErrorMessage(data: Record<string, unknown>, fallback: string): strin
   return msg ?? fallback;
 }
 
-/** Superadmin login - POST /api/superadmin/login */
+/** Superadmin login - POST /superadmin/login */
 export async function superadminLogin(payload: SuperadminLoginPayload): Promise<SuperadminAuthResponse> {
   const body = { email: payload.email.trim(), password: payload.password };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/login`, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -110,12 +110,12 @@ export async function superadminLogin(payload: SuperadminLoginPayload): Promise<
   return data;
 }
 
-/** Dashboard analytics - GET /api/superadmin/analytics */
+/** Dashboard analytics - GET /superadmin/analytics */
 export async function getSuperadminAnalytics(): Promise<AdminAnalytics> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/analytics`, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/analytics`, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,
@@ -139,12 +139,12 @@ export async function getSuperadminAnalytics(): Promise<AdminAnalytics> {
   return response.json();
 }
 
-/** List admins - GET /api/superadmin/admins */
+/** List admins - GET /superadmin/admins */
 export async function getSuperadminAdmins(): Promise<{ admins: AdminApi[] }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/admins`, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/admins`, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,
@@ -169,12 +169,12 @@ export async function getSuperadminAdmins(): Promise<{ admins: AdminApi[] }> {
   return { admins: Array.isArray(data?.admins) ? data.admins : [] };
 }
 
-/** Create admin - POST /api/superadmin/admins */
+/** Create admin - POST /superadmin/admins */
 export async function createSuperadminAdmin(payload: CreateAdminPayload): Promise<AdminApi> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/admins`, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/admins`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
@@ -220,7 +220,7 @@ export interface MarkupResponse {
   };
 }
 
-/** Update settings - PUT /api/superadmin/markup. Amounts aligned with markup/cashback storage (GBP in API). */
+/** Update settings - PUT /superadmin/markup. Amounts aligned with markup/cashback storage (GBP in API). */
 export async function updateSuperadminSettings(payload: {
   baseCurrency?: 'GBP' | 'USD' | 'INR';
   markup?: number | null;
@@ -236,7 +236,7 @@ export async function updateSuperadminSettings(payload: {
   if (payload.cashback != null) body.cashback = payload.cashback;
   if (payload.cancellationCharges != null) body.cancellationCharges = payload.cancellationCharges;
 
-  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/markup`, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/markup`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(body),
@@ -261,12 +261,12 @@ export async function updateSuperadminSettings(payload: {
   return response.json();
 }
 
-/** Update markup - PUT /api/superadmin/markup */
+/** Update markup - PUT /superadmin/markup */
 export async function updateSuperadminMarkup(markup: number): Promise<MarkupResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/markup`, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/markup`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ markup }),
@@ -291,12 +291,12 @@ export async function updateSuperadminMarkup(markup: number): Promise<MarkupResp
   return response.json();
 }
 
-/** Update cashback - PUT /api/superadmin/markup */
+/** Update cashback - PUT /superadmin/markup */
 export async function updateSuperadminCashback(cashback: number): Promise<MarkupResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/superadmin/markup`, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/markup`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ cashback }),
@@ -321,7 +321,7 @@ export async function updateSuperadminCashback(cashback: number): Promise<Markup
   return response.json();
 }
 
-/** Send ticket email to crew - POST /api/crew-ticket/:id/send-ticket-email (no body) */
+/** Send ticket email to crew - POST /crew-ticket/:id/send-ticket-email (no body) */
 export async function sendSuperadminCrewTicketEmail(ticketId: string): Promise<unknown> {
   const token = localStorage.getItem(env.superadminTokenKey);
   const headers: HeadersInit = {};
@@ -331,7 +331,7 @@ export async function sendSuperadminCrewTicketEmail(ticketId: string): Promise<u
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/send-ticket-email`,
+    `${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/send-ticket-email`,
     {
       method: 'POST',
       headers,
@@ -357,13 +357,13 @@ export async function sendSuperadminCrewTicketEmail(ticketId: string): Promise<u
   return response.json();
 }
 
-/** Delete a crew ticket. DELETE /api/crew/:crew_id/ticket/:ticket_id (superadmin only) */
+/** Delete a crew ticket. DELETE /crew/:crew_id/ticket/:ticket_id (superadmin only) */
 export async function deleteSuperadminCrewTicket(crewId: string, ticketId: string): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/api/crew/${encodeURIComponent(crewId)}/ticket/${encodeURIComponent(ticketId)}`,
+    `${env.apiBaseUrl}/crew/${encodeURIComponent(crewId)}/ticket/${encodeURIComponent(ticketId)}`,
     {
       method: 'DELETE',
       headers: getHeaders(),
@@ -387,12 +387,12 @@ export async function deleteSuperadminCrewTicket(crewId: string, ticketId: strin
   }
 }
 
-/** Crew tickets for superadmin - GET /api/crew-ticket (uses superadmin token; project filter applied client-side if backend omits it) */
+/** Crew tickets for superadmin - GET /crew-ticket (uses superadmin token; project filter applied client-side if backend omits it) */
 export async function getSuperadminCrewTickets(projectId?: string): Promise<{ crewTickets: import('./ticket').CrewTicketApi[] }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const url = new URL(`${env.apiBaseUrl}/api/crew-ticket`);
+  const url = new URL(`${env.apiBaseUrl}/crew-ticket`);
   if (projectId) url.searchParams.set('project_id', projectId);
 
   const response = await fetch(url.toString(), {
@@ -420,12 +420,12 @@ export async function getSuperadminCrewTickets(projectId?: string): Promise<{ cr
   return { crewTickets: Array.isArray(data?.crewTickets) ? data.crewTickets : [] };
 }
 
-/** Projects for superadmin - GET /api/project (uses superadmin token) */
+/** Projects for superadmin - GET /project (uses superadmin token) */
 export async function getSuperadminProjects(): Promise<{ projects: import('./project').ProjectApi[] }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/project`, {
+  const response = await fetch(`${env.apiBaseUrl}/project`, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,
@@ -450,7 +450,7 @@ export async function getSuperadminProjects(): Promise<{ projects: import('./pro
   return { projects: Array.isArray(data?.projects) ? data.projects : [] };
 }
 
-/** Uploads a PDF for a crew ticket. POST /api/crew-ticket/:id/upload-ticket */
+/** Uploads a PDF for a crew ticket. POST /crew-ticket/:id/upload-ticket */
 export async function uploadSuperadminCrewTicketPdf(ticketId: string, file: File): Promise<unknown> {
   if (!file.type.includes('pdf')) {
     throw new Error('Only PDF files are allowed');
@@ -466,7 +466,7 @@ export async function uploadSuperadminCrewTicketPdf(ticketId: string, file: File
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
     method: 'POST',
     headers,
     body: formData,

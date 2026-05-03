@@ -142,7 +142,7 @@ export async function crewLogin(payload: CrewLoginPayload): Promise<CrewLoginRes
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew/login`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: payload.email, password: payload.password }),
@@ -178,7 +178,7 @@ export interface CrewChangePasswordPayload {
 
 /**
  * Resets the logged-in crew member's password (requires crew token).
- * PATCH /api/crew/reset-password
+ * PATCH /crew/reset-password
  */
 export async function crewChangePassword(payload: CrewChangePasswordPayload): Promise<void> {
   const token = localStorage.getItem(env.crewTokenKey);
@@ -187,7 +187,7 @@ export async function crewChangePassword(payload: CrewChangePasswordPayload): Pr
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew/reset-password`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew/reset-password`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -214,13 +214,13 @@ export async function crewChangePassword(payload: CrewChangePasswordPayload): Pr
 
 /**
  * Requests a password reset link for crew (by email). No auth required.
- * POST /api/crew/forgot-password
+ * POST /crew/forgot-password
  */
 export async function crewForgotPassword(email: string): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew/forgot-password`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
@@ -331,7 +331,7 @@ function getAuthToken(): string | null {
   return localStorage.getItem(env.authTokenKey);
 }
 
-/** Project from GET /api/crew/:crew_id response (assigned projects) */
+/** Project from GET /crew/:crew_id response (assigned projects) */
 export interface CrewAssignedProject {
   id: string;
   title: string;
@@ -342,7 +342,7 @@ export interface CrewAssignedProject {
   participants?: unknown[];
 }
 
-/** Response from GET /api/crew/:crew_id - crew details and assigned projects */
+/** Response from GET /crew/:crew_id - crew details and assigned projects */
 export interface GetCrewByIdResponse {
   crew: CrewMemberApi;
   projects: CrewAssignedProject[];
@@ -350,7 +350,7 @@ export interface GetCrewByIdResponse {
 
 /**
  * Fetches a crew member by ID with their assigned projects (admin).
- * GET /api/crew/:crew_id
+ * GET /crew/:crew_id
  */
 export async function getCrewById(crewId: string): Promise<GetCrewByIdResponse> {
   const token = getAuthToken();
@@ -364,7 +364,7 @@ export async function getCrewById(crewId: string): Promise<GetCrewByIdResponse> 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew/${encodeURIComponent(crewId)}`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(crewId)}`, {
     method: 'GET',
     headers,
     signal: controller.signal,
@@ -403,7 +403,7 @@ export async function getCrewList(): Promise<GetCrewResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew`, {
     method: 'GET',
     headers,
     signal: controller.signal,
@@ -429,7 +429,7 @@ export async function getCrewList(): Promise<GetCrewResponse> {
 
 /**
  * Fetches crews whose availability aligns with the project's duration.
- * GET /api/crew/project/:project_id/available
+ * GET /crew/project/:project_id/available
  * Requires admin auth token.
  */
 export async function getCrewAvailableForProject(projectId: string): Promise<GetCrewResponse> {
@@ -445,7 +445,7 @@ export async function getCrewAvailableForProject(projectId: string): Promise<Get
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/api/crew/project/${encodeURIComponent(projectId)}/available`,
+    `${env.apiBaseUrl}/crew/project/${encodeURIComponent(projectId)}/available`,
     {
       method: 'GET',
       headers,
@@ -475,7 +475,7 @@ export async function getCrewAvailableForProject(projectId: string): Promise<Get
 
 /**
  * Fetches crew members enrolled/accepted in a project (admin).
- * GET /api/project/:project_id/crew
+ * GET /project/:project_id/crew
  * Falls back to empty array if endpoint not available.
  */
 export async function getCrewEnrolledInProject(projectId: string): Promise<GetCrewResponse> {
@@ -492,7 +492,7 @@ export async function getCrewEnrolledInProject(projectId: string): Promise<GetCr
 
   try {
     const response = await fetch(
-      `${env.apiBaseUrl}/api/project/${encodeURIComponent(projectId)}/crew`,
+      `${env.apiBaseUrl}/project/${encodeURIComponent(projectId)}/crew`,
       { method: 'GET', headers, signal: controller.signal }
     );
     clearTimeout(timeoutId);
@@ -519,7 +519,7 @@ export interface GetCrewEnrolledProjectsResponse {
   projects: CrewEnrolledProject[];
 }
 
-/** Single timesheet entry from GET /api/timesheet/me/project/:project_id */
+/** Single timesheet entry from GET /timesheet/me/project/:project_id */
 export interface CrewTimesheetEntry {
   date: string; // ISO date or datetime
   status: string; // e.g. "PRESENT" | "ABSENT" | "LEAVE"
@@ -568,7 +568,7 @@ export interface GetCrewProjectInvitationsResponse {
 
 /**
  * Fetches pending project invitations for the logged-in crew member (requires crew token).
- * Calls GET /api/crew-invite/me/pending.
+ * Calls GET /crew-invite/me/pending.
  * Returns empty array if no token or API not available.
  */
 export async function getCrewProjectInvitations(): Promise<GetCrewProjectInvitationsResponse> {
@@ -579,7 +579,7 @@ export async function getCrewProjectInvitations(): Promise<GetCrewProjectInvitat
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   try {
-    const response = await fetch(`${env.apiBaseUrl}/api/crew-invite/me/pending`, {
+    const response = await fetch(`${env.apiBaseUrl}/crew-invite/me/pending`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -618,7 +618,7 @@ export async function getCrewProjectInvitations(): Promise<GetCrewProjectInvitat
 
 /**
  * Accepts a project invitation (requires crew token).
- * POST /api/crew-invite/project/:project_id/accept
+ * POST /crew-invite/project/:project_id/accept
  */
 export async function acceptCrewInvitation(projectId: string): Promise<void> {
   const token = localStorage.getItem(env.crewTokenKey);
@@ -627,7 +627,7 @@ export async function acceptCrewInvitation(projectId: string): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-invite/project/${encodeURIComponent(projectId)}/accept`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-invite/project/${encodeURIComponent(projectId)}/accept`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -646,7 +646,7 @@ export async function acceptCrewInvitation(projectId: string): Promise<void> {
 
 /**
  * Rejects a project invitation (requires crew token).
- * POST /api/crew-invite/project/:project_id/reject
+ * POST /crew-invite/project/:project_id/reject
  */
 export async function rejectCrewInvitation(projectId: string): Promise<void> {
   const token = localStorage.getItem(env.crewTokenKey);
@@ -655,7 +655,7 @@ export async function rejectCrewInvitation(projectId: string): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-invite/project/${encodeURIComponent(projectId)}/reject`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-invite/project/${encodeURIComponent(projectId)}/reject`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -684,7 +684,7 @@ export async function getCrewEnrolledProjects(): Promise<GetCrewEnrolledProjects
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   try {
-    const response = await fetch(`${env.apiBaseUrl}/api/crew-invite/me/enrolled`, {
+    const response = await fetch(`${env.apiBaseUrl}/crew-invite/me/enrolled`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -716,7 +716,7 @@ export async function getCrewEnrolledProjects(): Promise<GetCrewEnrolledProjects
 
 /**
  * Fetches timesheet for the logged-in crew member for a specific project.
- * GET /api/timesheet/me/project/:project_id
+ * GET /timesheet/me/project/:project_id
  * Returns null if no token, 404, or API error.
  */
 export async function getCrewTimesheetForProject(projectId: string): Promise<GetCrewTimesheetForProjectResponse | null> {
@@ -728,7 +728,7 @@ export async function getCrewTimesheetForProject(projectId: string): Promise<Get
 
   try {
     const response = await fetch(
-      `${env.apiBaseUrl}/api/timesheet/me/project/${encodeURIComponent(projectId)}`,
+      `${env.apiBaseUrl}/timesheet/me/project/${encodeURIComponent(projectId)}`,
       {
         method: 'GET',
         headers: {
@@ -776,7 +776,7 @@ export interface UpdateCrewTimesheetEntryResponse {
 
 /**
  * Marks attendance for a specific date on a project timesheet.
- * POST (or PATCH) /api/timesheet/me/project/:project_id/entry
+ * POST (or PATCH) /timesheet/me/project/:project_id/entry
  * Body: { date: "YYYY-MM-DD", status: "PRESENT" | "ABSENT" | "LEAVE" }
  */
 export async function updateCrewTimesheetEntry(
@@ -790,7 +790,7 @@ export async function updateCrewTimesheetEntry(
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/api/timesheet/me/project/${encodeURIComponent(projectId)}/entry`,
+    `${env.apiBaseUrl}/timesheet/me/project/${encodeURIComponent(projectId)}/entry`,
     {
       method: 'PATCH',
       headers: {
@@ -846,7 +846,7 @@ export async function getCrewMe(): Promise<CrewMemberApi | null> {
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   try {
-    const response = await fetch(`${env.apiBaseUrl}/api/crew/me`, {
+    const response = await fetch(`${env.apiBaseUrl}/crew/me`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -864,14 +864,14 @@ export async function getCrewMe(): Promise<CrewMemberApi | null> {
   }
 }
 
-/** Raw availability item from GET /api/crew/me (availability array) */
+/** Raw availability item from GET /crew/me (availability array) */
 export interface CrewAvailabilityItem {
   id: string;
   from: string;
   to: string;
 }
 
-/** Response from GET /api/crew/me when used for dashboard (crew + availability + enrolledProjects) */
+/** Response from GET /crew/me when used for dashboard (crew + availability + enrolledProjects) */
 export interface CrewMeDashboardResponse {
   crew: CrewMemberApi | null;
   availability: CrewAvailability;
@@ -880,7 +880,7 @@ export interface CrewMeDashboardResponse {
 
 /**
  * Fetches dashboard data for the logged-in crew: profile, availability, and enrolled projects.
- * Single GET /api/crew/me call returning { crew, availability[], enrolledProjects[] }.
+ * Single GET /crew/me call returning { crew, availability[], enrolledProjects[] }.
  */
 export async function getCrewMeDashboard(): Promise<CrewMeDashboardResponse> {
   const token = localStorage.getItem(env.crewTokenKey);
@@ -895,7 +895,7 @@ export async function getCrewMeDashboard(): Promise<CrewMeDashboardResponse> {
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   try {
-    const response = await fetch(`${env.apiBaseUrl}/api/crew/me`, {
+    const response = await fetch(`${env.apiBaseUrl}/crew/me`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -944,7 +944,7 @@ export interface CrewAvailability {
 
 /**
  * Fetches the logged-in crew member's availability (requires crew token).
- * GET /api/crew-availability — returns { availabilities: [ { id, crew_id, from, to }, ... ] }.
+ * GET /crew-availability — returns { availabilities: [ { id, crew_id, from, to }, ... ] }.
  * Uses the first item in the array. Pass crew_id in req.query when available.
  */
 export async function getCrewAvailability(options?: { crewId?: string }): Promise<CrewAvailability> {
@@ -957,7 +957,7 @@ export async function getCrewAvailability(options?: { crewId?: string }): Promis
   const query = new URLSearchParams();
   if (options?.crewId) query.set('crew_id', options.crewId);
   const queryString = query.toString();
-  const url = `${env.apiBaseUrl}/api/crew-availability${queryString ? `?${queryString}` : ''}`;
+  const url = `${env.apiBaseUrl}/crew-availability${queryString ? `?${queryString}` : ''}`;
 
   try {
     const response = await fetch(url, {
@@ -988,7 +988,7 @@ export async function getCrewAvailability(options?: { crewId?: string }): Promis
 
 /**
  * Adds/updates the logged-in crew member's availability (requires crew token).
- * POST /api/crew-availability
+ * POST /crew-availability
  * Body: { from: "YYYY-MM-DD", to: "YYYY-MM-DD" }
  * Response: { message, availability: { id, crew_id, from, to } }
  */
@@ -1002,7 +1002,7 @@ export async function updateCrewAvailability(payload: {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-availability`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-availability`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1048,7 +1048,7 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   try {
-    const response = await fetch(`${env.apiBaseUrl}/api/crew`, {
+    const response = await fetch(`${env.apiBaseUrl}/crew`, {
       method: 'POST',
       headers,
       body: formData,
@@ -1061,7 +1061,7 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
 }
 
 /**
- * Updates a crew member. PATCH /api/crew/:id
+ * Updates a crew member. PATCH /crew/:id
  */
 export async function updateCrewMember(id: string, data: CrewMemberFormData): Promise<Response> {
   const formData = buildCrewFormData(data);
@@ -1076,7 +1076,7 @@ export async function updateCrewMember(id: string, data: CrewMemberFormData): Pr
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   try {
-    const response = await fetch(`${env.apiBaseUrl}/api/crew/${encodeURIComponent(id)}`, {
+    const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers,
       body: formData,
@@ -1089,7 +1089,7 @@ export async function updateCrewMember(id: string, data: CrewMemberFormData): Pr
 }
 
 /**
- * Deletes a crew member. DELETE /api/crew/:id
+ * Deletes a crew member. DELETE /crew/:id
  */
 export async function deleteCrewMember(id: string): Promise<void> {
   const token = getAuthToken();
@@ -1097,7 +1097,7 @@ export async function deleteCrewMember(id: string): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew/${encodeURIComponent(id)}`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     signal: controller.signal,
@@ -1119,7 +1119,7 @@ export async function deleteCrewMember(id: string): Promise<void> {
   }
 }
 
-/** Response from inviting crew to a project (POST /api/crew-invite/project/:project_id) */
+/** Response from inviting crew to a project (POST /crew-invite/project/:project_id) */
 export interface CrewInviteToProjectItem {
   id: string;
   crew_id: string;
@@ -1134,7 +1134,7 @@ export interface InviteCrewToProjectResponse {
 
 /**
  * Invites crew members to a project (admin). Requires admin auth token.
- * POST /api/crew-invite/project/:project_id
+ * POST /crew-invite/project/:project_id
  * Body: { crew_ids: string[] }
  */
 export async function inviteCrewToProject(
@@ -1148,7 +1148,7 @@ export async function inviteCrewToProject(
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/api/crew-invite/project/${encodeURIComponent(projectId)}`,
+    `${env.apiBaseUrl}/crew-invite/project/${encodeURIComponent(projectId)}`,
     {
       method: 'POST',
       headers: {
@@ -1175,7 +1175,7 @@ export async function inviteCrewToProject(
 
 /**
  * Removes/unassigns a crew member from a project (admin).
- * DELETE /api/crew/:crew_id/project/:project_id
+ * DELETE /crew/:crew_id/project/:project_id
  */
 export async function removeCrewFromProject(projectId: string, crewId: string): Promise<void> {
   const token = getAuthToken();
@@ -1185,7 +1185,7 @@ export async function removeCrewFromProject(projectId: string, crewId: string): 
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/api/crew/${encodeURIComponent(crewId)}/project/${encodeURIComponent(projectId)}`,
+    `${env.apiBaseUrl}/crew/${encodeURIComponent(crewId)}/project/${encodeURIComponent(projectId)}`,
     {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },

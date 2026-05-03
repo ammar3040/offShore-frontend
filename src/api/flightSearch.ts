@@ -1,7 +1,7 @@
 import { env } from '../config/env';
 import type { Flight, SearchPayload, SearchFlightsResult } from '../types/flight';
 
-/** Full itinerary segment shape sent to POST /api/crew-ticket/book */
+/** Full itinerary segment shape sent to POST /crew-ticket/book */
 export interface BookItinerarySegment {
   airlineName?: string;
   airlineCode?: string;
@@ -21,7 +21,7 @@ export interface BookItinerarySegment {
   layover?: { location: string; duration: string } | null;
 }
 
-/** Full leg shape sent to POST /api/crew-ticket/book */
+/** Full leg shape sent to POST /crew-ticket/book */
 export interface BookLeg {
   airlineName?: string;
   airlineCode?: string;
@@ -35,7 +35,7 @@ export interface BookLeg {
   itinerary?: BookItinerarySegment[];
 }
 
-/** Full fare shape sent to POST /api/crew-ticket/book */
+/** Full fare shape sent to POST /crew-ticket/book */
 export interface BookFare {
   type?: string;
   name?: string;
@@ -46,7 +46,7 @@ export interface BookFare {
   cabin?: string;
 }
 
-/** Payload for POST /api/crew-ticket/book (matches backend bookFlightSchema) */
+/** Payload for POST /crew-ticket/book (matches backend bookFlightSchema) */
 export interface BookFlightPayload {
   project_id: string;
   crew_ids: string[];
@@ -81,7 +81,7 @@ function getHeaders(): HeadersInit {
 const API_BASE = env.apiBaseUrl || '';
 
 /**
- * POST /api/crew-ticket/search-flights – search flights with given criteria.
+ * POST /crew-ticket/search-flights – search flights with given criteria.
  * Returns paginated result: { flights, total, page?, limit? }. On error throws with message.
  *
  * Optional time-based filters (backend applies to first leg):
@@ -93,7 +93,7 @@ export async function searchFlights(payload: SearchPayload): Promise<SearchFligh
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${API_BASE}/api/crew-ticket/search-flights`, {
+  const response = await fetch(`${API_BASE}/crew-ticket/search-flights`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(payload),
@@ -133,7 +133,7 @@ export async function searchFlights(payload: SearchPayload): Promise<SearchFligh
 }
 
 /**
- * POST /api/crew-ticket/book – submit booking for selected crew on a project.
+ * POST /crew-ticket/book – submit booking for selected crew on a project.
  * Payload is extracted from search flight result to match backend bookFlightSchema.
  * Returns { message?, bookingReference? }. On error throws with message.
  */
@@ -209,7 +209,7 @@ export async function bookFlight(params: {
     infants: params.infants ?? 0,
   };
 
-  const response = await fetch(`${API_BASE}/api/crew-ticket/book`, {
+  const response = await fetch(`${API_BASE}/crew-ticket/book`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(body),

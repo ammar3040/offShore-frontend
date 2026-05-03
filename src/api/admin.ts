@@ -41,7 +41,7 @@ export async function adminRegister(payload: AdminRegisterPayload): Promise<Admi
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/admin/register`, {
+  const response = await fetch(`${env.apiBaseUrl}/admin/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -107,7 +107,7 @@ export async function getAdminProfile(): Promise<AdminProfile> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/admin/me`, {
+  const response = await fetch(`${env.apiBaseUrl}/admin/me`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthR
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/admin/login`, {
+  const response = await fetch(`${env.apiBaseUrl}/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

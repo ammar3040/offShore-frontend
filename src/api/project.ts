@@ -21,7 +21,7 @@ export interface GetProjectsResponse {
   projects: ProjectApi[];
 }
 
-/** Payload for creating a project (POST /api/project) */
+/** Payload for creating a project (POST /project) */
 export interface CreateProjectPayload {
   title: string;
   description: string;
@@ -52,7 +52,7 @@ export async function getProjects(): Promise<GetProjectsResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/project`, {
+  const response = await fetch(`${env.apiBaseUrl}/project`, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,
@@ -80,7 +80,7 @@ export async function createProject(payload: CreateProjectPayload): Promise<Proj
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/project`, {
+  const response = await fetch(`${env.apiBaseUrl}/project`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(payload),

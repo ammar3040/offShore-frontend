@@ -51,7 +51,7 @@ function getErrorMessage(data: Record<string, unknown>, fallback: string): strin
 }
 
 /**
- * Centralized login - POST /api/auth/login
+ * Centralized login - POST /auth/login
  * Sends email and password; backend returns token and user role.
  * Stores token in the appropriate key based on role and returns redirect path.
  */
@@ -64,7 +64,7 @@ export async function authLogin(payload: AuthLoginPayload): Promise<{ redirectTo
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/auth/login`, {
+  const response = await fetch(`${env.apiBaseUrl}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

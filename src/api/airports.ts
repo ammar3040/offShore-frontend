@@ -69,7 +69,7 @@ export async function searchAirportsApi(query: string): Promise<Airport[]> {
     const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
     const res = await fetch(
-      `${env.apiBaseUrl}/api/airports/search?query=${encodeURIComponent(q)}`,
+      `${env.apiBaseUrl}/airports/search?query=${encodeURIComponent(q)}`,
       {
         method: 'GET',
         headers,

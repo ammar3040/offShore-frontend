@@ -75,7 +75,7 @@ function getHeaders(): HeadersInit {
 
 /**
  * Fetches crew tickets for a specific crew member (requires crew token).
- * GET /api/crew-ticket/crew/:crew_id
+ * GET /crew-ticket/crew/:crew_id
  */
 export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTicketsResponse> {
   const crewToken = localStorage.getItem(env.crewTokenKey);
@@ -84,7 +84,7 @@ export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTic
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/crew/${encodeURIComponent(crewId)}`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/crew/${encodeURIComponent(crewId)}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -114,13 +114,13 @@ export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTic
 }
 
 /**
- * Fetches all crew tickets. GET /api/crew-ticket (admin)
+ * Fetches all crew tickets. GET /crew-ticket (admin)
  */
 export async function getCrewTickets(): Promise<GetCrewTicketsResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket`, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,
@@ -147,13 +147,13 @@ export async function getCrewTickets(): Promise<GetCrewTicketsResponse> {
 }
 
 /**
- * Creates a flight ticket for a crew member. POST /api/crew-ticket
+ * Creates a flight ticket for a crew member. POST /crew-ticket
  */
 export async function createFlightTicket(payload: CreateFlightTicketPayload): Promise<unknown> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(payload),
@@ -180,13 +180,13 @@ export async function createFlightTicket(payload: CreateFlightTicketPayload): Pr
 
 /**
  * Cancels a crew ticket (accrues cancellation debt where configured, same as DELETE).
- * POST /api/crew-ticket/:id/cancel (admin auth)
+ * POST /crew-ticket/:id/cancel (admin auth)
  */
 export async function cancelCrewTicket(ticketId: string): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/cancel`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/cancel`, {
     method: 'POST',
     headers: getHeaders(),
     signal: controller.signal,
@@ -209,7 +209,7 @@ export async function cancelCrewTicket(ticketId: string): Promise<void> {
 }
 
 /**
- * Uploads a PDF for a crew ticket. POST /api/crew-ticket/:id/upload-ticket
+ * Uploads a PDF for a crew ticket. POST /crew-ticket/:id/upload-ticket
  * Uses admin token. For crew token use uploadCrewTicketPdfByCrew.
  */
 export async function uploadCrewTicketPdf(ticketId: string, file: File): Promise<unknown> {
@@ -227,7 +227,7 @@ export async function uploadCrewTicketPdf(ticketId: string, file: File): Promise
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
     method: 'POST',
     headers,
     body: formData,
@@ -253,7 +253,7 @@ export async function uploadCrewTicketPdf(ticketId: string, file: File): Promise
 }
 
 /**
- * Uploads a PDF for a crew ticket (crew context). POST /api/crew-ticket/:id/upload-ticket
+ * Uploads a PDF for a crew ticket (crew context). POST /crew-ticket/:id/upload-ticket
  * Uses crew token – crew can upload for their own tickets.
  */
 export async function uploadCrewTicketPdfByCrew(ticketId: string, file: File): Promise<unknown> {
@@ -270,7 +270,7 @@ export async function uploadCrewTicketPdfByCrew(ticketId: string, file: File): P
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/upload-ticket`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${crewToken}` },
     body: formData,
