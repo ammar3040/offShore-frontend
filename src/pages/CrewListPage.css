@@ -155,8 +155,24 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
+@keyframes crew-availability-available-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
 .user-mgmt-availability-dot--available {
   background-color: #22c55e;
+  animation: crew-availability-available-blink 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-mgmt-availability-dot--available {
+    animation: none;
+  }
 }
 
 .user-mgmt-availability-dot--on-project {
