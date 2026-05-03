@@ -5,6 +5,12 @@ import { clearAccessToken, getAdminUserFromToken } from '../lib/auth';
 import { getAdminProfile } from '../api/admin';
 import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
 import {
+  ADMIN_BALANCE_DISPLAY_OPTIONS,
+  broadcastAdminBalanceCurrencyChange,
+  getStoredAdminBalanceCurrency,
+  setStoredAdminBalanceCurrency,
+} from '../lib/adminBalanceCurrency';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -12,12 +18,6 @@ import {
   SelectValue,
 } from './ui/select';
 import './Header.css';
-
-const BALANCE_CURRENCIES: { value: CurrencyCode; label: string; symbol: string }[] = [
-  { value: 'GBP', label: 'GBP', symbol: '£' },
-  { value: 'USD', label: 'USD', symbol: '$' },
-  { value: 'INR', label: 'INR', symbol: '₹' },
-];
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -27,7 +27,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [markup, setMarkup] = useState<number | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
-  const [balanceCurrency, setBalanceCurrency] = useState<CurrencyCode>('GBP');
+  const [balanceCurrency, setBalanceCurrency] = useState<CurrencyCode>(() =>
+    getStoredAdminBalanceCurrency()
+  );
   const [rates, setRates] = useState<Record<CurrencyCode, number> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -112,7 +114,8 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <span className="admin-balance-value">
             {balance != null
               ? (() => {
-                  const symbol = BALANCE_CURRENCIES.find((c) => c.value === balanceCurrency)?.symbol ?? '£';
+                  const symbol =
+                    ADMIN_BALANCE_DISPLAY_OPTIONS.find((c) => c.value === balanceCurrency)?.symbol ?? '£';
                   const displayAmount =
                     rates && balanceCurrency !== 'GBP'
                       ? convert(balance, 'GBP', balanceCurrency, rates)
@@ -122,12 +125,20 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               : '—'}
           </span>
           <div className="admin-balance-currency-wrap">
-            <Select value={balanceCurrency} onValueChange={(v) => setBalanceCurrency(v as CurrencyCode)}>
+            <Select
+              value={balanceCurrency}
+              onValueChange={(v) => {
+                const code = v as CurrencyCode;
+                setBalanceCurrency(code);
+                setStoredAdminBalanceCurrency(code);
+                broadcastAdminBalanceCurrencyChange(code);
+              }}
+            >
               <SelectTrigger className="admin-balance-currency-select h-8 min-w-0 border-0 bg-transparent px-2 shadow-none focus:ring-0" aria-label="Balance currency">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {BALANCE_CURRENCIES.map((c) => (
+                {ADMIN_BALANCE_DISPLAY_OPTIONS.map((c) => (
                   <SelectItem key={c.value} value={c.value}>
                     {c.label}
                   </SelectItem>

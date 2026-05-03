@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, ChevronDown, Search, Ticket as TicketIcon, X, Plus, Trash2 } from 'lucide-react';
+import { Plane, ChevronLeft, ChevronDown, Search, Ticket as TicketIcon, X, Plus, Trash2, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -23,7 +25,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
-import { getCrewTickets, createFlightTicket, type CreateFlightTicketPayload, type AirportLocation, type CrewTicketApi } from '../api/ticket';
+import {
+  getCrewTickets,
+  createFlightTicket,
+  cancelCrewTicket,
+  type CreateFlightTicketPayload,
+  type AirportLocation,
+  type CrewTicketApi,
+} from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
 import { searchAirportsApi } from '../api/airports';
@@ -436,6 +445,8 @@ const AdminTicketsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
+  const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
+  const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectApi | null>(null);
@@ -618,6 +629,34 @@ const AdminTicketsPage = () => {
       .catch(() => setTickets([]))
       .finally(() => setTicketsLoading(false));
   }, []);
+
+  const requestCancelTicketFlow = useCallback((ticket: CrewTicketApi) => {
+    setSelectedTicket(null);
+    setTicketToConfirmCancel(ticket);
+  }, []);
+
+  const handleConfirmCancelTicket = useCallback(async () => {
+    if (!ticketToConfirmCancel) return;
+    const id = ticketToConfirmCancel.id;
+    setCancelTicketSubmitting(true);
+    try {
+      await cancelCrewTicket(id);
+      setTickets((prev) => prev.filter((t) => t.id !== id));
+      setSelectedTicket((prev) => (prev?.id === id ? null : prev));
+      setTicketToConfirmCancel(null);
+      toast.success('Ticket cancelled', {
+        description: 'The booking was removed from your crew tickets list.',
+      });
+      window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
+    } catch (err) {
+      toast.error('Cancellation failed', {
+        description:
+          err instanceof Error ? err.message : 'Unable to cancel this ticket. Please try again.',
+      });
+    } finally {
+      setCancelTicketSubmitting(false);
+    }
+  }, [ticketToConfirmCancel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1679,6 +1718,7 @@ const AdminTicketsPage = () => {
               <TableHead>Passengers</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Cashback</TableHead>
+              <TableHead className="w-[100px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1713,6 +1753,19 @@ const AdminTicketsPage = () => {
                 </TableCell>
                 <TableCell>
                   {ticket.cashback != null ? `£${ticket.cashback.toLocaleString()}` : '—'}
+                </TableCell>
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                    onClick={() => requestCancelTicketFlow(ticket)}
+                    title="Cancel ticket"
+                  >
+                    <Ban size={14} className="mr-1" />
+                    Cancel
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -1822,8 +1875,75 @@ const AdminTicketsPage = () => {
                 )}
               </dl>
             </section>
+
+            <div className="admin-tickets-detail-cancel-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                onClick={() => selectedTicket && requestCancelTicketFlow(selectedTicket)}
+              >
+                <Ban size={16} className="mr-2" />
+                Cancel ticket
+              </Button>
+            </div>
           </div>
         )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!ticketToConfirmCancel}
+        onOpenChange={(open) => {
+          if (!open && !cancelTicketSubmitting) setTicketToConfirmCancel(null);
+        }}
+      >
+        <DialogContent showCloseButton={!cancelTicketSubmitting} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel this ticket?</DialogTitle>
+            <DialogDescription className="text-left pt-1">
+              This removes the booking for{' '}
+              <span className="font-medium text-foreground">
+                {ticketToConfirmCancel ? getCrewName(ticketToConfirmCancel) : ''}
+              </span>
+              {ticketToConfirmCancel ? (
+                <>
+                  {' '}
+                  on {getProjectTitle(ticketToConfirmCancel)} ({ticketToConfirmCancel.from?.Name ?? '—'} →{' '}
+                  {ticketToConfirmCancel.to?.Name ?? '—'}). If your workspace uses cancellation charges, the
+                  project owner may accrue cancellation debt according to policy.
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTicketToConfirmCancel(null)}
+              disabled={cancelTicketSubmitting}
+            >
+              Keep ticket
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmCancelTicket}
+              disabled={cancelTicketSubmitting || !ticketToConfirmCancel}
+            >
+              {cancelTicketSubmitting ? (
+                <>
+                  <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
+                  Cancelling…
+                </>
+              ) : (
+                <>
+                  <Ban size={16} className="mr-2" />
+                  Cancel ticket
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

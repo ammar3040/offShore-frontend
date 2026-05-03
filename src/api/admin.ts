@@ -96,6 +96,10 @@ export interface AdminProfile {
   phone?: string;
   markup?: number;
   balance?: number;
+  /** Debt to recover via per-booking installment (same unit as balance, typically GBP) */
+  cancellationOutstanding?: number | null;
+  /** Count of cancellations used as divisor with outstanding */
+  cancellationSlotsRemaining?: number | null;
 }
 
 export async function getAdminProfile(): Promise<AdminProfile> {

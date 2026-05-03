@@ -1,11 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderKanban, Users, Ticket, Plus, Calendar, RefreshCw } from 'lucide-react';
+import { FolderKanban, Users, Ticket, Plus, Calendar, RefreshCw, Wallet, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { getProjects } from '../api/project';
 import { getCrewList } from '../api/crew';
 import { getCrewTickets } from '../api/ticket';
+import { getAdminProfile } from '../api/admin';
+import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
+import {
+  ADMIN_BALANCE_CURRENCY_CHANGE_EVENT,
+  ADMIN_BALANCE_DISPLAY_OPTIONS,
+  getStoredAdminBalanceCurrency,
+} from '../lib/adminBalanceCurrency';
 import type { ProjectApi } from '../api/project';
 import type { CrewTicketApi } from '../api/ticket';
 import {
@@ -32,11 +39,77 @@ function formatDate(d: Date): string {
   });
 }
 
+function formatCurrencyFromGbp(
+  amountGbp: number | null,
+  profileLoading: boolean,
+  displayCurrency: CurrencyCode,
+  rates: Record<CurrencyCode, number> | null
+): string {
+  if (profileLoading && amountGbp === null) return '…';
+  if (amountGbp === null) return '—';
+  const symbol =
+    ADMIN_BALANCE_DISPLAY_OPTIONS.find((c) => c.value === displayCurrency)?.symbol ?? '£';
+  const displayAmount =
+    rates && displayCurrency !== 'GBP'
+      ? convert(amountGbp, 'GBP', displayCurrency, rates)
+      : amountGbp;
+  return `${symbol}${displayAmount.toLocaleString('en-GB', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 const CrewManagementDashboard = () => {
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [tickets, setTickets] = useState<CrewTicketApi[] | null>(null);
   const [crewCount, setCrewCount] = useState(0);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [cancellationOutstanding, setCancellationOutstanding] = useState<number | null>(null);
+  const [cancellationSlotsRemaining, setCancellationSlotsRemaining] = useState<number | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [balanceDisplayCurrency, setBalanceDisplayCurrency] = useState<CurrencyCode>(() =>
+    getStoredAdminBalanceCurrency()
+  );
+  const [rates, setRates] = useState<Record<CurrencyCode, number> | null>(null);
+
+  const fetchCancellationProfile = useCallback((showLoading = true) => {
+    if (showLoading) setProfileLoading(true);
+    getAdminProfile()
+      .then((profile) => {
+        const o = profile.cancellationOutstanding;
+        const s = profile.cancellationSlotsRemaining;
+        setCancellationOutstanding(typeof o === 'number' && !Number.isNaN(o) ? o : 0);
+        setCancellationSlotsRemaining(typeof s === 'number' && !Number.isNaN(s) && Number.isFinite(s) ? Math.trunc(s) : 0);
+      })
+      .catch(() => {
+        setCancellationOutstanding(null);
+        setCancellationSlotsRemaining(null);
+      })
+      .finally(() => {
+        if (showLoading) setProfileLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRates()
+      .then((r) => {
+        if (!cancelled) setRates(r);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onCurrencyChange = (e: Event) => {
+      const c = (e as CustomEvent<{ currency: CurrencyCode }>).detail?.currency;
+      if (c === 'GBP' || c === 'USD' || c === 'INR') setBalanceDisplayCurrency(c);
+    };
+    window.addEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrencyChange);
+    return () => window.removeEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrencyChange);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +133,13 @@ const CrewManagementDashboard = () => {
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    fetchCancellationProfile(true);
+    const refresh = () => fetchCancellationProfile(false);
+    window.addEventListener('admin-balance-refresh', refresh);
+    return () => window.removeEventListener('admin-balance-refresh', refresh);
+  }, [fetchCancellationProfile]);
 
   const fetchTickets = useCallback(() => {
     getCrewTickets()
@@ -172,12 +252,50 @@ const CrewManagementDashboard = () => {
           <button
             type="button"
             className="admin-stat-refresh"
-            onClick={fetchTickets}
-            title="Refresh tickets"
-            aria-label="Refresh tickets"
+            onClick={() => {
+              fetchTickets();
+              fetchCancellationProfile(false);
+            }}
+            title="Refresh tickets and billing"
+            aria-label="Refresh tickets and billing"
           >
             <RefreshCw size={14} />
           </button>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-icon admin-stat-icon-amber">
+            <Wallet size={20} />
+          </div>
+          <div className="admin-stat-content">
+            <span className="admin-stat-value">
+              {formatCurrencyFromGbp(
+                cancellationOutstanding,
+                profileLoading,
+                balanceDisplayCurrency,
+                rates
+              )}
+            </span>
+            <span className="admin-stat-label">CANCELLATION OUTSTANDING</span>
+            <span className="admin-stat-hint">
+              Recovered gradually on new bookings
+            </span>
+          </div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-icon admin-stat-icon-slate">
+            <Layers size={20} />
+          </div>
+          <div className="admin-stat-content">
+            <span className="admin-stat-value">
+              {profileLoading && cancellationSlotsRemaining === null
+                ? '…'
+                : cancellationSlotsRemaining != null
+                  ? String(cancellationSlotsRemaining)
+                  : '—'}
+            </span>
+            <span className="admin-stat-label">CANCELLATION SLOTS</span>
+            <span className="admin-stat-hint">Unresolved cancellations counted</span>
+          </div>
         </div>
       </div>
 

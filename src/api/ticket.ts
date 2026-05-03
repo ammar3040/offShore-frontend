@@ -179,6 +179,36 @@ export async function createFlightTicket(payload: CreateFlightTicketPayload): Pr
 }
 
 /**
+ * Cancels a crew ticket (accrues cancellation debt where configured, same as DELETE).
+ * POST /api/crew-ticket/:id/cancel (admin auth)
+ */
+export async function cancelCrewTicket(ticketId: string): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/api/crew-ticket/${encodeURIComponent(ticketId)}/cancel`, {
+    method: 'POST',
+    headers: getHeaders(),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+}
+
+/**
  * Uploads a PDF for a crew ticket. POST /api/crew-ticket/:id/upload-ticket
  * Uses admin token. For crew token use uploadCrewTicketPdfByCrew.
  */

@@ -21,6 +21,7 @@ export interface AdminAnalytics {
   adminsByActivity?: { adminId: string; email: string; projectsCount: number; crewCount: number }[];
   markup?: number | null;
   cashback?: number | null;
+  cancellationCharges?: number | null;
   baseCurrency?: 'GBP' | 'USD' | 'INR';
 }
 
@@ -214,15 +215,17 @@ export interface MarkupResponse {
     phone?: string;
     markup: number;
     cashback?: number;
+    cancellationCharges?: number;
     baseCurrency?: 'GBP' | 'USD' | 'INR';
   };
 }
 
-/** Update settings - PUT /api/superadmin/markup. markup and cashback must be in GBP. */
+/** Update settings - PUT /api/superadmin/markup. Amounts aligned with markup/cashback storage (GBP in API). */
 export async function updateSuperadminSettings(payload: {
   baseCurrency?: 'GBP' | 'USD' | 'INR';
   markup?: number | null;
   cashback?: number | null;
+  cancellationCharges?: number | null;
 }): Promise<{ message?: string; superAdmin?: MarkupResponse['superAdmin'] }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
@@ -231,6 +234,7 @@ export async function updateSuperadminSettings(payload: {
   if (payload.baseCurrency != null) body.baseCurrency = payload.baseCurrency;
   if (payload.markup != null) body.markup = payload.markup;
   if (payload.cashback != null) body.cashback = payload.cashback;
+  if (payload.cancellationCharges != null) body.cancellationCharges = payload.cancellationCharges;
 
   const response = await fetch(`${env.apiBaseUrl}/api/superadmin/markup`, {
     method: 'PUT',

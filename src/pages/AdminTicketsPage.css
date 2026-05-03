@@ -242,6 +242,12 @@
   color: #6b7280 !important;
 }
 
+.admin-tickets-detail-cancel-wrap {
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
 .admin-tickets-title {
   font-size: 1.5rem;
   font-weight: 700;
@@ -2111,6 +2117,10 @@
 
 .layout--dark .admin-tickets-detail-item dd {
   color: hsl(var(--foreground));
+}
+
+.layout--dark .admin-tickets-detail-cancel-wrap {
+  border-top-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-flights-hero {
