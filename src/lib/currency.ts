@@ -51,3 +51,30 @@ export function convert(
   // Then convert from GBP to 'to'
   return amountInGBP * rates[to];
 }
+
+const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+  GBP: '£',
+  USD: '$',
+  INR: '₹',
+};
+
+/**
+ * Display a GBP-backed amount in the chosen currency (matches admin header balance currency).
+ */
+export function formatGbpInDisplayCurrency(
+  amountGbp: number | null | undefined,
+  displayCurrency: CurrencyCode,
+  rates: Record<CurrencyCode, number> | null,
+  options?: { loading?: boolean }
+): string {
+  if (options?.loading) return '…';
+  if (amountGbp == null || Number.isNaN(Number(amountGbp))) return '—';
+  const n = Number(amountGbp);
+  const symbol = CURRENCY_SYMBOLS[displayCurrency] ?? displayCurrency;
+  const display =
+    rates != null && displayCurrency !== 'GBP' ? convert(n, 'GBP', displayCurrency, rates) : n;
+  return `${symbol}${display.toLocaleString('en-GB', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}

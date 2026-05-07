@@ -1,20 +1,31 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderKanban, Users, Ticket, Plus, Calendar, RefreshCw, Wallet, Layers } from 'lucide-react';
+import {
+  FolderKanban,
+  Users,
+  Ticket,
+  Plus,
+  Calendar,
+  RefreshCw,
+  LayoutGrid,
+  Wallet,
+  TrendingUp,
+  UserCog,
+  Plane,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { getProjects } from '../api/project';
 import { getCrewList } from '../api/crew';
-import { getCrewTickets } from '../api/ticket';
-import { getAdminProfile } from '../api/admin';
-import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
 import {
-  ADMIN_BALANCE_CURRENCY_CHANGE_EVENT,
-  ADMIN_BALANCE_DISPLAY_OPTIONS,
-  getStoredAdminBalanceCurrency,
-} from '../lib/adminBalanceCurrency';
+  getCrewTickets,
+  parseCrewTicketCreatedAt,
+  isCrewTicketCreatedInLocalCalendarMonth,
+  getCrewTicketCreatedIso,
+  type CrewTicketApi,
+} from '../api/ticket';
+import { getAdminProfile, type AdminProfile } from '../api/admin';
 import type { ProjectApi } from '../api/project';
-import type { CrewTicketApi } from '../api/ticket';
 import {
   ChartContainer,
   ChartTooltip,
@@ -39,24 +50,54 @@ function formatDate(d: Date): string {
   });
 }
 
-function formatCurrencyFromGbp(
-  amountGbp: number | null,
-  profileLoading: boolean,
-  displayCurrency: CurrencyCode,
-  rates: Record<CurrencyCode, number> | null
-): string {
-  if (profileLoading && amountGbp === null) return '…';
-  if (amountGbp === null) return '—';
-  const symbol =
-    ADMIN_BALANCE_DISPLAY_OPTIONS.find((c) => c.value === displayCurrency)?.symbol ?? '£';
-  const displayAmount =
-    rates && displayCurrency !== 'GBP'
-      ? convert(amountGbp, 'GBP', displayCurrency, rates)
-      : amountGbp;
-  return `${symbol}${displayAmount.toLocaleString('en-GB', {
+function formatShortDate(iso: string): string {
+  const d = parseProjectDay(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function ticketCreatedListLabel(t: CrewTicketApi): string {
+  const iso = getCrewTicketCreatedIso(t);
+  if (!iso) return '';
+  const ymd =
+    iso.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(iso)
+      ? iso.slice(0, 10)
+      : iso;
+  return ` · ${formatShortDate(ymd)}`;
+}
+
+function parseProjectDay(s: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(s);
+}
+
+function formatGbp(amount: number | null | undefined): string {
+  if (amount == null || Number.isNaN(Number(amount))) return '—';
+  return `£${Number(amount).toLocaleString('en-GB', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function normalizeStatus(status: string): string {
+  return (status || '').trim().toLowerCase();
+}
+
+function isCompletedStatus(status: string): boolean {
+  const s = normalizeStatus(status);
+  return s.includes('complete') || s === 'done' || s === 'closed' || s === 'finished';
+}
+
+function crewDisplayName(crew: CrewTicketApi['crew_id']): string {
+  const fn = crew.firstname?.trim() ?? '';
+  const ln = crew.lastname?.trim() ?? '';
+  const name = `${fn} ${ln}`.trim();
+  return name || 'Crew member';
+}
+
+function airportLabel(loc: CrewTicketApi['from']): string {
+  return loc?.Name?.trim() || '—';
 }
 
 const CrewManagementDashboard = () => {
@@ -64,52 +105,8 @@ const CrewManagementDashboard = () => {
   const [tickets, setTickets] = useState<CrewTicketApi[] | null>(null);
   const [crewCount, setCrewCount] = useState(0);
   const [loadingProjects, setLoadingProjects] = useState(true);
-  const [cancellationOutstanding, setCancellationOutstanding] = useState<number | null>(null);
-  const [cancellationSlotsRemaining, setCancellationSlotsRemaining] = useState<number | null>(null);
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [balanceDisplayCurrency, setBalanceDisplayCurrency] = useState<CurrencyCode>(() =>
-    getStoredAdminBalanceCurrency()
-  );
-  const [rates, setRates] = useState<Record<CurrencyCode, number> | null>(null);
-
-  const fetchCancellationProfile = useCallback((showLoading = true) => {
-    if (showLoading) setProfileLoading(true);
-    getAdminProfile()
-      .then((profile) => {
-        const o = profile.cancellationOutstanding;
-        const s = profile.cancellationSlotsRemaining;
-        setCancellationOutstanding(typeof o === 'number' && !Number.isNaN(o) ? o : 0);
-        setCancellationSlotsRemaining(typeof s === 'number' && !Number.isNaN(s) && Number.isFinite(s) ? Math.trunc(s) : 0);
-      })
-      .catch(() => {
-        setCancellationOutstanding(null);
-        setCancellationSlotsRemaining(null);
-      })
-      .finally(() => {
-        if (showLoading) setProfileLoading(false);
-      });
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchRates()
-      .then((r) => {
-        if (!cancelled) setRates(r);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onCurrencyChange = (e: Event) => {
-      const c = (e as CustomEvent<{ currency: CurrencyCode }>).detail?.currency;
-      if (c === 'GBP' || c === 'USD' || c === 'INR') setBalanceDisplayCurrency(c);
-    };
-    window.addEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrencyChange);
-    return () => window.removeEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrencyChange);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +118,9 @@ const CrewManagementDashboard = () => {
       .finally(() => {
         if (!cancelled) setLoadingProjects(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -131,24 +130,38 @@ const CrewManagementDashboard = () => {
         if (!cancelled) setCrewCount((res.crew ?? []).length);
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const loadProfile = useCallback(() => {
+    setProfileLoading(true);
+    getAdminProfile()
+      .then((p) => setAdminProfile(p))
+      .catch(() => setAdminProfile(null))
+      .finally(() => setProfileLoading(false));
   }, []);
 
   useEffect(() => {
-    fetchCancellationProfile(true);
-    const refresh = () => fetchCancellationProfile(false);
-    window.addEventListener('admin-balance-refresh', refresh);
-    return () => window.removeEventListener('admin-balance-refresh', refresh);
-  }, [fetchCancellationProfile]);
+    loadProfile();
+  }, [loadProfile]);
 
   const fetchTickets = useCallback(() => {
     getCrewTickets()
       .then((res) => setTickets(res.crewTickets ?? []))
       .catch((err) => {
         setTickets([]);
-        toast.error('Failed to load tickets', { description: err instanceof Error ? err.message : 'Please try again.' });
+        toast.error('Failed to load tickets', {
+          description: err instanceof Error ? err.message : 'Please try again.',
+        });
       });
   }, []);
+
+  const refreshTicketsAndProfile = useCallback(() => {
+    fetchTickets();
+    loadProfile();
+  }, [fetchTickets, loadProfile]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,15 +172,21 @@ const CrewManagementDashboard = () => {
       .catch((err) => {
         if (!cancelled) {
           setTickets([]);
-          toast.error('Failed to load tickets', { description: err instanceof Error ? err.message : 'Please try again.' });
+          toast.error('Failed to load tickets', {
+            description: err instanceof Error ? err.message : 'Please try again.',
+          });
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     const onVisible = () => {
-      fetchTickets();
+      if (document.visibilityState === 'visible') {
+        fetchTickets();
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -189,9 +208,8 @@ const CrewManagementDashboard = () => {
       if (byMonth[key]) byMonth[key].projects += 1;
     });
     (tickets ?? []).forEach((t) => {
-      const dateStr = t.createdAt;
-      if (!dateStr) return;
-      const d = new Date(dateStr);
+      const d = parseCrewTicketCreatedAt(t);
+      if (!d) return;
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (byMonth[key]) byMonth[key].tickets += 1;
     });
@@ -204,17 +222,81 @@ const CrewManagementDashboard = () => {
     tickets: { label: 'Tickets', color: 'hsl(var(--chart-2))' },
   } satisfies ChartConfig;
 
-  const activeProjects = projects.filter((p) => (p.status || '').toLowerCase() === 'active').length;
-  const recentProjects = projects.slice(0, 5);
+  const projectStats = useMemo(() => {
+    const total = projects.length;
+    const active = projects.filter((p) => normalizeStatus(p.status) === 'active').length;
+    const completed = projects.filter((p) => isCompletedStatus(p.status)).length;
+    return { total, active, completed };
+  }, [projects]);
+
+  const ticketsCreatedThisMonth = useMemo(() => {
+    if (!tickets?.length) return 0;
+    return tickets.filter((t) => isCrewTicketCreatedInLocalCalendarMonth(t)).length;
+  }, [tickets]);
+
+  const ticketBookingsGbp = useMemo(() => {
+    if (!tickets?.length) return null;
+    let sum = 0;
+    let n = 0;
+    tickets.forEach((t) => {
+      if (typeof t.price === 'number' && !Number.isNaN(t.price)) {
+        sum += t.price;
+        n += 1;
+      }
+    });
+    return n === 0 ? null : sum;
+  }, [tickets]);
+
+  const sortedRecentProjects = useMemo(() => {
+    return [...projects].sort((a, b) => {
+      const ta = new Date(a.createdAt || a.duration?.startDate || 0).getTime();
+      const tb = new Date(b.createdAt || b.duration?.startDate || 0).getTime();
+      return tb - ta;
+    });
+  }, [projects]);
+
+  const recentProjects = sortedRecentProjects.slice(0, 5);
+
+  const upcomingEndDates = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return [...projects]
+      .filter((p) => p.duration?.endDate)
+      .map((p) => ({
+        project: p,
+        end: parseProjectDay(p.duration.endDate),
+      }))
+      .filter(({ end }) => !Number.isNaN(end.getTime()) && end >= startOfToday)
+      .sort((a, b) => a.end.getTime() - b.end.getTime())
+      .slice(0, 6);
+  }, [projects]);
+
+  const recentTickets = useMemo(() => {
+    if (!tickets?.length) return [];
+    return [...tickets]
+      .filter((t) => parseCrewTicketCreatedAt(t) != null)
+      .sort((a, b) => {
+        const db = parseCrewTicketCreatedAt(b)!.getTime();
+        const da = parseCrewTicketCreatedAt(a)!.getTime();
+        return db - da;
+      })
+      .slice(0, 5);
+  }, [tickets]);
+
+  const greetingName = adminProfile?.firstname?.trim() || 'Admin';
+  const balanceDisplay = profileLoading ? '…' : formatGbp(adminProfile?.balance);
 
   return (
     <div className="admin-dashboard">
       <div className="admin-dashboard-header">
         <div>
           <h1 className="admin-dashboard-greeting">
-            {getGreeting()}, Admin
+            {getGreeting()}, {greetingName}
           </h1>
           <p className="admin-dashboard-date">Today is {formatDate(new Date())}.</p>
+          {adminProfile?.email ? (
+            <p className="admin-dashboard-signed-in">{adminProfile.email}</p>
+          ) : null}
         </div>
         <Link to="/projects" className="admin-dashboard-create-btn">
           <Plus size={14} />
@@ -222,14 +304,42 @@ const CrewManagementDashboard = () => {
         </Link>
       </div>
 
+      <nav className="admin-dashboard-quick-actions" aria-label="Workspace shortcuts">
+        <Link to="/projects" className="admin-quick-action">
+          <LayoutGrid size={16} />
+          Projects
+        </Link>
+        <Link to="/crew" className="admin-quick-action">
+          <UserCog size={16} />
+          Crew
+        </Link>
+        <Link to="/tickets" className="admin-quick-action">
+          <Plane size={16} />
+          Tickets
+        </Link>
+      </nav>
+
       <div className="admin-dashboard-cards">
         <div className="admin-stat-card">
           <div className="admin-stat-icon admin-stat-icon-blue">
             <FolderKanban size={20} />
           </div>
           <div className="admin-stat-content">
-            <span className="admin-stat-value">{loadingProjects ? '…' : activeProjects}</span>
-            <span className="admin-stat-label">TOTAL ACTIVE PROJECTS</span>
+            <span className="admin-stat-value">{loadingProjects ? '…' : projectStats.active}</span>
+            <span className="admin-stat-label">ACTIVE PROJECTS</span>
+            <span className="admin-stat-hint">In progress</span>
+          </div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-icon admin-stat-icon-slate">
+            <LayoutGrid size={20} />
+          </div>
+          <div className="admin-stat-content">
+            <span className="admin-stat-value">{loadingProjects ? '…' : projectStats.total}</span>
+            <span className="admin-stat-label">ALL PROJECTS</span>
+            <span className="admin-stat-hint">
+              {loadingProjects ? ' ' : `${projectStats.completed} completed`}
+            </span>
           </div>
         </div>
         <div className="admin-stat-card">
@@ -238,7 +348,8 @@ const CrewManagementDashboard = () => {
           </div>
           <div className="admin-stat-content">
             <span className="admin-stat-value">{crewCount}</span>
-            <span className="admin-stat-label">TOTAL CREWS</span>
+            <span className="admin-stat-label">CREW ROSTER</span>
+            <span className="admin-stat-hint">Members you manage</span>
           </div>
         </div>
         <div className="admin-stat-card admin-stat-card-tickets">
@@ -247,54 +358,39 @@ const CrewManagementDashboard = () => {
           </div>
           <div className="admin-stat-content">
             <span className="admin-stat-value">{tickets === null ? '…' : tickets.length}</span>
-            <span className="admin-stat-label">TOTAL TICKETS</span>
+            <span className="admin-stat-label">CREW TICKETS</span>
+            <span className="admin-stat-hint">
+              {ticketBookingsGbp != null ? `${formatGbp(ticketBookingsGbp)} booked` : 'Flight requests'}
+            </span>
           </div>
           <button
             type="button"
             className="admin-stat-refresh"
-            onClick={() => {
-              fetchTickets();
-              fetchCancellationProfile(false);
-            }}
-            title="Refresh tickets and billing"
-            aria-label="Refresh tickets and billing"
+            onClick={refreshTicketsAndProfile}
+            title="Refresh tickets and account"
+            aria-label="Refresh tickets and account"
           >
             <RefreshCw size={14} />
           </button>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-icon admin-stat-icon-teal">
+            <TrendingUp size={20} />
+          </div>
+          <div className="admin-stat-content">
+            <span className="admin-stat-value">{tickets === null ? '…' : ticketsCreatedThisMonth}</span>
+            <span className="admin-stat-label">NEW TICKETS (MONTH)</span>
+            <span className="admin-stat-hint">Created this calendar month</span>
+          </div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-icon admin-stat-icon-amber">
             <Wallet size={20} />
           </div>
           <div className="admin-stat-content">
-            <span className="admin-stat-value">
-              {formatCurrencyFromGbp(
-                cancellationOutstanding,
-                profileLoading,
-                balanceDisplayCurrency,
-                rates
-              )}
-            </span>
-            <span className="admin-stat-label">CANCELLATION OUTSTANDING</span>
-            <span className="admin-stat-hint">
-              Recovered gradually on new bookings
-            </span>
-          </div>
-        </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-icon admin-stat-icon-slate">
-            <Layers size={20} />
-          </div>
-          <div className="admin-stat-content">
-            <span className="admin-stat-value">
-              {profileLoading && cancellationSlotsRemaining === null
-                ? '…'
-                : cancellationSlotsRemaining != null
-                  ? String(cancellationSlotsRemaining)
-                  : '—'}
-            </span>
-            <span className="admin-stat-label">CANCELLATION SLOTS</span>
-            <span className="admin-stat-hint">Unresolved cancellations counted</span>
+            <span className="admin-stat-value">{balanceDisplay}</span>
+            <span className="admin-stat-label">ACCOUNT BALANCE</span>
+            <span className="admin-stat-hint">GBP (from your profile)</span>
           </div>
         </div>
       </div>
@@ -310,7 +406,10 @@ const CrewManagementDashboard = () => {
             ) : creationChartData.length === 0 ? (
               <p className="admin-panel-empty">No creation data available yet.</p>
             ) : (
-              <ChartContainer config={creationChartConfig} className="h-[210px] w-full">
+              <ChartContainer
+                config={creationChartConfig}
+                className="aspect-auto flex-1 min-h-[200px] w-full"
+              >
                 <BarChart accessibilityLayer data={creationChartData} margin={{ top: 4, left: 8, right: 8, bottom: 0 }}>
                   <CartesianGrid vertical={false} />
                   <XAxis
@@ -349,7 +448,9 @@ const CrewManagementDashboard = () => {
         <div className="admin-dashboard-panel admin-panel-cases">
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Recent Projects</h2>
-            <Link to="/projects" className="admin-panel-view-all">View All</Link>
+            <Link to="/projects" className="admin-panel-view-all">
+              View All
+            </Link>
           </div>
           <div className="admin-panel-body">
             {loadingProjects ? (
@@ -371,14 +472,76 @@ const CrewManagementDashboard = () => {
 
         <div className="admin-dashboard-panel admin-panel-deadlines">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Upcoming Deadlines</h2>
+            <h2 className="admin-panel-title">Project end dates</h2>
+            <Link to="/projects" className="admin-panel-view-all">
+              Calendar
+            </Link>
           </div>
           <div className="admin-panel-body">
-            <p className="admin-panel-empty">No upcoming deadlines.</p>
-            <Link to="/projects" className="admin-panel-calendar-btn">
-              <Calendar size={16} />
-              View Full Calendar
+            {loadingProjects ? (
+              <p className="admin-panel-empty">Loading…</p>
+            ) : upcomingEndDates.length === 0 ? (
+              <>
+                <p className="admin-panel-empty admin-panel-empty--compact">
+                  No upcoming project end dates from your schedule.
+                </p>
+                <Link to="/projects" className="admin-panel-calendar-btn">
+                  <Calendar size={16} />
+                  View projects
+                </Link>
+              </>
+            ) : (
+              <ul className="admin-list-rows">
+                {upcomingEndDates.map(({ project }) => (
+                  <li key={project.id} className="admin-list-row">
+                    <div className="admin-list-row-main">
+                      <span className="admin-list-row-title">{project.title}</span>
+                      <span className="admin-case-status admin-case-status--muted">{project.status}</span>
+                    </div>
+                    <span className="admin-list-row-meta">Ends {formatShortDate(project.duration.endDate)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div className="admin-dashboard-panel admin-panel-tickets-feed">
+          <div className="admin-panel-header">
+            <h2 className="admin-panel-title">Latest crew tickets</h2>
+            <Link to="/tickets" className="admin-panel-view-all">
+              Open tickets
             </Link>
+          </div>
+          <div className="admin-panel-body">
+            {tickets === null ? (
+              <p className="admin-panel-empty">Loading…</p>
+            ) : recentTickets.length === 0 ? (
+              <>
+                <p className="admin-panel-empty admin-panel-empty--compact">No crew tickets yet.</p>
+                <Link to="/tickets" className="admin-panel-calendar-btn">
+                  <Plane size={16} />
+                  Book a ticket
+                </Link>
+              </>
+            ) : (
+              <ul className="admin-list-rows">
+                {recentTickets.map((t) => (
+                  <li key={t.id} className="admin-list-row">
+                    <div className="admin-list-row-main">
+                      <span className="admin-list-row-title">{crewDisplayName(t.crew_id)}</span>
+                      <span className="admin-list-row-route" title="Route">
+                        {airportLabel(t.from)} → {airportLabel(t.to)}
+                      </span>
+                    </div>
+                    <span className="admin-list-row-meta">
+                      {t.project_id?.title ?? 'Project'}
+                      {ticketCreatedListLabel(t)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

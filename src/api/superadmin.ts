@@ -12,13 +12,22 @@ export interface SuperadminAuthResponse {
   message?: string;
 }
 
+export interface SuperadminAdminActivityRow {
+  adminId: string;
+  email: string;
+  projectsCount: number;
+  crewCount: number;
+  cancellationOutstanding?: number | null;
+  cancellationSlotsRemaining?: number | null;
+}
+
 export interface AdminAnalytics {
   totalAdmins: number;
   activeAdmins: number;
   totalProjects: number;
   totalCrew: number;
   totalTickets: number;
-  adminsByActivity?: { adminId: string; email: string; projectsCount: number; crewCount: number }[];
+  adminsByActivity?: SuperadminAdminActivityRow[];
   markup?: number | null;
   cashback?: number | null;
   cancellationCharges?: number | null;
@@ -34,6 +43,8 @@ export interface AdminApi {
   createdAt?: string;
   projectsCount?: number;
   crewCount?: number;
+  cancellationOutstanding?: number | null;
+  cancellationSlotsRemaining?: number | null;
 }
 
 export interface CreateAdminPayload {

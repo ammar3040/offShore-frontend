@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom';
 import { Users, FolderKanban, Ship, Ticket, TrendingUp, Plus, BadgeDollarSign, CircleX } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSuperadminAnalytics, updateSuperadminSettings } from '../api/superadmin';
-import { fetchRates, convert, type CurrencyCode } from '../lib/currency';
+import { fetchRates, convert, formatGbpInDisplayCurrency, type CurrencyCode } from '../lib/currency';
+import {
+  ADMIN_BALANCE_CURRENCY_CHANGE_EVENT,
+  getStoredAdminBalanceCurrency,
+} from '../lib/adminBalanceCurrency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -42,6 +46,11 @@ function getCurrencySymbol(code: CurrencyCode): string {
   return CURRENCY_LABELS.find((c) => c.value === code)?.symbol ?? code;
 }
 
+function formatCancellationSlotsShort(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(Number(n)) || !Number.isFinite(Number(n))) return '—';
+  return String(Math.trunc(Number(n)));
+}
+
 const SuperadminDashboard = () => {
   const [settings, setSettings] = useState<{
     baseCurrency: CurrencyCode;
@@ -67,6 +76,9 @@ const SuperadminDashboard = () => {
   const [analytics, setAnalytics] = useState<import('../api/superadmin').AdminAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancellationDisplayCurrency, setCancellationDisplayCurrency] = useState<CurrencyCode>(() =>
+    getStoredAdminBalanceCurrency()
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +124,15 @@ const SuperadminDashboard = () => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const onCurrency = (e: Event) => {
+      const c = (e as CustomEvent<{ currency: CurrencyCode }>).detail?.currency;
+      if (c === 'GBP' || c === 'USD' || c === 'INR') setCancellationDisplayCurrency(c);
+    };
+    window.addEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrency);
+    return () => window.removeEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrency);
   }, []);
 
   const handleCurrencyChange = useCallback((newCurrency: CurrencyCode) => {
@@ -532,6 +553,26 @@ const SuperadminDashboard = () => {
                     <div className="superadmin-admin-stats">
                       <span className="superadmin-admin-stat">{a.projectsCount} projects</span>
                       <span className="superadmin-admin-stat">{a.crewCount} crew</span>
+                      <span
+                        className="superadmin-admin-stat"
+                        title="Cancellation outstanding (GBP)"
+                      >
+                        {typeof a.cancellationOutstanding === 'number' &&
+                        !Number.isNaN(a.cancellationOutstanding)
+                          ? `${formatGbpInDisplayCurrency(
+                              a.cancellationOutstanding,
+                              cancellationDisplayCurrency,
+                              rates
+                            )} out.`
+                          : '—'}
+                      </span>
+                      <span className="superadmin-admin-stat" title="Cancellation slots remaining">
+                        {typeof a.cancellationSlotsRemaining === 'number' &&
+                        !Number.isNaN(a.cancellationSlotsRemaining) &&
+                        Number.isFinite(a.cancellationSlotsRemaining)
+                          ? `${formatCancellationSlotsShort(a.cancellationSlotsRemaining)} slots`
+                          : '—'}
+                      </span>
                     </div>
                   </li>
                 ))}

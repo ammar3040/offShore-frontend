@@ -42,6 +42,58 @@ export interface CrewTicketApi {
   createdAt?: string;
 }
 
+/** Raw API row may use snake_case timestamps. */
+export type CrewTicketApiRaw = CrewTicketApi & { created_at?: string };
+
+function createdAtIsoFromMongoObjectId(id: string): string | undefined {
+  if (!/^[a-f0-9]{24}$/i.test(id)) return undefined;
+  const sec = Number.parseInt(id.slice(0, 8), 16);
+  if (!Number.isFinite(sec) || sec <= 0) return undefined;
+  return new Date(sec * 1000).toISOString();
+}
+
+/** Creation timestamp string from API (`createdAt` or `created_at`). */
+export function getCrewTicketCreatedIso(t: CrewTicketApi): string | undefined {
+  const raw = t as CrewTicketApiRaw;
+  const camel = typeof t.createdAt === 'string' ? t.createdAt.trim() : '';
+  if (camel) return camel;
+  const snake = typeof raw.created_at === 'string' ? raw.created_at.trim() : '';
+  return snake || undefined;
+}
+
+/**
+ * Parses ticket creation time for UI bucketing. Date-only `YYYY-MM-DD` uses the
+ * viewer's local calendar (avoids UTC midnight shifting the local day/month).
+ */
+export function parseCrewTicketCreatedAt(t: CrewTicketApi): Date | null {
+  let iso = getCrewTicketCreatedIso(t);
+  if (!iso) {
+    const fromId = createdAtIsoFromMongoObjectId(t.id);
+    if (!fromId) return null;
+    iso = fromId;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+  const dt = new Date(iso);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+export function isCrewTicketCreatedInLocalCalendarMonth(t: CrewTicketApi, now = new Date()): boolean {
+  const d = parseCrewTicketCreatedAt(t);
+  if (!d) return false;
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
+function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
+  const iso = getCrewTicketCreatedIso(row) ?? createdAtIsoFromMongoObjectId(row.id);
+  if (!iso) return row;
+  if (row.createdAt?.trim() === iso) return row;
+  return { ...row, createdAt: iso };
+}
+
 export interface GetCrewTicketsResponse {
   crewTickets: CrewTicketApi[];
 }
@@ -109,7 +161,8 @@ export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTic
   }
 
   const data = await response.json();
-  const crewTickets = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
+  const raw = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
+  const crewTickets = raw.map((t: CrewTicketApiRaw) => normalizeCrewTicket(t));
   return { crewTickets };
 }
 
@@ -142,7 +195,8 @@ export async function getCrewTickets(): Promise<GetCrewTicketsResponse> {
   }
 
   const data = await response.json();
-  const crewTickets = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
+  const raw = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
+  const crewTickets = raw.map((t: CrewTicketApiRaw) => normalizeCrewTicket(t));
   return { crewTickets };
 }
 
