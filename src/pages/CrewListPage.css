@@ -1065,3 +1065,28 @@
 .layout--dark .crew-detail-project-status {
   color: hsl(var(--muted-foreground));
 }
+
+.user-mgmt-form-suspense {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 200px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.user-mgmt-form-suspense-spinner {
+  animation: user-mgmt-spin 0.9s linear infinite;
+}
+
+@keyframes user-mgmt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.layout--dark .user-mgmt-form-suspense {
+  color: hsl(var(--muted-foreground));
+}

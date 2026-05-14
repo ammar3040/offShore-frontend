@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send, User, Mail, MapPin, FileText, CreditCard, UserMinus, Briefcase, Award, FolderOpen, Loader2 } from 'lucide-react';
 import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
@@ -11,8 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
+import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import './CrewListPage.css';
+
+const CrewMemberForm = lazy(() => import('../components/forms/CrewMemberForm'));
 
 function getInitials(firstname: string, lastname: string): string {
   const f = (firstname || '').trim().charAt(0) || '';
@@ -551,11 +553,20 @@ const CrewListPage = () => {
         {addError && (
           <ErrorAlertPopup message={addError} onDismiss={() => setAddError(null)} />
         )}
-        <CrewMemberForm
-          onSubmit={handleSubmitCrewMember}
-          onCancel={handleCloseAddModal}
-          isLoading={addLoading}
-        />
+        <Suspense
+          fallback={
+            <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading form">
+              <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
+              <p>Loading form…</p>
+            </div>
+          }
+        >
+          <CrewMemberForm
+            onSubmit={handleSubmitCrewMember}
+            onCancel={handleCloseAddModal}
+            isLoading={addLoading}
+          />
+        </Suspense>
       </Modal>
 
       <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge">
@@ -564,14 +575,23 @@ const CrewListPage = () => {
             {editError && (
               <ErrorAlertPopup message={editError} onDismiss={() => setEditError(null)} />
             )}
-            <CrewMemberForm
-              key={editingCrew.id}
-              onSubmit={handleSubmitEdit}
-              onCancel={closeEditModal}
-              isLoading={editLoading}
-              initialData={crewApiToFormData(editingCrew)}
-              submitLabel="Save Changes"
-            />
+            <Suspense
+              fallback={
+                <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading form">
+                  <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
+                  <p>Loading form…</p>
+                </div>
+              }
+            >
+              <CrewMemberForm
+                key={editingCrew.id}
+                onSubmit={handleSubmitEdit}
+                onCancel={closeEditModal}
+                isLoading={editLoading}
+                initialData={crewApiToFormData(editingCrew)}
+                submitLabel="Save Changes"
+              />
+            </Suspense>
           </>
         )}
       </Modal>
