@@ -1,742 +1,333 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  FolderKanban,
-  Users,
-  Ticket,
-  Plus,
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-  LayoutGrid,
-  Wallet,
-  TrendingUp,
-  UserCog,
+  AlertTriangle,
+  Anchor,
+  ArrowUpRight,
+  BadgeCheck,
+  Bell,
+  CalendarDays,
+  CircleDollarSign,
+  Download,
+  FileText,
+  Filter,
+  HelpCircle,
+  LayoutDashboard,
   Plane,
+  Plus,
+  Radio,
+  Search,
+  Settings,
+  ShieldCheck,
+  Ship,
+  Users,
+  Wallet,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
-import { getProjects } from '../api/project';
-import { getCrewList } from '../api/crew';
-import {
-  getCrewTickets,
-  parseCrewTicketCreatedAt,
-  isCrewTicketCreatedInLocalCalendarMonth,
-  getCrewTicketCreatedIso,
-  type CrewTicketApi,
-} from '../api/ticket';
-import { getAdminProfile, type AdminProfile } from '../api/admin';
-import type { ProjectApi } from '../api/project';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart';
 import './CrewManagementDashboard.css';
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
+const fleetRows = [
+  ['MV Poseidon Rex', 'FPSO', "12°04'N 44°02'E", '18/22', 'Understaffed', 'Jun 3, Djibouti'],
+  ['MV Deepwater Alpha', 'DSV', "56°08'N 03°10'E", '24/24', 'Full Crew', 'Jun 8, Aberdeen'],
+  ['MV Atlantic Pioneer', 'PSV', "61°30'N 02°05'E", '16/16', 'Full Crew', 'Jun 11, Bergen'],
+  ['MV Gulf Endeavour', 'OSV', "29°10'N 88°15'W", '14/14', 'In Transit', 'Jun 5, Houston'],
+  ['MV Nordic Surveyor', 'CSV', "70°22'N 24°30'E", '20/20', 'Full Crew', 'Jun 14, Tromsø'],
+];
 
-function formatDate(d: Date): string {
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
+const crewChanges = [
+  ['Capt. James Okafor', 'Master', 'MV Deepwater Alpha', 'Sign-On', 'Jun 01', 'LHR→ABZ'],
+  ['Erik Haugen', 'Chief Officer', 'MV Nordic Surveyor', 'Sign-Off', 'Jun 02', 'TOS→OSL'],
+  ['Priya Nair', '2nd Engineer', 'MV Poseidon Rex', 'Sign-On', 'Jun 03', 'Pending'],
+  ['Carlos Mendez', 'DP Operator', 'MV Atlantic Pioneer', 'Sign-On', 'Jun 05', 'GRU→BGO'],
+  ['Amir Khalil', 'Chief Engineer', 'MV Gulf Endeavour', 'Sign-Off', 'Jun 07', 'IAH→DXB'],
+];
 
-function formatShortDate(iso: string): string {
-  const d = parseProjectDay(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+const kpis = [
+  { label: 'Total Crew', value: '284', meta: '+12 this month', tone: 'up', bar: '71%', color: 'blue', icon: true },
+  { label: 'On Board', value: '198', meta: 'Across 11 vessels', tone: 'flat', bar: '70%', color: 'teal' },
+  { label: 'On Leave', value: '62', meta: '22% of fleet', tone: 'flat', bar: '22%', color: 'amber' },
+  { label: 'Cert Expiring', value: '14', meta: '3 critical', tone: 'down', bar: '14%', color: 'red' },
+  { label: 'Flights Booked', value: '31', meta: 'Next 14 days', tone: 'up', bar: '55%', color: 'teal' },
+];
 
-function formatCalendarDay(d: Date): string {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+const activity = [
+  { icon: Plane, color: 'green', text: 'Capt. Okafor flight confirmed LHR→ABZ · BA1474', meta: '8 min ago · Jun 1, 06:40 dep.' },
+  { icon: BadgeCheck, color: 'red', text: 'Erik Haugen STCW Basic Safety cert expires in 18 days', meta: '22 min ago · Renewal due by Jun 19' },
+  { icon: Users, color: 'amber', text: 'MV Poseidon Rex crew gap — DP Operator vacancy unfilled', meta: '1 hr ago · Rotation Jun 03' },
+  { icon: CircleDollarSign, color: 'blue', text: 'May payroll processed — 284 crew · $1.84M disbursed', meta: '2 hr ago · via Citibank Wire' },
+  { icon: FileText, color: 'teal', text: 'Carlos Mendez contract renewed — 9-month extension signed', meta: '4 hr ago · Expires Feb 2026' },
+];
 
-function ticketCreatedListLabel(t: CrewTicketApi): string {
-  const iso = getCrewTicketCreatedIso(t);
-  if (!iso) return '';
-  const ymd =
-    iso.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(iso)
-      ? iso.slice(0, 10)
-      : iso;
-  return ` · ${formatShortDate(ymd)}`;
-}
-
-function parseProjectDay(s: string): Date {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
-  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return new Date(s);
-}
-
-function startOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function daysUntil(end: Date, from: Date): number {
-  return Math.round((startOfLocalDay(end).getTime() - startOfLocalDay(from).getTime()) / 86_400_000);
-}
-
-function formatGbp(amount: number | null | undefined): string {
-  if (amount == null || Number.isNaN(Number(amount))) return '—';
-  return `£${Number(amount).toLocaleString('en-GB', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function normalizeStatus(status: string): string {
-  return (status || '').trim().toLowerCase();
-}
-
-function isCompletedStatus(status: string): boolean {
-  const s = normalizeStatus(status);
-  return s.includes('complete') || s === 'done' || s === 'closed' || s === 'finished';
-}
-
-function isProjectOnDate(project: ProjectApi, day: Date): boolean {
-  if (isCompletedStatus(project.status)) return false;
-  const start = project.duration?.startDate ? parseProjectDay(project.duration.startDate) : null;
-  const end = project.duration?.endDate ? parseProjectDay(project.duration.endDate) : null;
-  if ((start && Number.isNaN(start.getTime())) || (end && Number.isNaN(end.getTime()))) return false;
-  const currentDay = startOfLocalDay(day);
-  if (start && startOfLocalDay(start) > currentDay) return false;
-  if (end && startOfLocalDay(end) < currentDay) return false;
-  return Boolean(start || end || normalizeStatus(project.status) === 'active');
-}
-
-function projectStatusTone(project: ProjectApi, day: Date): 'green' | 'orange' | 'red' {
-  const status = normalizeStatus(project.status);
-  const end = project.duration?.endDate ? parseProjectDay(project.duration.endDate) : null;
-  if (status.includes('risk') || status.includes('overdue') || status.includes('blocked')) return 'red';
-  if (end && !Number.isNaN(end.getTime()) && daysUntil(end, day) <= 7) return 'orange';
-  if (status === 'pending' || status === 'draft' || status.includes('hold')) return 'orange';
-  return 'green';
-}
-
-function buildCalendarDays(month: Date): Array<Date | null> {
-  const year = month.getFullYear();
-  const monthIndex = month.getMonth();
-  const leadingEmptyDays = new Date(year, monthIndex, 1).getDay();
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const days = [
-    ...Array<Date | null>(leadingEmptyDays).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, index) => new Date(year, monthIndex, index + 1)),
-  ];
-  const trailingEmptyDays = (7 - (days.length % 7)) % 7;
-
-  return [...days, ...Array<Date | null>(trailingEmptyDays).fill(null)];
-}
-
-function crewDisplayName(crew: CrewTicketApi['crew_id']): string {
-  const fn = crew.firstname?.trim() ?? '';
-  const ln = crew.lastname?.trim() ?? '';
-  const name = `${fn} ${ln}`.trim();
-  return name || 'Crew member';
-}
-
-function airportLabel(loc: CrewTicketApi['from']): string {
-  return loc?.Name?.trim() || '—';
-}
-
-function ProjectStatusCalendar({
-  projects,
-  loading,
-}: {
-  projects: ProjectApi[];
-  loading: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [visibleMonth, setVisibleMonth] = useState(() => new Date());
-  const [previewDate, setPreviewDate] = useState<Date | null>(null);
-  const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth]);
-  const today = startOfLocalDay(new Date());
-  const monthLabel = visibleMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const previewProjects = useMemo(
-    () => (previewDate ? projects.filter((project) => isProjectOnDate(project, previewDate)) : []),
-    [previewDate, projects]
-  );
-
-  const changeMonth = (offset: number) => {
-    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
-    setPreviewDate(null);
-  };
-
-  return (
-    <div
-      className="admin-project-calendar"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        className="admin-project-calendar-trigger"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-label="Project status calendar"
-      >
-        <CalendarIcon size={16} />
-        <span>Project calendar</span>
-      </button>
-      {open ? (
-        <div className="admin-project-calendar-popover" role="dialog" aria-label="Project status calendar">
-          <div className="admin-project-calendar-header">
-            <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month">
-              <ChevronLeft size={16} />
-            </button>
-            <strong>{monthLabel}</strong>
-            <button type="button" onClick={() => changeMonth(1)} aria-label="Next month">
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <p className="admin-project-calendar-help">Hover a date to see ongoing projects.</p>
-          <div className="admin-project-calendar-weekdays" aria-hidden="true">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-              <span key={`${day}-${index}`}>{day}</span>
-            ))}
-          </div>
-          <div className="admin-project-calendar-grid">
-            {calendarDays.map((day, index) => {
-              if (!day) {
-                return <div key={`empty-${index}`} className="admin-project-calendar-empty" aria-hidden="true" />;
-              }
-              const dayProjects = projects.filter((project) => isProjectOnDate(project, day));
-              const isToday = startOfLocalDay(day).getTime() === today.getTime();
-              const isPreviewed = previewDate && startOfLocalDay(day).getTime() === startOfLocalDay(previewDate).getTime();
-
-              return (
-                <div
-                  key={day.toISOString()}
-                  className={[
-                    'admin-project-calendar-day',
-                    isToday ? 'admin-project-calendar-day--today' : '',
-                    isPreviewed ? 'admin-project-calendar-day--selected' : '',
-                    dayProjects.length ? 'admin-project-calendar-day--has-projects' : '',
-                  ].filter(Boolean).join(' ')}
-                  tabIndex={0}
-                  onMouseEnter={() => setPreviewDate(day)}
-                  onFocus={() => setPreviewDate(day)}
-                  aria-label={`${formatCalendarDay(day)}: ${dayProjects.length} ongoing project${dayProjects.length === 1 ? '' : 's'}`}
-                >
-                  <span className="admin-project-calendar-day-number">{day.getDate()}</span>
-                  {dayProjects.length ? (
-                    <span className="admin-project-calendar-count">{dayProjects.length}</span>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-          <div className="admin-project-calendar-details" aria-live="polite">
-            {previewDate ? (
-              <>
-                <strong>{formatCalendarDay(previewDate)}</strong>
-                {loading ? (
-                  <p>Loading projects…</p>
-                ) : previewProjects.length === 0 ? (
-                  <p>No ongoing projects on this date.</p>
-                ) : (
-                  <ul>
-                    {previewProjects.slice(0, 4).map((project) => (
-                      <li key={project.id}>
-                        <i
-                          className={`admin-project-calendar-status admin-project-calendar-status--${projectStatusTone(project, previewDate)}`}
-                          aria-hidden="true"
-                        />
-                        <span>
-                          <b>{project.title}</b>
-                          <small>
-                            {formatShortDate(project.duration.startDate)} - {formatShortDate(project.duration.endDate)}
-                            {' · '}
-                            {project.status || 'Active'}
-                          </small>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {previewProjects.length > 4 ? <p>+{previewProjects.length - 4} more projects</p> : null}
-              </>
-            ) : (
-              <p>Select a date to preview ongoing project information.</p>
-            )}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
+const certs = [
+  ['18d', 'red', 'Erik Haugen — STCW Basic Safety', 'Jun 19'],
+  ['22d', 'red', 'Priya Nair — Medical Fitness', 'Jun 23'],
+  ['28d', 'amber', 'Capt. Okafor — GMDSS GOC', 'Jun 29'],
+  ['31d', 'amber', 'Carlos Mendez — DP Unlimited', 'Jul 02'],
+];
 
 const CrewManagementDashboard = () => {
-  const [projects, setProjects] = useState<ProjectApi[]>([]);
-  const [tickets, setTickets] = useState<CrewTicketApi[] | null>(null);
-  const [crewCount, setCrewCount] = useState(0);
-  const [loadingProjects, setLoadingProjects] = useState(true);
-  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    getProjects()
-      .then((res) => {
-        if (!cancelled) setProjects(res.projects ?? []);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoadingProjects(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    getCrewList()
-      .then((res) => {
-        if (!cancelled) setCrewCount((res.crew ?? []).length);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const loadProfile = useCallback(() => {
-    setProfileLoading(true);
-    getAdminProfile()
-      .then((p) => setAdminProfile(p))
-      .catch(() => setAdminProfile(null))
-      .finally(() => setProfileLoading(false));
-  }, []);
-
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
-
-  const fetchTickets = useCallback(() => {
-    getCrewTickets()
-      .then((res) => setTickets(res.crewTickets ?? []))
-      .catch((err) => {
-        setTickets([]);
-        toast.error('Failed to load tickets', {
-          description: err instanceof Error ? err.message : 'Please try again.',
-        });
-      });
-  }, []);
-
-  const refreshTicketsAndProfile = useCallback(() => {
-    fetchTickets();
-    loadProfile();
-  }, [fetchTickets, loadProfile]);
-
-  useEffect(() => {
-    let cancelled = false;
-    getCrewTickets()
-      .then((res) => {
-        if (!cancelled) setTickets(res.crewTickets ?? []);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setTickets([]);
-          toast.error('Failed to load tickets', {
-            description: err instanceof Error ? err.message : 'Please try again.',
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        fetchTickets();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [fetchTickets]);
-
-  const creationChartData = useMemo(() => {
-    const byMonth: Record<string, { month: string; projects: number; tickets: number }> = {};
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      byMonth[key] = { month: key, projects: 0, tickets: 0 };
-    }
-    projects.forEach((p) => {
-      const dateStr = p.createdAt ?? p.duration?.startDate;
-      if (!dateStr) return;
-      const d = new Date(dateStr);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (byMonth[key]) byMonth[key].projects += 1;
-    });
-    (tickets ?? []).forEach((t) => {
-      const d = parseCrewTicketCreatedAt(t);
-      if (!d) return;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (byMonth[key]) byMonth[key].tickets += 1;
-    });
-    return Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month));
-  }, [projects, tickets]);
-
-  const creationChartConfig = {
-    month: { label: 'Month' },
-    projects: { label: 'Projects', color: 'hsl(var(--chart-1))' },
-    tickets: { label: 'Tickets', color: 'hsl(var(--chart-2))' },
-  } satisfies ChartConfig;
-
-  const projectStats = useMemo(() => {
-    const total = projects.length;
-    const active = projects.filter((p) => normalizeStatus(p.status) === 'active').length;
-    const completed = projects.filter((p) => isCompletedStatus(p.status)).length;
-    return { total, active, completed };
-  }, [projects]);
-
-  const ticketsCreatedThisMonth = useMemo(() => {
-    if (!tickets?.length) return 0;
-    return tickets.filter((t) => isCrewTicketCreatedInLocalCalendarMonth(t)).length;
-  }, [tickets]);
-
-  const ticketBookingsGbp = useMemo(() => {
-    if (!tickets?.length) return null;
-    let sum = 0;
-    let n = 0;
-    tickets.forEach((t) => {
-      if (typeof t.price === 'number' && !Number.isNaN(t.price)) {
-        sum += t.price;
-        n += 1;
-      }
-    });
-    return n === 0 ? null : sum;
-  }, [tickets]);
-
-  const sortedRecentProjects = useMemo(() => {
-    return [...projects].sort((a, b) => {
-      const ta = new Date(a.createdAt || a.duration?.startDate || 0).getTime();
-      const tb = new Date(b.createdAt || b.duration?.startDate || 0).getTime();
-      return tb - ta;
-    });
-  }, [projects]);
-
-  const recentProjects = sortedRecentProjects.slice(0, 5);
-
-  const upcomingEndDates = useMemo(() => {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    return [...projects]
-      .filter((p) => p.duration?.endDate)
-      .map((p) => ({
-        project: p,
-        end: parseProjectDay(p.duration.endDate),
-      }))
-      .filter(({ end }) => !Number.isNaN(end.getTime()) && end >= startOfToday)
-      .sort((a, b) => a.end.getTime() - b.end.getTime())
-      .slice(0, 6);
-  }, [projects]);
-
-  const recentTickets = useMemo(() => {
-    if (!tickets?.length) return [];
-    return [...tickets]
-      .filter((t) => parseCrewTicketCreatedAt(t) != null)
-      .sort((a, b) => {
-        const db = parseCrewTicketCreatedAt(b)!.getTime();
-        const da = parseCrewTicketCreatedAt(a)!.getTime();
-        return db - da;
-      })
-      .slice(0, 5);
-  }, [tickets]);
-
-  const greetingName = adminProfile?.firstname?.trim() || 'Admin';
-  const balanceDisplay = profileLoading ? '…' : formatGbp(adminProfile?.balance);
-
   return (
-    <div className="admin-dashboard">
-      <div className="admin-dashboard-header">
-        <div>
-          <h1 className="admin-dashboard-greeting">
-            {getGreeting()}, {greetingName}
-          </h1>
-          <p className="admin-dashboard-date">Today is {formatDate(new Date())}.</p>
-          {adminProfile?.email ? (
-            <p className="admin-dashboard-signed-in">{adminProfile.email}</p>
-          ) : null}
+    <div className="subsea-shell">
+      <nav className="subsea-nav" aria-label="Subseacore modules">
+        <button type="button" className="subsea-brand" aria-label="Subseacore">
+          <span className="subsea-mark">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 17l4-8 4 4 4-6 4 10" />
+              <circle cx="12" cy="5" r="2" />
+            </svg>
+          </span>
+        </button>
+        <div className="subsea-nav-items">
+          {[
+            { icon: LayoutDashboard, label: 'Dashboard', active: true },
+            { icon: Users, label: 'Crew Management', badge: true },
+            { icon: Ship, label: 'Vessels' },
+            { icon: Plane, label: 'Flight Bookings' },
+            { icon: Wallet, label: 'Payroll' },
+            { icon: FileText, label: 'Contracts' },
+            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
+            { divider: true },
+            { icon: Radio, label: 'Command Center' },
+            { divider: true },
+            { icon: Anchor, label: 'Projects' },
+            { icon: CalendarDays, label: 'Timeline & Calendar' },
+            { divider: true },
+            { icon: Bell, label: 'Notifications' },
+          ].map((item, index) => {
+            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={`subsea-ni${item.active ? ' active' : ''}`}
+                aria-label={item.label}
+              >
+                <Icon size={17} />
+                {item.badge && <span className="subsea-ni-badge" />}
+                <span className="subsea-ni-tip">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
-        <div className="admin-dashboard-header-actions">
-          <ProjectStatusCalendar projects={projects} loading={loadingProjects} />
-          <Link to="/projects" className="admin-dashboard-create-btn">
-            <Plus size={14} />
-            Create New Project
-          </Link>
+        <div className="subsea-nav-foot">
+          <button type="button" className="subsea-ni" aria-label="Settings">
+            <Settings size={17} />
+            <span className="subsea-ni-tip">Settings</span>
+          </button>
+          <button type="button" className="subsea-ni" aria-label="Help">
+            <HelpCircle size={17} />
+            <span className="subsea-ni-tip">Help</span>
+          </button>
+          <div className="subsea-avatar">SK</div>
         </div>
-      </div>
-
-      <nav className="admin-dashboard-quick-actions" aria-label="Workspace shortcuts">
-        <Link to="/projects" className="admin-quick-action">
-          <LayoutGrid size={16} />
-          Projects
-        </Link>
-        <Link to="/crew" className="admin-quick-action">
-          <UserCog size={16} />
-          Crew
-        </Link>
-        <Link to="/tickets" className="admin-quick-action">
-          <Plane size={16} />
-          Tickets
-        </Link>
       </nav>
 
-      <div className="admin-dashboard-cards">
-        <div className="admin-stat-card">
-          <div className="admin-stat-icon admin-stat-icon-blue">
-            <FolderKanban size={20} />
-          </div>
-          <div className="admin-stat-content">
-            <span className="admin-stat-value">{loadingProjects ? '…' : projectStats.active}</span>
-            <span className="admin-stat-label">ACTIVE PROJECTS</span>
-            <span className="admin-stat-hint">In progress</span>
-          </div>
-        </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-icon admin-stat-icon-slate">
-            <LayoutGrid size={20} />
-          </div>
-          <div className="admin-stat-content">
-            <span className="admin-stat-value">{loadingProjects ? '…' : projectStats.total}</span>
-            <span className="admin-stat-label">ALL PROJECTS</span>
-            <span className="admin-stat-hint">
-              {loadingProjects ? ' ' : `${projectStats.completed} completed`}
-            </span>
-          </div>
-        </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-icon admin-stat-icon-purple">
-            <Users size={20} />
-          </div>
-          <div className="admin-stat-content">
-            <span className="admin-stat-value">{crewCount}</span>
-            <span className="admin-stat-label">CREW ROSTER</span>
-            <span className="admin-stat-hint">Members you manage</span>
-          </div>
-        </div>
-        <div className="admin-stat-card admin-stat-card-tickets">
-          <div className="admin-stat-icon admin-stat-icon-green">
-            <Ticket size={20} />
-          </div>
-          <div className="admin-stat-content">
-            <span className="admin-stat-value">{tickets === null ? '…' : tickets.length}</span>
-            <span className="admin-stat-label">CREW TICKETS</span>
-            <span className="admin-stat-hint">
-              {ticketBookingsGbp != null ? `${formatGbp(ticketBookingsGbp)} booked` : 'Flight requests'}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="admin-stat-refresh"
-            onClick={refreshTicketsAndProfile}
-            title="Refresh tickets and account"
-            aria-label="Refresh tickets and account"
-          >
-            <RefreshCw size={14} />
+      <aside className="subsea-sidebar">
+        <div className="subsea-sb-head">
+          <span className="subsea-sb-title">Dashboard</span>
+          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
+            <Filter size={13} />
           </button>
         </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-icon admin-stat-icon-teal">
-            <TrendingUp size={20} />
-          </div>
-          <div className="admin-stat-content">
-            <span className="admin-stat-value">{tickets === null ? '…' : ticketsCreatedThisMonth}</span>
-            <span className="admin-stat-label">NEW TICKETS (MONTH)</span>
-            <span className="admin-stat-hint">Created this calendar month</span>
+        <div className="subsea-sb-search">
+          <div className="subsea-sb-search-wrap">
+            <Search size={13} />
+            <input type="text" placeholder="Search crew, vessels..." />
           </div>
         </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-icon admin-stat-icon-amber">
-            <Wallet size={20} />
-          </div>
-          <div className="admin-stat-content">
-            <span className="admin-stat-value">{balanceDisplay}</span>
-            <span className="admin-stat-label">ACCOUNT BALANCE</span>
-            <span className="admin-stat-hint">GBP (from your profile)</span>
-          </div>
+        <div className="subsea-sb-body">
+          <div className="subsea-sb-group">Operations</div>
+          <button type="button" className="subsea-sb-link active">
+            <LayoutDashboard size={13} /> Fleet Overview <span className="subsea-sb-count">Live</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <Ship size={13} /> Vessel Fleet <span className="subsea-sb-count">11</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <Users size={13} /> Crew Roster <span className="subsea-sb-count">284</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <Plane size={13} /> Flight Bookings <span className="subsea-sb-count">31</span>
+          </button>
+          <div className="subsea-sb-group">Compliance</div>
+          <button type="button" className="subsea-sb-link">
+            <BadgeCheck size={13} /> Certifications <span className="subsea-sb-count subsea-sb-count-red">14</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <ShieldCheck size={13} /> Audit Logs
+          </button>
+          <div className="subsea-sb-group">Projects</div>
+          <button type="button" className="subsea-sb-link">
+            <Anchor size={13} /> Active Projects <span className="subsea-sb-count">9</span>
+          </button>
         </div>
-      </div>
+      </aside>
 
-      <div className="admin-dashboard-panels">
-        <div className="admin-dashboard-panel admin-panel-chart">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Projects &amp; Tickets Created</h2>
+      <div className="subsea-main">
+        <div className="subsea-topbar">
+          <div className="subsea-crumb">
+            <span>Subseacore</span>
+            <span className="subsea-crumb-sep">/</span>
+            <span className="subsea-crumb-active">Dashboard</span>
           </div>
-          <div className="admin-panel-body admin-chart-body">
-            {loadingProjects ? (
-              <p className="admin-panel-empty">Loading…</p>
-            ) : creationChartData.length === 0 ? (
-              <p className="admin-panel-empty">No creation data available yet.</p>
-            ) : (
-              <ChartContainer
-                config={creationChartConfig}
-                className="aspect-auto flex-1 min-h-[200px] w-full"
-              >
-                <BarChart accessibilityLayer data={creationChartData} margin={{ top: 4, left: 8, right: 8, bottom: 0 }}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={4}
-                    tickFormatter={(value) => {
-                      const [y, m] = value.split('-');
-                      return new Date(parseInt(y, 10), parseInt(m, 10) - 1).toLocaleDateString('en-US', {
-                        month: 'short',
-                        year: '2-digit',
-                      });
-                    }}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        labelFormatter={(value) =>
-                          new Date(value + '-01').toLocaleDateString('en-US', {
-                            month: 'long',
-                            year: 'numeric',
-                          })
-                        }
-                      />
-                    }
-                  />
-                  <Bar dataKey="projects" fill="var(--color-projects)" radius={4} />
-                  <Bar dataKey="tickets" fill="var(--color-tickets)" radius={4} />
-                </BarChart>
-              </ChartContainer>
-            )}
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+          <div className="subsea-top-actions">
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
+              <Download size={12} /> Export
+            </button>
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm">
+              <Plus size={12} /> New
+            </button>
+            <span className="subsea-vr" />
+            <div className="subsea-avatar subsea-avatar-sm">SK</div>
           </div>
         </div>
 
-        <div className="admin-dashboard-panel admin-panel-cases">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Recent Projects</h2>
-            <Link to="/projects" className="admin-panel-view-all">
-              View All
-            </Link>
-          </div>
-          <div className="admin-panel-body">
-            {loadingProjects ? (
-              <p className="admin-panel-empty">Loading…</p>
-            ) : recentProjects.length === 0 ? (
-              <p className="admin-panel-empty">No projects found. Create your first project to get started.</p>
-            ) : (
-              <ul className="admin-cases-list">
-                {recentProjects.map((p) => (
-                  <li key={p.id} className="admin-case-item">
-                    <span className="admin-case-title">{p.title}</span>
-                    <span className="admin-case-status">{p.status}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+        <main className="subsea-content">
+          <section className="subsea-welcome">
+            <div className="subsea-wb-left">
+              <div className="subsea-wb-greeting">Good morning</div>
+              <div className="subsea-wb-name">Welcome back, <span>Pranav</span> 👋</div>
+              <div className="subsea-wb-sub">Here's what's happening across your fleet today — Monday, 19 May 2025</div>
+              <div className="subsea-wb-chips">
+                <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />5 items need attention</span>
+                <span className="subsea-wb-chip subsea-wb-chip-green"><Ship size={12} />11 vessels operational</span>
+                <span className="subsea-wb-chip subsea-wb-chip-blue"><Radio size={12} />Open Command Center</span>
+              </div>
+            </div>
+            <div className="subsea-wb-right">
+              <div className="subsea-wb-date-block">
+                <div className="subsea-wb-date">--:-- UTC</div>
+                <div className="subsea-wb-time">Coordinated Universal Time</div>
+              </div>
+              <div className="subsea-wb-status-row">
+                <span className="subsea-wb-status-dot" />
+                <span>GMDSS Online · All systems nominal</span>
+              </div>
+            </div>
+          </section>
 
-        <div className="admin-dashboard-panel admin-panel-deadlines">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Project end dates</h2>
-            <Link to="/projects" className="admin-panel-view-all">
-              Calendar
-            </Link>
+          <div className="subsea-alert subsea-alert-warn">
+            <AlertTriangle size={15} />
+            <span><strong>5 items need attention:</strong> 3 crew certifications expiring within 30 days · 1 vessel understaffed (MV Poseidon Rex) · 1 overdue payroll run.</span>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Review</button>
           </div>
-          <div className="admin-panel-body">
-            {loadingProjects ? (
-              <p className="admin-panel-empty">Loading…</p>
-            ) : upcomingEndDates.length === 0 ? (
-              <>
-                <p className="admin-panel-empty admin-panel-empty--compact">
-                  No upcoming project end dates from your schedule.
-                </p>
-                <Link to="/projects" className="admin-panel-calendar-btn">
-                  <CalendarIcon size={16} />
-                  View projects
-                </Link>
-              </>
-            ) : (
-              <ul className="admin-list-rows">
-                {upcomingEndDates.map(({ project }) => (
-                  <li key={project.id} className="admin-list-row">
-                    <div className="admin-list-row-main">
-                      <span className="admin-list-row-title">{project.title}</span>
-                      <span className="admin-case-status admin-case-status--muted">{project.status}</span>
+
+          <section className="subsea-kpi-strip">
+            {kpis.map((kpi) => (
+              <article key={kpi.label} className="subsea-kpi">
+                <div className="subsea-kpi-label">{kpi.label}</div>
+                <div className="subsea-kpi-value">{kpi.value}</div>
+                <div className={`subsea-kpi-meta ${kpi.tone}`}>
+                  {kpi.icon && <ArrowUpRight size={11} />} {kpi.meta}
+                </div>
+                <div className="subsea-kpi-bar">
+                  <span className={`subsea-kpi-fill ${kpi.color}`} style={{ width: kpi.bar }} />
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <section className="subsea-grid-main">
+            <div>
+              <div className="subsea-pane">
+                <div className="subsea-pane-head">
+                  <div>
+                    <div className="subsea-pane-title">Fleet Status</div>
+                    <div className="subsea-pane-sub">11 vessels · live positions</div>
+                  </div>
+                  <div className="subsea-pane-actions">
+                    <span className="subsea-badge subsea-b-teal subsea-b-dot">All systems nominal</span>
+                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">View Fleet</button>
+                  </div>
+                </div>
+                <div className="subsea-table-wrap">
+                  <table className="subsea-table">
+                    <thead>
+                      <tr><th>Vessel</th><th>Type</th><th>Location</th><th>Crew</th><th>Status</th><th>Next Port Call</th></tr>
+                    </thead>
+                    <tbody>
+                      {fleetRows.map(([vessel, type, location, crew, status, port], index) => (
+                        <tr key={vessel}>
+                          <td className="strong"><Ship size={12} className={`subsea-table-icon subsea-tone-${index % 4}`} />{vessel}</td>
+                          <td>{type}</td>
+                          <td className="mono">{location}</td>
+                          <td><span className={index === 0 ? 'subsea-text-red' : 'subsea-text-green'}>{crew}</span></td>
+                          <td><span className={`subsea-badge ${status === 'Understaffed' ? 'subsea-b-amber' : status === 'In Transit' ? 'subsea-b-teal' : 'subsea-b-green'}`}>{status}</span></td>
+                          <td className="muted">{port}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="subsea-pane">
+                <div className="subsea-pane-head">
+                  <div className="subsea-pane-title">Upcoming Crew Changes</div>
+                  <div className="subsea-pane-sub">Next 14 days · sign-on / sign-off</div>
+                </div>
+                <div className="subsea-table-wrap">
+                  <table className="subsea-table">
+                    <thead>
+                      <tr><th>Crew Member</th><th>Rank</th><th>Vessel</th><th>Type</th><th>Date</th><th>Flight</th></tr>
+                    </thead>
+                    <tbody>
+                      {crewChanges.map(([name, rank, vessel, type, date, flight]) => (
+                        <tr key={`${name}-${date}`}>
+                          <td className="strong">{name}</td>
+                          <td>{rank}</td>
+                          <td>{vessel}</td>
+                          <td><span className={`subsea-badge ${type === 'Sign-Off' ? 'subsea-b-amber' : 'subsea-b-green'}`}>{type}</span></td>
+                          <td className="mono">{date}</td>
+                          <td><span className={`subsea-badge ${flight === 'Pending' ? 'subsea-b-orange' : 'subsea-b-blue'}`}>{flight}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="subsea-pane">
+                <div className="subsea-pane-head">
+                  <div className="subsea-pane-title">Live Activity</div>
+                  <span className="subsea-badge subsea-b-teal subsea-b-dot">Real-time</span>
+                </div>
+                <div className="subsea-feed">
+                  {activity.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.text} className="subsea-feed-item">
+                        <div className={`subsea-feed-icon ${item.color}`}><Icon size={13} /></div>
+                        <div>
+                          <div className="subsea-feed-text">{item.text}</div>
+                          <div className="subsea-feed-meta">{item.meta}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="subsea-pane">
+                <div className="subsea-pane-head">
+                  <div className="subsea-pane-title">Cert Expiry Watchlist</div>
+                  <span className="subsea-badge subsea-b-red">14 expiring</span>
+                </div>
+                <div className="subsea-cert-list">
+                  {certs.map(([days, color, name, expires]) => (
+                    <div key={name} className="subsea-cert-row">
+                      <span className={`subsea-badge subsea-b-${color}`}>{days}</span>
+                      <span className="subsea-cert-name">{name}</span>
+                      <span className="subsea-cert-expires">{expires}</span>
                     </div>
-                    <span className="admin-list-row-meta">Ends {formatShortDate(project.duration.endDate)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <div className="admin-dashboard-panel admin-panel-tickets-feed">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Latest crew tickets</h2>
-            <Link to="/tickets" className="admin-panel-view-all">
-              Open tickets
-            </Link>
-          </div>
-          <div className="admin-panel-body">
-            {tickets === null ? (
-              <p className="admin-panel-empty">Loading…</p>
-            ) : recentTickets.length === 0 ? (
-              <>
-                <p className="admin-panel-empty admin-panel-empty--compact">No crew tickets yet.</p>
-                <Link to="/tickets" className="admin-panel-calendar-btn">
-                  <Plane size={16} />
-                  Book a ticket
-                </Link>
-              </>
-            ) : (
-              <ul className="admin-list-rows">
-                {recentTickets.map((t) => (
-                  <li key={t.id} className="admin-list-row">
-                    <div className="admin-list-row-main">
-                      <span className="admin-list-row-title">{crewDisplayName(t.crew_id)}</span>
-                      <span className="admin-list-row-route" title="Route">
-                        {airportLabel(t.from)} → {airportLabel(t.to)}
-                      </span>
-                    </div>
-                    <span className="admin-list-row-meta">
-                      {t.project_id?.title ?? 'Project'}
-                      {ticketCreatedListLabel(t)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
       </div>
-
-      <footer className="admin-dashboard-footer">
-        <p className="admin-footer-copy">© 2023 Offshore CRM. All rights reserved.</p>
-        <nav className="admin-footer-links">
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms of Service</a>
-          <a href="/security">Security Audit Logs</a>
-        </nav>
-        <p className="admin-footer-status">• All Systems Operational</p>
-      </footer>
     </div>
   );
 };

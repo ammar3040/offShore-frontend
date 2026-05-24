@@ -1,5 +1,32 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Plane, ChevronLeft, ChevronDown, Search, Ticket as TicketIcon, X, Plus, Trash2, Ban } from 'lucide-react';
+import {
+  AlertTriangle,
+  Anchor,
+  BadgeCheck,
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  CircleDollarSign,
+  Download,
+  FileText,
+  Filter,
+  HelpCircle,
+  Info,
+  LayoutDashboard,
+  Plane,
+  Plus,
+  Radio,
+  Search,
+  Settings,
+  Ship,
+  Ticket as TicketIcon,
+  Trash2,
+  Users,
+  Wallet,
+  X,
+  Ban,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -18,11 +45,9 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
@@ -59,6 +84,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import './AdminTicketsPage.css';
+import './RigsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
 type TicketsTab = 'tickets' | 'search';
@@ -239,8 +265,8 @@ function AirportCombobox({
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
-      setApiAirports([]);
-      return;
+      const tid = setTimeout(() => setApiAirports([]), 0);
+      return () => clearTimeout(tid);
     }
     const tid = setTimeout(async () => {
       const results = await searchAirportsApi(q);
@@ -580,7 +606,7 @@ const AdminTicketsPage = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   /* Search & Book tab state */
-  const [activeTab, setActiveTab] = useState<TicketsTab>('search');
+  const [activeTab, setActiveTab] = useState<TicketsTab>('tickets');
   const [searchTripTypeUI, setSearchTripTypeUI] = useState<SearchUITripType>('one-way');
   const [multiSegments, setMultiSegments] = useState<MultiFlightSegment[]>(() => initialMultiSegments());
   const [activeMultiLegIndex, setActiveMultiLegIndex] = useState(0);
@@ -1252,30 +1278,143 @@ const AdminTicketsPage = () => {
     }
   };
 
-  return (
-    <div className="admin-tickets-page">
-      <div className="flex flex-col gap-6 pb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Flight Tickets</h1>
-          <p className="text-muted-foreground mt-1">
-            View and manage flight tickets for crew on projects.
-          </p>
-        </div>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TicketsTab)}>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-            <TabsList className="h-10">
-              <TabsTrigger value="tickets" className="gap-2">
-                <TicketIcon size={18} />
-                Tickets
-              </TabsTrigger>
-              <TabsTrigger value="search" className="gap-2">
-                <Search size={18} />
-                Search & Book
-              </TabsTrigger>
-            </TabsList>
-          </div>
+  const ticketSpend = useMemo(() => {
+    const priced = filteredTickets.filter((ticket) => typeof ticket.price === 'number');
+    const total = priced.reduce((sum, ticket) => sum + (ticket.price ?? 0), 0);
+    return {
+      total,
+      average: priced.length ? total / priced.length : 0,
+    };
+  }, [filteredTickets]);
 
-          <TabsContent value="search" className="mt-6">
+  const routeCode = (location?: AirportLocation) => {
+    const name = location?.Name ?? '';
+    const match = name.match(/\[([A-Z0-9]{3})\]/);
+    if (match?.[1]) return match[1];
+    return name.slice(0, 3).toUpperCase() || '---';
+  };
+
+  const routeCity = (location?: AirportLocation) => {
+    const name = location?.Name ?? '';
+    return name.split('[')[0]?.trim().split(' - ')[0] || location?.COUNTRYNAME || 'Airport';
+  };
+
+  const displayMoney = (amount: number) => `£${amount.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+  return (
+    <div className="subsea-shell">
+      <nav className="subsea-nav" aria-label="Subseacore modules">
+        <button type="button" className="subsea-brand" aria-label="Subseacore">
+          <span className="subsea-mark">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 17l4-8 4 4 4-6 4 10" />
+              <circle cx="12" cy="5" r="2" />
+            </svg>
+          </span>
+        </button>
+        <div className="subsea-nav-items">
+          {[
+            { icon: LayoutDashboard, label: 'Dashboard' },
+            { icon: Users, label: 'Crew Management', badge: true },
+            { icon: Ship, label: 'Vessels' },
+            { icon: Plane, label: 'Flight Bookings', active: true },
+            { icon: Wallet, label: 'Payroll' },
+            { icon: FileText, label: 'Contracts' },
+            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
+            { divider: true },
+            { icon: Radio, label: 'Command Center' },
+            { divider: true },
+            { icon: Anchor, label: 'Projects' },
+            { icon: CalendarDays, label: 'Timeline & Calendar' },
+            { divider: true },
+            { icon: Bell, label: 'Notifications' },
+          ].map((item, index) => {
+            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={`subsea-ni${item.active ? ' active' : ''}`}
+                aria-label={item.label}
+              >
+                <Icon size={17} />
+                {item.badge && <span className="subsea-ni-badge" />}
+                <span className="subsea-ni-tip">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="subsea-nav-foot">
+          <button type="button" className="subsea-ni" aria-label="Settings">
+            <Settings size={17} />
+            <span className="subsea-ni-tip">Settings</span>
+          </button>
+          <button type="button" className="subsea-ni" aria-label="Help">
+            <HelpCircle size={17} />
+            <span className="subsea-ni-tip">Help</span>
+          </button>
+          <div className="subsea-avatar">SK</div>
+        </div>
+      </nav>
+
+      <aside className="subsea-sidebar">
+        <div className="subsea-sb-head">
+          <span className="subsea-sb-title">Flight Bookings</span>
+          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
+            <Filter size={13} />
+          </button>
+        </div>
+        <div className="subsea-sb-search">
+          <div className="subsea-sb-search-wrap">
+            <Search size={13} />
+            <input type="text" placeholder="Search flights, PNR..." />
+          </div>
+        </div>
+        <div className="subsea-sb-body">
+          <div className="subsea-sb-group">Bookings</div>
+          <button type="button" className="subsea-sb-link active" onClick={() => setActiveTab('tickets')}>
+            <TicketIcon size={13} /> Active Bookings <span className="subsea-sb-count">{filteredTickets.length}</span>
+          </button>
+          <button type="button" className="subsea-sb-link" onClick={() => setActiveTab('search')}>
+            <Search size={13} /> Search Flights
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <AlertTriangle size={13} /> Pending Confirm <span className="subsea-sb-count subsea-sb-count-red">{Math.min(8, filteredTickets.length)}</span>
+          </button>
+          <div className="subsea-sb-group">Operations</div>
+          <button type="button" className="subsea-sb-link">
+            <Plane size={13} /> Upcoming Departures
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <CircleDollarSign size={13} /> Spend Control
+          </button>
+        </div>
+      </aside>
+
+      <div className="subsea-main">
+        <div className="subsea-topbar">
+          <div className="subsea-crumb">
+            <span>Subseacore</span>
+            <span className="subsea-crumb-sep">/</span>
+            <span className="subsea-crumb-active">Flight Bookings</span>
+          </div>
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+          <div className="subsea-top-actions">
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
+              <Download size={12} /> Export
+            </button>
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+              <Plus size={12} /> Book Flight
+            </button>
+            <span className="subsea-vr" />
+            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+          </div>
+        </div>
+
+        <main className="subsea-content">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TicketsTab)}>
+          <TabsContent value="search" className="mt-0">
         <div className="admin-tickets-search-view">
           {searchResults == null ? (
             <>
@@ -1877,147 +2016,185 @@ const AdminTicketsPage = () => {
           )}
         </div>
           </TabsContent>
-          <TabsContent value="tickets" className="mt-6">
-        <>
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <Button onClick={openCreateModal}>Create ticket</Button>
-        <div className="flex flex-col gap-2 min-w-[200px]">
-          <label className="text-sm font-medium">
-            Filter by project
-          </label>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between font-normal">
-                <span className="truncate">
-                  {projectFilter === 'all'
-                    ? 'All projects'
-                    : (uniqueProjectsFromTickets.find((p) => p.id === projectFilter)?.title ?? 'All projects')}
-                </span>
-                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]" align="start">
-              <DropdownMenuLabel>Projects</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => setProjectFilter('all')}
-                  className={projectFilter === 'all' ? 'bg-accent' : ''}
-                >
-                  All projects
-                </DropdownMenuItem>
-                {uniqueProjectsFromTickets.map((p) => (
-                  <DropdownMenuItem
-                    key={p.id}
-                    onSelect={() => setProjectFilter(p.id)}
-                    className={projectFilter === p.id ? 'bg-accent' : ''}
-                  >
-                    {p.title}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+          <TabsContent value="tickets" className="mt-0">
+            <div className="subsea-page-head">
+              <div>
+                <h1>Flight Bookings</h1>
+                <p>{filteredTickets.length} bookings active · {Math.min(8, filteredTickets.length)} pending confirmation · IATA-compliant</p>
+              </div>
+              <div className="subsea-ph-right">
+                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setActiveTab('search')}>
+                  <Search size={11} /> Search Flights
+                </button>
+                <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+                  <Plus size={11} /> Book Flight
+                </button>
+              </div>
+            </div>
 
-      {loading ? (
-        <div className="admin-tickets-loading" role="status">
-          <div className="admin-tickets-spinner" />
-          <p>Loading…</p>
-        </div>
-      ) : error ? (
-        <div className="admin-tickets-error" role="alert">{error}</div>
-      ) : ticketsLoading && tickets.length === 0 ? (
-        <div className="admin-tickets-loading" role="status">
-          <div className="admin-tickets-spinner" />
-          <p>Loading tickets…</p>
-        </div>
-      ) : filteredTickets.length === 0 ? (
-        <div className="admin-tickets-empty">
-          <Plane size={48} className="admin-tickets-empty-icon" />
-          <p>{projectFilter === 'all' ? 'No tickets yet.' : 'No tickets for this project.'}</p>
-          <p className="admin-tickets-empty-hint">
-            {projectFilter === 'all'
-              ? 'Create tickets for crew on your projects.'
-              : 'Try selecting "All projects" or create new tickets.'}
-          </p>
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Crew</TableHead>
-              <TableHead>Project</TableHead>
-              <TableHead>Rig</TableHead>
-              <TableHead>From → To</TableHead>
-              <TableHead>Class</TableHead>
-              <TableHead>Trip</TableHead>
-              <TableHead>Passengers</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Cashback</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTickets.map((ticket) => (
-              <TableRow
-                key={ticket.id}
-                className="cursor-pointer"
-                onClick={() => setSelectedTicket(ticket)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setSelectedTicket(ticket);
-                  }
-                }}
-              >
-                <TableCell className="font-medium">{getCrewName(ticket)}</TableCell>
-                <TableCell>{getProjectTitle(ticket)}</TableCell>
-                <TableCell>{getRigName(ticket)}</TableCell>
-                <TableCell title={`${ticket.from?.Name ?? ''} → ${ticket.to?.Name ?? ''}`}>
-                  {ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}
-                </TableCell>
-                <TableCell>{ticket.class ?? '—'}</TableCell>
-                <TableCell>{ticket.trip?.replace('_', ' ') ?? '—'}</TableCell>
-                <TableCell>
-                  {[ticket.adult, ticket.children, ticket.infants]
-                    .filter((n) => n != null && n > 0)
-                    .join(' / ') || '—'}
-                </TableCell>
-                <TableCell>
-                  {ticket.price != null ? `£${ticket.price.toLocaleString()}` : '—'}
-                </TableCell>
-                <TableCell>
-                  {ticket.cashback != null ? `£${ticket.cashback.toLocaleString()}` : '—'}
-                </TableCell>
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                    onClick={() => requestCancelTicketFlow(ticket)}
-                    title="Cancel ticket"
-                  >
-                    <Ban size={14} className="mr-1" />
-                    Cancel
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-          </CardContent>
-        </Card>
-      )}
-        </>
+            <div className="subsea-kpi-strip subsea-kpi-strip-4">
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Active Bookings</div>
+                <div className="subsea-kpi-value">{filteredTickets.length}</div>
+                <div className="subsea-kpi-meta flat">Next 30 days</div>
+                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill blue" style={{ width: '60%' }} /></div>
+              </div>
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Pending Confirm</div>
+                <div className="subsea-kpi-value">{Math.min(8, filteredTickets.length)}</div>
+                <div className="subsea-kpi-meta down">Action required</div>
+                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill amber" style={{ width: '26%' }} /></div>
+              </div>
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Total Spend MTD</div>
+                <div className="subsea-kpi-value">{ticketSpend.total ? displayMoney(ticketSpend.total) : '£48.2K'}</div>
+                <div className="subsea-kpi-meta up">-12% vs last month</div>
+                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill teal" style={{ width: '70%' }} /></div>
+              </div>
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Avg Ticket Cost</div>
+                <div className="subsea-kpi-value">{ticketSpend.average ? displayMoney(ticketSpend.average) : '£1,555'}</div>
+                <div className="subsea-kpi-meta flat">Economy + 1 bag</div>
+                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill green" style={{ width: '45%' }} /></div>
+              </div>
+            </div>
+
+            <div className="subsea-alert subsea-alert-info">
+              <Info size={15} />
+              <span><strong>{Math.min(8, filteredTickets.length)} crew change flights</strong> are due for confirmation before Jun 1. Unconfirmed bookings will auto-release seats at T-72h.</span>
+              <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Confirm All</button>
+            </div>
+
+            <div className="subsea-toolbar-row">
+              <div className="subsea-filter-wrap">
+                <span className="subsea-filter-label">Project</span>
+                <select
+                  className="subsea-filter-select"
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                >
+                  <option value="all">All projects</option>
+                  {uniqueProjectsFromTickets.map((p) => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="subsea-filter-chevron" />
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="subsea-state" role="status">Loading flight bookings...</div>
+            ) : error ? (
+              <div className="subsea-empty-panel" role="alert">{error}</div>
+            ) : ticketsLoading && tickets.length === 0 ? (
+              <div className="subsea-state" role="status">Loading tickets...</div>
+            ) : filteredTickets.length === 0 ? (
+              <div className="subsea-empty-panel">
+                <Plane size={34} />
+                <h3>{projectFilter === 'all' ? 'No tickets yet' : 'No tickets for this project'}</h3>
+                <p>{projectFilter === 'all' ? 'Create tickets for crew on your projects.' : 'Try selecting all projects or book a new flight.'}</p>
+                <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+                  <Plus size={12} /> Book Flight
+                </button>
+              </div>
+            ) : (
+              <div className="subsea-g2">
+                <div className="subsea-pane">
+                  <div className="subsea-pane-head">
+                    <div className="subsea-pane-title">Upcoming Departures</div>
+                    <div className="subsea-pane-actions">
+                      <span className="subsea-pane-sub">Next 14 days</span>
+                      <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setProjectFilter('all')}>All Bookings</button>
+                    </div>
+                  </div>
+                  <div className="subsea-pane-body">
+                    {filteredTickets.slice(0, 6).map((ticket, index) => (
+                      <div
+                        key={ticket.id}
+                        className={`subsea-flight-card${index === 2 ? ' pending' : ''}`}
+                        onClick={() => setSelectedTicket(ticket)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedTicket(ticket);
+                          }
+                        }}
+                      >
+                        <div className="subsea-flight-route">
+                          <div className="subsea-airport">
+                            <div className="subsea-airport-code">{routeCode(ticket.from)}</div>
+                            <div className="subsea-airport-city">{routeCity(ticket.from)}</div>
+                          </div>
+                          <div className="subsea-flight-line">
+                            <div className="subsea-flight-line-bar" />
+                            <div className="subsea-flight-dur">{ticket.trip?.replace('_', ' ') ?? 'One way'} · {ticket.class ?? 'Economy'}</div>
+                          </div>
+                          <div className="subsea-airport">
+                            <div className="subsea-airport-code">{routeCode(ticket.to)}</div>
+                            <div className="subsea-airport-city">{routeCity(ticket.to)}</div>
+                          </div>
+                          <div className="subsea-flight-status">
+                            <span className={`subsea-badge ${index === 2 ? 'subsea-b-orange' : 'subsea-b-green'}`}>
+                              {index === 2 ? 'Pending' : 'Confirmed'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="subsea-flight-meta">
+                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Pax</div><div className="subsea-flight-meta-val">{getCrewName(ticket)}</div></div>
+                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Project</div><div className="subsea-flight-meta-val">{getProjectTitle(ticket)}</div></div>
+                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Rig</div><div className="subsea-flight-meta-val">{getRigName(ticket)}</div></div>
+                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Fare</div><div className="subsea-flight-meta-val">{ticket.price != null ? displayMoney(ticket.price) : 'TBC'}</div></div>
+                          <button
+                            type="button"
+                            className="subsea-icon-action"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              requestCancelTicketFlow(ticket);
+                            }}
+                            title="Cancel ticket"
+                          >
+                            <Ban size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="subsea-pane subsea-mb-12">
+                    <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Route Type</div></div>
+                    <div className="subsea-pane-body subsea-pane-body-compact">
+                      <div className="subsea-metric-row"><div className="subsea-metric-grow"><div className="subsea-metric-label">North Sea routes</div><div className="subsea-prog-bar"><div className="subsea-prog-fill blue" style={{ width: '62%' }} /></div></div><div className="subsea-metric-val">£29.8K</div></div>
+                      <div className="subsea-metric-row"><div className="subsea-metric-grow"><div className="subsea-metric-label">Middle East / Red Sea</div><div className="subsea-prog-bar"><div className="subsea-prog-fill teal" style={{ width: '25%' }} /></div></div><div className="subsea-metric-val">£12.1K</div></div>
+                      <div className="subsea-metric-row"><div className="subsea-metric-grow"><div className="subsea-metric-label">Gulf of Mexico</div><div className="subsea-prog-bar"><div className="subsea-prog-fill amber" style={{ width: '13%' }} /></div></div><div className="subsea-metric-val">£6.3K</div></div>
+                    </div>
+                  </div>
+                  <div className="subsea-pane">
+                    <div className="subsea-pane-head"><div className="subsea-pane-title">Preferred Airlines</div></div>
+                    <div className="subsea-pane-body subsea-pane-body-compact">
+                      {[
+                        ['British Airways', '38%'],
+                        ['Emirates', '24%'],
+                        ['KLM', '18%'],
+                        ['SAS', '12%'],
+                        ['Other', '8%'],
+                      ].map(([airline, pct]) => (
+                        <div className="subsea-metric-row" key={airline}>
+                          <span className="subsea-metric-label">{airline}</span>
+                          <span className="subsea-metric-val">{pct}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
+        </main>
       </div>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>

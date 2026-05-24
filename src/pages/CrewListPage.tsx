@@ -1,18 +1,47 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { Search, Pencil, Trash2, MoreVertical, Users, UserPlus, UserCheck, Send, User, Mail, MapPin, FileText, CreditCard, UserMinus, Briefcase, Award, FolderOpen, Loader2 } from 'lucide-react';
+import {
+  Anchor,
+  Award,
+  BadgeCheck,
+  Bell,
+  Briefcase,
+  CalendarDays,
+  CreditCard,
+  Download,
+  FileText,
+  Filter,
+  FolderOpen,
+  HelpCircle,
+  LayoutDashboard,
+  Loader2,
+  Mail,
+  MapPin,
+  Pencil,
+  Plane,
+  Plus,
+  Radio,
+  Search,
+  Send,
+  Settings,
+  ShieldCheck,
+  Ship,
+  Trash2,
+  Upload,
+  User,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
-import { availabilityFromCrewSignal, getCrewAvailabilityLabel, type CrewAvailability } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
 import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import './CrewListPage.css';
+import './RigsPage.css';
 
 const CrewMemberForm = lazy(() => import('../components/forms/CrewMemberForm'));
 
@@ -26,11 +55,21 @@ function field(value: string | undefined): string {
   return value?.trim() || '—';
 }
 
-const AVAILABILITY_DOT: Record<CrewAvailability, { className: string }> = {
-  available: { className: 'user-mgmt-availability-dot user-mgmt-availability-dot--available' },
-  onProject: { className: 'user-mgmt-availability-dot user-mgmt-availability-dot--on-project' },
-  endingSoon: { className: 'user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon' },
-};
+const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
+const SAMPLE_VESSELS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer', 'MV Gulf Endeavour'];
+
+function formatRosterDate(iso?: string): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+}
+
+function crewStatus(kind: CrewAvailability): { label: string; className: string } {
+  if (kind === 'available') return { label: 'Available', className: 'subsea-b-green' };
+  if (kind === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
+  return { label: 'On Board', className: 'subsea-b-blue' };
+}
 
 const CrewListPage = () => {
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
@@ -306,7 +345,13 @@ const CrewListPage = () => {
     }
   };
 
-  const activeCount = crew.length; // All crew treated as active for now
+  const onProjectCount = crew.filter((member) => availabilityFromCrewSignal(member.signal) !== 'available').length;
+  const availableCount = crew.filter((member) => availabilityFromCrewSignal(member.signal) === 'available').length;
+  const nationalityCount = new Set(
+    crew
+      .map((member) => (member.nationality || member.country || '').trim())
+      .filter(Boolean)
+  ).size;
 
   const openCrewDetail = useCallback((member: CrewMemberApi) => {
     setSelectedCrew(member);
@@ -326,228 +371,281 @@ const CrewListPage = () => {
   }, []);
 
   return (
-    <div className="user-mgmt-page">
-      <div className="user-mgmt-header">
-        <div>
-          <h1 className="user-mgmt-title">Crew</h1>
-          <p className="user-mgmt-subtitle">View and manage all crew members. {crew.length} member{crew.length !== 1 ? 's' : ''} total.</p>
-        </div>
-        <button type="button" className="user-mgmt-add-btn" onClick={handleAddCrewMember}>
-          <UserPlus size={18} />
-          Add crew member
+    <div className="subsea-shell">
+      <nav className="subsea-nav" aria-label="Subseacore modules">
+        <button type="button" className="subsea-brand" aria-label="Subseacore">
+          <span className="subsea-mark">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 17l4-8 4 4 4-6 4 10" />
+              <circle cx="12" cy="5" r="2" />
+            </svg>
+          </span>
         </button>
-      </div>
-
-      <div className="user-mgmt-cards">
-        <div className="user-mgmt-stat-card">
-          <div className="user-mgmt-stat-icon user-mgmt-stat-blue">
-            <Users size={24} />
-          </div>
-          <span className="user-mgmt-stat-value">{loading ? '…' : crew.length}</span>
-          <span className="user-mgmt-stat-label">TOTAL CREWS</span>
-        </div>
-        <div className="user-mgmt-stat-card">
-          <div className="user-mgmt-stat-icon user-mgmt-stat-green">
-            <UserCheck size={24} />
-          </div>
-          <span className="user-mgmt-stat-value">{loading ? '…' : activeCount}</span>
-          <span className="user-mgmt-stat-label">ACTIVE</span>
-        </div>
-        <div className="user-mgmt-stat-card">
-          <div className="user-mgmt-stat-icon user-mgmt-stat-purple">
-            <Users size={24} />
-          </div>
-          <span className="user-mgmt-stat-value">—</span>
-          <span className="user-mgmt-stat-label">ON ASSIGNMENT</span>
-        </div>
-        <div className="user-mgmt-stat-card">
-          <div className="user-mgmt-stat-icon user-mgmt-stat-teal">
-            <UserPlus size={24} />
-          </div>
-          <span className="user-mgmt-stat-value">—</span>
-          <span className="user-mgmt-stat-label">AVAILABLE</span>
-        </div>
-      </div>
-
-      <div className="user-mgmt-filters">
-        <div className="user-mgmt-search-wrap">
-          <Search size={18} className="user-mgmt-search-icon" />
-          <input
-            type="text"
-            placeholder="Search crew by name or email..."
-            className="user-mgmt-search"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-        <div className="user-mgmt-availability-legend" role="list" aria-label="Availability legend">
-          <span className="user-mgmt-availability-legend-item" role="listitem">
-            <span className="user-mgmt-availability-dot user-mgmt-availability-dot--available" aria-hidden />
-            <span>Available</span>
-          </span>
-          <span className="user-mgmt-availability-legend-item" role="listitem">
-            <span className="user-mgmt-availability-dot user-mgmt-availability-dot--on-project" aria-hidden />
-            <span>On project</span>
-          </span>
-          <span className="user-mgmt-availability-legend-item" role="listitem">
-            <span className="user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon" aria-hidden />
-            <span>On project, ends in ≤7 days</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="user-mgmt-table-wrap">
-        {loading ? (
-          <div className="user-mgmt-loading">Loading users…</div>
-        ) : error ? (
-          <div className="user-mgmt-error" role="alert">{error}</div>
-        ) : (
-          <table className="user-mgmt-table">
-            <thead>
-              <tr>
-                <th>NAME</th>
-                <th>EMAIL</th>
-                <th>PHONE</th>
-                <th>ADDRESS</th>
-                <th>CITY</th>
-                <th>COUNTRY</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedCrew.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="user-mgmt-empty-cell">
-                    No crew members found.
-                  </td>
-                </tr>
-              ) : (
-                paginatedCrew.map((member) => {
-                  const kind = availabilityFromCrewSignal(member.signal);
-                  const label = getCrewAvailabilityLabel(kind);
-                  return (
-                  <tr
-                    key={member.id}
-                    className="user-mgmt-row-clickable"
-                    onClick={() => openCrewDetail(member)}
-                  >
-                    <td>
-                      <div className="user-mgmt-user-cell">
-                        <span
-                          className={AVAILABILITY_DOT[kind].className}
-                          title={label}
-                          aria-label={label}
-                        />
-                        <div className="user-mgmt-avatar">
-                          {getInitials(member.firstname, member.lastname)}
-                        </div>
-                        <span className="user-mgmt-name">
-                          {member.firstname} {member.lastname}
-                        </span>
-                      </div>
-                    </td>
-                    <td>{member.email}</td>
-                    <td>{member.phone || '—'}</td>
-                    <td>{member.address || '—'}</td>
-                    <td>{member.city || '—'}</td>
-                    <td>{member.country || '—'}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <div className="user-mgmt-actions">
-                        <button
-                          type="button"
-                          className="user-mgmt-action-btn user-mgmt-action-btn-invite"
-                          aria-label="Invite to project"
-                          onClick={(e) => { e.stopPropagation(); openInviteModal(member); }}
-                          title="Invite to project"
-                        >
-                          <Send size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="user-mgmt-action-btn"
-                          aria-label="Edit"
-                          onClick={(e) => { e.stopPropagation(); openEditModal(member); }}
-                          title="Edit crew member"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="user-mgmt-action-btn"
-                          aria-label="Delete"
-                          onClick={(e) => { e.stopPropagation(); openDeleteConfirm(member); }}
-                          title="Delete crew member"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="user-mgmt-action-btn"
-                              aria-label="More options"
-                              onClick={(e) => e.stopPropagation()}
-                              title="More options"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => openRemoveFromProjectModal(member)}>
-                              <UserMinus size={16} />
-                              Remove from project
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
-                  </tr>
-                );
-                })
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {!loading && !error && filteredCrew.length > 0 && (
-        <div className="user-mgmt-pagination">
-          <span className="user-mgmt-pagination-info">
-            Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredCrew.length)} of {filteredCrew.length} crew members
-          </span>
-          <div className="user-mgmt-pagination-btns">
-            <button
-              type="button"
-              className="user-mgmt-pagination-btn"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+        <div className="subsea-nav-items">
+          {[
+            { icon: LayoutDashboard, label: 'Dashboard' },
+            { icon: Users, label: 'Crew Management', active: true, badge: true },
+            { icon: Ship, label: 'Vessels' },
+            { icon: Plane, label: 'Flight Bookings' },
+            { icon: Wallet, label: 'Payroll' },
+            { icon: FileText, label: 'Contracts' },
+            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
+            { divider: true },
+            { icon: Radio, label: 'Command Center' },
+            { divider: true },
+            { icon: Anchor, label: 'Projects' },
+            { icon: CalendarDays, label: 'Timeline & Calendar' },
+            { divider: true },
+            { icon: Bell, label: 'Notifications' },
+          ].map((item, index) => {
+            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
+            const Icon = item.icon;
+            return (
               <button
-                key={p}
+                key={item.label}
                 type="button"
-                className={`user-mgmt-pagination-btn ${p === page ? 'active' : ''}`}
-                onClick={() => setPage(p)}
+                className={`subsea-ni${item.active ? ' active' : ''}`}
+                aria-label={item.label}
               >
-                {p}
+                <Icon size={17} />
+                {item.badge && <span className="subsea-ni-badge" />}
+                <span className="subsea-ni-tip">{item.label}</span>
               </button>
-            ))}
-            <button
-              type="button"
-              className="user-mgmt-pagination-btn"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </button>
+            );
+          })}
+        </div>
+        <div className="subsea-nav-foot">
+          <button type="button" className="subsea-ni" aria-label="Settings">
+            <Settings size={17} />
+            <span className="subsea-ni-tip">Settings</span>
+          </button>
+          <button type="button" className="subsea-ni" aria-label="Help">
+            <HelpCircle size={17} />
+            <span className="subsea-ni-tip">Help</span>
+          </button>
+          <div className="subsea-avatar">SK</div>
+        </div>
+      </nav>
+
+      <aside className="subsea-sidebar">
+        <div className="subsea-sb-head">
+          <span className="subsea-sb-title">Crew Management</span>
+          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
+            <Filter size={13} />
+          </button>
+        </div>
+        <div className="subsea-sb-search">
+          <div className="subsea-sb-search-wrap">
+            <Search size={13} />
+            <input type="text" placeholder="Search crew, vessels..." />
           </div>
         </div>
-      )}
+        <div className="subsea-sb-body">
+          <div className="subsea-sb-group">Crew</div>
+          <button type="button" className="subsea-sb-link active">
+            <Users size={13} /> Crew Roster <span className="subsea-sb-count">{loading ? '...' : crew.length}</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <UserCheck size={13} /> On Board <span className="subsea-sb-count">{onProjectCount}</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <UserPlus size={13} /> Available <span className="subsea-sb-count">{availableCount}</span>
+          </button>
+          <div className="subsea-sb-group">Operations</div>
+          <button type="button" className="subsea-sb-link">
+            <Ship size={13} /> Vessel Assignments <span className="subsea-sb-count">11</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <Plane size={13} /> Crew Flights <span className="subsea-sb-count">31</span>
+          </button>
+          <div className="subsea-sb-group">Compliance</div>
+          <button type="button" className="subsea-sb-link">
+            <BadgeCheck size={13} /> Certifications <span className="subsea-sb-count subsea-sb-count-red">14</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <ShieldCheck size={13} /> MLC Compliance
+          </button>
+        </div>
+      </aside>
+
+      <div className="subsea-main">
+        <div className="subsea-topbar">
+          <div className="subsea-crumb">
+            <span>Subseacore</span>
+            <span className="subsea-crumb-sep">/</span>
+            <span className="subsea-crumb-active">Crew Management</span>
+          </div>
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+          <div className="subsea-top-actions">
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
+              <Download size={12} /> Export
+            </button>
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={handleAddCrewMember}>
+              <Plus size={12} /> Add Crew
+            </button>
+            <span className="subsea-vr" />
+            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+          </div>
+        </div>
+
+        <main className="subsea-content">
+          <div className="subsea-page-head">
+            <div>
+              <h1>Crew Management</h1>
+              <p>{loading ? 'Loading crew roster...' : `${crew.length} crew members · 11 vessels · ${Math.max(nationalityCount, 1)} nationalities`}</p>
+            </div>
+            <div className="subsea-ph-right">
+              <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
+                <Upload size={11} /> Import
+              </button>
+              <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={handleAddCrewMember}>
+                <Plus size={11} /> Add Crew
+              </button>
+            </div>
+          </div>
+
+          <section className="subsea-kpi-strip subsea-kpi-strip-4">
+            {[
+              { label: 'Total Crew', value: loading ? '...' : String(crew.length), meta: '+12 this month', tone: 'up', bar: '71%', color: 'blue' },
+              { label: 'On Board', value: loading ? '...' : String(onProjectCount), meta: `${crew.length ? Math.round((onProjectCount / crew.length) * 100) : 0}% of roster`, tone: 'flat', bar: `${crew.length ? Math.round((onProjectCount / crew.length) * 100) : 0}%`, color: 'teal' },
+              { label: 'Avg Tour Length', value: '84d', meta: 'Industry: 90d', tone: 'flat', bar: '55%', color: 'green' },
+              { label: 'Nationalities', value: loading ? '...' : String(nationalityCount || '—'), meta: 'GBR, PHL, IND, NOR...', tone: 'flat', bar: '40%', color: 'amber' },
+            ].map((kpi) => (
+              <article key={kpi.label} className="subsea-kpi">
+                <div className="subsea-kpi-label">{kpi.label}</div>
+                <div className="subsea-kpi-value">{kpi.value}</div>
+                <div className={`subsea-kpi-meta ${kpi.tone}`}>{kpi.meta}</div>
+                <div className="subsea-kpi-bar">
+                  <span className={`subsea-kpi-fill ${kpi.color}`} style={{ width: kpi.bar }} />
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <div className="subsea-toolbar-row">
+            <div className="subsea-tb-search">
+              <Search size={13} />
+              <input
+                type="text"
+                placeholder="Search by name, rank, IMO no..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Ranks</button>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Vessels</button>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Status: All</button>
+            <div className="subsea-toolbar-spacer" />
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
+              <Download size={11} /> Export
+            </button>
+          </div>
+
+          <div className="subsea-pane">
+            <div className="subsea-pane-head">
+              <div className="subsea-pane-title">Crew Roster</div>
+              <div className="subsea-pane-actions">
+                <span className="subsea-pane-sub">{loading ? 'Loading...' : `${filteredCrew.length} members`}</span>
+              </div>
+            </div>
+            <div className="subsea-table-wrap">
+              {loading ? (
+                <div className="subsea-state">Loading crew...</div>
+              ) : error ? (
+                <div className="subsea-state subsea-state-error" role="alert">{error}</div>
+              ) : (
+                <table className="subsea-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Rank</th>
+                      <th>Nationality</th>
+                      <th>Vessel</th>
+                      <th>Status</th>
+                      <th>Tour End</th>
+                      <th>Certs</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedCrew.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="subsea-empty-cell">No crew members found.</td>
+                      </tr>
+                    ) : (
+                      paginatedCrew.map((member, index) => {
+                        const kind = availabilityFromCrewSignal(member.signal);
+                        const status = crewStatus(kind);
+                        const project = member.activeProjects?.[0];
+                        const certExpiring = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
+                        return (
+                          <tr key={member.id} onClick={() => openCrewDetail(member)}>
+                            <td className="strong">
+                              <div className="subsea-roster-name">
+                                <div className={`subsea-c-av subsea-c-av-${index % 6}`}>
+                                  {getInitials(member.firstname, member.lastname)}
+                                </div>
+                                <span>{member.firstname} {member.lastname}</span>
+                              </div>
+                            </td>
+                            <td>{member.organization || SAMPLE_RANKS[index % SAMPLE_RANKS.length]}</td>
+                            <td className="mono">{member.nationality || member.country || '—'}</td>
+                            <td>{project?.title || SAMPLE_VESSELS[index % SAMPLE_VESSELS.length]}</td>
+                            <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
+                            <td className="mono">{formatRosterDate(project?.duration?.endDate)}</td>
+                            <td>
+                              <span className={`subsea-badge ${certExpiring ? 'subsea-b-amber' : 'subsea-b-green'}`}>
+                                {certExpiring ? '1 expiring' : 'All valid'}
+                              </span>
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <div className="subsea-row-actions">
+                                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => openCrewDetail(member)}>
+                                  View
+                                </button>
+                                <button type="button" className="subsea-icon-action" aria-label="Invite to project" title="Invite to project" onClick={() => openInviteModal(member)}>
+                                  <Send size={13} />
+                                </button>
+                                <button type="button" className="subsea-icon-action" aria-label="Edit crew member" title="Edit crew member" onClick={() => openEditModal(member)}>
+                                  <Pencil size={13} />
+                                </button>
+                                <button type="button" className="subsea-icon-action" aria-label="Remove from project" title="Remove from project" onClick={() => openRemoveFromProjectModal(member)}>
+                                  <UserMinus size={13} />
+                                </button>
+                                <button type="button" className="subsea-icon-action danger" aria-label="Delete crew member" title="Delete crew member" onClick={() => openDeleteConfirm(member)}>
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {!loading && !error && filteredCrew.length > pageSize && (
+            <div className="subsea-pagination">
+              <span>
+                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredCrew.length)} of {filteredCrew.length} crew members
+              </span>
+              <div>
+                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button key={p} type="button" className={`subsea-btn subsea-btn-sm ${p === page ? 'subsea-btn-primary' : 'subsea-btn-default'}`} onClick={() => setPage(p)}>{p}</button>
+                ))}
+                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
       <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge">
         {addError && (

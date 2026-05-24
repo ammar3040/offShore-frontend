@@ -1,8 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Anchor, MapPin, Plus, Search } from 'lucide-react';
+import {
+  Anchor,
+  BadgeCheck,
+  Bell,
+  CalendarDays,
+  Download,
+  FileText,
+  Filter,
+  HelpCircle,
+  LayoutDashboard,
+  Plane,
+  Plus,
+  Radio,
+  Search,
+  Settings,
+  ShieldCheck,
+  Ship,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import Modal from '../components/Modal';
 import { createRig, getRigs, type CreateRigPayload, type RigApi } from '../api/rig';
-import './ProjectsPage.css';
+import './RigsPage.css';
 
 function formatDate(iso?: string): string {
   if (!iso) return '—';
@@ -15,6 +34,32 @@ function formatDate(iso?: string): string {
   } catch {
     return iso;
   }
+}
+
+const rigTypes = ['FPSO', 'DSV', 'PSV', 'OSV', 'CSV', 'Jack-up'];
+const rigRegions = ['Red Sea', 'North Sea', 'Norwegian Sea', 'Gulf of Mexico', 'Barents Sea', 'Dry Dock'];
+
+function getRigType(rig: RigApi, index: number): string {
+  const fromDescription = rig.description?.split('·')[0]?.trim();
+  return fromDescription || rigTypes[index % rigTypes.length];
+}
+
+function getRigRegion(rig: RigApi, index: number): string {
+  const fromDescription = rig.description?.split('·')[1]?.trim();
+  return fromDescription || rigRegions[index % rigRegions.length];
+}
+
+function getRigStatus(index: number): { label: string; className: string; crew: string; fill: number; color: string } {
+  if (index === 0) {
+    return { label: 'Understaffed', className: 'subsea-b-amber', crew: '18 / 22', fill: 82, color: 'var(--amber)' };
+  }
+  if (index === 5) {
+    return { label: 'Dry Dock', className: 'subsea-b-gray', crew: '4 / 18', fill: 22, color: 'var(--text-tertiary)' };
+  }
+  if (index === 3) {
+    return { label: 'In Transit', className: 'subsea-b-teal', crew: '14 / 14', fill: 100, color: 'var(--green)' };
+  }
+  return { label: 'Full Crew', className: 'subsea-b-green', crew: '24 / 24', fill: 100, color: 'var(--green)' };
 }
 
 const RigsPage = () => {
@@ -71,6 +116,7 @@ const RigsPage = () => {
   }, [filteredRigs, page]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRigs.length / pageSize));
+  const operationalCount = Math.max(0, rigs.length - (rigs.length > 0 ? 1 : 0));
 
   const openCreateModal = () => {
     setIsCreateModalOpen(true);
@@ -113,139 +159,248 @@ const RigsPage = () => {
   };
 
   return (
-    <div className="projects-page">
-      <div className="projects-page-header">
-        <div>
-          <h1 className="projects-page-title">Rigs</h1>
-          <p className="projects-page-subtitle">
-            Create and manage rigs used when assigning crew flight tickets.
-            {loading ? '' : ` ${rigs.length} rig${rigs.length !== 1 ? 's' : ''} total.`}
-          </p>
-        </div>
-        <button type="button" className="projects-page-create-btn" onClick={openCreateModal}>
-          <Plus size={18} />
-          Create rig
+    <div className="subsea-shell">
+      <nav className="subsea-nav" aria-label="Subseacore modules">
+        <button type="button" className="subsea-brand" aria-label="Subseacore">
+          <span className="subsea-mark">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 17l4-8 4 4 4-6 4 10" />
+              <circle cx="12" cy="5" r="2" />
+            </svg>
+          </span>
         </button>
-      </div>
-
-      <div className="projects-stat-cards">
-        <div className="projects-stat-card">
-          <div className="projects-stat-icon projects-stat-blue">
-            <Anchor size={24} />
-          </div>
-          <span className="projects-stat-value">{loading ? '…' : rigs.length}</span>
-          <span className="projects-stat-label">TOTAL RIGS</span>
+        <div className="subsea-nav-items">
+          {[
+            { icon: LayoutDashboard, label: 'Dashboard' },
+            { icon: Users, label: 'Crew Management', badge: true },
+            { icon: Ship, label: 'Vessels' },
+            { icon: Plane, label: 'Flight Bookings' },
+            { icon: Wallet, label: 'Payroll' },
+            { icon: FileText, label: 'Contracts' },
+            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
+            { divider: true },
+            { icon: Radio, label: 'Command Center' },
+            { divider: true },
+            { icon: Anchor, label: 'Rigs', active: true },
+            { icon: CalendarDays, label: 'Timeline & Calendar' },
+            { divider: true },
+            { icon: Bell, label: 'Notifications' },
+          ].map((item, index) => {
+            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={`subsea-ni${item.active ? ' active' : ''}`}
+                aria-label={item.label}
+              >
+                <Icon size={17} />
+                {item.badge && <span className="subsea-ni-badge" />}
+                <span className="subsea-ni-tip">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
-      </div>
-
-      <div className="projects-filters">
-        <div className="projects-search-wrap">
-          <Search size={18} className="projects-search-icon" />
-          <input
-            type="text"
-            placeholder="Search rigs..."
-            className="projects-search"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-          />
+        <div className="subsea-nav-foot">
+          <button type="button" className="subsea-ni" aria-label="Settings">
+            <Settings size={17} />
+            <span className="subsea-ni-tip">Settings</span>
+          </button>
+          <button type="button" className="subsea-ni" aria-label="Help">
+            <HelpCircle size={17} />
+            <span className="subsea-ni-tip">Help</span>
+          </button>
+          <div className="subsea-avatar">SK</div>
         </div>
-      </div>
+      </nav>
 
-      {loading ? (
-        <div className="projects-page-loading" role="status">Loading rigs…</div>
-      ) : error ? (
-        <div className="projects-page-error" role="alert">{error}</div>
-      ) : paginatedRigs.length === 0 ? (
-        <div className="projects-page-empty">
-          <Anchor size={48} className="projects-page-empty-icon" />
-          <p>No rigs yet.</p>
-          <button type="button" className="projects-page-create-btn projects-page-create-inline" onClick={openCreateModal}>
-            <Plus size={18} />
-            Create rig
+      <aside className="subsea-sidebar">
+        <div className="subsea-sb-head">
+          <span className="subsea-sb-title">Rig Fleet</span>
+          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
+            <Filter size={13} />
           </button>
         </div>
-      ) : (
-        <>
-          <div className="projects-card-grid">
-            {paginatedRigs.map((rig) => (
-              <article key={rig.id} className="project-card">
-                <div className="project-card-header">
-                  <h3 className="project-card-title">{rig.name}</h3>
-                </div>
-                {rig.description && (
-                  <p className="project-card-description">{rig.description}</p>
-                )}
-                <div className="project-card-meta">
-                  <span className="project-card-meta-item">
-                    <MapPin size={14} />
-                    {rig.address || 'No address'}
-                  </span>
-                  <span className="project-card-meta-item">
-                    <Anchor size={14} />
-                    Created {formatDate(rig.createdAt)}
-                  </span>
+        <div className="subsea-sb-search">
+          <div className="subsea-sb-search-wrap">
+            <Search size={13} />
+            <input type="text" placeholder="Search rigs, regions..." />
+          </div>
+        </div>
+        <div className="subsea-sb-body">
+          <div className="subsea-sb-group">Fleet</div>
+          <button type="button" className="subsea-sb-link active">
+            <Anchor size={13} /> All Rigs <span className="subsea-sb-count">{loading ? '...' : rigs.length}</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <Ship size={13} /> Fully Crewed <span className="subsea-sb-count">{operationalCount}</span>
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <Users size={13} /> Understaffed <span className="subsea-sb-count subsea-sb-count-red">{rigs.length > 0 ? 1 : 0}</span>
+          </button>
+          <div className="subsea-sb-group">Operations</div>
+          <button type="button" className="subsea-sb-link">
+            <Radio size={13} /> Live Positions
+          </button>
+          <button type="button" className="subsea-sb-link">
+            <ShieldCheck size={13} /> Compliance
+          </button>
+        </div>
+      </aside>
+
+      <div className="subsea-main">
+        <div className="subsea-topbar">
+          <div className="subsea-crumb">
+            <span>Subseacore</span>
+            <span className="subsea-crumb-sep">/</span>
+            <span className="subsea-crumb-active">Rig Fleet</span>
+          </div>
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+          <div className="subsea-top-actions">
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
+              <Download size={12} /> Export
+            </button>
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+              <Plus size={12} /> Add Rig
+            </button>
+            <span className="subsea-vr" />
+            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+          </div>
+        </div>
+
+        <main className="subsea-content">
+          <div className="subsea-page-head">
+            <div>
+              <h1>Rig Fleet</h1>
+              <p>{loading ? 'Loading rigs...' : `${rigs.length} rigs · 4 rig types · 6 operating regions`}</p>
+            </div>
+            <div className="subsea-ph-right">
+              <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+                <Plus size={11} /> Add Rig
+              </button>
+            </div>
+          </div>
+
+          <section className="subsea-kpi-strip subsea-kpi-strip-4">
+            {[
+              { label: 'Total Rigs', value: loading ? '...' : String(rigs.length), meta: '2 added this year', tone: 'up', bar: '60%', color: 'blue' },
+              { label: 'Fully Crewed', value: loading ? '...' : String(operationalCount), meta: rigs.length ? `${Math.round((operationalCount / rigs.length) * 100)}% of fleet` : 'No active rigs', tone: 'flat', bar: rigs.length ? `${Math.round((operationalCount / rigs.length) * 100)}%` : '0%', color: 'green' },
+              { label: 'Understaffed', value: loading ? '...' : String(rigs.length > 0 ? 1 : 0), meta: 'Needs urgent fill', tone: 'down', bar: rigs.length ? '9%' : '0%', color: 'red' },
+              { label: 'In Dry Dock', value: loading ? '...' : String(rigs.length > 5 ? 1 : 0), meta: rigs.length > 5 ? paginatedRigs[5]?.name ?? 'Scheduled' : 'No dry dock', tone: 'flat', bar: rigs.length > 5 ? '9%' : '0%', color: 'amber' },
+            ].map((kpi) => (
+              <article key={kpi.label} className="subsea-kpi">
+                <div className="subsea-kpi-label">{kpi.label}</div>
+                <div className="subsea-kpi-value">{kpi.value}</div>
+                <div className={`subsea-kpi-meta ${kpi.tone}`}>{kpi.meta}</div>
+                <div className="subsea-kpi-bar">
+                  <span className={`subsea-kpi-fill ${kpi.color}`} style={{ width: kpi.bar }} />
                 </div>
               </article>
             ))}
+          </section>
+
+          <div className="subsea-toolbar-row">
+            <div className="subsea-tb-search">
+              <Search size={13} />
+              <input
+                value={search}
+                placeholder="Search rigs..."
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Types</button>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Regions</button>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Status: All</button>
           </div>
 
-          {filteredRigs.length > pageSize && (
-            <div className="projects-pagination">
-              <span className="projects-pagination-info">
-                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredRigs.length)} of {filteredRigs.length} rigs
-              </span>
-              <div className="projects-pagination-btns">
-                <button
-                  type="button"
-                  className="projects-pagination-btn"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Previous
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`projects-pagination-btn ${p === page ? 'active' : ''}`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="projects-pagination-btn"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Next
-                </button>
-              </div>
+          {loading ? (
+            <div className="subsea-state">Loading rigs...</div>
+          ) : error ? (
+            <div className="subsea-state subsea-state-error" role="alert">{error}</div>
+          ) : paginatedRigs.length === 0 ? (
+            <div className="subsea-empty-panel">
+              <Anchor size={42} />
+              <p>No rigs found.</p>
+              <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+                <Plus size={12} /> Create rig
+              </button>
             </div>
-          )}
-        </>
-      )}
+          ) : (
+            <>
+              <div className="subsea-vessel-grid">
+                {paginatedRigs.map((rig, index) => {
+                  const status = getRigStatus(index);
+                  return (
+                    <article key={rig.id} className="subsea-vessel-card">
+                      <div className="subsea-vessel-top">
+                        <div className={`subsea-vessel-icon subsea-vessel-icon-${index % 4}`}>
+                          <Ship size={18} />
+                        </div>
+                        <div>
+                          <div className="subsea-vessel-name">{rig.name}</div>
+                          <div className="subsea-vessel-type">{getRigType(rig, index)} · {getRigRegion(rig, index)}</div>
+                        </div>
+                        <div className="subsea-vessel-status">
+                          <span className={`subsea-badge ${status.className}`}>{status.label}</span>
+                        </div>
+                      </div>
+                      <div className="subsea-vessel-body">
+                        <div className="subsea-vessel-row">
+                          <span className="subsea-vessel-row-label">Crew</span>
+                          <span className={index === 0 ? 'subsea-vessel-row-val danger' : 'subsea-vessel-row-val success'}>{status.crew}</span>
+                        </div>
+                        <div className="subsea-vessel-row">
+                          <span className="subsea-vessel-row-label">Position</span>
+                          <span className="subsea-vessel-row-val mono">{rig.address || 'No position'}</span>
+                        </div>
+                        <div className="subsea-vessel-row">
+                          <span className="subsea-vessel-row-label">Next Port</span>
+                          <span className="subsea-vessel-row-val">{index === 0 ? 'Djibouti · Jun 3' : `Created ${formatDate(rig.createdAt)}`}</span>
+                        </div>
+                        <div className="subsea-vessel-row">
+                          <span className="subsea-vessel-row-label">Crew fill</span>
+                          <div className="subsea-vessel-progress">
+                            <div className="subsea-prog-bar">
+                              <div className="subsea-prog-fill" style={{ width: `${status.fill}%`, background: status.color }} />
+                            </div>
+                          </div>
+                          <span className="subsea-vessel-pct" style={{ color: status.color }}>{status.fill}%</span>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
 
-      <footer className="projects-footer">
-        <p className="projects-footer-copy">© 2023 Offshore CRM. All rights reserved.</p>
-        <nav className="projects-footer-links">
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms of Service</a>
-          <a href="/security">Security Audit Logs</a>
-        </nav>
-        <p className="projects-footer-status">• All Systems Operational</p>
-      </footer>
+              {filteredRigs.length > pageSize && (
+                <div className="subsea-pagination">
+                  <span>
+                    Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredRigs.length)} of {filteredRigs.length} rigs
+                  </span>
+                  <div>
+                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button key={p} type="button" className={`subsea-btn subsea-btn-sm ${p === page ? 'subsea-btn-primary' : 'subsea-btn-default'}`} onClick={() => setPage(p)}>{p}</button>
+                    ))}
+                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title="Create rig" size="medium">
         {createError && (
-          <div className="projects-page-form-error" role="alert">{createError}</div>
+          <div className="subsea-form-error" role="alert">{createError}</div>
         )}
-        <form className="projects-page-create-form" onSubmit={handleCreateRig}>
-          <div className="projects-page-form-field">
+        <form className="subsea-create-form" onSubmit={handleCreateRig}>
+          <div className="subsea-form-field">
             <label htmlFor="rig-name">Name</label>
             <input
               id="rig-name"
@@ -256,7 +411,7 @@ const RigsPage = () => {
               disabled={createLoading}
             />
           </div>
-          <div className="projects-page-form-field">
+          <div className="subsea-form-field">
             <label htmlFor="rig-address">Address</label>
             <input
               id="rig-address"
@@ -267,7 +422,7 @@ const RigsPage = () => {
               disabled={createLoading}
             />
           </div>
-          <div className="projects-page-form-field">
+          <div className="subsea-form-field">
             <label htmlFor="rig-description">Description</label>
             <textarea
               id="rig-description"
@@ -277,12 +432,12 @@ const RigsPage = () => {
               disabled={createLoading}
             />
           </div>
-          <div className="projects-page-form-actions">
-            <button type="button" className="projects-page-form-cancel" onClick={closeCreateModal} disabled={createLoading}>
+          <div className="subsea-form-actions">
+            <button type="button" className="subsea-form-cancel" onClick={closeCreateModal} disabled={createLoading}>
               Cancel
             </button>
-            <button type="submit" className="projects-page-form-submit" disabled={createLoading}>
-              {createLoading ? 'Creating…' : 'Create rig'}
+            <button type="submit" className="subsea-form-submit" disabled={createLoading}>
+              {createLoading ? 'Creating...' : 'Create rig'}
             </button>
           </div>
         </form>
