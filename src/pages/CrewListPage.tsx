@@ -39,6 +39,7 @@ import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCre
 import { getProjects, type ProjectApi } from '../api/project';
 import { availabilityFromCrewSignal, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
+import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import './CrewListPage.css';
@@ -419,7 +420,7 @@ const CrewListPage = () => {
             <HelpCircle size={17} />
             <span className="subsea-ni-tip">Help</span>
           </button>
-          <div className="subsea-avatar">SK</div>
+          <SubseaProfileMenu />
         </div>
       </nav>
 
@@ -480,7 +481,7 @@ const CrewListPage = () => {
               <Plus size={12} /> Add Crew
             </button>
             <span className="subsea-vr" />
-            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

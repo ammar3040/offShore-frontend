@@ -31,7 +31,9 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
+import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
+import { getRigs, type RigApi } from '../api/rig';
 import { getCrewAvailableForProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import './ProjectsPage.css';
 import './RigsPage.css';
@@ -98,6 +100,8 @@ const ProjectsPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createRigId, setCreateRigId] = useState('');
+  const [rigs, setRigs] = useState<RigApi[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -117,6 +121,20 @@ const ProjectsPage = () => {
     getProjects()
       .then((res) => setProjects(res.projects ?? []))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load projects'));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getRigs()
+      .then((res) => {
+        if (!cancelled) setRigs(res.rigs ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setRigs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -171,6 +189,7 @@ const ProjectsPage = () => {
     if (!createLoading) {
       setIsCreateModalOpen(false);
       setCreateError(null);
+      setCreateRigId('');
     }
   };
 
@@ -193,6 +212,7 @@ const ProjectsPage = () => {
         description,
         duration: { startDate, endDate },
         span: span || `${startDate} to ${endDate}`,
+        ...(createRigId ? { rig_id: createRigId } : {}),
       };
       await createProject(payload);
       fetchProjects();
@@ -308,7 +328,7 @@ const ProjectsPage = () => {
             <HelpCircle size={17} />
             <span className="subsea-ni-tip">Help</span>
           </button>
-          <div className="subsea-avatar">SK</div>
+          <SubseaProfileMenu />
         </div>
       </nav>
 
@@ -373,7 +393,7 @@ const ProjectsPage = () => {
               <Plus size={12} /> New Project
             </button>
             <span className="subsea-vr" />
-            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 
@@ -806,6 +826,22 @@ const ProjectsPage = () => {
                 disabled={createLoading}
               />
             </div>
+          </div>
+          <div className="projects-page-form-field">
+            <label htmlFor="project-rig">Rig</label>
+            <select
+              id="project-rig"
+              value={createRigId}
+              onChange={(e) => setCreateRigId(e.target.value)}
+              disabled={createLoading}
+            >
+              <option value="">No rig selected (optional)</option>
+              {rigs.map((rig) => (
+                <option key={rig.id} value={rig.id}>
+                  {rig.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="projects-page-form-field">
             <label htmlFor="project-span">Message to Crew</label>

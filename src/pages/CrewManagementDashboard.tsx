@@ -27,6 +27,7 @@ import { getCrewList, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewTickets, type CrewTicketApi } from '../api/ticket';
+import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { availabilityFromCrewSignal } from '../utils/crewAvailability';
 import './CrewManagementDashboard.css';
 
@@ -259,7 +260,7 @@ const CrewManagementDashboard = () => {
             <HelpCircle size={17} />
             <span className="subsea-ni-tip">Help</span>
           </button>
-          <div className="subsea-avatar">SK</div>
+          <SubseaProfileMenu />
         </div>
       </nav>
 
@@ -320,7 +321,7 @@ const CrewManagementDashboard = () => {
               <Plus size={12} /> New
             </button>
             <span className="subsea-vr" />
-            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

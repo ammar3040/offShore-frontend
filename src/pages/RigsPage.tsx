@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
+import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { createRig, getRigs, type CreateRigPayload, type RigApi } from '../api/rig';
 import './RigsPage.css';
 
@@ -214,7 +215,7 @@ const RigsPage = () => {
             <HelpCircle size={17} />
             <span className="subsea-ni-tip">Help</span>
           </button>
-          <div className="subsea-avatar">SK</div>
+          <SubseaProfileMenu />
         </div>
       </nav>
 
@@ -268,7 +269,7 @@ const RigsPage = () => {
               <Plus size={12} /> Add Rig
             </button>
             <span className="subsea-vr" />
-            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

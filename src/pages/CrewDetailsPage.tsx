@@ -29,6 +29,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { getCrewById, type CrewAssignedProject, type CrewMemberApi } from '../api/crew';
+import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { availabilityFromCrewSignal } from '../utils/crewAvailability';
 import './RigsPage.css';
 
@@ -180,7 +181,7 @@ const CrewDetailsPage = () => {
         <div className="subsea-nav-foot">
           <button type="button" className="subsea-ni" aria-label="Settings"><Settings size={17} /><span className="subsea-ni-tip">Settings</span></button>
           <button type="button" className="subsea-ni" aria-label="Help"><HelpCircle size={17} /><span className="subsea-ni-tip">Help</span></button>
-          <div className="subsea-avatar">SK</div>
+          <SubseaProfileMenu />
         </div>
       </nav>
 
@@ -229,7 +230,7 @@ const CrewDetailsPage = () => {
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><MessageSquare size={12} /> Message</button>
             <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm"><User size={12} /> Edit Profile</button>
             <span className="subsea-vr" />
-            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

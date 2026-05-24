@@ -30,6 +30,7 @@ export interface CreateProjectPayload {
     endDate: string;
   };
   span: string;
+  rig_id?: string;
 }
 
 function getAuthToken(): string | null {

@@ -217,6 +217,82 @@
   font-size: 9.5px;
 }
 
+.subsea-profile-menu {
+  position: relative;
+}
+
+.subsea-avatar.subsea-profile-menu-active {
+  box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.45);
+}
+
+.subsea-profile-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: #ffffff;
+  border: 1px solid #dde1e8;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  padding: 4px;
+  z-index: 1100;
+}
+
+.subsea-top-actions .subsea-profile-menu .subsea-profile-dropdown {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
+.subsea-profile-dropdown-header {
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid #ebf0ff;
+  margin-bottom: 4px;
+}
+
+.subsea-profile-dropdown-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.subsea-profile-dropdown-email {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.3;
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.subsea-profile-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+  font-family: inherit;
+  text-align: left;
+}
+
+.subsea-profile-dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+.subsea-profile-dropdown-item.logout {
+  color: #dc2626;
+}
+
+.subsea-profile-dropdown-item.logout:hover {
+  background-color: #fef2f2;
+}
+
 .subsea-sidebar {
   width: var(--sb-w);
   background: var(--surface);

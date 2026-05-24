@@ -28,6 +28,7 @@ import {
   Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SubseaProfileMenu } from '@/components/SubseaProfileMenu';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -645,7 +646,6 @@ const AdminTicketsPage = () => {
 
   /* Project & crew for search form */
   const [searchProjectId, setSearchProjectId] = useState<string>('');
-  const [searchRigId, setSearchRigId] = useState<string>('');
   const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
@@ -1116,7 +1116,6 @@ const AdminTicketsPage = () => {
         const priceAmount = firstFare?.totalFare ?? 0;
         const data = await bookFlight({
           project_id: searchProjectId,
-          ...(searchRigId ? { rig_id: searchRigId } : {}),
           crew_ids: searchCrewIds,
           flight,
           cashback: flight.cashback ?? 0,
@@ -1176,7 +1175,6 @@ const AdminTicketsPage = () => {
     },
     [
       searchProjectId,
-      searchRigId,
       searchCrewIds,
       adults,
       currency,
@@ -1361,7 +1359,7 @@ const AdminTicketsPage = () => {
             <HelpCircle size={17} />
             <span className="subsea-ni-tip">Help</span>
           </button>
-          <div className="subsea-avatar">SK</div>
+          <SubseaProfileMenu />
         </div>
       </nav>
 
@@ -1415,7 +1413,7 @@ const AdminTicketsPage = () => {
               <Plus size={12} /> Book Flight
             </button>
             <span className="subsea-vr" />
-            <div className="subsea-avatar subsea-avatar-sm">SK</div>
+            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 
@@ -1491,7 +1489,7 @@ const AdminTicketsPage = () => {
                   <section className="admin-tickets-search-section admin-tickets-search-section-full">
                     <h3 className="admin-tickets-search-section-title">Assignment</h3>
                     <div className="admin-tickets-search-section-grid">
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4">
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
                         <label htmlFor="search-project">Project</label>
                         <div className="admin-tickets-search-field-with-clear">
                           <DropdownMenu>
@@ -1545,61 +1543,7 @@ const AdminTicketsPage = () => {
                           ) : null}
                         </div>
                       </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4">
-                        <label htmlFor="search-rig">Rig</label>
-                        <div className="admin-tickets-search-field-with-clear">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                id="search-rig"
-                                variant="outline"
-                                className="admin-tickets-search-control"
-                              >
-                                <span className="truncate">
-                                  {searchRigId
-                                    ? (rigs.find((r) => r.id === searchRigId)?.name ?? 'Select rig')
-                                    : 'Select rig (optional)'}
-                                </span>
-                                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              className={SEARCH_DROPDOWN_CONTENT_CLASS}
-                              align="start"
-                            >
-                              <DropdownMenuGroup>
-                                <DropdownMenuItem
-                                  onSelect={() => setSearchRigId('')}
-                                  className={!searchRigId ? 'admin-tickets-search-option-selected' : ''}
-                                >
-                                  No rig
-                                </DropdownMenuItem>
-                                {rigs.map((rig) => (
-                                  <DropdownMenuItem
-                                    key={rig.id}
-                                    onSelect={() => setSearchRigId(rig.id)}
-                                    className={searchRigId === rig.id ? 'admin-tickets-search-option-selected' : ''}
-                                  >
-                                    {rig.name}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          {searchRigId ? (
-                            <button
-                              type="button"
-                              className="admin-tickets-search-clear-btn"
-                              onClick={() => setSearchRigId('')}
-                              title="Clear"
-                              aria-label="Clear rig"
-                            >
-                              <X size={14} />
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4 admin-tickets-search-field-crew">
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6 admin-tickets-search-field-crew">
                         <label htmlFor="search-crew">Crew members</label>
                         <div className="admin-tickets-search-field-with-clear">
                           <DropdownMenu>

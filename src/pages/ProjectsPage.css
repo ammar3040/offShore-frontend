@@ -593,7 +593,8 @@
 }
 
 .projects-page-form-field input,
-.projects-page-form-field textarea {
+.projects-page-form-field textarea,
+.projects-page-form-field select {
   padding: 10px 12px;
   font-size: 14px;
   border: 1px solid #e5e7eb;
@@ -603,14 +604,16 @@
 }
 
 .projects-page-form-field input:focus,
-.projects-page-form-field textarea:focus {
+.projects-page-form-field textarea:focus,
+.projects-page-form-field select:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
 }
 
 .projects-page-form-field input:disabled,
-.projects-page-form-field textarea:disabled {
+.projects-page-form-field textarea:disabled,
+.projects-page-form-field select:disabled {
   background: #f9fafb;
   cursor: not-allowed;
   opacity: 0.8;
