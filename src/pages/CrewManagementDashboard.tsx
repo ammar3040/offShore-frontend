@@ -82,6 +82,10 @@ function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+function daysUntil(end: Date, from: Date): number {
+  return Math.round((startOfLocalDay(end).getTime() - startOfLocalDay(from).getTime()) / 86_400_000);
+}
+
 function formatGbp(amount: number | null | undefined): string {
   if (amount == null || Number.isNaN(Number(amount))) return '—';
   return `£${Number(amount).toLocaleString('en-GB', {
@@ -108,6 +112,15 @@ function isProjectOnDate(project: ProjectApi, day: Date): boolean {
   if (start && startOfLocalDay(start) > currentDay) return false;
   if (end && startOfLocalDay(end) < currentDay) return false;
   return Boolean(start || end || normalizeStatus(project.status) === 'active');
+}
+
+function projectStatusTone(project: ProjectApi, day: Date): 'green' | 'orange' | 'red' {
+  const status = normalizeStatus(project.status);
+  const end = project.duration?.endDate ? parseProjectDay(project.duration.endDate) : null;
+  if (status.includes('risk') || status.includes('overdue') || status.includes('blocked')) return 'red';
+  if (end && !Number.isNaN(end.getTime()) && daysUntil(end, day) <= 7) return 'orange';
+  if (status === 'pending' || status === 'draft' || status.includes('hold')) return 'orange';
+  return 'green';
 }
 
 function buildCalendarDays(month: Date): Array<Date | null> {
@@ -238,6 +251,10 @@ function ProjectStatusCalendar({
                   <ul>
                     {previewProjects.slice(0, 4).map((project) => (
                       <li key={project.id}>
+                        <i
+                          className={`admin-project-calendar-status admin-project-calendar-status--${projectStatusTone(project, previewDate)}`}
+                          aria-hidden="true"
+                        />
                         <span>
                           <b>{project.title}</b>
                           <small>
