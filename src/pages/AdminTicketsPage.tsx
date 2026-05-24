@@ -1455,6 +1455,7 @@ const AdminTicketsPage = () => {
                                 idPrefix={`multi-dep-${seg.id}`}
                                 onClear={() => updateMultiSegment(i, { departureTime: '' })}
                                 hasValue={!!seg.departureTime}
+                                disablePastDates
                               />
                             </div>
                             <div className="admin-tickets-search-field admin-tickets-search-date-picker">
@@ -1518,6 +1519,7 @@ const AdminTicketsPage = () => {
                           idPrefix="search-departure"
                           onClear={searchTripTypeUI === 'one-way' ? () => { setDepartureTime(''); } : undefined}
                           hasValue={!!departureTime}
+                          disablePastDates
                         />
                       </div>
                       {searchTripTypeUI === 'one-way' ? (

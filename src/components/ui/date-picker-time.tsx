@@ -48,6 +48,8 @@ export interface DatePickerTimeProps {
   /** Optional clear callback - if provided, shows clear button when date/time has value */
   onClear?: () => void
   hasValue?: boolean
+  /** Disable dates before today in the calendar */
+  disablePastDates?: boolean
 }
 
 export function DatePickerTime({
@@ -64,8 +66,14 @@ export function DatePickerTime({
   className,
   onClear,
   hasValue,
+  disablePastDates = false,
 }: DatePickerTimeProps) {
   const [open, setOpen] = React.useState(false)
+  const today = React.useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
   const dateObj = parseDate(date)
   const showClear = hasValue ?? (!!date?.trim() || !!time?.trim())
 
@@ -89,6 +97,7 @@ export function DatePickerTime({
               mode="single"
               selected={dateObj}
               defaultMonth={dateObj ?? new Date()}
+              disabled={disablePastDates ? { before: today } : undefined}
               onSelect={(d) => {
                 if (d) {
                   onDateChange(toDateString(d))
