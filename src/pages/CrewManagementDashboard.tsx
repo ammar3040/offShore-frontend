@@ -21,6 +21,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './CrewManagementDashboard.css';
 
 const fleetRows = [
@@ -63,6 +64,8 @@ const certs = [
 ];
 
 const CrewManagementDashboard = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="subsea-shell">
       <nav className="subsea-nav" aria-label="Subseacore modules">
@@ -76,17 +79,17 @@ const CrewManagementDashboard = () => {
         </button>
         <div className="subsea-nav-items">
           {[
-            { icon: LayoutDashboard, label: 'Dashboard', active: true },
-            { icon: Users, label: 'Crew Management', badge: true },
-            { icon: Ship, label: 'Vessels' },
-            { icon: Plane, label: 'Flight Bookings' },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/', active: true },
+            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
+            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
             { divider: true },
-            { icon: Anchor, label: 'Projects' },
+            { icon: Anchor, label: 'Projects', path: '/projects' },
             { icon: CalendarDays, label: 'Timeline & Calendar' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
@@ -99,6 +102,7 @@ const CrewManagementDashboard = () => {
                 type="button"
                 className={`subsea-ni${item.active ? ' active' : ''}`}
                 aria-label={item.label}
+                onClick={() => item.path && navigate(item.path)}
               >
                 <Icon size={17} />
                 {item.badge && <span className="subsea-ni-badge" />}
@@ -138,13 +142,13 @@ const CrewManagementDashboard = () => {
           <button type="button" className="subsea-sb-link active">
             <LayoutDashboard size={13} /> Fleet Overview <span className="subsea-sb-count">Live</span>
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
             <Ship size={13} /> Vessel Fleet <span className="subsea-sb-count">11</span>
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <Users size={13} /> Crew Roster <span className="subsea-sb-count">284</span>
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
             <Plane size={13} /> Flight Bookings <span className="subsea-sb-count">31</span>
           </button>
           <div className="subsea-sb-group">Compliance</div>
@@ -155,7 +159,7 @@ const CrewManagementDashboard = () => {
             <ShieldCheck size={13} /> Audit Logs
           </button>
           <div className="subsea-sb-group">Projects</div>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
             <Anchor size={13} /> Active Projects <span className="subsea-sb-count">9</span>
           </button>
         </div>
@@ -173,7 +177,7 @@ const CrewManagementDashboard = () => {
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
             </button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm">
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => navigate('/crew')}>
               <Plus size={12} /> New
             </button>
             <span className="subsea-vr" />
@@ -189,7 +193,7 @@ const CrewManagementDashboard = () => {
               <div className="subsea-wb-sub">Here's what's happening across your fleet today — Monday, 19 May 2025</div>
               <div className="subsea-wb-chips">
                 <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />5 items need attention</span>
-                <span className="subsea-wb-chip subsea-wb-chip-green"><Ship size={12} />11 vessels operational</span>
+                <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />11 vessels operational</button>
                 <span className="subsea-wb-chip subsea-wb-chip-blue"><Radio size={12} />Open Command Center</span>
               </div>
             </div>
@@ -208,7 +212,7 @@ const CrewManagementDashboard = () => {
           <div className="subsea-alert subsea-alert-warn">
             <AlertTriangle size={15} />
             <span><strong>5 items need attention:</strong> 3 crew certifications expiring within 30 days · 1 vessel understaffed (MV Poseidon Rex) · 1 overdue payroll run.</span>
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Review</button>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/crew')}>Review</button>
           </div>
 
           <section className="subsea-kpi-strip">
@@ -236,7 +240,7 @@ const CrewManagementDashboard = () => {
                   </div>
                   <div className="subsea-pane-actions">
                     <span className="subsea-badge subsea-b-teal subsea-b-dot">All systems nominal</span>
-                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">View Fleet</button>
+                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/rig')}>View Fleet</button>
                   </div>
                 </div>
                 <div className="subsea-table-wrap">
@@ -272,7 +276,7 @@ const CrewManagementDashboard = () => {
                     </thead>
                     <tbody>
                       {crewChanges.map(([name, rank, vessel, type, date, flight]) => (
-                        <tr key={`${name}-${date}`}>
+                        <tr key={`${name}-${date}`} onClick={() => navigate('/crew')}>
                           <td className="strong">{name}</td>
                           <td>{rank}</td>
                           <td>{vessel}</td>
@@ -297,13 +301,22 @@ const CrewManagementDashboard = () => {
                   {activity.map((item) => {
                     const Icon = item.icon;
                     return (
-                      <div key={item.text} className="subsea-feed-item">
+                      <button
+                        key={item.text}
+                        type="button"
+                        className="subsea-feed-item"
+                        onClick={() => {
+                          if (item.icon === Plane) navigate('/tickets');
+                          else if (item.icon === Users || item.icon === BadgeCheck) navigate('/crew');
+                          else if (item.icon === FileText) navigate('/projects');
+                        }}
+                      >
                         <div className={`subsea-feed-icon ${item.color}`}><Icon size={13} /></div>
                         <div>
                           <div className="subsea-feed-text">{item.text}</div>
                           <div className="subsea-feed-meta">{item.meta}</div>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -316,11 +329,11 @@ const CrewManagementDashboard = () => {
                 </div>
                 <div className="subsea-cert-list">
                   {certs.map(([days, color, name, expires]) => (
-                    <div key={name} className="subsea-cert-row">
+                    <button key={name} type="button" className="subsea-cert-row" onClick={() => navigate('/crew')}>
                       <span className={`subsea-badge subsea-b-${color}`}>{days}</span>
                       <span className="subsea-cert-name">{name}</span>
                       <span className="subsea-cert-expires">{expires}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

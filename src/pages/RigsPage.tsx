@@ -19,6 +19,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import { createRig, getRigs, type CreateRigPayload, type RigApi } from '../api/rig';
 import './RigsPage.css';
@@ -63,6 +64,7 @@ function getRigStatus(index: number): { label: string; className: string; crew: 
 }
 
 const RigsPage = () => {
+  const navigate = useNavigate();
   const [rigs, setRigs] = useState<RigApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -171,17 +173,17 @@ const RigsPage = () => {
         </button>
         <div className="subsea-nav-items">
           {[
-            { icon: LayoutDashboard, label: 'Dashboard' },
-            { icon: Users, label: 'Crew Management', badge: true },
-            { icon: Ship, label: 'Vessels' },
-            { icon: Plane, label: 'Flight Bookings' },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
+            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
             { divider: true },
-            { icon: Anchor, label: 'Rigs', active: true },
+            { icon: Anchor, label: 'Rigs', path: '/rig', active: true },
             { icon: CalendarDays, label: 'Timeline & Calendar' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
@@ -194,6 +196,7 @@ const RigsPage = () => {
                 type="button"
                 className={`subsea-ni${item.active ? ' active' : ''}`}
                 aria-label={item.label}
+                onClick={() => item.path && navigate(item.path)}
               >
                 <Icon size={17} />
                 {item.badge && <span className="subsea-ni-badge" />}
@@ -233,17 +236,17 @@ const RigsPage = () => {
           <button type="button" className="subsea-sb-link active">
             <Anchor size={13} /> All Rigs <span className="subsea-sb-count">{loading ? '...' : rigs.length}</span>
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <Ship size={13} /> Fully Crewed <span className="subsea-sb-count">{operationalCount}</span>
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <Users size={13} /> Understaffed <span className="subsea-sb-count subsea-sb-count-red">{rigs.length > 0 ? 1 : 0}</span>
           </button>
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link">
             <Radio size={13} /> Live Positions
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
             <ShieldCheck size={13} /> Compliance
           </button>
         </div>

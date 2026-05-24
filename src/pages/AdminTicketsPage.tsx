@@ -28,6 +28,7 @@ import {
   Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -567,6 +568,7 @@ function FlightResultCard({
 }
 
 const AdminTicketsPage = () => {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [rigs, setRigs] = useState<RigApi[]>([]);
@@ -1314,17 +1316,17 @@ const AdminTicketsPage = () => {
         </button>
         <div className="subsea-nav-items">
           {[
-            { icon: LayoutDashboard, label: 'Dashboard' },
-            { icon: Users, label: 'Crew Management', badge: true },
-            { icon: Ship, label: 'Vessels' },
-            { icon: Plane, label: 'Flight Bookings', active: true },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
+            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Plane, label: 'Flight Bookings', path: '/tickets', active: true },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
             { divider: true },
-            { icon: Anchor, label: 'Projects' },
+            { icon: Anchor, label: 'Projects', path: '/projects' },
             { icon: CalendarDays, label: 'Timeline & Calendar' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
@@ -1337,6 +1339,7 @@ const AdminTicketsPage = () => {
                 type="button"
                 className={`subsea-ni${item.active ? ' active' : ''}`}
                 aria-label={item.label}
+                onClick={() => item.path && navigate(item.path)}
               >
                 <Icon size={17} />
                 {item.badge && <span className="subsea-ni-badge" />}
@@ -1379,14 +1382,14 @@ const AdminTicketsPage = () => {
           <button type="button" className="subsea-sb-link" onClick={() => setActiveTab('search')}>
             <Search size={13} /> Search Flights
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <AlertTriangle size={13} /> Pending Confirm <span className="subsea-sb-count subsea-sb-count-red">{Math.min(8, filteredTickets.length)}</span>
           </button>
           <div className="subsea-sb-group">Operations</div>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <Plane size={13} /> Upcoming Departures
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
             <CircleDollarSign size={13} /> Spend Control
           </button>
         </div>

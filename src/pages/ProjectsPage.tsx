@@ -29,6 +29,7 @@ import {
   Wallet,
   Wrench,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
 import { getCrewAvailableForProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
@@ -90,6 +91,7 @@ function projectInitials(project: ProjectApi): string[] {
 }
 
 const ProjectsPage = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -265,17 +267,17 @@ const ProjectsPage = () => {
         </button>
         <div className="subsea-nav-items">
           {[
-            { icon: LayoutDashboard, label: 'Dashboard' },
-            { icon: Users, label: 'Crew Management', badge: true },
-            { icon: Ship, label: 'Vessels' },
-            { icon: Plane, label: 'Flight Bookings' },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
+            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
             { divider: true },
-            { icon: Anchor, label: 'Projects', active: true },
+            { icon: Anchor, label: 'Projects', path: '/projects', active: true },
             { icon: CalendarDays, label: 'Timeline & Calendar' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
@@ -288,6 +290,7 @@ const ProjectsPage = () => {
                 type="button"
                 className={`subsea-ni${item.active ? ' active' : ''}`}
                 aria-label={item.label}
+                onClick={() => item.path && navigate(item.path)}
               >
                 <Icon size={17} />
                 {item.badge && <span className="subsea-ni-badge" />}
@@ -543,7 +546,7 @@ const ProjectsPage = () => {
                       <div className="subsea-pane-sub">My tasks across all projects</div>
                     </div>
                     <div className="subsea-pane-actions">
-                      <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">View All</button>
+                      <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setViewMode('list')}>View All</button>
                     </div>
                   </div>
                   <div className="subsea-pane-body subsea-pane-body-flat">

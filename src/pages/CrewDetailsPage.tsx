@@ -145,17 +145,17 @@ const CrewDetailsPage = () => {
         </button>
         <div className="subsea-nav-items">
           {[
-            { icon: LayoutDashboard, label: 'Dashboard' },
-            { icon: Users, label: 'Crew Management', active: true, badge: true },
-            { icon: Ship, label: 'Vessels' },
-            { icon: Plane, label: 'Flight Bookings' },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+            { icon: Users, label: 'Crew Management', path: '/crew', active: true, badge: true },
+            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
             { divider: true },
-            { icon: Anchor, label: 'Projects' },
+            { icon: Anchor, label: 'Projects', path: '/projects' },
             { icon: CalendarDays, label: 'Timeline & Calendar' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
@@ -163,7 +163,13 @@ const CrewDetailsPage = () => {
             if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
             const Icon = item.icon;
             return (
-              <button key={item.label} type="button" className={`subsea-ni${item.active ? ' active' : ''}`} aria-label={item.label}>
+              <button
+                key={item.label}
+                type="button"
+                className={`subsea-ni${item.active ? ' active' : ''}`}
+                aria-label={item.label}
+                onClick={() => item.path && navigate(item.path)}
+              >
                 <Icon size={17} />
                 {item.badge && <span className="subsea-ni-badge" />}
                 <span className="subsea-ni-tip">{item.label}</span>

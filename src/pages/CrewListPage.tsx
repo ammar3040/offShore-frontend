@@ -378,17 +378,17 @@ const CrewListPage = () => {
         </button>
         <div className="subsea-nav-items">
           {[
-            { icon: LayoutDashboard, label: 'Dashboard' },
-            { icon: Users, label: 'Crew Management', active: true, badge: true },
-            { icon: Ship, label: 'Vessels' },
-            { icon: Plane, label: 'Flight Bookings' },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+            { icon: Users, label: 'Crew Management', path: '/crew', active: true, badge: true },
+            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
             { divider: true },
-            { icon: Anchor, label: 'Projects' },
+            { icon: Anchor, label: 'Projects', path: '/projects' },
             { icon: CalendarDays, label: 'Timeline & Calendar' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
@@ -401,6 +401,7 @@ const CrewListPage = () => {
                 type="button"
                 className={`subsea-ni${item.active ? ' active' : ''}`}
                 aria-label={item.label}
+                onClick={() => item.path && navigate(item.path)}
               >
                 <Icon size={17} />
                 {item.badge && <span className="subsea-ni-badge" />}
@@ -447,17 +448,17 @@ const CrewListPage = () => {
             <UserPlus size={13} /> Available <span className="subsea-sb-count">{availableCount}</span>
           </button>
           <div className="subsea-sb-group">Operations</div>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
             <Ship size={13} /> Vessel Assignments <span className="subsea-sb-count">11</span>
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
             <Plane size={13} /> Crew Flights <span className="subsea-sb-count">31</span>
           </button>
           <div className="subsea-sb-group">Compliance</div>
           <button type="button" className="subsea-sb-link">
             <BadgeCheck size={13} /> Certifications <span className="subsea-sb-count subsea-sb-count-red">14</span>
           </button>
-          <button type="button" className="subsea-sb-link">
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
             <ShieldCheck size={13} /> MLC Compliance
           </button>
         </div>
