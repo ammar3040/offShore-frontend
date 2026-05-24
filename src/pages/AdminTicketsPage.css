@@ -1922,12 +1922,21 @@
   padding: 6px 0;
 }
 
+.airport-combobox-group {
+  list-style: none;
+}
+
 .airport-combobox-option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  width: 100%;
   gap: 12px;
   padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   transition: background 0.12s;
 }
@@ -1936,8 +1945,37 @@
   background: #f0f9ff;
 }
 
+.airport-combobox-option-main {
+  align-items: flex-start;
+}
+
 .airport-combobox-option-active {
   background: #eff6ff;
+}
+
+.airport-combobox-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  min-height: 38px;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.airport-combobox-option-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .airport-combobox-option-name {
@@ -1953,8 +1991,40 @@
 .airport-combobox-option-country {
   font-size: 0.75rem;
   color: #6b7280;
-  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.airport-combobox-nearby-heading {
+  padding: 6px 14px 6px 58px;
+  background: #dff6fb;
+  color: #158194;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.airport-combobox-nearby-list {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+}
+
+.airport-combobox-option-nearby {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-left: 28px;
+}
+
+.airport-combobox-branch {
+  position: relative;
+  width: 20px;
+  min-width: 20px;
+  height: 24px;
+  border-left: 1px solid #d1d5db;
+  border-bottom: 1px solid #d1d5db;
+  transform: translateY(-5px);
 }
 
 .airport-combobox-empty {
@@ -2559,10 +2629,25 @@
   background: hsl(var(--accent));
 }
 
+.layout--dark .airport-combobox-code {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
 .layout--dark .airport-combobox-option-name {
   color: hsl(var(--foreground));
 }
 
 .layout--dark .airport-combobox-option-country {
   color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .airport-combobox-nearby-heading {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.layout--dark .airport-combobox-branch {
+  border-color: hsl(var(--border));
 }

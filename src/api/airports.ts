@@ -16,6 +16,17 @@ interface RiyaCityHit {
   Name?: string;
   Code?: string;
   NameLat?: string;
+  AirportName?: string;
+  CityName?: string;
+  City?: string;
+  AirportCode?: string;
+  IataCode?: string;
+  IATA?: string;
+  Distance?: number | string;
+  DistanceKM?: number | string;
+  DistanceKm?: number | string;
+  distance?: number | string;
+  distanceKm?: number | string;
   CountryId?: number;
   CountryCode?: string;
   CountryName?: string;
@@ -28,6 +39,70 @@ type AirportsApiResponse =
   | Airport[]
   | { airports?: Airport[]; data?: Airport[]; Items?: RiyaCityHit[]; items?: RiyaCityHit[] };
 
+function asString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const n = Number.parseFloat(value.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+function readNestedAirportList(hit: RiyaCityHit): RiyaCityHit[] {
+  const keys = [
+    'nearbyAirports',
+    'NearbyAirports',
+    'nearestAirports',
+    'NearestAirports',
+    'airports',
+    'Airports',
+    'airportList',
+    'AirportList',
+  ];
+  for (const key of keys) {
+    const value = hit[key];
+    if (Array.isArray(value)) return value as RiyaCityHit[];
+  }
+  return [];
+}
+
+function normalizeHit(hit: RiyaCityHit): Airport | null {
+  const cityName = asString(hit.Name) || asString(hit.CityName) || asString(hit.City) || asString(hit.NameLat);
+  const airportName = asString(hit.AirportName);
+  const code = asString(hit.Code) || asString(hit.AirportCode) || asString(hit.IataCode) || asString(hit.IATA);
+  const countryCode = asString(hit.CountryCode);
+  const countryName = COUNTRY_NAMES[countryCode] ?? asString(hit.CountryName) ?? countryCode;
+  const distanceKm = asNumber(
+    hit.distanceKm ?? hit.DistanceKm ?? hit.DistanceKM ?? hit.distance ?? hit.Distance
+  );
+
+  const placeName = cityName || airportName;
+  const codePart = code && !placeName.includes(`[${code}]`) ? ` [${code}]` : '';
+  const countryPart = countryName && !placeName.includes(countryName) ? `, ${countryName}` : '';
+  const detailPart = airportName && airportName !== placeName ? ` - ${airportName}` : '';
+  const displayName = placeName ? `${placeName}${codePart}${detailPart}${countryPart}` : '';
+  if (!displayName) return null;
+
+  const nearbyAirports = readNestedAirportList(hit)
+    .map(normalizeHit)
+    .filter((airport): airport is Airport => Boolean(airport));
+
+  return {
+    Name: displayName,
+    COUNTRY: countryCode,
+    COUNTRYNAME: countryName,
+    ...(code ? { Code: code } : {}),
+    ...(cityName ? { CityName: cityName } : {}),
+    ...(airportName ? { AirportName: airportName } : {}),
+    ...(distanceKm !== undefined ? { distanceKm } : {}),
+    ...(nearbyAirports.length > 0 ? { nearbyAirports } : {}),
+  };
+}
+
 function normalizeToAirports(data: AirportsApiResponse): Airport[] {
   if (Array.isArray(data)) {
     return data.filter((a): a is Airport => a && typeof a.Name === 'string');
@@ -36,17 +111,8 @@ function normalizeToAirports(data: AirportsApiResponse): Airport[] {
   if (Array.isArray(data.data)) return data.data;
   const hits = data.Items ?? data.items ?? [];
   return hits
-    .map((hit): Airport => {
-      const name = hit.Name ?? hit.NameLat ?? '';
-      const code = hit.Code ?? '';
-      const countryCode = hit.CountryCode ?? '';
-      const countryName = COUNTRY_NAMES[countryCode] ?? hit.CountryName ?? countryCode;
-      const codePart = code ? ` [${code}]` : '';
-      const countryPart = countryName ? `, ${countryName}` : '';
-      const displayName = name + codePart + countryPart;
-      return { Name: displayName, COUNTRY: countryCode, COUNTRYNAME: countryName };
-    })
-    .filter((a) => a.Name);
+    .map(normalizeHit)
+    .filter((a): a is Airport => Boolean(a));
 }
 
 /**

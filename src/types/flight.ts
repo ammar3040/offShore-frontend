@@ -6,6 +6,11 @@ export interface Airport {
   Name: string;
   COUNTRY: string;
   COUNTRYNAME: string;
+  Code?: string;
+  CityName?: string;
+  AirportName?: string;
+  distanceKm?: number;
+  nearbyAirports?: Airport[];
 }
 
 export interface Fare {

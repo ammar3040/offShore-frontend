@@ -162,6 +162,28 @@ function fmtDate(iso: string): string {
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+function getAirportCode(airport: Airport): string {
+  if (airport.Code) return airport.Code;
+  const match = airport.Name.match(/\[([A-Z0-9]{3})\]/);
+  return match?.[1] ?? '';
+}
+
+function getAirportPrimaryLabel(airport: Airport): string {
+  const displayName = getAirportDisplayName(airport);
+  return airport.AirportName || displayName.split(' - ')[1]?.split(',')[0]?.trim() || displayName;
+}
+
+function getAirportSecondaryLabel(airport: Airport): string {
+  const cityName = airport.CityName || getAirportDisplayName(airport).split(' - ')[0]?.trim();
+  const countryName = airport.COUNTRYNAME ? `, ${airport.COUNTRYNAME}` : '';
+  return `${cityName}${countryName}`;
+}
+
+function getAirportDistanceLabel(airport: Airport): string {
+  if (typeof airport.distanceKm !== 'number') return '';
+  return `${Math.round(airport.distanceKm)} km`;
+}
+
 function AirportCombobox({
   id,
   value,
@@ -248,17 +270,58 @@ function AirportCombobox({
           {filtered.length === 0 ? (
             <li className="airport-combobox-empty">No airports found</li>
           ) : (
-            filtered.map((a) => (
-              <li
-                key={a.Name}
-                className={'airport-combobox-option' + (value?.Name === a.Name ? ' airport-combobox-option-active' : '')}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handleSelect(a)}
-              >
-                <span className="airport-combobox-option-name">{getAirportDisplayName(a)}</span>
-                <span className="airport-combobox-option-country">{a.COUNTRYNAME}</span>
-              </li>
-            ))
+            filtered.map((a) => {
+              const nearby = a.nearbyAirports ?? [];
+              const code = getAirportCode(a);
+
+              return (
+                <li key={a.Name} className="airport-combobox-group">
+                  <button
+                    type="button"
+                    className={'airport-combobox-option airport-combobox-option-main' + (value?.Name === a.Name ? ' airport-combobox-option-active' : '')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleSelect(a)}
+                  >
+                    <span className="airport-combobox-code">{code || 'AIR'}</span>
+                    <span className="airport-combobox-option-text">
+                      <span className="airport-combobox-option-name">{getAirportDisplayName(a)}</span>
+                      <span className="airport-combobox-option-country">{a.COUNTRYNAME}</span>
+                    </span>
+                  </button>
+                  {nearby.length > 0 ? (
+                    <>
+                      <div className="airport-combobox-nearby-heading">
+                        Found {nearby.length} Nearby Airport{nearby.length === 1 ? '' : 's'}
+                      </div>
+                      <ul className="airport-combobox-nearby-list">
+                        {nearby.map((nearbyAirport) => {
+                          const distanceLabel = getAirportDistanceLabel(nearbyAirport);
+                          return (
+                            <li key={nearbyAirport.Name}>
+                              <button
+                                type="button"
+                                className={'airport-combobox-option airport-combobox-option-nearby' + (value?.Name === nearbyAirport.Name ? ' airport-combobox-option-active' : '')}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => handleSelect(nearbyAirport)}
+                              >
+                                <span className="airport-combobox-branch" aria-hidden="true" />
+                                <span className="airport-combobox-code">{getAirportCode(nearbyAirport) || 'AIR'}</span>
+                                <span className="airport-combobox-option-text">
+                                  <span className="airport-combobox-option-name">{getAirportPrimaryLabel(nearbyAirport)}</span>
+                                  <span className="airport-combobox-option-country">
+                                    {distanceLabel ? `${distanceLabel} from ${a.CityName || getAirportDisplayName(a)}` : getAirportSecondaryLabel(nearbyAirport)}
+                                  </span>
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  ) : null}
+                </li>
+              );
+            })
           )}
         </ul>
       )}
