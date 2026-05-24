@@ -3,6 +3,7 @@ import { env } from '../config/env';
 export interface RigApi {
   id: string;
   name: string;
+  address: string;
   description?: string;
   createdBy?: string;
   createdAt?: string;
@@ -20,6 +21,7 @@ export interface GetRigsResponse {
 
 export interface CreateRigPayload {
   name: string;
+  address: string;
   description?: string;
 }
 

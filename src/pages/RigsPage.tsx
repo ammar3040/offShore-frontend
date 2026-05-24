@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Anchor, Plus, Search } from 'lucide-react';
+import { Anchor, MapPin, Plus, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import { createRig, getRigs, type CreateRigPayload, type RigApi } from '../api/rig';
 import './ProjectsPage.css';
@@ -60,6 +60,7 @@ const RigsPage = () => {
     return rigs.filter(
       (rig) =>
         (rig.name || '').toLowerCase().includes(q) ||
+        (rig.address || '').toLowerCase().includes(q) ||
         (rig.description || '').toLowerCase().includes(q)
     );
   }, [rigs, search]);
@@ -88,14 +89,16 @@ const RigsPage = () => {
     const form = e.currentTarget;
     const formData = new FormData(form);
     const name = (formData.get('name') as string)?.trim() ?? '';
+    const address = (formData.get('address') as string)?.trim() ?? '';
     const description = (formData.get('description') as string)?.trim() ?? '';
-    if (!name) return;
+    if (!name || !address) return;
 
     setCreateLoading(true);
     setCreateError(null);
     try {
       const payload: CreateRigPayload = {
         name,
+        address,
         ...(description ? { description } : {}),
       };
       await createRig(payload);
@@ -177,6 +180,10 @@ const RigsPage = () => {
                 )}
                 <div className="project-card-meta">
                   <span className="project-card-meta-item">
+                    <MapPin size={14} />
+                    {rig.address || 'No address'}
+                  </span>
+                  <span className="project-card-meta-item">
                     <Anchor size={14} />
                     Created {formatDate(rig.createdAt)}
                   </span>
@@ -245,6 +252,17 @@ const RigsPage = () => {
               name="name"
               type="text"
               placeholder="e.g. Deepwater Horizon"
+              required
+              disabled={createLoading}
+            />
+          </div>
+          <div className="projects-page-form-field">
+            <label htmlFor="rig-address">Address</label>
+            <input
+              id="rig-address"
+              name="address"
+              type="text"
+              placeholder="e.g. Port Fourchon, Louisiana"
               required
               disabled={createLoading}
             />
