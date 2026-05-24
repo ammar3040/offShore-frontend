@@ -38,7 +38,16 @@ import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
 import { searchAirportsApi } from '../api/airports';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
-import type { Airport, Flight, Fare, SearchPayload, CabinClass, CurrencyCode } from '../types/flight';
+import type {
+  Airport,
+  Flight,
+  Fare,
+  SearchPayload,
+  CabinClass,
+  CurrencyCode,
+  FlightSortBy,
+  FlightSortOrder,
+} from '../types/flight';
 import { DatePickerTime } from '@/components/ui/date-picker-time';
 import { Input } from '@/components/ui/input';
 import {
@@ -56,6 +65,7 @@ type TicketsTab = 'tickets' | 'search';
 
 /** Search tab trip UI; API uses SearchPayload tripType (`multi-city` maps to `one-way` per leg). */
 type SearchUITripType = 'one-way' | 'round-trip' | 'multi-city';
+type FlightSortValue = `${FlightSortBy}:${FlightSortOrder}`;
 
 const MAX_MULTI_SEGMENTS = 6;
 
@@ -102,6 +112,19 @@ const CURRENCY_OPTIONS: Array<{ value: CurrencyCode; label: string }> = [
   { value: 'USD', label: 'USD' },
   { value: 'GBP', label: 'GBP' },
   { value: 'INR', label: 'INR' },
+];
+
+const FLIGHT_SORT_OPTIONS: Array<{ value: FlightSortValue; label: string }> = [
+  { value: 'price:asc', label: 'Price: low to high' },
+  { value: 'price:desc', label: 'Price: high to low' },
+  { value: 'duration:asc', label: 'Duration: shortest first' },
+  { value: 'duration:desc', label: 'Duration: longest first' },
+  { value: 'stops:asc', label: 'Stops: fewest first' },
+  { value: 'stops:desc', label: 'Stops: most first' },
+  { value: 'departureTime:asc', label: 'Departure: earliest first' },
+  { value: 'departureTime:desc', label: 'Departure: latest first' },
+  { value: 'arrivalTime:asc', label: 'Arrival: earliest first' },
+  { value: 'arrivalTime:desc', label: 'Arrival: latest first' },
 ];
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
@@ -577,6 +600,8 @@ const AdminTicketsPage = () => {
   const [adults, setAdults] = useState(1);
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
   const [currency, setCurrency] = useState<CurrencyCode>('GBP');
+  const [flightSortBy, setFlightSortBy] = useState<FlightSortBy>('price');
+  const [flightSortOrder, setFlightSortOrder] = useState<FlightSortOrder>('asc');
   const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
   const [searchTotalCount, setSearchTotalCount] = useState<number>(0);
   const [searchPage, setSearchPage] = useState<number>(1);
@@ -592,7 +617,8 @@ const AdminTicketsPage = () => {
   const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
-  const [_adminMarkup, setAdminMarkup] = useState<number | null>(null);
+  const [, setAdminMarkup] = useState<number | null>(null);
+  const selectedFlightSortValue = `${flightSortBy}:${flightSortOrder}` as FlightSortValue;
 
   useEffect(() => {
     let cancelled = false;
@@ -891,6 +917,8 @@ const AdminTicketsPage = () => {
           cabinClass,
           currency,
           page: 1,
+          sortBy: flightSortBy,
+          sortOrder: flightSortOrder,
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
           ...(dTime.trim() ? { departureTime: dTime.trim() } : {}),
@@ -922,6 +950,8 @@ const AdminTicketsPage = () => {
           cabinClass,
           currency,
           page: 1,
+          sortBy: flightSortBy,
+          sortOrder: flightSortOrder,
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
           ...(searchTripTypeUI === 'one-way' && dTime.trim() ? { departureTime: dTime.trim() } : {}),
@@ -963,9 +993,43 @@ const AdminTicketsPage = () => {
       adults,
       cabinClass,
       currency,
+      flightSortBy,
+      flightSortOrder,
       searchProjectId,
       searchCrewIds,
     ]
+  );
+
+  const handleResultSortChange = useCallback(
+    async (value: FlightSortValue) => {
+      const [nextSortBy, nextSortOrder] = value.split(':') as [FlightSortBy, FlightSortOrder];
+      setFlightSortBy(nextSortBy);
+      setFlightSortOrder(nextSortOrder);
+
+      if (!searchCriteria) return;
+
+      const criteria: SearchPayload = {
+        ...searchCriteria,
+        page: 1,
+        sortBy: nextSortBy,
+        sortOrder: nextSortOrder,
+      };
+
+      setSearchCriteria(criteria);
+      setSearchError(null);
+      setIsSearching(true);
+      try {
+        const data = await searchFlights(criteria);
+        setSearchResults(data.flights);
+        setSearchTotalCount(data.total);
+        setSearchPage(data.page ?? 1);
+      } catch (e) {
+        toast.error('Failed to sort results', { description: e instanceof Error ? e.message : 'Please try again.' });
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [searchCriteria]
   );
 
   const handleLoadMore = useCallback(async () => {
@@ -1727,6 +1791,28 @@ const AdminTicketsPage = () => {
                     )}
                   </p>
                 )}
+                <div className="admin-tickets-results-sort">
+                  <label htmlFor="flight-results-sort">Sort</label>
+                  <Select
+                    value={selectedFlightSortValue}
+                    onValueChange={(value) => {
+                      void handleResultSortChange(value as FlightSortValue);
+                    }}
+                    disabled={isSearching || isLoadingMore}
+                  >
+                    <SelectTrigger id="flight-results-sort" className="admin-tickets-results-sort-trigger">
+                      <SelectValue placeholder="Sort results" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FLIGHT_SORT_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {isSearching ? <span className="admin-tickets-spinner admin-tickets-spinner-inline" /> : null}
+                </div>
                 <p className="admin-tickets-results-count">
                   {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
                   {searchTripTypeUI === 'multi-city' &&
@@ -1770,7 +1856,7 @@ const AdminTicketsPage = () => {
                           type="button"
                           variant="outline"
                           onClick={handleLoadMore}
-                          disabled={isLoadingMore}
+                          disabled={isLoadingMore || isSearching}
                           className="admin-tickets-load-more-btn"
                         >
                           {isLoadingMore ? (

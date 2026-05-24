@@ -1396,6 +1396,22 @@
   margin: 0 0 0 auto;
 }
 
+.admin-tickets-results-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-tickets-results-sort label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.admin-tickets-results-sort-trigger {
+  min-width: 220px;
+}
+
 .admin-tickets-results-filters {
   display: flex;
   flex-wrap: wrap;
@@ -2342,6 +2358,10 @@
 }
 
 .layout--dark .admin-tickets-results-count {
+  color: hsl(var(--foreground));
+}
+
+.layout--dark .admin-tickets-results-sort label {
   color: hsl(var(--foreground));
 }
 

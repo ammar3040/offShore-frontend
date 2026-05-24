@@ -65,6 +65,8 @@ export interface Flight {
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 export type CurrencyCode = 'USD' | 'GBP' | 'INR';
+export type FlightSortBy = 'price' | 'duration' | 'stops' | 'departureTime' | 'arrivalTime';
+export type FlightSortOrder = 'asc' | 'desc';
 
 export interface SearchPayload {
   tripType: 'one-way' | 'round-trip' | 'split-tickets';
@@ -99,6 +101,9 @@ export interface SearchPayload {
   arrivalDate?: string;
   /** Maximum arrival time at destination, HH:mm (e.g. "18:00") */
   arrivalTime?: string;
+  /** Backend sorting applied after filters and before pagination */
+  sortBy?: FlightSortBy;
+  sortOrder?: FlightSortOrder;
 }
 
 /** Result of searchFlights when API returns paginated response */
