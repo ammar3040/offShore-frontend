@@ -50,6 +50,10 @@ export interface DatePickerTimeProps {
   hasValue?: boolean
   /** Disable dates before today in the calendar */
   disablePastDates?: boolean
+  /** Extra classes for the portaled calendar popover */
+  popoverContentClassName?: string
+  /** Extra classes for the date trigger button */
+  triggerClassName?: string
 }
 
 export function DatePickerTime({
@@ -67,6 +71,8 @@ export function DatePickerTime({
   onClear,
   hasValue,
   disablePastDates = false,
+  popoverContentClassName,
+  triggerClassName,
 }: DatePickerTimeProps) {
   const [open, setOpen] = React.useState(false)
   const today = React.useMemo(() => {
@@ -86,13 +92,22 @@ export function DatePickerTime({
             <Button
               variant="outline"
               id={`${idPrefix}-date`}
-              className="w-full min-w-[140px] justify-between font-normal"
+              className={cn(
+                "admin-tickets-search-control w-full min-w-[140px] justify-between font-normal",
+                "bg-white text-[#111827] border-[#dde1e8] shadow-none",
+                "hover:bg-[#f7f8fa] hover:text-[#111827]",
+                "dark:bg-white dark:text-[#111827] dark:border-[#dde1e8] dark:hover:bg-[#f7f8fa]",
+                triggerClassName
+              )}
             >
               {dateObj ? format(dateObj, "PPP") : datePlaceholder}
               <ChevronDown className="h-4 w-4 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+          <PopoverContent
+            className={cn("w-auto overflow-hidden p-0", popoverContentClassName)}
+            align="start"
+          >
             <Calendar
               mode="single"
               selected={dateObj}

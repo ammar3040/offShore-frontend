@@ -211,6 +211,11 @@ function fmtDate(iso: string): string {
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+const SEARCH_DROPDOWN_CONTENT_CLASS =
+  'admin-tickets-search-overlay w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto';
+
+const SEARCH_SELECT_CONTENT_CLASS = 'admin-tickets-search-overlay';
+
 function getAirportCode(airport: Airport): string {
   if (airport.Code) return airport.Code;
   const match = airport.Name.match(/\[([A-Z0-9]{3})\]/);
@@ -1448,214 +1453,229 @@ const AdminTicketsPage = () => {
               </div>
               <div className="admin-tickets-search-panel">
                 <div className="admin-tickets-search-form">
-                  <div className="admin-tickets-search-row admin-tickets-search-row-trip">
-                    <span className="admin-tickets-search-row-label">Trip type</span>
-                    <div className="admin-tickets-search-radio-group admin-tickets-search-radio-group-trip">
-                      <label className="admin-tickets-search-radio">
-                        <input
-                          type="radio"
-                          name="trip-type"
-                          checked={searchTripTypeUI === 'one-way'}
-                          onChange={() => changeSearchTripType('one-way')}
-                        />
-                        <span>One way</span>
-                      </label>
-                      <label className="admin-tickets-search-radio">
-                        <input
-                          type="radio"
-                          name="trip-type"
-                          checked={searchTripTypeUI === 'round-trip'}
-                          onChange={() => changeSearchTripType('round-trip')}
-                        />
-                        <span>Round trip</span>
-                      </label>
-                      <label className="admin-tickets-search-radio">
-                        <input
-                          type="radio"
-                          name="trip-type"
-                          checked={searchTripTypeUI === 'multi-city'}
-                          onChange={() => changeSearchTripType('multi-city')}
-                        />
-                        <span>Multiple flights</span>
-                      </label>
+                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                    <div className="admin-tickets-search-row admin-tickets-search-row-trip">
+                      <span className="admin-tickets-search-row-label">Trip type</span>
+                      <div className="admin-tickets-search-radio-group admin-tickets-search-radio-group-trip">
+                        <label className="admin-tickets-search-radio">
+                          <input
+                            type="radio"
+                            name="trip-type"
+                            checked={searchTripTypeUI === 'one-way'}
+                            onChange={() => changeSearchTripType('one-way')}
+                          />
+                          <span>One way</span>
+                        </label>
+                        <label className="admin-tickets-search-radio">
+                          <input
+                            type="radio"
+                            name="trip-type"
+                            checked={searchTripTypeUI === 'round-trip'}
+                            onChange={() => changeSearchTripType('round-trip')}
+                          />
+                          <span>Round trip</span>
+                        </label>
+                        <label className="admin-tickets-search-radio">
+                          <input
+                            type="radio"
+                            name="trip-type"
+                            checked={searchTripTypeUI === 'multi-city'}
+                            onChange={() => changeSearchTripType('multi-city')}
+                          />
+                          <span>Multiple flights</span>
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                  {searchTripTypeUI === 'multi-city' ? (
-                    <p className="admin-tickets-multi-hint">
-                      Book each leg as its own ticket in one flow (separate from connecting flights sold as one itinerary).
-                    </p>
-                  ) : null}
-                  <div className="admin-tickets-search-field">
-                    <label className="block text-xs font-semibold text-[#374151] mb-2">Project</label>
-                    <div className="admin-tickets-search-field-with-clear">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-between font-normal"
-                          >
-                            <span className="truncate">
-                              {searchProjectId
-                                ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
-                                : 'Select project'}
-                            </span>
-                            <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
-                        align="start"
-                      >
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem
-                            onSelect={() => setSearchProjectId('')}
-                            className={!searchProjectId ? 'bg-accent' : ''}
-                          >
-                            Select project
-                          </DropdownMenuItem>
-                          {projects.map((p) => (
-                            <DropdownMenuItem
-                              key={p.id}
-                              onSelect={() => setSearchProjectId(p.id)}
-                              className={searchProjectId === p.id ? 'bg-accent' : ''}
-                            >
-                              {p.title}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                      {searchProjectId ? (
-                        <button
-                          type="button"
-                          className="admin-tickets-search-clear-btn"
-                          onClick={() => setSearchProjectId('')}
-                          title="Clear"
-                          aria-label="Clear project"
-                        >
-                          <X size={14} />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="admin-tickets-search-field">
-                    <label className="block text-xs font-semibold text-[#374151] mb-2">Rig</label>
-                    <div className="admin-tickets-search-field-with-clear">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-between font-normal"
-                          >
-                            <span className="truncate">
-                              {searchRigId
-                                ? (rigs.find((r) => r.id === searchRigId)?.name ?? 'Select rig')
-                                : 'Select rig (optional)'}
-                            </span>
-                            <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
-                          align="start"
-                        >
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem
-                              onSelect={() => setSearchRigId('')}
-                              className={!searchRigId ? 'bg-accent' : ''}
-                            >
-                              No rig
-                            </DropdownMenuItem>
-                            {rigs.map((rig) => (
-                              <DropdownMenuItem
-                                key={rig.id}
-                                onSelect={() => setSearchRigId(rig.id)}
-                                className={searchRigId === rig.id ? 'bg-accent' : ''}
+                  </section>
+
+                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                    <h3 className="admin-tickets-search-section-title">Assignment</h3>
+                    <div className="admin-tickets-search-section-grid">
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4">
+                        <label htmlFor="search-project">Project</label>
+                        <div className="admin-tickets-search-field-with-clear">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                id="search-project"
+                                variant="outline"
+                                className="admin-tickets-search-control"
                               >
-                                {rig.name}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      {searchRigId ? (
-                        <button
-                          type="button"
-                          className="admin-tickets-search-clear-btn"
-                          onClick={() => setSearchRigId('')}
-                          title="Clear"
-                          aria-label="Clear rig"
-                        >
-                          <X size={14} />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="admin-tickets-search-field admin-tickets-search-field-crew">
-                    <label className="block text-xs font-semibold text-[#374151] mb-2">Crew members</label>
-                    <div className="admin-tickets-search-field-with-clear">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          disabled={!searchProjectId}
-                          className="w-full justify-between font-normal"
-                        >
-                          <span className="truncate">
-                            {!searchProjectId
-                              ? 'Select a project first'
-                              : searchCrewLoading
-                                ? 'Loading…'
-                                : searchCrewIds.length === 0
-                                  ? 'Select crew members…'
-                                  : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
-                          </span>
-                          <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
-                        align="start"
-                      >
-                        {searchCrewLoading && searchCrewList.length === 0 ? (
-                          <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
-                        ) : searchCrewList.length === 0 ? (
-                          <DropdownMenuLabel>No crew enrolled in this project.</DropdownMenuLabel>
-                        ) : (
-                          <DropdownMenuGroup>
-                            {searchCrewList.map((c) => (
-                              <DropdownMenuCheckboxItem
-                                key={c.id}
-                                checked={searchCrewIds.includes(c.id)}
-                                onCheckedChange={() => toggleCrewSearch(c.id)}
-                                onSelect={(e) => e.preventDefault()}
+                                <span className="truncate">
+                                  {searchProjectId
+                                    ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
+                                    : 'Select project'}
+                                </span>
+                                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              className={SEARCH_DROPDOWN_CONTENT_CLASS}
+                              align="start"
+                            >
+                              <DropdownMenuGroup>
+                                <DropdownMenuItem
+                                  onSelect={() => setSearchProjectId('')}
+                                  className={!searchProjectId ? 'admin-tickets-search-option-selected' : ''}
+                                >
+                                  Select project
+                                </DropdownMenuItem>
+                                {projects.map((p) => (
+                                  <DropdownMenuItem
+                                    key={p.id}
+                                    onSelect={() => setSearchProjectId(p.id)}
+                                    className={searchProjectId === p.id ? 'admin-tickets-search-option-selected' : ''}
+                                  >
+                                    {p.title}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {searchProjectId ? (
+                            <button
+                              type="button"
+                              className="admin-tickets-search-clear-btn"
+                              onClick={() => setSearchProjectId('')}
+                              title="Clear"
+                              aria-label="Clear project"
+                            >
+                              <X size={14} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4">
+                        <label htmlFor="search-rig">Rig</label>
+                        <div className="admin-tickets-search-field-with-clear">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                id="search-rig"
+                                variant="outline"
+                                className="admin-tickets-search-control"
                               >
-                                <div className="flex flex-col min-w-0">
-                                  <span>{c.firstname} {c.lastname}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{c.email}</span>
-                                </div>
-                              </DropdownMenuCheckboxItem>
-                            ))}
-                          </DropdownMenuGroup>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                      {searchCrewIds.length > 0 ? (
-                        <button
-                          type="button"
-                          className="admin-tickets-search-clear-btn"
-                          onClick={() => setSearchCrewIds([])}
-                          title="Clear"
-                          aria-label="Clear crew members"
-                        >
-                          <X size={14} />
-                        </button>
-                      ) : null}
+                                <span className="truncate">
+                                  {searchRigId
+                                    ? (rigs.find((r) => r.id === searchRigId)?.name ?? 'Select rig')
+                                    : 'Select rig (optional)'}
+                                </span>
+                                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              className={SEARCH_DROPDOWN_CONTENT_CLASS}
+                              align="start"
+                            >
+                              <DropdownMenuGroup>
+                                <DropdownMenuItem
+                                  onSelect={() => setSearchRigId('')}
+                                  className={!searchRigId ? 'admin-tickets-search-option-selected' : ''}
+                                >
+                                  No rig
+                                </DropdownMenuItem>
+                                {rigs.map((rig) => (
+                                  <DropdownMenuItem
+                                    key={rig.id}
+                                    onSelect={() => setSearchRigId(rig.id)}
+                                    className={searchRigId === rig.id ? 'admin-tickets-search-option-selected' : ''}
+                                  >
+                                    {rig.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {searchRigId ? (
+                            <button
+                              type="button"
+                              className="admin-tickets-search-clear-btn"
+                              onClick={() => setSearchRigId('')}
+                              title="Clear"
+                              aria-label="Clear rig"
+                            >
+                              <X size={14} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4 admin-tickets-search-field-crew">
+                        <label htmlFor="search-crew">Crew members</label>
+                        <div className="admin-tickets-search-field-with-clear">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                id="search-crew"
+                                variant="outline"
+                                disabled={!searchProjectId}
+                                className="admin-tickets-search-control"
+                              >
+                                <span className="truncate">
+                                  {!searchProjectId
+                                    ? 'Select a project first'
+                                    : searchCrewLoading
+                                      ? 'Loading…'
+                                      : searchCrewIds.length === 0
+                                        ? 'Select crew members…'
+                                        : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
+                                </span>
+                                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              className={SEARCH_DROPDOWN_CONTENT_CLASS}
+                              align="start"
+                            >
+                              {searchCrewLoading && searchCrewList.length === 0 ? (
+                                <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
+                              ) : searchCrewList.length === 0 ? (
+                                <DropdownMenuLabel>No crew enrolled in this project.</DropdownMenuLabel>
+                              ) : (
+                                <DropdownMenuGroup>
+                                  {searchCrewList.map((c) => (
+                                    <DropdownMenuCheckboxItem
+                                      key={c.id}
+                                      checked={searchCrewIds.includes(c.id)}
+                                      onCheckedChange={() => toggleCrewSearch(c.id)}
+                                      onSelect={(e) => e.preventDefault()}
+                                    >
+                                      <div className="flex flex-col min-w-0">
+                                        <span>{c.firstname} {c.lastname}</span>
+                                        <span className="text-xs text-muted-foreground truncate">{c.email}</span>
+                                      </div>
+                                    </DropdownMenuCheckboxItem>
+                                  ))}
+                                </DropdownMenuGroup>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {searchCrewIds.length > 0 ? (
+                            <button
+                              type="button"
+                              className="admin-tickets-search-clear-btn"
+                              onClick={() => setSearchCrewIds([])}
+                              title="Clear"
+                              aria-label="Clear crew members"
+                            >
+                              <X size={14} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  {searchTripTypeUI === 'multi-city' ? (
-                    <>
-                      <div className="admin-tickets-multi-nonstop">
+                  </section>
+
+                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                    <h3 className="admin-tickets-search-section-title">
+                      {searchTripTypeUI === 'multi-city' ? 'Flights' : 'Route & schedule'}
+                    </h3>
+                    <div className="admin-tickets-search-section-grid">
+                      {searchTripTypeUI === 'multi-city' ? (
+                        <>
+                          <p className="admin-tickets-multi-hint admin-tickets-search-field-col-12">
+                            Book each leg as its own ticket in one flow (separate from connecting flights sold as one itinerary).
+                          </p>
+                          <div className="admin-tickets-multi-nonstop admin-tickets-search-field-col-12">
                         <Checkbox
                           id="prefer-nonstop-legs"
                           checked={preferNonStopPerLeg}
@@ -1665,10 +1685,10 @@ const AdminTicketsPage = () => {
                           Prefer non-stop for each leg (search requests direct-only when supported; list is filtered to non-stop).
                         </label>
                       </div>
-                      <p className="admin-tickets-multi-active-hint">
+                      <p className="admin-tickets-multi-active-hint admin-tickets-search-field-col-12">
                         Active leg for search: <strong>{activeMultiLegIndex + 1}</strong> of {multiSegments.length}. Click a leg card to change it (when not viewing results).
                       </p>
-                      <div className="admin-tickets-multi-segments">
+                      <div className="admin-tickets-multi-segments admin-tickets-search-field-col-12">
                         {multiSegments.map((seg, i) => (
                           <div
                             key={seg.id}
@@ -1739,6 +1759,7 @@ const AdminTicketsPage = () => {
                                 onClear={() => updateMultiSegment(i, { departureTime: '' })}
                                 hasValue={!!seg.departureTime}
                                 disablePastDates
+                                popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                               />
                             </div>
                             <div className="admin-tickets-search-field admin-tickets-search-date-picker">
@@ -1754,13 +1775,14 @@ const AdminTicketsPage = () => {
                                 idPrefix={`multi-arr-${seg.id}`}
                                 onClear={() => updateMultiSegment(i, { arrivalDate: '', arrivalTime: '' })}
                                 hasValue={!!seg.arrivalDate?.trim() || !!seg.arrivalTime?.trim()}
+                                popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                               />
                             </div>
                           </div>
                         ))}
                       </div>
                       {multiSegments.length < MAX_MULTI_SEGMENTS ? (
-                        <div className="admin-tickets-multi-add-row">
+                        <div className="admin-tickets-multi-add-row admin-tickets-search-field-col-12">
                           <Button type="button" variant="outline" size="sm" onClick={addMultiSegment}>
                             <Plus size={16} className="mr-1" />
                             Add flight
@@ -1771,25 +1793,23 @@ const AdminTicketsPage = () => {
                     </>
                   ) : (
                     <>
-                      <div className="admin-tickets-search-airports-row">
-                        <div className="admin-tickets-search-field">
-                          <label htmlFor="search-from">From</label>
-                          <AirportCombobox
-                            id="search-from"
-                            value={searchFrom}
-                            onChange={setSearchFrom}
-                          />
-                        </div>
-                        <div className="admin-tickets-search-field">
-                          <label htmlFor="search-to">To</label>
-                          <AirportCombobox
-                            id="search-to"
-                            value={searchTo}
-                            onChange={setSearchTo}
-                          />
-                        </div>
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
+                        <label htmlFor="search-from">From</label>
+                        <AirportCombobox
+                          id="search-from"
+                          value={searchFrom}
+                          onChange={setSearchFrom}
+                        />
                       </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
+                        <label htmlFor="search-to">To</label>
+                        <AirportCombobox
+                          id="search-to"
+                          value={searchTo}
+                          onChange={setSearchTo}
+                        />
+                      </div>
+                      <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
                         <DatePickerTime
                           date={departureDate}
                           time={departureTime}
@@ -1803,10 +1823,11 @@ const AdminTicketsPage = () => {
                           onClear={searchTripTypeUI === 'one-way' ? () => { setDepartureTime(''); } : undefined}
                           hasValue={!!departureTime}
                           disablePastDates
+                          popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                         />
                       </div>
                       {searchTripTypeUI === 'one-way' ? (
-                        <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                        <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
                           <DatePickerTime
                             date={arrivalDate}
                             time={arrivalTime}
@@ -1822,11 +1843,12 @@ const AdminTicketsPage = () => {
                               setArrivalTime('');
                             }}
                             hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
+                            popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                           />
                         </div>
                       ) : null}
                       {searchTripTypeUI === 'round-trip' ? (
-                        <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                        <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
                           <DatePickerTime
                             date={returnDate}
                             time={returnTime}
@@ -1839,40 +1861,49 @@ const AdminTicketsPage = () => {
                             idPrefix="search-return"
                             onClear={() => setReturnTime('')}
                             hasValue={!!returnTime}
+                            popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                           />
                         </div>
                       ) : null}
                     </>
                   )}
-                  <div className="admin-tickets-search-field">
-                    <label htmlFor="search-adults">Adults</label>
-                    <Input
-                      id="search-adults"
-                      type="number"
-                      min={0}
-                      value={adults}
-                      onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="admin-tickets-search-input"
-                    />
-                  </div>
-                  <div className="admin-tickets-search-field admin-tickets-search-field-cabin">
-                    <label htmlFor="search-cabin">Cabin class</label>
-                    <Select
-                      value={cabinClass}
-                      onValueChange={(v) => setCabinClass(v as CabinClass)}
-                    >
-                      <SelectTrigger id="search-cabin" className="admin-tickets-search-input w-full">
-                        <SelectValue placeholder="Select cabin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CABIN_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    </div>
+                  </section>
+
+                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                    <h3 className="admin-tickets-search-section-title">Passengers</h3>
+                    <div className="admin-tickets-search-section-grid">
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4">
+                        <label htmlFor="search-adults">Adults</label>
+                        <Input
+                          id="search-adults"
+                          type="number"
+                          min={0}
+                          value={adults}
+                          onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          className="admin-tickets-search-input"
+                        />
+                      </div>
+                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4 admin-tickets-search-field-cabin">
+                        <label htmlFor="search-cabin">Cabin class</label>
+                        <Select
+                          value={cabinClass}
+                          onValueChange={(v) => setCabinClass(v as CabinClass)}
+                        >
+                          <SelectTrigger id="search-cabin" className="admin-tickets-search-control">
+                            <SelectValue placeholder="Select cabin" />
+                          </SelectTrigger>
+                          <SelectContent className={SEARCH_SELECT_CONTENT_CLASS}>
+                            {CABIN_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </section>
                 </div>
                 {searchError && (
                   <div className="admin-tickets-search-error" role="alert">
@@ -1942,7 +1973,7 @@ const AdminTicketsPage = () => {
                     <SelectTrigger id="flight-results-sort" className="admin-tickets-results-sort-trigger">
                       <SelectValue placeholder="Sort results" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className={SEARCH_SELECT_CONTENT_CLASS}>
                       {FLIGHT_SORT_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}

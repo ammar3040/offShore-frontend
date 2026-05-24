@@ -810,7 +810,108 @@
   margin: 0 0 24px;
 }
 
+.admin-tickets-search-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+}
+
 .admin-tickets-search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-tickets-search-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-tickets-search-section-full {
+  width: 100%;
+}
+
+.admin-tickets-search-section-title {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.admin-tickets-search-section-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: end;
+}
+
+.admin-tickets-search-field-col-4 {
+  grid-column: span 4;
+}
+
+.admin-tickets-search-field-col-6 {
+  grid-column: span 6;
+}
+
+.admin-tickets-search-field-col-12 {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .admin-tickets-search-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tickets-search-field-col-4,
+  .admin-tickets-search-field-col-6 {
+    grid-column: 1 / -1;
+  }
+}
+
+.admin-tickets-search-control,
+.admin-tickets-search-view .admin-tickets-search-field .admin-tickets-search-field-with-clear > [data-slot="button"],
+.admin-tickets-search-view .admin-tickets-search-field [data-slot="select-trigger"],
+.admin-tickets-search-date-picker [data-slot="button"][data-variant="outline"] {
+  width: 100%;
+  min-height: 44px;
+  justify-content: space-between;
+  font-weight: 400;
+  border-radius: 10px;
+  background: #fff !important;
+  background-color: #fff !important;
+  color: #111827 !important;
+  border-color: #dde1e8 !important;
+  box-shadow: none !important;
+}
+
+.admin-tickets-search-view .admin-tickets-search-field-with-clear {
+  position: relative;
+}
+
+.admin-tickets-search-view .admin-tickets-search-field-with-clear > [data-slot="button"],
+.admin-tickets-search-view .admin-tickets-search-field-with-clear > [data-slot="select-trigger"] {
+  padding-right: 36px;
+}
+
+.admin-tickets-search-view .admin-tickets-search-field-with-clear:has(.admin-tickets-search-clear-btn) > [data-slot="button"] {
+  padding-right: 64px;
+}
+
+.admin-tickets-search-clear-btn {
+  position: absolute;
+  right: 34px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.admin-tickets-search-form-legacy-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px 24px;
@@ -829,14 +930,14 @@
 }
 
 .admin-tickets-search-row.admin-tickets-search-row-trip {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f3f4f6;
-  margin-bottom: 8px;
+  padding: 12px 14px;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  background: #f9fafb;
 }
 
 .admin-tickets-search-row-trip .admin-tickets-search-row-label {
@@ -1297,14 +1398,15 @@
 }
 
 .admin-tickets-search-actions {
-  grid-column: 1 / -1;
-  margin-top: 8px;
-  padding-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+  padding-top: 16px;
   border-top: 1px solid #f3f4f6;
 }
 
 .admin-tickets-search-error {
-  grid-column: 1 / -1;
+  margin-top: 12px;
 }
 
 .admin-tickets-search-btn {
@@ -2770,7 +2872,29 @@
 }
 
 .subsea-shell .admin-tickets-search-form {
+  gap: 14px;
+}
+
+.subsea-shell .admin-tickets-search-section-title {
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+}
+
+.subsea-shell .admin-tickets-search-section-grid {
   gap: 12px;
+}
+
+.subsea-shell .admin-tickets-search-control,
+.subsea-shell .admin-tickets-search-view .admin-tickets-search-field .admin-tickets-search-field-with-clear > [data-slot="button"],
+.subsea-shell .admin-tickets-search-view [data-slot="select-trigger"] {
+  min-height: 32px;
+  height: 32px;
+  background: var(--surface);
+  border-color: var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 12px;
+  box-shadow: none;
 }
 
 .subsea-shell .admin-tickets-search-row.admin-tickets-search-row-trip {
@@ -3019,4 +3143,110 @@
 .subsea-shell .atfc-seg-layover {
   background: var(--amber-light);
   color: var(--amber);
+}
+
+/* Portaled overlays (dropdown/select/calendar) — Subsea light theme outside .subsea-shell */
+.admin-tickets-search-overlay[data-slot="dropdown-menu-content"],
+.admin-tickets-search-overlay[data-slot="select-content"],
+.admin-tickets-search-overlay[data-slot="popover-content"] {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #dde1e8 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12) !important;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+}
+
+.admin-tickets-search-overlay [data-slot="dropdown-menu-item"],
+.admin-tickets-search-overlay [data-slot="dropdown-menu-checkbox-item"],
+.admin-tickets-search-overlay [data-slot="select-item"],
+.admin-tickets-search-overlay [data-slot="dropdown-menu-label"] {
+  color: #111827;
+  font-size: 12px;
+}
+
+.admin-tickets-search-overlay [data-slot="dropdown-menu-label"] {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.admin-tickets-search-overlay [data-slot="dropdown-menu-item"]:focus,
+.admin-tickets-search-overlay [data-slot="dropdown-menu-checkbox-item"]:focus,
+.admin-tickets-search-overlay [data-slot="select-item"]:focus,
+.admin-tickets-search-overlay [data-slot="dropdown-menu-item"]:hover,
+.admin-tickets-search-overlay [data-slot="dropdown-menu-checkbox-item"]:hover,
+.admin-tickets-search-overlay [data-slot="select-item"]:hover {
+  background: #ebf0ff !important;
+  color: #1a56db !important;
+}
+
+.admin-tickets-search-overlay [data-slot="dropdown-menu-item"].admin-tickets-search-option-selected,
+.admin-tickets-search-overlay [data-slot="dropdown-menu-checkbox-item"].admin-tickets-search-option-selected,
+.admin-tickets-search-overlay [data-slot="select-item"][data-state="checked"] {
+  background: #ebf0ff !important;
+  color: #1a56db !important;
+}
+
+.admin-tickets-search-overlay .text-muted-foreground {
+  color: #9ca3af !important;
+}
+
+.admin-tickets-search-overlay [data-slot="calendar"] {
+  background: #ffffff;
+  color: #111827;
+}
+
+/* Form controls — override global dark mode inside Subsea shell */
+.subsea-shell .admin-tickets-search-control,
+.subsea-shell .admin-tickets-search-view .admin-tickets-search-field .admin-tickets-search-field-with-clear > [data-slot="button"],
+.subsea-shell .admin-tickets-search-view [data-slot="select-trigger"],
+.subsea-shell .admin-tickets-search-date-picker [data-slot="button"][data-variant="outline"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #dde1e8 !important;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  box-shadow: none !important;
+  min-height: 32px;
+  height: 32px;
+  border-radius: 5px;
+}
+
+.subsea-shell .admin-tickets-search-control:hover,
+.subsea-shell .admin-tickets-search-view .admin-tickets-search-field .admin-tickets-search-field-with-clear > [data-slot="button"]:hover:not(:disabled),
+.subsea-shell .admin-tickets-search-view [data-slot="select-trigger"]:hover,
+.subsea-shell .admin-tickets-search-date-picker [data-slot="button"][data-variant="outline"]:hover {
+  background-color: #f7f8fa !important;
+  color: #111827 !important;
+  border-color: #c5cad4 !important;
+}
+
+.subsea-shell .admin-tickets-search-control:disabled,
+.subsea-shell .admin-tickets-search-view .admin-tickets-search-field .admin-tickets-search-field-with-clear > [data-slot="button"]:disabled {
+  background-color: #f7f8fa !important;
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+.subsea-shell .admin-tickets-search-view .admin-tickets-search-field label,
+.subsea-shell .admin-tickets-search-section-title {
+  color: #9ca3af;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.subsea-shell .admin-tickets-search-view .admin-tickets-search-field input,
+.subsea-shell .admin-tickets-search-view .admin-tickets-search-input {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #dde1e8 !important;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+}
+
+.subsea-shell .admin-tickets-flights-hero-currency-select {
+  background-color: #ffffff !important;
+  color: #1a56db !important;
+  border-color: #dde1e8 !important;
 }
