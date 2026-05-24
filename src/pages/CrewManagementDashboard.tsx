@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Anchor,
@@ -22,49 +23,187 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getCrewList, type CrewMemberApi } from '../api/crew';
+import { getProjects, type ProjectApi } from '../api/project';
+import { getRigs, type RigApi } from '../api/rig';
+import { getCrewTickets, type CrewTicketApi } from '../api/ticket';
+import { availabilityFromCrewSignal } from '../utils/crewAvailability';
 import './CrewManagementDashboard.css';
 
-const fleetRows = [
-  ['MV Poseidon Rex', 'FPSO', "12°04'N 44°02'E", '18/22', 'Understaffed', 'Jun 3, Djibouti'],
-  ['MV Deepwater Alpha', 'DSV', "56°08'N 03°10'E", '24/24', 'Full Crew', 'Jun 8, Aberdeen'],
-  ['MV Atlantic Pioneer', 'PSV', "61°30'N 02°05'E", '16/16', 'Full Crew', 'Jun 11, Bergen'],
-  ['MV Gulf Endeavour', 'OSV', "29°10'N 88°15'W", '14/14', 'In Transit', 'Jun 5, Houston'],
-  ['MV Nordic Surveyor', 'CSV', "70°22'N 24°30'E", '20/20', 'Full Crew', 'Jun 14, Tromsø'],
-];
+type DashboardState = {
+  crew: CrewMemberApi[];
+  rigs: RigApi[];
+  projects: ProjectApi[];
+  tickets: CrewTicketApi[];
+};
 
-const crewChanges = [
-  ['Capt. James Okafor', 'Master', 'MV Deepwater Alpha', 'Sign-On', 'Jun 01', 'LHR→ABZ'],
-  ['Erik Haugen', 'Chief Officer', 'MV Nordic Surveyor', 'Sign-Off', 'Jun 02', 'TOS→OSL'],
-  ['Priya Nair', '2nd Engineer', 'MV Poseidon Rex', 'Sign-On', 'Jun 03', 'Pending'],
-  ['Carlos Mendez', 'DP Operator', 'MV Atlantic Pioneer', 'Sign-On', 'Jun 05', 'GRU→BGO'],
-  ['Amir Khalil', 'Chief Engineer', 'MV Gulf Endeavour', 'Sign-Off', 'Jun 07', 'IAH→DXB'],
-];
+function formatDate(value?: string): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
-const kpis = [
-  { label: 'Total Crew', value: '284', meta: '+12 this month', tone: 'up', bar: '71%', color: 'blue', icon: true },
-  { label: 'On Board', value: '198', meta: 'Across 11 vessels', tone: 'flat', bar: '70%', color: 'teal' },
-  { label: 'On Leave', value: '62', meta: '22% of fleet', tone: 'flat', bar: '22%', color: 'amber' },
-  { label: 'Cert Expiring', value: '14', meta: '3 critical', tone: 'down', bar: '14%', color: 'red' },
-  { label: 'Flights Booked', value: '31', meta: 'Next 14 days', tone: 'up', bar: '55%', color: 'teal' },
-];
+function daysUntil(value?: string): number | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return Math.ceil((date.getTime() - today.getTime()) / 86_400_000);
+}
 
-const activity = [
-  { icon: Plane, color: 'green', text: 'Capt. Okafor flight confirmed LHR→ABZ · BA1474', meta: '8 min ago · Jun 1, 06:40 dep.' },
-  { icon: BadgeCheck, color: 'red', text: 'Erik Haugen STCW Basic Safety cert expires in 18 days', meta: '22 min ago · Renewal due by Jun 19' },
-  { icon: Users, color: 'amber', text: 'MV Poseidon Rex crew gap — DP Operator vacancy unfilled', meta: '1 hr ago · Rotation Jun 03' },
-  { icon: CircleDollarSign, color: 'blue', text: 'May payroll processed — 284 crew · $1.84M disbursed', meta: '2 hr ago · via Citibank Wire' },
-  { icon: FileText, color: 'teal', text: 'Carlos Mendez contract renewed — 9-month extension signed', meta: '4 hr ago · Expires Feb 2026' },
-];
+function crewName(member: CrewMemberApi): string {
+  return `${member.firstname ?? ''} ${member.lastname ?? ''}`.trim() || 'Unnamed crew';
+}
 
-const certs = [
-  ['18d', 'red', 'Erik Haugen — STCW Basic Safety', 'Jun 19'],
-  ['22d', 'red', 'Priya Nair — Medical Fitness', 'Jun 23'],
-  ['28d', 'amber', 'Capt. Okafor — GMDSS GOC', 'Jun 29'],
-  ['31d', 'amber', 'Carlos Mendez — DP Unlimited', 'Jul 02'],
-];
+function ticketCrewId(ticket: CrewTicketApi): string {
+  return ticket.crew_id?._id ?? '';
+}
+
+function ticketRoute(ticket?: CrewTicketApi): string {
+  if (!ticket) return 'Pending';
+  const from = ticket.from?.Name?.match(/\[([A-Z0-9]{3})\]/)?.[1] ?? ticket.from?.Name?.slice(0, 3).toUpperCase() ?? '---';
+  const to = ticket.to?.Name?.match(/\[([A-Z0-9]{3})\]/)?.[1] ?? ticket.to?.Name?.slice(0, 3).toUpperCase() ?? '---';
+  return `${from}→${to}`;
+}
 
 const CrewManagementDashboard = () => {
   const navigate = useNavigate();
+  const [dashboard, setDashboard] = useState<DashboardState>({ crew: [], rigs: [], projects: [], tickets: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all([getCrewList(), getRigs(), getProjects(), getCrewTickets()])
+      .then(([crewRes, rigsRes, projectsRes, ticketsRes]) => {
+        if (cancelled) return;
+        setDashboard({
+          crew: crewRes.crew ?? [],
+          rigs: rigsRes.rigs ?? [],
+          projects: projectsRes.projects ?? [],
+          tickets: ticketsRes.crewTickets ?? [],
+        });
+        setError(null);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onBoardCount = dashboard.crew.filter((member) => availabilityFromCrewSignal(member.signal) !== 'available').length;
+  const onLeaveCount = Math.max(0, dashboard.crew.length - onBoardCount);
+  const activeProjectsCount = dashboard.projects.filter((project) => (project.status || '').toLowerCase() === 'active').length;
+  const expiringCrew = useMemo(() => {
+    return dashboard.crew
+      .map((member) => {
+        const expiry = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
+        const days = daysUntil(expiry);
+        return { member, expiry, days };
+      })
+      .filter((item): item is { member: CrewMemberApi; expiry: string; days: number } => item.days != null && item.days >= 0 && item.days <= 30)
+      .sort((a, b) => a.days - b.days);
+  }, [dashboard.crew]);
+
+  const kpis = useMemo(() => {
+    const crewTotal = dashboard.crew.length;
+    const onBoardPct = crewTotal ? Math.round((onBoardCount / crewTotal) * 100) : 0;
+    const leavePct = crewTotal ? Math.round((onLeaveCount / crewTotal) * 100) : 0;
+    return [
+      { label: 'Total Crew', value: loading ? '...' : String(crewTotal), meta: `${activeProjectsCount} active projects`, tone: 'up', bar: `${Math.min(100, crewTotal)}%`, color: 'blue', icon: true },
+      { label: 'On Board', value: loading ? '...' : String(onBoardCount), meta: `Across ${dashboard.rigs.length} vessels`, tone: 'flat', bar: `${onBoardPct}%`, color: 'teal' },
+      { label: 'On Leave', value: loading ? '...' : String(onLeaveCount), meta: `${leavePct}% of roster`, tone: 'flat', bar: `${leavePct}%`, color: 'amber' },
+      { label: 'Cert Expiring', value: loading ? '...' : String(expiringCrew.length), meta: `${expiringCrew.filter((item) => item.days <= 7).length} critical`, tone: expiringCrew.length ? 'down' : 'flat', bar: `${Math.min(100, expiringCrew.length * 8)}%`, color: 'red' },
+      { label: 'Flights Booked', value: loading ? '...' : String(dashboard.tickets.length), meta: 'Crew ticket records', tone: 'up', bar: `${Math.min(100, dashboard.tickets.length * 4)}%`, color: 'teal' },
+    ];
+  }, [activeProjectsCount, dashboard.crew.length, dashboard.rigs.length, dashboard.tickets.length, expiringCrew, loading, onBoardCount, onLeaveCount]);
+
+  const fleetRows = useMemo(() => {
+    return dashboard.rigs.slice(0, 5).map((rig, index) => {
+      const status = index === 0 && dashboard.crew.length > 0 ? 'Active' : 'Operational';
+      return {
+        vessel: rig.name,
+        type: rig.description?.split('·')[0]?.trim() || 'Vessel',
+        location: rig.address || '—',
+        crew: '—',
+        status,
+        port: rig.createdAt ? `Added ${formatDate(rig.createdAt)}` : '—',
+      };
+    });
+  }, [dashboard.rigs, dashboard.crew.length]);
+
+  const crewChanges = useMemo(() => {
+    return dashboard.crew.slice(0, 5).map((member) => {
+      const project = member.activeProjects?.[0];
+      const ticket = dashboard.tickets.find((item) => ticketCrewId(item) === member.id);
+      const type = availabilityFromCrewSignal(member.signal) === 'available' ? 'Available' : 'On Board';
+      return {
+        name: crewName(member),
+        rank: member.organization || 'Crew',
+        vessel: project?.title || 'Unassigned',
+        type,
+        date: formatDate(project?.duration?.endDate),
+        flight: ticketRoute(ticket),
+      };
+    });
+  }, [dashboard.crew, dashboard.tickets]);
+
+  const activity = useMemo(() => {
+    const rows: Array<{ icon: typeof Plane; color: string; text: string; meta: string }> = [];
+    const latestTicket = dashboard.tickets[0];
+    if (latestTicket) {
+      rows.push({
+        icon: Plane,
+        color: 'green',
+        text: `${latestTicket.crew_id?.firstname ?? 'Crew'} ${latestTicket.crew_id?.lastname ?? ''} flight booked ${ticketRoute(latestTicket)}`.trim(),
+        meta: latestTicket.project_id?.title || 'Crew flight booking',
+      });
+    }
+    if (expiringCrew[0]) {
+      rows.push({
+        icon: BadgeCheck,
+        color: expiringCrew[0].days <= 7 ? 'red' : 'amber',
+        text: `${crewName(expiringCrew[0].member)} certificate expires in ${expiringCrew[0].days} days`,
+        meta: `Renewal due by ${formatDate(expiringCrew[0].expiry)}`,
+      });
+    }
+    rows.push({
+      icon: Users,
+      color: 'amber',
+      text: `${onBoardCount} crew currently assigned`,
+      meta: `${onLeaveCount} available / on leave`,
+    });
+    rows.push({
+      icon: FileText,
+      color: 'teal',
+      text: `${dashboard.projects.length} projects loaded from backend`,
+      meta: `${activeProjectsCount} active projects`,
+    });
+    rows.push({
+      icon: CircleDollarSign,
+      color: 'blue',
+      text: `${dashboard.tickets.length} ticket records synced`,
+      meta: 'Admin crew-ticket API',
+    });
+    return rows.slice(0, 5);
+  }, [activeProjectsCount, dashboard.projects.length, dashboard.tickets, expiringCrew, onBoardCount, onLeaveCount]);
+
+  const certs = expiringCrew.slice(0, 4).map(({ member, expiry, days }) => ({
+    days: `${days}d`,
+    color: days <= 7 ? 'red' : 'amber',
+    name: `${crewName(member)} — Crew Certificate`,
+    expires: formatDate(expiry),
+  }));
 
   return (
     <div className="subsea-shell">
@@ -143,24 +282,24 @@ const CrewManagementDashboard = () => {
             <LayoutDashboard size={13} /> Fleet Overview <span className="subsea-sb-count">Live</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
-            <Ship size={13} /> Vessel Fleet <span className="subsea-sb-count">11</span>
+            <Ship size={13} /> Vessel Fleet <span className="subsea-sb-count">{loading ? '...' : dashboard.rigs.length}</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <Users size={13} /> Crew Roster <span className="subsea-sb-count">284</span>
+            <Users size={13} /> Crew Roster <span className="subsea-sb-count">{loading ? '...' : dashboard.crew.length}</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
-            <Plane size={13} /> Flight Bookings <span className="subsea-sb-count">31</span>
+            <Plane size={13} /> Flight Bookings <span className="subsea-sb-count">{loading ? '...' : dashboard.tickets.length}</span>
           </button>
           <div className="subsea-sb-group">Compliance</div>
           <button type="button" className="subsea-sb-link">
-            <BadgeCheck size={13} /> Certifications <span className="subsea-sb-count subsea-sb-count-red">14</span>
+            <BadgeCheck size={13} /> Certifications <span className="subsea-sb-count subsea-sb-count-red">{loading ? '...' : expiringCrew.length}</span>
           </button>
           <button type="button" className="subsea-sb-link">
             <ShieldCheck size={13} /> Audit Logs
           </button>
           <div className="subsea-sb-group">Projects</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
-            <Anchor size={13} /> Active Projects <span className="subsea-sb-count">9</span>
+            <Anchor size={13} /> Active Projects <span className="subsea-sb-count">{loading ? '...' : activeProjectsCount}</span>
           </button>
         </div>
       </aside>
@@ -190,10 +329,10 @@ const CrewManagementDashboard = () => {
             <div className="subsea-wb-left">
               <div className="subsea-wb-greeting">Good morning</div>
               <div className="subsea-wb-name">Welcome back, <span>Pranav</span> 👋</div>
-              <div className="subsea-wb-sub">Here's what's happening across your fleet today — Monday, 19 May 2025</div>
+              <div className="subsea-wb-sub">Here's what's happening across your fleet today from the integrated backend APIs.</div>
               <div className="subsea-wb-chips">
-                <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />5 items need attention</span>
-                <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />11 vessels operational</button>
+                <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />{expiringCrew.length} certs need attention</span>
+                <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />{dashboard.rigs.length} vessels loaded</button>
                 <span className="subsea-wb-chip subsea-wb-chip-blue"><Radio size={12} />Open Command Center</span>
               </div>
             </div>
@@ -211,7 +350,10 @@ const CrewManagementDashboard = () => {
 
           <div className="subsea-alert subsea-alert-warn">
             <AlertTriangle size={15} />
-            <span><strong>5 items need attention:</strong> 3 crew certifications expiring within 30 days · 1 vessel understaffed (MV Poseidon Rex) · 1 overdue payroll run.</span>
+            <span>
+              <strong>{error ? 'Dashboard sync warning:' : `${expiringCrew.length} items need attention:`}</strong>{' '}
+              {error || `${expiringCrew.length} crew certifications expiring within 30 days · ${dashboard.rigs.length} vessels · ${dashboard.tickets.length} flight bookings.`}
+            </span>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/crew')}>Review</button>
           </div>
 
@@ -236,7 +378,7 @@ const CrewManagementDashboard = () => {
                 <div className="subsea-pane-head">
                   <div>
                     <div className="subsea-pane-title">Fleet Status</div>
-                    <div className="subsea-pane-sub">11 vessels · live positions</div>
+                    <div className="subsea-pane-sub">{loading ? 'Loading vessels...' : `${dashboard.rigs.length} vessels · backend data`}</div>
                   </div>
                   <div className="subsea-pane-actions">
                     <span className="subsea-badge subsea-b-teal subsea-b-dot">All systems nominal</span>
@@ -249,16 +391,22 @@ const CrewManagementDashboard = () => {
                       <tr><th>Vessel</th><th>Type</th><th>Location</th><th>Crew</th><th>Status</th><th>Next Port Call</th></tr>
                     </thead>
                     <tbody>
-                      {fleetRows.map(([vessel, type, location, crew, status, port], index) => (
-                        <tr key={vessel}>
-                          <td className="strong"><Ship size={12} className={`subsea-table-icon subsea-tone-${index % 4}`} />{vessel}</td>
-                          <td>{type}</td>
-                          <td className="mono">{location}</td>
-                          <td><span className={index === 0 ? 'subsea-text-red' : 'subsea-text-green'}>{crew}</span></td>
-                          <td><span className={`subsea-badge ${status === 'Understaffed' ? 'subsea-b-amber' : status === 'In Transit' ? 'subsea-b-teal' : 'subsea-b-green'}`}>{status}</span></td>
-                          <td className="muted">{port}</td>
-                        </tr>
-                      ))}
+                      {loading ? (
+                        <tr><td colSpan={6} className="subsea-empty-cell">Loading fleet data...</td></tr>
+                      ) : fleetRows.length === 0 ? (
+                        <tr><td colSpan={6} className="subsea-empty-cell">No rigs found from backend.</td></tr>
+                      ) : (
+                        fleetRows.map((row, index) => (
+                          <tr key={row.vessel}>
+                            <td className="strong"><Ship size={12} className={`subsea-table-icon subsea-tone-${index % 4}`} />{row.vessel}</td>
+                            <td>{row.type}</td>
+                            <td className="mono">{row.location}</td>
+                            <td><span className="subsea-text-green">{row.crew}</span></td>
+                            <td><span className="subsea-badge subsea-b-green">{row.status}</span></td>
+                            <td className="muted">{row.port}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -275,16 +423,22 @@ const CrewManagementDashboard = () => {
                       <tr><th>Crew Member</th><th>Rank</th><th>Vessel</th><th>Type</th><th>Date</th><th>Flight</th></tr>
                     </thead>
                     <tbody>
-                      {crewChanges.map(([name, rank, vessel, type, date, flight]) => (
-                        <tr key={`${name}-${date}`} onClick={() => navigate('/crew')}>
-                          <td className="strong">{name}</td>
-                          <td>{rank}</td>
-                          <td>{vessel}</td>
-                          <td><span className={`subsea-badge ${type === 'Sign-Off' ? 'subsea-b-amber' : 'subsea-b-green'}`}>{type}</span></td>
-                          <td className="mono">{date}</td>
-                          <td><span className={`subsea-badge ${flight === 'Pending' ? 'subsea-b-orange' : 'subsea-b-blue'}`}>{flight}</span></td>
-                        </tr>
-                      ))}
+                      {loading ? (
+                        <tr><td colSpan={6} className="subsea-empty-cell">Loading crew changes...</td></tr>
+                      ) : crewChanges.length === 0 ? (
+                        <tr><td colSpan={6} className="subsea-empty-cell">No crew records found from backend.</td></tr>
+                      ) : (
+                        crewChanges.map((row) => (
+                          <tr key={`${row.name}-${row.date}`} onClick={() => navigate('/crew')}>
+                            <td className="strong">{row.name}</td>
+                            <td>{row.rank}</td>
+                            <td>{row.vessel}</td>
+                            <td><span className={`subsea-badge ${row.type === 'Available' ? 'subsea-b-amber' : 'subsea-b-green'}`}>{row.type}</span></td>
+                            <td className="mono">{row.date}</td>
+                            <td><span className={`subsea-badge ${row.flight === 'Pending' ? 'subsea-b-orange' : 'subsea-b-blue'}`}>{row.flight}</span></td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -325,10 +479,12 @@ const CrewManagementDashboard = () => {
               <div className="subsea-pane">
                 <div className="subsea-pane-head">
                   <div className="subsea-pane-title">Cert Expiry Watchlist</div>
-                  <span className="subsea-badge subsea-b-red">14 expiring</span>
+                  <span className="subsea-badge subsea-b-red">{loading ? '...' : `${expiringCrew.length} expiring`}</span>
                 </div>
                 <div className="subsea-cert-list">
-                  {certs.map(([days, color, name, expires]) => (
+                  {certs.length === 0 ? (
+                    <div className="subsea-empty-cell">No certifications expiring in the next 30 days.</div>
+                  ) : certs.map(({ days, color, name, expires }) => (
                     <button key={name} type="button" className="subsea-cert-row" onClick={() => navigate('/crew')}>
                       <span className={`subsea-badge subsea-b-${color}`}>{days}</span>
                       <span className="subsea-cert-name">{name}</span>
