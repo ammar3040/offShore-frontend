@@ -184,6 +184,20 @@ function getAirportDistanceLabel(airport: Airport): string {
   return `${Math.round(airport.distanceKm)} km`;
 }
 
+function airportMatchesQuery(airport: Airport, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+
+  return [
+    airport.Name,
+    airport.COUNTRY,
+    airport.COUNTRYNAME,
+    airport.Code,
+    airport.CityName,
+    airport.AirportName,
+  ].some((value) => value?.toLowerCase().includes(q));
+}
+
 function AirportCombobox({
   id,
   value,
@@ -215,7 +229,9 @@ function AirportCombobox({
   const filtered = useMemo(() => {
     const staticFiltered = searchAirports(query);
     const apiFiltered = apiAirports.filter(
-      (apiA) => !staticFiltered.some((s) => s.Name === apiA.Name)
+      (apiA) =>
+        airportMatchesQuery(apiA, query) &&
+        !staticFiltered.some((s) => s.Name === apiA.Name)
     );
     return [...staticFiltered, ...apiFiltered];
   }, [query, apiAirports]);
