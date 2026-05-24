@@ -122,7 +122,7 @@ const CrewManagementDashboard = () => {
     const leavePct = crewTotal ? Math.round((onLeaveCount / crewTotal) * 100) : 0;
     return [
       { label: 'Total Crew', value: loading ? '...' : String(crewTotal), meta: `${activeProjectsCount} active projects`, tone: 'up', bar: `${Math.min(100, crewTotal)}%`, color: 'blue', icon: true },
-      { label: 'On Board', value: loading ? '...' : String(onBoardCount), meta: `Across ${dashboard.rigs.length} vessels`, tone: 'flat', bar: `${onBoardPct}%`, color: 'teal' },
+      { label: 'On Board', value: loading ? '...' : String(onBoardCount), meta: `Across ${dashboard.rigs.length} rigs`, tone: 'flat', bar: `${onBoardPct}%`, color: 'teal' },
       { label: 'On Leave', value: loading ? '...' : String(onLeaveCount), meta: `${leavePct}% of roster`, tone: 'flat', bar: `${leavePct}%`, color: 'amber' },
       { label: 'Cert Expiring', value: loading ? '...' : String(expiringCrew.length), meta: `${expiringCrew.filter((item) => item.days <= 7).length} critical`, tone: expiringCrew.length ? 'down' : 'flat', bar: `${Math.min(100, expiringCrew.length * 8)}%`, color: 'red' },
       { label: 'Flights Booked', value: loading ? '...' : String(dashboard.tickets.length), meta: 'Crew ticket records', tone: 'up', bar: `${Math.min(100, dashboard.tickets.length * 4)}%`, color: 'teal' },
@@ -133,8 +133,8 @@ const CrewManagementDashboard = () => {
     return dashboard.rigs.slice(0, 5).map((rig, index) => {
       const status = index === 0 && dashboard.crew.length > 0 ? 'Active' : 'Operational';
       return {
-        vessel: rig.name,
-        type: rig.description?.split('·')[0]?.trim() || 'Vessel',
+        rig: rig.name,
+        type: rig.description?.split('·')[0]?.trim() || 'Rig',
         location: rig.address || '—',
         crew: '—',
         status,
@@ -151,7 +151,7 @@ const CrewManagementDashboard = () => {
       return {
         name: crewName(member),
         rank: member.organization || 'Crew',
-        vessel: project?.title || 'Unassigned',
+        rig: project?.title || 'Unassigned',
         type,
         date: formatDate(project?.duration?.endDate),
         flight: ticketRoute(ticket),
@@ -221,7 +221,7 @@ const CrewManagementDashboard = () => {
           {[
             { icon: LayoutDashboard, label: 'Dashboard', path: '/', active: true },
             { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
@@ -274,7 +274,7 @@ const CrewManagementDashboard = () => {
         <div className="subsea-sb-search">
           <div className="subsea-sb-search-wrap">
             <Search size={13} />
-            <input type="text" placeholder="Search crew, vessels..." />
+            <input type="text" placeholder="Search crew, rigs..." />
           </div>
         </div>
         <div className="subsea-sb-body">
@@ -283,7 +283,7 @@ const CrewManagementDashboard = () => {
             <LayoutDashboard size={13} /> Fleet Overview <span className="subsea-sb-count">Live</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
-            <Ship size={13} /> Vessel Fleet <span className="subsea-sb-count">{loading ? '...' : dashboard.rigs.length}</span>
+            <Ship size={13} /> Rig Fleet <span className="subsea-sb-count">{loading ? '...' : dashboard.rigs.length}</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <Users size={13} /> Crew Roster <span className="subsea-sb-count">{loading ? '...' : dashboard.crew.length}</span>
@@ -333,7 +333,7 @@ const CrewManagementDashboard = () => {
               <div className="subsea-wb-sub">Here's what's happening across your fleet today from the integrated backend APIs.</div>
               <div className="subsea-wb-chips">
                 <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />{expiringCrew.length} certs need attention</span>
-                <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />{dashboard.rigs.length} vessels loaded</button>
+                <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />{dashboard.rigs.length} rigs loaded</button>
                 <span className="subsea-wb-chip subsea-wb-chip-blue"><Radio size={12} />Open Command Center</span>
               </div>
             </div>
@@ -353,7 +353,7 @@ const CrewManagementDashboard = () => {
             <AlertTriangle size={15} />
             <span>
               <strong>{error ? 'Dashboard sync warning:' : `${expiringCrew.length} items need attention:`}</strong>{' '}
-              {error || `${expiringCrew.length} crew certifications expiring within 30 days · ${dashboard.rigs.length} vessels · ${dashboard.tickets.length} flight bookings.`}
+              {error || `${expiringCrew.length} crew certifications expiring within 30 days · ${dashboard.rigs.length} rigs · ${dashboard.tickets.length} flight bookings.`}
             </span>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/crew')}>Review</button>
           </div>
@@ -379,7 +379,7 @@ const CrewManagementDashboard = () => {
                 <div className="subsea-pane-head">
                   <div>
                     <div className="subsea-pane-title">Fleet Status</div>
-                    <div className="subsea-pane-sub">{loading ? 'Loading vessels...' : `${dashboard.rigs.length} vessels · backend data`}</div>
+                    <div className="subsea-pane-sub">{loading ? 'Loading rigs...' : `${dashboard.rigs.length} rigs · backend data`}</div>
                   </div>
                   <div className="subsea-pane-actions">
                     <span className="subsea-badge subsea-b-teal subsea-b-dot">All systems nominal</span>
@@ -389,7 +389,7 @@ const CrewManagementDashboard = () => {
                 <div className="subsea-table-wrap">
                   <table className="subsea-table">
                     <thead>
-                      <tr><th>Vessel</th><th>Type</th><th>Location</th><th>Crew</th><th>Status</th><th>Next Port Call</th></tr>
+                      <tr><th>Rig</th><th>Type</th><th>Location</th><th>Crew</th><th>Status</th><th>Next Port Call</th></tr>
                     </thead>
                     <tbody>
                       {loading ? (
@@ -398,8 +398,8 @@ const CrewManagementDashboard = () => {
                         <tr><td colSpan={6} className="subsea-empty-cell">No rigs found from backend.</td></tr>
                       ) : (
                         fleetRows.map((row, index) => (
-                          <tr key={row.vessel}>
-                            <td className="strong"><Ship size={12} className={`subsea-table-icon subsea-tone-${index % 4}`} />{row.vessel}</td>
+                          <tr key={row.rig}>
+                            <td className="strong"><Ship size={12} className={`subsea-table-icon subsea-tone-${index % 4}`} />{row.rig}</td>
                             <td>{row.type}</td>
                             <td className="mono">{row.location}</td>
                             <td><span className="subsea-text-green">{row.crew}</span></td>
@@ -421,7 +421,7 @@ const CrewManagementDashboard = () => {
                 <div className="subsea-table-wrap">
                   <table className="subsea-table">
                     <thead>
-                      <tr><th>Crew Member</th><th>Rank</th><th>Vessel</th><th>Type</th><th>Date</th><th>Flight</th></tr>
+                      <tr><th>Crew Member</th><th>Rank</th><th>Rig</th><th>Type</th><th>Date</th><th>Flight</th></tr>
                     </thead>
                     <tbody>
                       {loading ? (
@@ -433,7 +433,7 @@ const CrewManagementDashboard = () => {
                           <tr key={`${row.name}-${row.date}`} onClick={() => navigate('/crew')}>
                             <td className="strong">{row.name}</td>
                             <td>{row.rank}</td>
-                            <td>{row.vessel}</td>
+                            <td>{row.rig}</td>
                             <td><span className={`subsea-badge ${row.type === 'Available' ? 'subsea-b-amber' : 'subsea-b-green'}`}>{row.type}</span></td>
                             <td className="mono">{row.date}</td>
                             <td><span className={`subsea-badge ${row.flight === 'Pending' ? 'subsea-b-orange' : 'subsea-b-blue'}`}>{row.flight}</span></td>

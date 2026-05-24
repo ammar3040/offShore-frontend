@@ -600,6 +600,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   color: #1f2937;
+  background: #ffffff;
   transition: border-color 0.2s;
 }
 

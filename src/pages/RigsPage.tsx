@@ -155,7 +155,7 @@ const RigsPage = () => {
       closeCreateModal();
       form.reset();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create rig');
+      setCreateError(err instanceof Error ? err.message : 'Failed to Create Rig');
     } finally {
       setCreateLoading(false);
     }
@@ -176,7 +176,7 @@ const RigsPage = () => {
           {[
             { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
             { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Ship, label: 'Rigs', path: '/rig', active: true },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
@@ -184,7 +184,7 @@ const RigsPage = () => {
             { divider: true },
             { icon: Radio, label: 'Command Center' },
             { divider: true },
-            { icon: Anchor, label: 'Rigs', path: '/rig', active: true },
+            { icon: Anchor, label: 'Projects', path: '/projects' },
             { icon: CalendarDays, label: 'Timeline & Calendar' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
@@ -330,49 +330,49 @@ const RigsPage = () => {
               <Anchor size={42} />
               <p>No rigs found.</p>
               <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
-                <Plus size={12} /> Create rig
+                <Plus size={12} /> Create Rig
               </button>
             </div>
           ) : (
             <>
-              <div className="subsea-vessel-grid">
+              <div className="subsea-rig-grid">
                 {paginatedRigs.map((rig, index) => {
                   const status = getRigStatus(index);
                   return (
-                    <article key={rig.id} className="subsea-vessel-card">
-                      <div className="subsea-vessel-top">
-                        <div className={`subsea-vessel-icon subsea-vessel-icon-${index % 4}`}>
+                    <article key={rig.id} className="subsea-rig-card">
+                      <div className="subsea-rig-top">
+                        <div className={`subsea-rig-icon subsea-rig-icon-${index % 4}`}>
                           <Ship size={18} />
                         </div>
                         <div>
-                          <div className="subsea-vessel-name">{rig.name}</div>
-                          <div className="subsea-vessel-type">{getRigType(rig, index)} · {getRigRegion(rig, index)}</div>
+                          <div className="subsea-rig-name">{rig.name}</div>
+                          <div className="subsea-rig-type">{getRigType(rig, index)} · {getRigRegion(rig, index)}</div>
                         </div>
-                        <div className="subsea-vessel-status">
+                        <div className="subsea-rig-status">
                           <span className={`subsea-badge ${status.className}`}>{status.label}</span>
                         </div>
                       </div>
-                      <div className="subsea-vessel-body">
-                        <div className="subsea-vessel-row">
-                          <span className="subsea-vessel-row-label">Crew</span>
-                          <span className={index === 0 ? 'subsea-vessel-row-val danger' : 'subsea-vessel-row-val success'}>{status.crew}</span>
+                      <div className="subsea-rig-body">
+                        <div className="subsea-rig-row">
+                          <span className="subsea-rig-row-label">Crew</span>
+                          <span className={index === 0 ? 'subsea-rig-row-val danger' : 'subsea-rig-row-val success'}>{status.crew}</span>
                         </div>
-                        <div className="subsea-vessel-row">
-                          <span className="subsea-vessel-row-label">Position</span>
-                          <span className="subsea-vessel-row-val mono">{rig.address || 'No position'}</span>
+                        <div className="subsea-rig-row">
+                          <span className="subsea-rig-row-label">Position</span>
+                          <span className="subsea-rig-row-val mono">{rig.address || 'No position'}</span>
                         </div>
-                        <div className="subsea-vessel-row">
-                          <span className="subsea-vessel-row-label">Next Port</span>
-                          <span className="subsea-vessel-row-val">{index === 0 ? 'Djibouti · Jun 3' : `Created ${formatDate(rig.createdAt)}`}</span>
+                        <div className="subsea-rig-row">
+                          <span className="subsea-rig-row-label">Next Port</span>
+                          <span className="subsea-rig-row-val">{index === 0 ? 'Djibouti · Jun 3' : `Created ${formatDate(rig.createdAt)}`}</span>
                         </div>
-                        <div className="subsea-vessel-row">
-                          <span className="subsea-vessel-row-label">Crew fill</span>
-                          <div className="subsea-vessel-progress">
+                        <div className="subsea-rig-row">
+                          <span className="subsea-rig-row-label">Crew fill</span>
+                          <div className="subsea-rig-progress">
                             <div className="subsea-prog-bar">
                               <div className="subsea-prog-fill" style={{ width: `${status.fill}%`, background: status.color }} />
                             </div>
                           </div>
-                          <span className="subsea-vessel-pct" style={{ color: status.color }}>{status.fill}%</span>
+                          <span className="subsea-rig-pct" style={{ color: status.color }}>{status.fill}%</span>
                         </div>
                       </div>
                     </article>
@@ -399,7 +399,7 @@ const RigsPage = () => {
         </main>
       </div>
 
-      <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title="Create rig" size="medium">
+      <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title="Create Rig" size="medium" variant="subsea">
         {createError && (
           <div className="subsea-form-error" role="alert">{createError}</div>
         )}
@@ -441,7 +441,7 @@ const RigsPage = () => {
               Cancel
             </button>
             <button type="submit" className="subsea-form-submit" disabled={createLoading}>
-              {createLoading ? 'Creating...' : 'Create rig'}
+              {createLoading ? 'Creating...' : 'Create Rig'}
             </button>
           </div>
         </form>

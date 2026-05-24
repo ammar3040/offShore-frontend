@@ -58,7 +58,7 @@ function field(value: string | undefined): string {
 }
 
 const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
-const SAMPLE_VESSELS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer', 'MV Gulf Endeavour'];
+const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer', 'MV Gulf Endeavour'];
 
 function formatRosterDate(iso?: string): string {
   if (!iso) return '—';
@@ -381,7 +381,7 @@ const CrewListPage = () => {
           {[
             { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
             { icon: Users, label: 'Crew Management', path: '/crew', active: true, badge: true },
-            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
@@ -434,7 +434,7 @@ const CrewListPage = () => {
         <div className="subsea-sb-search">
           <div className="subsea-sb-search-wrap">
             <Search size={13} />
-            <input type="text" placeholder="Search crew, vessels..." />
+            <input type="text" placeholder="Search crew, rigs..." />
           </div>
         </div>
         <div className="subsea-sb-body">
@@ -450,7 +450,7 @@ const CrewListPage = () => {
           </button>
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
-            <Ship size={13} /> Vessel Assignments <span className="subsea-sb-count">11</span>
+            <Ship size={13} /> Rig Assignments <span className="subsea-sb-count">11</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
             <Plane size={13} /> Crew Flights <span className="subsea-sb-count">31</span>
@@ -489,7 +489,7 @@ const CrewListPage = () => {
           <div className="subsea-page-head">
             <div>
               <h1>Crew Management</h1>
-              <p>{loading ? 'Loading crew roster...' : `${crew.length} crew members · 11 vessels · ${Math.max(nationalityCount, 1)} nationalities`}</p>
+              <p>{loading ? 'Loading crew roster...' : `${crew.length} crew members · 11 rigs · ${Math.max(nationalityCount, 1)} nationalities`}</p>
             </div>
             <div className="subsea-ph-right">
               <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
@@ -533,7 +533,7 @@ const CrewListPage = () => {
               />
             </div>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Ranks</button>
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Vessels</button>
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Rigs</button>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Status: All</button>
             <div className="subsea-toolbar-spacer" />
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
@@ -560,7 +560,7 @@ const CrewListPage = () => {
                       <th>Name</th>
                       <th>Rank</th>
                       <th>Nationality</th>
-                      <th>Vessel</th>
+                      <th>Rig</th>
                       <th>Status</th>
                       <th>Tour End</th>
                       <th>Certs</th>
@@ -590,7 +590,7 @@ const CrewListPage = () => {
                             </td>
                             <td>{member.organization || SAMPLE_RANKS[index % SAMPLE_RANKS.length]}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
-                            <td>{project?.title || SAMPLE_VESSELS[index % SAMPLE_VESSELS.length]}</td>
+                            <td>{project?.title || SAMPLE_RIGS[index % SAMPLE_RIGS.length]}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
                             <td className="mono">{formatRosterDate(project?.duration?.endDate)}</td>
                             <td>
@@ -644,7 +644,7 @@ const CrewListPage = () => {
         </main>
       </div>
 
-      <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge">
+      <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge" variant="subsea">
         {addError && (
           <ErrorAlertPopup message={addError} onDismiss={() => setAddError(null)} />
         )}
@@ -660,11 +660,12 @@ const CrewListPage = () => {
             onSubmit={handleSubmitCrewMember}
             onCancel={handleCloseAddModal}
             isLoading={addLoading}
+            theme="subsea"
           />
         </Suspense>
       </Modal>
 
-      <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge">
+      <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea">
         {editingCrew && (
           <>
             {editError && (
@@ -685,6 +686,7 @@ const CrewListPage = () => {
                 isLoading={editLoading}
                 initialData={crewApiToFormData(editingCrew)}
                 submitLabel="Save Changes"
+                theme="subsea"
               />
             </Suspense>
           </>
@@ -696,6 +698,7 @@ const CrewListPage = () => {
         onClose={closeDeleteConfirm}
         title="Delete Crew Member"
         size="small"
+        variant="subsea"
       >
         {memberToDelete && (
           <div className="delete-crew-modal">
@@ -732,6 +735,7 @@ const CrewListPage = () => {
         onClose={closeRemoveFromProjectModal}
         title="Remove from Project"
         size="medium"
+        variant="subsea"
       >
         {removeFromProjectCrew && (
           <div className="invite-to-project-modal">
@@ -801,6 +805,7 @@ const CrewListPage = () => {
         onClose={closeInviteModal}
         title="Invite to project"
         size="medium"
+        variant="subsea"
       >
         {inviteCrewMember && (
           <div className="invite-to-project-modal">
@@ -870,6 +875,7 @@ const CrewListPage = () => {
         onClose={closeCrewDetail}
         title={selectedCrew ? `${selectedCrew.firstname} ${selectedCrew.lastname} — Crew Details` : 'Crew Details'}
         size="xlarge"
+        variant="subsea"
       >
         {selectedCrew && (
           <div className="crew-detail-modal">

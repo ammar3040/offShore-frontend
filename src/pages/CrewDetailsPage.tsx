@@ -36,7 +36,7 @@ import './RigsPage.css';
 type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'pay';
 
 const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
-const SAMPLE_VESSELS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer'];
+const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer'];
 
 function formatDate(value?: string): string {
   if (!value) return '-';
@@ -76,7 +76,7 @@ function statusMeta(crew?: CrewMemberApi | null): { label: string; className: st
 function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi | null) {
   const project = projects[0] ?? crew?.activeProjects?.[0];
   return {
-    vessel: project?.title || SAMPLE_VESSELS[0],
+    rig: project?.title || SAMPLE_RIGS[0],
     signOn: project?.duration?.startDate,
     signOff: project?.duration?.endDate,
     status: project?.status || 'Active',
@@ -148,7 +148,7 @@ const CrewDetailsPage = () => {
           {[
             { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
             { icon: Users, label: 'Crew Management', path: '/crew', active: true, badge: true },
-            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
@@ -273,7 +273,7 @@ const CrewDetailsPage = () => {
                   <div className="subsea-prof-info-top">
                     <div>
                       <div className="subsea-prof-name">{crewName(crew)}</div>
-                      <div className="subsea-prof-role">{rank} - {assignment.vessel}</div>
+                      <div className="subsea-prof-role">{rank} - {assignment.rig}</div>
                       <div className="subsea-prof-meta">
                         <div className="subsea-prof-meta-item"><IdCard size={13} /><span>IMO: {field(crew.dawinci_number || crew.vantage_number)}</span></div>
                         <div className="subsea-prof-meta-item"><MapPin size={13} /><span>{field(crew.nationality || crew.country)}</span></div>
@@ -332,7 +332,7 @@ const CrewDetailsPage = () => {
                     <div className="subsea-pane subsea-mb-12">
                       <div className="subsea-pane-head"><div className="subsea-pane-title">Current Assignment</div></div>
                       <div className="subsea-detail-grid">
-                        <div className="subsea-detail-row"><div className="subsea-detail-label">Vessel</div><div className="subsea-detail-val">{assignment.vessel}</div></div>
+                        <div className="subsea-detail-row"><div className="subsea-detail-label">Rig</div><div className="subsea-detail-val">{assignment.rig}</div></div>
                         <div className="subsea-detail-row"><div className="subsea-detail-label">Rank</div><div className="subsea-detail-val">{rank}</div></div>
                         <div className="subsea-detail-row"><div className="subsea-detail-label">Sign-On</div><div className="subsea-detail-val">{formatDate(assignment.signOn)}</div></div>
                         <div className="subsea-detail-row"><div className="subsea-detail-label">Sign-Off</div><div className="subsea-detail-val">{formatDate(assignment.signOff)}</div></div>
@@ -357,9 +357,9 @@ const CrewDetailsPage = () => {
                   <div className="subsea-pane-head"><div className="subsea-pane-title">Employment History</div><div className="subsea-pane-sub">{projects.length || 1} assigned projects</div></div>
                   <div className="subsea-table-wrap">
                     <table className="subsea-table">
-                      <thead><tr><th>Vessel</th><th>Rank</th><th>Company</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+                      <thead><tr><th>Rig</th><th>Rank</th><th>Company</th><th>From</th><th>To</th><th>Status</th></tr></thead>
                       <tbody>
-                        {(projects.length ? projects : [{ id: 'sample', title: assignment.vessel, duration: { startDate: assignment.signOn, endDate: assignment.signOff }, status: assignment.status }]).map((project) => (
+                        {(projects.length ? projects : [{ id: 'sample', title: assignment.rig, duration: { startDate: assignment.signOn, endDate: assignment.signOff }, status: assignment.status }]).map((project) => (
                           <tr key={project.id}><td className="s">{project.title}</td><td>{rank}</td><td>Subseacore Ltd.</td><td>{formatDate(project.duration?.startDate)}</td><td>{formatDate(project.duration?.endDate)}</td><td><span className="subsea-badge subsea-b-gray">{project.status || 'Active'}</span></td></tr>
                         ))}
                       </tbody>
@@ -389,16 +389,16 @@ const CrewDetailsPage = () => {
                   <div className="subsea-kpi-strip subsea-kpi-strip-4">
                     <div className="subsea-kpi"><div className="subsea-kpi-label">Total Rotations</div><div className="subsea-kpi-value">{Math.max(projects.length, 1)}</div><div className="subsea-kpi-meta flat">Assigned projects</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill blue" style={{ width: '70%' }} /></div></div>
                     <div className="subsea-kpi"><div className="subsea-kpi-label">Sea Days</div><div className="subsea-kpi-value">3,840</div><div className="subsea-kpi-meta flat">~10.5 years</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill teal" style={{ width: '85%' }} /></div></div>
-                    <div className="subsea-kpi"><div className="subsea-kpi-label">Vessels Served</div><div className="subsea-kpi-value">{Math.max(projects.length, 1)}</div><div className="subsea-kpi-meta flat">Current roster</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill green" style={{ width: '45%' }} /></div></div>
+                    <div className="subsea-kpi"><div className="subsea-kpi-label">Rigs Served</div><div className="subsea-kpi-value">{Math.max(projects.length, 1)}</div><div className="subsea-kpi-meta flat">Current roster</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill green" style={{ width: '45%' }} /></div></div>
                     <div className="subsea-kpi"><div className="subsea-kpi-label">Current Tour</div><div className="subsea-kpi-value">227d</div><div className="subsea-kpi-meta flat">of 304d contract</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill amber" style={{ width: '75%' }} /></div></div>
                   </div>
                   <div className="subsea-pane">
                     <div className="subsea-pane-head"><div className="subsea-pane-title">Rotation Schedule</div></div>
                     <div className="subsea-table-wrap">
                       <table className="subsea-table">
-                        <thead><tr><th>Vessel</th><th>Rank</th><th>Sign-On</th><th>Sign-Off</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Rig</th><th>Rank</th><th>Sign-On</th><th>Sign-Off</th><th>Status</th></tr></thead>
                         <tbody>
-                          {(projects.length ? projects : [{ id: 'sample', title: assignment.vessel, duration: { startDate: assignment.signOn, endDate: assignment.signOff }, status: assignment.status }]).map((project) => (
+                          {(projects.length ? projects : [{ id: 'sample', title: assignment.rig, duration: { startDate: assignment.signOn, endDate: assignment.signOff }, status: assignment.status }]).map((project) => (
                             <tr key={project.id}><td className="s">{project.title}</td><td>{rank}</td><td>{formatDate(project.duration?.startDate)}</td><td>{formatDate(project.duration?.endDate)}</td><td><span className="subsea-badge subsea-b-green">{project.status || 'Active'}</span></td></tr>
                           ))}
                         </tbody>

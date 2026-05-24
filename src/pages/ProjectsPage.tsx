@@ -289,7 +289,7 @@ const ProjectsPage = () => {
           {[
             { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
             { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
@@ -401,7 +401,7 @@ const ProjectsPage = () => {
           <div className="subsea-page-head">
             <div>
               <h1>Projects</h1>
-              <p>Vessel operations, dry docks, crew mobilisations & compliance programmes</p>
+              <p>Rig operations, dry docks, crew mobilisations & compliance programmes</p>
             </div>
             <div className="subsea-ph-right">
               <div className="subsea-view-toggle">
@@ -496,7 +496,7 @@ const ProjectsPage = () => {
             <div className="subsea-empty-panel">
               <FolderKanban size={34} />
               <h3>No projects yet</h3>
-              <p>Create vessel operations, dry docks, mobilisations, and compliance programmes.</p>
+              <p>Create Rig operations, dry docks, mobilisations, and compliance programmes.</p>
               <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
                 <Plus size={12} /> New Project
               </button>
@@ -694,6 +694,7 @@ const ProjectsPage = () => {
         onClose={closeInviteModal}
         title="Invite crew to project"
         size="medium"
+        variant="subsea"
       >
         {inviteProject && (
           <div className="project-invite-modal">
@@ -779,7 +780,7 @@ const ProjectsPage = () => {
         )}
       </Modal>
 
-      <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title="Create project" size="medium">
+      <Modal isOpen={isCreateModalOpen} onClose={closeCreateModal} title="Create project" size="medium" variant="subsea">
         {createError && (
           <div className="projects-page-form-error" role="alert">{createError}</div>
         )}

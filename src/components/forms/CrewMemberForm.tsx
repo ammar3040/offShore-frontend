@@ -5,6 +5,7 @@ import type { ICountry, ICity } from 'country-state-city';
 import { countries as phoneCountries } from 'country-codes-flags-phone-codes';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { SUBSEA_OVERLAY_LIGHT_CLASS } from '@/lib/subseaTheme';
 
 function parsePhoneValue(value: string): { dialCode: string; number: string } {
   const trimmed = (value || '').trim();
@@ -79,6 +80,7 @@ interface CrewMemberFormProps {
   isLoading?: boolean;
   initialData?: CrewMemberFormData;
   submitLabel?: string;
+  theme?: 'default' | 'subsea';
 }
 
 const defaultFormData: CrewMemberFormData = {
@@ -119,10 +121,14 @@ const defaultFormData: CrewMemberFormData = {
 
 const ALL_COUNTRIES = Country.getAllCountries();
 
-const inputClass =
+const defaultInputClass =
   'border border-input rounded-lg px-3.5 py-2.5 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-muted';
 
-const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member' }: CrewMemberFormProps) => {
+const subseaInputClass =
+  'border border-[#dde1e8] rounded-[5px] px-3 py-2 text-xs text-[#111827] bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(26,86,219,0.12)] focus:border-[#1a56db] disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#f7f8fa]';
+
+const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member', theme = 'default' }: CrewMemberFormProps) => {
+  const inputClass = theme === 'subsea' ? subseaInputClass : defaultInputClass;
   const [formData, setFormData] = useState<CrewMemberFormData>(() => initialData ?? defaultFormData);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
   const [countryOpen, setCountryOpen] = useState(false);
@@ -1140,7 +1146,10 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   />
                 </PopoverAnchor>
                 <PopoverContent
-                  className="z-[1100] w-[var(--radix-popover-trigger-width)] min-w-[200px] max-h-[200px] overflow-y-auto p-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30"
+                  className={cn(
+                    'z-[1100] w-[var(--radix-popover-trigger-width)] min-w-[200px] max-h-[200px] overflow-y-auto p-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30',
+                    theme === 'subsea' && SUBSEA_OVERLAY_LIGHT_CLASS
+                  )}
                   align="start"
                   sideOffset={4}
                   onOpenAutoFocus={(e) => e.preventDefault()}

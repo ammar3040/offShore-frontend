@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SubseaProfileMenu } from '@/components/SubseaProfileMenu';
+import { SUBSEA_FORM_LIGHT_CLASS } from '@/lib/subseaTheme';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -1320,7 +1321,7 @@ const AdminTicketsPage = () => {
           {[
             { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
             { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Vessels', path: '/rig' },
+            { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets', active: true },
             { icon: Wallet, label: 'Payroll' },
             { icon: FileText, label: 'Contracts' },
@@ -2173,7 +2174,7 @@ const AdminTicketsPage = () => {
       </div>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg`}>
           <DialogHeader>
             <DialogTitle>Ticket details</DialogTitle>
           </DialogHeader>
@@ -2309,7 +2310,7 @@ const AdminTicketsPage = () => {
           if (!open && !cancelTicketSubmitting) setTicketToConfirmCancel(null);
         }}
       >
-        <DialogContent showCloseButton={!cancelTicketSubmitting} className="max-w-md">
+        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
           <DialogHeader>
             <DialogTitle>Cancel this ticket?</DialogTitle>
             <DialogDescription className="text-left pt-1">
@@ -2359,7 +2360,7 @@ const AdminTicketsPage = () => {
       </Dialog>
 
       <Dialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg`}>
           <DialogHeader>
             <DialogTitle>
               {modalStep === 'project'

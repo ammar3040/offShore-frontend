@@ -193,3 +193,8 @@
 .crew-panel-layout--dark .modal-body {
   color-scheme: dark;
 }
+
+.layout--dark .modal-content.subsea-form-light,
+.layout--dark .modal-content.subsea-form-light .modal-body {
+  color-scheme: light !important;
+}

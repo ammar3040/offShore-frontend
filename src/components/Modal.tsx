@@ -8,9 +8,10 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   size?: 'small' | 'medium' | 'large' | 'xlarge';
+  variant?: 'default' | 'subsea';
 }
 
-const Modal = ({ isOpen, onClose, title, children, size = 'large' }: ModalProps) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'large', variant = 'default' }: ModalProps) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -44,7 +45,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'large' }: ModalProps)
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className={`modal-content modal-${size}`}
+        className={`modal-content modal-${size}${variant === 'subsea' ? ' subsea-form-light' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">

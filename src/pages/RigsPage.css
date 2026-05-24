@@ -1218,14 +1218,14 @@
   font-size: 12px;
 }
 
-.subsea-vessel-grid {
+.subsea-rig-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 14px;
 }
 
-.subsea-vessel-card {
+.subsea-rig-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1234,12 +1234,12 @@
   transition: all 0.15s;
 }
 
-.subsea-vessel-card:hover {
+.subsea-rig-card:hover {
   border-color: var(--blue);
   box-shadow: 0 0 0 1px var(--blue);
 }
 
-.subsea-vessel-top {
+.subsea-rig-top {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -1247,7 +1247,7 @@
   gap: 10px;
 }
 
-.subsea-vessel-icon {
+.subsea-rig-icon {
   width: 36px;
   height: 36px;
   border-radius: 6px;
@@ -1259,43 +1259,43 @@
   flex-shrink: 0;
 }
 
-.subsea-vessel-icon-1 {
+.subsea-rig-icon-1 {
   background: var(--teal-light);
   color: var(--teal);
 }
 
-.subsea-vessel-icon-2 {
+.subsea-rig-icon-2 {
   background: var(--blue-light);
   color: var(--blue);
 }
 
-.subsea-vessel-icon-3 {
+.subsea-rig-icon-3 {
   background: var(--amber-light);
   color: var(--amber);
 }
 
-.subsea-vessel-name {
+.subsea-rig-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.subsea-vessel-type {
+.subsea-rig-type {
   font-size: 11px;
   color: var(--text-tertiary);
   margin-top: 2px;
 }
 
-.subsea-vessel-status {
+.subsea-rig-status {
   margin-left: auto;
   flex-shrink: 0;
 }
 
-.subsea-vessel-body {
+.subsea-rig-body {
   padding: 10px 14px;
 }
 
-.subsea-vessel-row {
+.subsea-rig-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1303,36 +1303,36 @@
   margin-bottom: 7px;
 }
 
-.subsea-vessel-row:last-child {
+.subsea-rig-row:last-child {
   margin-bottom: 0;
 }
 
-.subsea-vessel-row-label {
+.subsea-rig-row-label {
   font-size: 11px;
   color: var(--text-tertiary);
 }
 
-.subsea-vessel-row-val {
+.subsea-rig-row-val {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
   text-align: right;
 }
 
-.subsea-vessel-row-val.success {
+.subsea-rig-row-val.success {
   color: var(--green);
 }
 
-.subsea-vessel-row-val.danger {
+.subsea-rig-row-val.danger {
   color: var(--red);
 }
 
-.subsea-vessel-row-val.mono {
+.subsea-rig-row-val.mono {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
 }
 
-.subsea-vessel-progress {
+.subsea-rig-progress {
   flex: 1;
   margin: 0 2px;
 }
@@ -1349,7 +1349,7 @@
   transition: width 1.2s ease;
 }
 
-.subsea-vessel-pct {
+.subsea-rig-pct {
   font-size: 11px;
   font-family: 'IBM Plex Mono', monospace;
   min-width: 30px;
@@ -2152,12 +2152,14 @@
 }
 
 .subsea-form-field input,
-.subsea-form-field textarea {
+.subsea-form-field textarea,
+.subsea-form-field select {
   padding: 10px 12px;
   font-size: 14px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   color: #1f2937;
+  background: #ffffff;
   transition: border-color 0.2s;
 }
 
@@ -2278,4 +2280,297 @@
   .subsea-kpi-strip {
     grid-template-columns: 1fr;
   }
+}
+
+/* Light theme for portaled modals/dialogs — matches Search Flights form */
+.subsea-form-light,
+.subsea-form-light.modal-content,
+[data-slot="dialog-content"].subsea-form-light {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #dde1e8 !important;
+  color-scheme: light !important;
+}
+
+.subsea-form-light .modal-header {
+  border-bottom-color: #ebf0ff !important;
+  background: #ffffff !important;
+}
+
+.subsea-form-light .modal-title,
+.subsea-form-light [data-slot="dialog-title"] {
+  color: #111827 !important;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.subsea-form-light .modal-close-button,
+.subsea-form-light [data-slot="dialog-close"] {
+  color: #6b7280 !important;
+}
+
+.subsea-form-light .modal-close-button:hover,
+.subsea-form-light [data-slot="dialog-close"]:hover {
+  background: #f7f8fa !important;
+  color: #111827 !important;
+}
+
+.subsea-form-light .modal-body {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.subsea-form-light [data-slot="dialog-description"],
+.subsea-form-light .admin-tickets-modal-intro,
+.subsea-form-light .project-invite-intro,
+.subsea-form-light .invite-to-project-intro,
+.subsea-form-light .delete-crew-message,
+.subsea-form-light .admin-tickets-form-hint,
+.subsea-form-light .admin-tickets-crew-email {
+  color: #6b7280 !important;
+}
+
+.subsea-form-light .admin-tickets-modal-intro strong,
+.subsea-form-light .project-invite-intro strong,
+.subsea-form-light .invite-to-project-intro strong,
+.subsea-form-light .delete-crew-message strong,
+.subsea-form-light .admin-tickets-crew-name {
+  color: #111827 !important;
+}
+
+.subsea-form-light label,
+.subsea-form-light .admin-tickets-form-field label,
+.subsea-form-light .projects-page-form-field label,
+.subsea-form-light .subsea-form-field label,
+.subsea-form-light .project-invite-label,
+.subsea-form-light .invite-to-project-label {
+  color: #9ca3af !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  font-family: 'IBM Plex Sans', sans-serif !important;
+}
+
+.subsea-form-light input,
+.subsea-form-light .invite-to-project-select,
+.subsea-form-light select,
+.subsea-form-light textarea,
+.subsea-form-light .admin-tickets-project-select,
+.subsea-form-light .project-invite-select {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #dde1e8 !important;
+  border-radius: 5px !important;
+  min-height: 32px;
+  font-size: 12px !important;
+  font-family: 'IBM Plex Sans', sans-serif !important;
+  box-shadow: none !important;
+}
+
+.subsea-form-light input:focus,
+.subsea-form-light select:focus,
+.subsea-form-light textarea:focus {
+  border-color: #1a56db !important;
+  box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.12) !important;
+  outline: none !important;
+}
+
+.subsea-form-light input:disabled,
+.subsea-form-light select:disabled,
+.subsea-form-light textarea:disabled {
+  background: #f7f8fa !important;
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+.subsea-form-light .admin-tickets-fieldset {
+  border-color: #dde1e8 !important;
+  background: #ffffff !important;
+}
+
+.subsea-form-light .admin-tickets-fieldset legend {
+  color: #374151 !important;
+  font-size: 12px !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.subsea-form-light .admin-tickets-crew-list {
+  background: #f7f8fa !important;
+  border-color: #dde1e8 !important;
+}
+
+.subsea-form-light .admin-tickets-crew-item:hover {
+  background: #ebf0ff !important;
+}
+
+.subsea-form-light .admin-tickets-select-link {
+  color: #1a56db !important;
+}
+
+.subsea-form-light .admin-tickets-form-error,
+.subsea-form-light .projects-page-form-error,
+.subsea-form-light .subsea-form-error,
+.subsea-form-light .project-invite-error {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+}
+
+.subsea-form-light .admin-tickets-success,
+.subsea-form-light .project-invite-success {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+.subsea-form-light .projects-page-form-actions,
+.subsea-form-light .subsea-form-actions,
+.subsea-form-light .admin-tickets-modal-actions,
+.subsea-form-light .project-invite-actions,
+.subsea-form-light .invite-to-project-actions,
+.subsea-form-light .delete-crew-actions {
+  border-top-color: #ebf0ff !important;
+}
+
+.subsea-form-light .projects-page-form-cancel,
+.subsea-form-light .subsea-form-cancel,
+.subsea-form-light .invite-to-project-cancel,
+.subsea-form-light .button-secondary {
+  background: #ffffff !important;
+  color: #374151 !important;
+  border: 1px solid #dde1e8 !important;
+}
+
+.subsea-form-light .projects-page-form-cancel:hover:not(:disabled),
+.subsea-form-light .subsea-form-cancel:hover:not(:disabled),
+.subsea-form-light .invite-to-project-cancel:hover:not(:disabled),
+.subsea-form-light .button-secondary:hover:not(:disabled) {
+  background: #f7f8fa !important;
+  border-color: #c5cad4 !important;
+}
+
+.subsea-form-light .projects-page-form-submit,
+.subsea-form-light .subsea-form-submit,
+.subsea-form-light .invite-to-project-submit,
+.subsea-form-light .button-primary {
+  background: #1a56db !important;
+  color: #ffffff !important;
+  border: 1px solid #1a56db !important;
+}
+
+.subsea-form-light .projects-page-form-submit:hover:not(:disabled),
+.subsea-form-light .subsea-form-submit:hover:not(:disabled),
+.subsea-form-light .invite-to-project-submit:hover:not(:disabled),
+.subsea-form-light .button-primary:hover:not(:disabled) {
+  background: #1648c0 !important;
+}
+
+.subsea-form-light [data-slot="button"][data-variant="outline"] {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #dde1e8 !important;
+  box-shadow: none !important;
+}
+
+.subsea-form-light [data-slot="button"][data-variant="outline"]:hover:not(:disabled) {
+  background: #f7f8fa !important;
+  color: #111827 !important;
+  border-color: #c5cad4 !important;
+}
+
+.subsea-form-light [data-slot="button"][data-variant="default"] {
+  background: #1a56db !important;
+  color: #ffffff !important;
+}
+
+.subsea-form-light [data-slot="button"][data-variant="default"]:hover:not(:disabled) {
+  background: #1648c0 !important;
+}
+
+.subsea-form-light [data-slot="button"][data-variant="ghost"] {
+  color: #1a56db !important;
+}
+
+.subsea-form-light [data-slot="button"][data-variant="ghost"]:hover:not(:disabled) {
+  background: #ebf0ff !important;
+  color: #1a56db !important;
+}
+
+.subsea-form-light [data-slot="button"][data-variant="destructive"] {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.subsea-form-light .text-foreground {
+  color: #111827 !important;
+}
+
+.subsea-form-light .text-muted-foreground {
+  color: #6b7280 !important;
+}
+
+.subsea-form-light .bg-background {
+  background-color: #ffffff !important;
+}
+
+.subsea-form-light .bg-muted {
+  background-color: #f7f8fa !important;
+}
+
+.subsea-form-light .border-border,
+.subsea-form-light .border-input,
+.subsea-form-light .border-muted {
+  border-color: #dde1e8 !important;
+}
+
+.subsea-form-light .bg-primary {
+  background-color: #1a56db !important;
+}
+
+.subsea-form-light .text-primary-foreground {
+  color: #ffffff !important;
+}
+
+.subsea-form-light .hover\:bg-muted:hover {
+  background-color: #f7f8fa !important;
+}
+
+/* Portaled dropdown overlays inside Subsea forms */
+.subsea-form-light-overlay,
+.admin-tickets-search-overlay {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #dde1e8 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12) !important;
+}
+
+.subsea-form-light-overlay [data-slot="dropdown-menu-item"],
+.subsea-form-light-overlay [data-slot="dropdown-menu-checkbox-item"],
+.subsea-form-light-overlay [data-slot="select-item"],
+.admin-tickets-search-overlay [data-slot="dropdown-menu-item"],
+.admin-tickets-search-overlay [data-slot="dropdown-menu-checkbox-item"],
+.admin-tickets-search-overlay [data-slot="select-item"] {
+  color: #111827 !important;
+}
+
+.subsea-form-light-overlay [data-slot="dropdown-menu-item"]:focus,
+.subsea-form-light-overlay [data-slot="dropdown-menu-item"][data-highlighted],
+.subsea-form-light-overlay [data-slot="dropdown-menu-checkbox-item"]:focus,
+.subsea-form-light-overlay [data-slot="dropdown-menu-checkbox-item"][data-highlighted],
+.subsea-form-light-overlay [data-slot="select-item"]:focus,
+.subsea-form-light-overlay [data-slot="select-item"][data-highlighted],
+.admin-tickets-search-overlay [data-slot="dropdown-menu-item"]:focus,
+.admin-tickets-search-overlay [data-slot="dropdown-menu-item"][data-highlighted],
+.admin-tickets-search-overlay [data-slot="dropdown-menu-checkbox-item"]:focus,
+.admin-tickets-search-overlay [data-slot="dropdown-menu-checkbox-item"][data-highlighted],
+.admin-tickets-search-overlay [data-slot="select-item"]:focus,
+.admin-tickets-search-overlay [data-slot="select-item"][data-highlighted] {
+  background: #ebf0ff !important;
+  color: #1a56db !important;
+}
+
+.subsea-form-light-overlay .text-muted-foreground,
+.admin-tickets-search-overlay .text-muted-foreground {
+  color: #9ca3af !important;
 }
