@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Ship,
   FolderKanban,
+  Anchor,
   LogOut,
   X,
   HelpCircle,
@@ -25,6 +26,7 @@ const mainNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Ship, label: 'Crew', path: '/crew' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
+  { icon: Anchor, label: 'Rigs', path: '/rig' },
   { icon: Ticket, label: 'Tickets', path: '/tickets' },
 ];
 

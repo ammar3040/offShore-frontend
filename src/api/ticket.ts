@@ -22,10 +22,19 @@ export interface CrewTicketProjectRef {
   [key: string]: unknown;
 }
 
+export interface CrewTicketRigRef {
+  _id: string;
+  id?: string;
+  name: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
 export interface CrewTicketApi {
   id: string;
   crew_id: CrewTicketCrewRef;
   project_id: CrewTicketProjectRef;
+  rig_id?: CrewTicketRigRef | string | null;
   from: AirportLocation;
   to: AirportLocation;
   class: string;
@@ -101,6 +110,7 @@ export interface GetCrewTicketsResponse {
 export interface CreateFlightTicketPayload {
   crew_id: string;
   project_id: string;
+  rig_id?: string;
   from: AirportLocation;
   to: AirportLocation;
   class: 'ECONOMY' | 'PREMIUM_ECONOMY' | 'BUSINESS' | 'FIRST';

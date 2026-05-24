@@ -49,6 +49,7 @@ export interface BookFare {
 /** Payload for POST /crew-ticket/book (matches backend bookFlightSchema) */
 export interface BookFlightPayload {
   project_id: string;
+  rig_id?: string;
   crew_ids: string[];
   flight: {
     id: string;
@@ -139,6 +140,7 @@ export async function searchFlights(payload: SearchPayload): Promise<SearchFligh
  */
 export async function bookFlight(params: {
   project_id: string;
+  rig_id?: string;
   crew_ids: string[];
   flight: Flight;
   cashback?: number;
@@ -159,6 +161,7 @@ export async function bookFlight(params: {
 
   const body: BookFlightPayload = {
     project_id: params.project_id,
+    ...(params.rig_id ? { rig_id: params.rig_id } : {}),
     crew_ids: params.crew_ids,
     flight: {
       id: params.flight.id,

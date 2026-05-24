@@ -21,6 +21,7 @@ const CrewTicketsPage = lazy(() => import('./pages/CrewTicketsPage'));
 const CrewTimesheetPage = lazy(() => import('./pages/CrewTimesheetPage'));
 const CrewAvailabilityPage = lazy(() => import('./pages/CrewAvailabilityPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const RigsPage = lazy(() => import('./pages/RigsPage'));
 const AdminTicketsPage = lazy(() => import('./pages/AdminTicketsPage'));
 const SuperadminDashboard = lazy(() => import('./pages/SuperadminDashboard'));
 const SuperadminAdminsPage = lazy(() => import('./pages/SuperadminAdminsPage'));
@@ -91,6 +92,7 @@ function App() {
                     <Route path="/" element={<CrewManagementDashboard />} />
                     <Route path="/crew" element={<CrewListPage />} />
                     <Route path="/projects" element={<ProjectsPage />} />
+                    <Route path="/rig" element={<RigsPage />} />
                     <Route path="/tickets" element={<AdminTicketsPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

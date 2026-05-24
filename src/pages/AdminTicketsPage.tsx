@@ -24,6 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getProjects, type ProjectApi } from '../api/project';
+import { getRigs, type RigApi } from '../api/rig';
 import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
 import {
   getCrewTickets,
@@ -440,6 +441,7 @@ function FlightResultCard({
 const AdminTicketsPage = () => {
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
+  const [rigs, setRigs] = useState<RigApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -451,6 +453,7 @@ const AdminTicketsPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectApi | null>(null);
   const [createProjectId, setCreateProjectId] = useState<string>('');
+  const [createRigId, setCreateRigId] = useState<string>('');
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
   const [crewLoading, setCrewLoading] = useState(false);
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([]);
@@ -506,6 +509,7 @@ const AdminTicketsPage = () => {
 
   /* Project & crew for search form */
   const [searchProjectId, setSearchProjectId] = useState<string>('');
+  const [searchRigId, setSearchRigId] = useState<string>('');
   const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
@@ -662,11 +666,12 @@ const AdminTicketsPage = () => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([getCrewTickets(), getProjects()])
-      .then(([ticketsRes, projectsRes]) => {
+    Promise.all([getCrewTickets(), getProjects(), getRigs()])
+      .then(([ticketsRes, projectsRes, rigsRes]) => {
         if (!cancelled) {
           setTickets(ticketsRes.crewTickets ?? []);
           setProjects(projectsRes.projects ?? []);
+          setRigs(rigsRes.rigs ?? []);
         }
       })
       .catch((err) => {
@@ -703,6 +708,7 @@ const AdminTicketsPage = () => {
     setModalStep('project');
     setSelectedProject(null);
     setCreateProjectId('');
+    setCreateRigId('');
     setSelectedCrewIds([]);
     setCrew([]);
     setSubmitError(null);
@@ -727,6 +733,7 @@ const AdminTicketsPage = () => {
       setIsCreateModalOpen(false);
       setSelectedProject(null);
       setCreateProjectId('');
+      setCreateRigId('');
       setSelectedCrewIds([]);
       setModalStep('project');
       setSubmitError(null);
@@ -934,6 +941,7 @@ const AdminTicketsPage = () => {
         const priceAmount = firstFare?.totalFare ?? 0;
         const data = await bookFlight({
           project_id: searchProjectId,
+          ...(searchRigId ? { rig_id: searchRigId } : {}),
           crew_ids: searchCrewIds,
           flight,
           cashback: flight.cashback ?? 0,
@@ -993,6 +1001,7 @@ const AdminTicketsPage = () => {
     },
     [
       searchProjectId,
+      searchRigId,
       searchCrewIds,
       adults,
       currency,
@@ -1046,6 +1055,7 @@ const AdminTicketsPage = () => {
         const payload: CreateFlightTicketPayload = {
           crew_id: crewId,
           project_id: selectedProject.id,
+          ...(createRigId ? { rig_id: createRigId } : {}),
           from,
           to,
           class: formData.class,
@@ -1076,6 +1086,15 @@ const AdminTicketsPage = () => {
   const getProjectTitle = (t: CrewTicketApi) => {
     const p = t.project_id;
     return p?.title ?? (p as { title?: string })?.title ?? '—';
+  };
+
+  const getRigName = (t: CrewTicketApi) => {
+    const rig = t.rig_id;
+    if (!rig) return '—';
+    if (typeof rig === 'string') {
+      return rigs.find((r) => r.id === rig)?.name ?? '—';
+    }
+    return rig.name ?? (rig as { name?: string })?.name ?? '—';
   };
 
   const formatProjectDuration = (p: CrewTicketApi['project_id']) => {
@@ -1230,6 +1249,59 @@ const AdminTicketsPage = () => {
                           onClick={() => setSearchProjectId('')}
                           title="Clear"
                           aria-label="Clear project"
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="admin-tickets-search-field">
+                    <label className="block text-xs font-semibold text-[#374151] mb-2">Rig</label>
+                    <div className="admin-tickets-search-field-with-clear">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between font-normal"
+                          >
+                            <span className="truncate">
+                              {searchRigId
+                                ? (rigs.find((r) => r.id === searchRigId)?.name ?? 'Select rig')
+                                : 'Select rig (optional)'}
+                            </span>
+                            <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto"
+                          align="start"
+                        >
+                          <DropdownMenuGroup>
+                            <DropdownMenuItem
+                              onSelect={() => setSearchRigId('')}
+                              className={!searchRigId ? 'bg-accent' : ''}
+                            >
+                              No rig
+                            </DropdownMenuItem>
+                            {rigs.map((rig) => (
+                              <DropdownMenuItem
+                                key={rig.id}
+                                onSelect={() => setSearchRigId(rig.id)}
+                                className={searchRigId === rig.id ? 'bg-accent' : ''}
+                              >
+                                {rig.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {searchRigId ? (
+                        <button
+                          type="button"
+                          className="admin-tickets-search-clear-btn"
+                          onClick={() => setSearchRigId('')}
+                          title="Clear"
+                          aria-label="Clear rig"
                         >
                           <X size={14} />
                         </button>
@@ -1712,6 +1784,7 @@ const AdminTicketsPage = () => {
             <TableRow>
               <TableHead>Crew</TableHead>
               <TableHead>Project</TableHead>
+              <TableHead>Rig</TableHead>
               <TableHead>From → To</TableHead>
               <TableHead>Class</TableHead>
               <TableHead>Trip</TableHead>
@@ -1738,6 +1811,7 @@ const AdminTicketsPage = () => {
               >
                 <TableCell className="font-medium">{getCrewName(ticket)}</TableCell>
                 <TableCell>{getProjectTitle(ticket)}</TableCell>
+                <TableCell>{getRigName(ticket)}</TableCell>
                 <TableCell title={`${ticket.from?.Name ?? ''} → ${ticket.to?.Name ?? ''}`}>
                   {ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}
                 </TableCell>
@@ -1873,6 +1947,24 @@ const AdminTicketsPage = () => {
                     <dd>{(selectedTicket.project_id as { description?: string }).description}</dd>
                   </div>
                 )}
+              </dl>
+            </section>
+
+            <section className="admin-tickets-detail-section">
+              <h3 className="admin-tickets-detail-heading">Rig</h3>
+              <dl className="admin-tickets-detail-list">
+                <div className="admin-tickets-detail-item">
+                  <dt>Name</dt>
+                  <dd>{getRigName(selectedTicket)}</dd>
+                </div>
+                {selectedTicket.rig_id &&
+                  typeof selectedTicket.rig_id !== 'string' &&
+                  (selectedTicket.rig_id as { description?: string })?.description && (
+                    <div className="admin-tickets-detail-item">
+                      <dt>Description</dt>
+                      <dd>{(selectedTicket.rig_id as { description?: string }).description}</dd>
+                    </div>
+                  )}
               </dl>
             </section>
 
@@ -2070,6 +2162,23 @@ const AdminTicketsPage = () => {
                 )}
 
                 <form className="admin-tickets-form" onSubmit={handleSubmitTickets}>
+                  <div className="admin-tickets-form-field admin-tickets-form-field-full">
+                    <label htmlFor="ticket-rig">Rig</label>
+                    <select
+                      id="ticket-rig"
+                      value={createRigId}
+                      onChange={(e) => setCreateRigId(e.target.value)}
+                      disabled={submitLoading}
+                    >
+                      <option value="">No rig selected</option>
+                      {rigs.map((rig) => (
+                        <option key={rig.id} value={rig.id}>
+                          {rig.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <fieldset className="admin-tickets-fieldset">
                     <legend>From</legend>
                     <div className="admin-tickets-form-row">
