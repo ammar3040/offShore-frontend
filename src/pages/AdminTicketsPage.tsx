@@ -38,7 +38,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -1447,8 +1446,7 @@ const AdminTicketsPage = () => {
                   </select>
                 </div>
               </div>
-              <Card>
-                <CardContent className="pt-6">
+              <div className="admin-tickets-search-panel">
                 <div className="admin-tickets-search-form">
                   <div className="admin-tickets-search-row admin-tickets-search-row-trip">
                     <span className="admin-tickets-search-row-label">Trip type</span>
@@ -1907,8 +1905,7 @@ const AdminTicketsPage = () => {
                     )}
                   </Button>
                 </div>
-              </CardContent>
-              </Card>
+              </div>
             </>
           ) : (
             <div className="admin-tickets-results-wrap">
