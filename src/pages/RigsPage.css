@@ -1746,6 +1746,193 @@
   border-color: var(--blue-border);
 }
 
+.subsea-profile-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subsea-prof-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.subsea-prof-cover {
+  height: 84px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(45, 212, 191, 0.18), transparent 26%),
+    linear-gradient(135deg, rgba(26, 86, 219, 0.92), rgba(13, 148, 136, 0.88));
+  position: relative;
+}
+
+.subsea-prof-av-wrap {
+  position: absolute;
+  left: 20px;
+  bottom: -30px;
+}
+
+.subsea-prof-av {
+  width: 68px;
+  height: 68px;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  border: 4px solid var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.subsea-prof-info {
+  padding: 38px 18px 14px;
+}
+
+.subsea-prof-info-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.subsea-prof-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subsea-prof-role {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.subsea-prof-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 12px;
+}
+
+.subsea-prof-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.subsea-prof-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.subsea-prof-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.subsea-prof-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.subsea-prof-tab:hover {
+  color: var(--text-primary);
+}
+
+.subsea-prof-tab.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
+.subsea-detail-grid {
+  padding: 4px 14px;
+}
+
+.subsea-detail-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subsea-detail-row:last-child {
+  border-bottom: none;
+}
+
+.subsea-detail-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.subsea-detail-val {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.subsea-cert-row {
+  display: grid;
+  grid-template-columns: 76px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subsea-cert-row:last-child {
+  border-bottom: none;
+}
+
+.subsea-cert-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.subsea-cert-expires {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.subsea-metric-val.danger {
+  color: var(--red);
+}
+
+.subsea-metric-row.strong {
+  border-top: 2px solid var(--border);
+}
+
 .subsea-feed,
 .subsea-cert-list {
   padding: 0 14px;

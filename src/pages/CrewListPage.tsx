@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Anchor,
   Award,
@@ -72,6 +73,7 @@ function crewStatus(kind: CrewAvailability): { label: string; className: string 
 }
 
 const CrewListPage = () => {
+  const navigate = useNavigate();
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ const CrewListPage = () => {
 
   const [selectedCrew, setSelectedCrew] = useState<CrewMemberApi | null>(null);
   const [crewDetailData, setCrewDetailData] = useState<{ crew: CrewMemberApi; projects: CrewAssignedProject[] } | null>(null);
-  const [crewDetailLoading, setCrewDetailLoading] = useState(false);
+  const [crewDetailLoading] = useState(false);
   const [crewDetailError, setCrewDetailError] = useState<string | null>(null);
   const [inviteCrewMember, setInviteCrewMember] = useState<CrewMemberApi | null>(null);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
@@ -354,15 +356,8 @@ const CrewListPage = () => {
   ).size;
 
   const openCrewDetail = useCallback((member: CrewMemberApi) => {
-    setSelectedCrew(member);
-    setCrewDetailData(null);
-    setCrewDetailError(null);
-    setCrewDetailLoading(true);
-    getCrewById(member.id)
-      .then((res) => setCrewDetailData({ crew: res.crew, projects: res.projects ?? [] }))
-      .catch((err) => setCrewDetailError(err instanceof Error ? err.message : 'Failed to load crew details'))
-      .finally(() => setCrewDetailLoading(false));
-  }, []);
+    navigate(`/crew/${member.id}`);
+  }, [navigate]);
 
   const closeCrewDetail = useCallback(() => {
     setSelectedCrew(null);

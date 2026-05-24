@@ -10,6 +10,7 @@ import './App.css';
 
 const CrewManagementDashboard = lazy(() => import('./pages/CrewManagementDashboard'));
 const CrewListPage = lazy(() => import('./pages/CrewListPage'));
+const CrewDetailsPage = lazy(() => import('./pages/CrewDetailsPage'));
 const CrewLogin = lazy(() => import('./pages/CrewLogin'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SuperadminLoginPage = lazy(() => import('./pages/SuperadminLoginPage'));
@@ -91,6 +92,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<CrewManagementDashboard />} />
                     <Route path="/crew" element={<CrewListPage />} />
+                    <Route path="/crew/:crewId" element={<CrewDetailsPage />} />
                     <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/rig" element={<RigsPage />} />
                     <Route path="/tickets" element={<AdminTicketsPage />} />
