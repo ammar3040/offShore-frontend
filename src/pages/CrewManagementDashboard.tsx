@@ -5,7 +5,9 @@ import {
   Users,
   Ticket,
   Plus,
-  Calendar,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   LayoutGrid,
   Wallet,
@@ -56,6 +58,10 @@ function formatShortDate(iso: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatCalendarDay(d: Date): string {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function ticketCreatedListLabel(t: CrewTicketApi): string {
   const iso = getCrewTicketCreatedIso(t);
   if (!iso) return '';
@@ -70,6 +76,10 @@ function parseProjectDay(s: string): Date {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return new Date(s);
+}
+
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function formatGbp(amount: number | null | undefined): string {
@@ -89,6 +99,31 @@ function isCompletedStatus(status: string): boolean {
   return s.includes('complete') || s === 'done' || s === 'closed' || s === 'finished';
 }
 
+function isProjectOnDate(project: ProjectApi, day: Date): boolean {
+  if (isCompletedStatus(project.status)) return false;
+  const start = project.duration?.startDate ? parseProjectDay(project.duration.startDate) : null;
+  const end = project.duration?.endDate ? parseProjectDay(project.duration.endDate) : null;
+  if ((start && Number.isNaN(start.getTime())) || (end && Number.isNaN(end.getTime()))) return false;
+  const currentDay = startOfLocalDay(day);
+  if (start && startOfLocalDay(start) > currentDay) return false;
+  if (end && startOfLocalDay(end) < currentDay) return false;
+  return Boolean(start || end || normalizeStatus(project.status) === 'active');
+}
+
+function buildCalendarDays(month: Date): Array<Date | null> {
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const leadingEmptyDays = new Date(year, monthIndex, 1).getDay();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const days = [
+    ...Array<Date | null>(leadingEmptyDays).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, index) => new Date(year, monthIndex, index + 1)),
+  ];
+  const trailingEmptyDays = (7 - (days.length % 7)) % 7;
+
+  return [...days, ...Array<Date | null>(trailingEmptyDays).fill(null)];
+}
+
 function crewDisplayName(crew: CrewTicketApi['crew_id']): string {
   const fn = crew.firstname?.trim() ?? '';
   const ln = crew.lastname?.trim() ?? '';
@@ -98,6 +133,133 @@ function crewDisplayName(crew: CrewTicketApi['crew_id']): string {
 
 function airportLabel(loc: CrewTicketApi['from']): string {
   return loc?.Name?.trim() || '—';
+}
+
+function ProjectStatusCalendar({
+  projects,
+  loading,
+}: {
+  projects: ProjectApi[];
+  loading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date());
+  const [previewDate, setPreviewDate] = useState<Date | null>(null);
+  const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth]);
+  const today = startOfLocalDay(new Date());
+  const monthLabel = visibleMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const previewProjects = useMemo(
+    () => (previewDate ? projects.filter((project) => isProjectOnDate(project, previewDate)) : []),
+    [previewDate, projects]
+  );
+
+  const changeMonth = (offset: number) => {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+    setPreviewDate(null);
+  };
+
+  return (
+    <div
+      className="admin-project-calendar"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        className="admin-project-calendar-trigger"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-label="Project status calendar"
+      >
+        <CalendarIcon size={16} />
+        <span>Project calendar</span>
+      </button>
+      {open ? (
+        <div className="admin-project-calendar-popover" role="dialog" aria-label="Project status calendar">
+          <div className="admin-project-calendar-header">
+            <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month">
+              <ChevronLeft size={16} />
+            </button>
+            <strong>{monthLabel}</strong>
+            <button type="button" onClick={() => changeMonth(1)} aria-label="Next month">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <p className="admin-project-calendar-help">Hover a date to see ongoing projects.</p>
+          <div className="admin-project-calendar-weekdays" aria-hidden="true">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+              <span key={`${day}-${index}`}>{day}</span>
+            ))}
+          </div>
+          <div className="admin-project-calendar-grid">
+            {calendarDays.map((day, index) => {
+              if (!day) {
+                return <div key={`empty-${index}`} className="admin-project-calendar-empty" aria-hidden="true" />;
+              }
+              const dayProjects = projects.filter((project) => isProjectOnDate(project, day));
+              const isToday = startOfLocalDay(day).getTime() === today.getTime();
+              const isPreviewed = previewDate && startOfLocalDay(day).getTime() === startOfLocalDay(previewDate).getTime();
+
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={[
+                    'admin-project-calendar-day',
+                    isToday ? 'admin-project-calendar-day--today' : '',
+                    isPreviewed ? 'admin-project-calendar-day--selected' : '',
+                    dayProjects.length ? 'admin-project-calendar-day--has-projects' : '',
+                  ].filter(Boolean).join(' ')}
+                  tabIndex={0}
+                  onMouseEnter={() => setPreviewDate(day)}
+                  onFocus={() => setPreviewDate(day)}
+                  aria-label={`${formatCalendarDay(day)}: ${dayProjects.length} ongoing project${dayProjects.length === 1 ? '' : 's'}`}
+                >
+                  <span className="admin-project-calendar-day-number">{day.getDate()}</span>
+                  {dayProjects.length ? (
+                    <span className="admin-project-calendar-count">{dayProjects.length}</span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className="admin-project-calendar-details" aria-live="polite">
+            {previewDate ? (
+              <>
+                <strong>{formatCalendarDay(previewDate)}</strong>
+                {loading ? (
+                  <p>Loading projects…</p>
+                ) : previewProjects.length === 0 ? (
+                  <p>No ongoing projects on this date.</p>
+                ) : (
+                  <ul>
+                    {previewProjects.slice(0, 4).map((project) => (
+                      <li key={project.id}>
+                        <span>
+                          <b>{project.title}</b>
+                          <small>
+                            {formatShortDate(project.duration.startDate)} - {formatShortDate(project.duration.endDate)}
+                            {' · '}
+                            {project.status || 'Active'}
+                          </small>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {previewProjects.length > 4 ? <p>+{previewProjects.length - 4} more projects</p> : null}
+              </>
+            ) : (
+              <p>Select a date to preview ongoing project information.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 const CrewManagementDashboard = () => {
@@ -298,10 +460,13 @@ const CrewManagementDashboard = () => {
             <p className="admin-dashboard-signed-in">{adminProfile.email}</p>
           ) : null}
         </div>
-        <Link to="/projects" className="admin-dashboard-create-btn">
-          <Plus size={14} />
-          Create New Project
-        </Link>
+        <div className="admin-dashboard-header-actions">
+          <ProjectStatusCalendar projects={projects} loading={loadingProjects} />
+          <Link to="/projects" className="admin-dashboard-create-btn">
+            <Plus size={14} />
+            Create New Project
+          </Link>
+        </div>
       </div>
 
       <nav className="admin-dashboard-quick-actions" aria-label="Workspace shortcuts">
@@ -486,7 +651,7 @@ const CrewManagementDashboard = () => {
                   No upcoming project end dates from your schedule.
                 </p>
                 <Link to="/projects" className="admin-panel-calendar-btn">
-                  <Calendar size={16} />
+                  <CalendarIcon size={16} />
                   View projects
                 </Link>
               </>
