@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import type { CrewTicketApi } from './ticket';
 import type { Flight, SearchPayload, SearchFlightsResult } from '../types/flight';
 
 /** Full itinerary segment shape sent to POST /crew-ticket/book */
@@ -136,7 +137,7 @@ export async function searchFlights(payload: SearchPayload): Promise<SearchFligh
 /**
  * POST /crew-ticket/book – submit booking for selected crew on a project.
  * Payload is extracted from search flight result to match backend bookFlightSchema.
- * Returns { message?, bookingReference? }. On error throws with message.
+ * Returns tickets that are created pending approval. On error throws with message.
  */
 export async function bookFlight(params: {
   project_id: string;
@@ -152,6 +153,7 @@ export async function bookFlight(params: {
 }): Promise<{
   message?: string;
   bookingReference?: string;
+  crewTickets?: CrewTicketApi[];
   tickets?: unknown[];
   emailSent?: boolean;
   [key: string]: unknown;
@@ -228,5 +230,5 @@ export async function bookFlight(params: {
     throw new Error(message);
   }
 
-  return data as { message?: string; bookingReference?: string; tickets?: unknown[]; emailSent?: boolean; [key: string]: unknown };
+  return data as { message?: string; bookingReference?: string; crewTickets?: CrewTicketApi[]; tickets?: unknown[]; emailSent?: boolean; [key: string]: unknown };
 }

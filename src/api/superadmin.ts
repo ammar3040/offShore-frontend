@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { normalizeCrewTicket, type CrewTicketApi } from './ticket';
 
 export interface SuperadminLoginPayload {
   email: string;
@@ -45,6 +46,11 @@ export interface AdminApi {
   crewCount?: number;
   cancellationOutstanding?: number | null;
   cancellationSlotsRemaining?: number | null;
+}
+
+export interface ApproveCrewTicketResponse {
+  message?: string;
+  crewTicket: CrewTicketApi;
 }
 
 export interface CreateAdminPayload {
@@ -368,6 +374,46 @@ export async function sendSuperadminCrewTicketEmail(ticketId: string): Promise<u
   return response.json();
 }
 
+/** Approve a crew ticket and generate the PDF. PATCH /crew-ticket/:id/approve */
+export async function approveCrewTicket(ticketId: string, bookingReference: string): Promise<ApproveCrewTicketResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/approve`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ bookingReference: bookingReference.trim() }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  const text = await response.text();
+  let data: Record<string, unknown> = {};
+  if (text) {
+    try {
+      data = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      data = {};
+    }
+  }
+
+  if (!response.ok) {
+    const fallbackByStatus: Record<number, string> = {
+      400: 'Enter a booking reference.',
+      403: 'Only superadmins can approve tickets.',
+      409: 'This ticket has already been approved.',
+      500: 'Could not approve the ticket. Please try again.',
+    };
+    throw new Error(getErrorMessage(data, fallbackByStatus[response.status] ?? `Request failed (${response.status})`));
+  }
+
+  const rawTicket = data.crewTicket ?? data.ticket ?? data;
+  return {
+    message: typeof data.message === 'string' ? data.message : undefined,
+    crewTicket: normalizeCrewTicket(rawTicket as import('./ticket').CrewTicketApiRaw),
+  };
+}
+
 /** Delete a crew ticket. DELETE /crew/:crew_id/ticket/:ticket_id (superadmin only) */
 export async function deleteSuperadminCrewTicket(crewId: string, ticketId: string): Promise<void> {
   const controller = new AbortController();
@@ -399,7 +445,7 @@ export async function deleteSuperadminCrewTicket(crewId: string, ticketId: strin
 }
 
 /** Crew tickets for superadmin - GET /crew-ticket (uses superadmin token; project filter applied client-side if backend omits it) */
-export async function getSuperadminCrewTickets(projectId?: string): Promise<{ crewTickets: import('./ticket').CrewTicketApi[] }> {
+export async function getSuperadminCrewTickets(projectId?: string): Promise<{ crewTickets: CrewTicketApi[] }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
@@ -428,7 +474,8 @@ export async function getSuperadminCrewTickets(projectId?: string): Promise<{ cr
   }
 
   const data = await response.json();
-  return { crewTickets: Array.isArray(data?.crewTickets) ? data.crewTickets : [] };
+  const raw = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
+  return { crewTickets: raw.map((ticket: import('./ticket').CrewTicketApiRaw) => normalizeCrewTicket(ticket)) };
 }
 
 /** Projects for superadmin - GET /project (uses superadmin token) */

@@ -136,13 +136,88 @@
 }
 
 .superadmin-ticket-class,
-.superadmin-ticket-trip {
+.superadmin-ticket-trip,
+.superadmin-ticket-status {
   font-size: 11px;
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 6px;
+}
+
+.superadmin-ticket-class,
+.superadmin-ticket-trip {
   background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
+}
+
+.superadmin-ticket-status-approved {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.superadmin-ticket-status-pending {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.superadmin-ticket-approve-inline {
+  display: grid;
+  grid-template-columns: minmax(110px, 140px) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.superadmin-ticket-approve-inline input,
+.superadmin-ticket-approve-detail input {
+  height: 32px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 13px;
+}
+
+.superadmin-ticket-approve-error {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: hsl(var(--destructive));
+}
+
+.superadmin-ticket-approve-detail {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--background));
+}
+
+.superadmin-ticket-approve-detail label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+.superadmin-ticket-approve-detail > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.superadmin-ticket-approve-detail input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.superadmin-ticket-approve-detail p {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: hsl(var(--destructive));
 }
 
 .superadmin-tickets-file-input {

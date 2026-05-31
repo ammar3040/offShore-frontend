@@ -57,9 +57,12 @@ import {
   getCrewTickets,
   createFlightTicket,
   cancelCrewTicket,
+  canUseTicketPdf,
   type CreateFlightTicketPayload,
   type AirportLocation,
   type CrewTicketApi,
+  getTicketStatus,
+  getTicketStatusLabel,
 } from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
@@ -1126,28 +1129,31 @@ const AdminTicketsPage = () => {
           children: 0,
           infants: 0,
         });
-        const ticketCount = Array.isArray(data.tickets) ? data.tickets.length : searchCrewIds.length;
+        const returnedTickets = Array.isArray(data.crewTickets) ? data.crewTickets : Array.isArray(data.tickets) ? data.tickets : [];
+        const ticketCount = returnedTickets.length || searchCrewIds.length;
         const refNote = data.bookingReference ? ` Ref: ${data.bookingReference}` : '';
-        const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked & flight details sent to crew email.${refNote}`;
+        const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked and sent for approval.${refNote}`;
 
         if (searchTripTypeUI === 'multi-city') {
           const n = multiSegments.length;
           const legDone = activeMultiLegIndex + 1;
           if (activeMultiLegIndex < n - 1) {
-            toast.success(`Leg ${legDone} of ${n} booked (separate ticket).`, {
+            toast.success(`Leg ${legDone} of ${n} sent for approval.`, {
               description: `${baseDesc} Search and book leg ${legDone + 1}.`,
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
+            fetchTickets();
             setActiveMultiLegIndex((i) => i + 1);
             setSearchResults(null);
             setSearchTotalCount(0);
             setSearchPage(1);
             setSearchCriteria(null);
           } else {
-            toast.success(`All ${n} flight${n !== 1 ? 's' : ''} booked (separate tickets).`, {
+            toast.success(`All ${n} flight${n !== 1 ? 's' : ''} sent for approval.`, {
               description: baseDesc,
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
+            fetchTickets();
             setSearchResults(null);
             setSearchTotalCount(0);
             setSearchPage(1);
@@ -1156,8 +1162,9 @@ const AdminTicketsPage = () => {
             setMultiSegments(initialMultiSegments());
           }
         } else {
-          toast.success('Ticket booked successfully!', { description: baseDesc });
+          toast.success('Ticket booked and sent for approval.', { description: baseDesc });
           window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
+          fetchTickets();
           setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
           setSearchTotalCount((prev) => Math.max(0, prev - 1));
         }
@@ -1182,6 +1189,7 @@ const AdminTicketsPage = () => {
       searchTripTypeUI,
       activeMultiLegIndex,
       multiSegments.length,
+      fetchTickets,
     ]
   );
 
@@ -1292,6 +1300,16 @@ const AdminTicketsPage = () => {
     };
   }, [filteredTickets]);
 
+  const pendingApprovalCount = useMemo(
+    () => filteredTickets.filter((ticket) => getTicketStatus(ticket) !== 'APPROVED').length,
+    [filteredTickets]
+  );
+
+  const approvedTicketCount = filteredTickets.length - pendingApprovalCount;
+
+  const getTicketStatusBadgeClass = (ticket: CrewTicketApi) =>
+    getTicketStatus(ticket) === 'APPROVED' ? 'subsea-b-green' : 'subsea-b-amber';
+
   const routeCode = (location?: AirportLocation) => {
     const name = location?.Name ?? '';
     const match = name.match(/\[([A-Z0-9]{3})\]/);
@@ -1386,7 +1404,7 @@ const AdminTicketsPage = () => {
             <Search size={13} /> Search Flights
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <AlertTriangle size={13} /> Pending Confirm <span className="subsea-sb-count subsea-sb-count-red">{Math.min(8, filteredTickets.length)}</span>
+            <AlertTriangle size={13} /> Pending Approval <span className="subsea-sb-count subsea-sb-count-red">{pendingApprovalCount}</span>
           </button>
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
@@ -1996,7 +2014,7 @@ const AdminTicketsPage = () => {
             <div className="subsea-page-head">
               <div>
                 <h1>Flight Bookings</h1>
-                <p>{filteredTickets.length} bookings active · {Math.min(8, filteredTickets.length)} pending confirmation · IATA-compliant</p>
+                <p>{filteredTickets.length} bookings active · {pendingApprovalCount} pending approval · IATA-compliant</p>
               </div>
               <div className="subsea-ph-right">
                 <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setActiveTab('search')}>
@@ -2012,13 +2030,13 @@ const AdminTicketsPage = () => {
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Active Bookings</div>
                 <div className="subsea-kpi-value">{filteredTickets.length}</div>
-                <div className="subsea-kpi-meta flat">Next 30 days</div>
+                <div className="subsea-kpi-meta flat">{approvedTicketCount} approved</div>
                 <div className="subsea-kpi-bar"><div className="subsea-kpi-fill blue" style={{ width: '60%' }} /></div>
               </div>
               <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Pending Confirm</div>
-                <div className="subsea-kpi-value">{Math.min(8, filteredTickets.length)}</div>
-                <div className="subsea-kpi-meta down">Action required</div>
+                <div className="subsea-kpi-label">Pending Approval</div>
+                <div className="subsea-kpi-value">{pendingApprovalCount}</div>
+                <div className="subsea-kpi-meta down">Superadmin review</div>
                 <div className="subsea-kpi-bar"><div className="subsea-kpi-fill amber" style={{ width: '26%' }} /></div>
               </div>
               <div className="subsea-kpi">
@@ -2037,8 +2055,8 @@ const AdminTicketsPage = () => {
 
             <div className="subsea-alert subsea-alert-info">
               <Info size={15} />
-              <span><strong>{Math.min(8, filteredTickets.length)} crew change flights</strong> are due for confirmation before Jun 1. Unconfirmed bookings will auto-release seats at T-72h.</span>
-              <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Confirm All</button>
+              <span><strong>{pendingApprovalCount} ticket{pendingApprovalCount !== 1 ? 's' : ''}</strong> awaiting superadmin approval. Download links appear after approval and PDF generation.</span>
+              <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Review Status</button>
             </div>
 
             <div className="subsea-toolbar-row">
@@ -2084,10 +2102,10 @@ const AdminTicketsPage = () => {
                     </div>
                   </div>
                   <div className="subsea-pane-body">
-                    {filteredTickets.slice(0, 6).map((ticket, index) => (
+                    {filteredTickets.slice(0, 6).map((ticket) => (
                       <div
                         key={ticket.id}
-                        className={`subsea-flight-card${index === 2 ? ' pending' : ''}`}
+                        className={`subsea-flight-card${getTicketStatus(ticket) !== 'APPROVED' ? ' pending' : ''}`}
                         onClick={() => setSelectedTicket(ticket)}
                         role="button"
                         tabIndex={0}
@@ -2112,8 +2130,8 @@ const AdminTicketsPage = () => {
                             <div className="subsea-airport-city">{routeCity(ticket.to)}</div>
                           </div>
                           <div className="subsea-flight-status">
-                            <span className={`subsea-badge ${index === 2 ? 'subsea-b-orange' : 'subsea-b-green'}`}>
-                              {index === 2 ? 'Pending' : 'Confirmed'}
+                            <span className={`subsea-badge ${getTicketStatusBadgeClass(ticket)}`}>
+                              {getTicketStatusLabel(ticket)}
                             </span>
                           </div>
                         </div>
@@ -2121,7 +2139,20 @@ const AdminTicketsPage = () => {
                           <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Pax</div><div className="subsea-flight-meta-val">{getCrewName(ticket)}</div></div>
                           <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Project</div><div className="subsea-flight-meta-val">{getProjectTitle(ticket)}</div></div>
                           <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Rig</div><div className="subsea-flight-meta-val">{getRigName(ticket)}</div></div>
+                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Booking ref</div><div className="subsea-flight-meta-val">{ticket.bookingReference || 'Pending'}</div></div>
                           <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Fare</div><div className="subsea-flight-meta-val">{ticket.price != null ? displayMoney(ticket.price) : 'TBC'}</div></div>
+                          <button
+                            type="button"
+                            className="subsea-icon-action"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (canUseTicketPdf(ticket)) window.open(ticket.pdf, '_blank', 'noopener,noreferrer');
+                            }}
+                            disabled={!canUseTicketPdf(ticket)}
+                            title={canUseTicketPdf(ticket) ? 'View approved ticket PDF' : 'PDF available after approval'}
+                          >
+                            <Download size={14} />
+                          </button>
                           <button
                             type="button"
                             className="subsea-icon-action"
@@ -2288,6 +2319,41 @@ const AdminTicketsPage = () => {
               </dl>
             </section>
 
+            <section className="admin-tickets-detail-section">
+              <h3 className="admin-tickets-detail-heading">Approval</h3>
+              <dl className="admin-tickets-detail-list">
+                <div className="admin-tickets-detail-item">
+                  <dt>Status</dt>
+                  <dd><span className={`subsea-badge ${getTicketStatusBadgeClass(selectedTicket)}`}>{getTicketStatusLabel(selectedTicket)}</span></dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Booking reference</dt>
+                  <dd>{selectedTicket.bookingReference || 'Pending approval'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Approved at</dt>
+                  <dd>{selectedTicket.approvedAt ? new Date(selectedTicket.approvedAt).toLocaleString() : '—'}</dd>
+                </div>
+                <div className="admin-tickets-detail-item">
+                  <dt>Ticket PDF</dt>
+                  <dd>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!canUseTicketPdf(selectedTicket)}
+                      onClick={() => {
+                        if (canUseTicketPdf(selectedTicket)) window.open(selectedTicket.pdf, '_blank', 'noopener,noreferrer');
+                      }}
+                    >
+                      <Download size={16} className="mr-2" />
+                      {canUseTicketPdf(selectedTicket) ? 'View / download ticket' : 'Available after approval'}
+                    </Button>
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
             <div className="admin-tickets-detail-cancel-wrap">
               <Button
                 type="button"
@@ -2373,7 +2439,7 @@ const AdminTicketsPage = () => {
         <div className="admin-tickets-modal">
           {submitSuccess ? (
             <div className="admin-tickets-success" role="status">
-              Tickets created successfully for {selectedCrewIds.length} crew member{selectedCrewIds.length !== 1 ? 's' : ''}.
+              Tickets created for {selectedCrewIds.length} crew member{selectedCrewIds.length !== 1 ? 's' : ''}. Approval may be required before PDF is available.
             </div>
           ) : modalStep === 'project' ? (
             <>

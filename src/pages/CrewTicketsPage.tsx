@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plane, FileCheck } from 'lucide-react';
 import { getCrewMe } from '../api/crew';
-import { getCrewTicketsByCrewId, type CrewTicketApi } from '../api/ticket';
+import { canUseTicketPdf, getCrewTicketsByCrewId, getTicketStatus, getTicketStatusLabel, type CrewTicketApi } from '../api/ticket';
 import {
   Dialog,
   DialogContent,
@@ -108,6 +108,8 @@ const CrewTicketsPage = () => {
                 <TableHead>Class</TableHead>
                 <TableHead>Trip</TableHead>
                 <TableHead>Passengers</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Booking Ref</TableHead>
                 <TableHead>PDF</TableHead>
               </TableRow>
             </TableHeader>
@@ -142,13 +144,27 @@ const CrewTicketsPage = () => {
                       .join(' / ') || '—'}
                   </TableCell>
                   <TableCell>
-                    {ticket.pdf ? (
-                      <span className="crew-tickets-pdf-status" title="PDF uploaded by superadmin">
+                    <span className={`crew-tickets-status-badge ${getTicketStatus(ticket) === 'APPROVED' ? 'approved' : 'pending'}`}>
+                      {getTicketStatusLabel(ticket)}
+                    </span>
+                  </TableCell>
+                  <TableCell>{ticket.bookingReference || '—'}</TableCell>
+                  <TableCell>
+                    {canUseTicketPdf(ticket) ? (
+                      <button
+                        type="button"
+                        className="crew-tickets-pdf-action"
+                        title="Open approved ticket PDF"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(ticket.pdf, '_blank', 'noopener,noreferrer');
+                        }}
+                      >
                         <FileCheck size={16} className="mr-1" />
-                        Uploaded
-                      </span>
+                        View
+                      </button>
                     ) : (
-                      <span className="crew-tickets-pdf-missing">—</span>
+                      <span className="crew-tickets-pdf-missing">Pending approval</span>
                     )}
                   </TableCell>
                 </TableRow>
@@ -193,6 +209,35 @@ const CrewTicketsPage = () => {
                 <div className="crew-tickets-detail-item">
                   <dt>Trip</dt>
                   <dd>{selectedTicket.trip?.replace('_', ' ') ?? '—'}</dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>Status</dt>
+                  <dd>
+                    <span className={`crew-tickets-status-badge ${getTicketStatus(selectedTicket) === 'APPROVED' ? 'approved' : 'pending'}`}>
+                      {getTicketStatusLabel(selectedTicket)}
+                    </span>
+                  </dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>Booking reference</dt>
+                  <dd>{selectedTicket.bookingReference || 'Pending approval'}</dd>
+                </div>
+                <div className="crew-tickets-detail-item">
+                  <dt>Ticket PDF</dt>
+                  <dd>
+                    {canUseTicketPdf(selectedTicket) ? (
+                      <button
+                        type="button"
+                        className="crew-tickets-pdf-action"
+                        onClick={() => window.open(selectedTicket.pdf, '_blank', 'noopener,noreferrer')}
+                      >
+                        <FileCheck size={16} className="mr-1" />
+                        View approved ticket
+                      </button>
+                    ) : (
+                      <span className="crew-tickets-pdf-missing">Available after approval</span>
+                    )}
+                  </dd>
                 </div>
                 <div className="crew-tickets-detail-item">
                   <dt>Passengers</dt>

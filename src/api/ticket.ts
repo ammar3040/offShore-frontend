@@ -30,6 +30,8 @@ export interface CrewTicketRigRef {
   [key: string]: unknown;
 }
 
+export type CrewTicketStatus = 'UNAPPROVED' | 'APPROVED';
+
 export interface CrewTicketApi {
   id: string;
   crew_id: CrewTicketCrewRef;
@@ -46,6 +48,14 @@ export interface CrewTicketApi {
   price?: number;
   /** Cashback in GBP */
   cashback?: number;
+  /** Approval flow status. Missing legacy values should be treated as UNAPPROVED. */
+  status?: CrewTicketStatus | string;
+  /** Reference supplied by superadmin during approval. */
+  bookingReference?: string;
+  /** Approval timestamp from backend. */
+  approvedAt?: string;
+  /** Superadmin identifier/email when returned by backend. */
+  approvedBy?: string;
   /** URL to uploaded ticket PDF when present */
   pdf?: string;
   createdAt?: string;
@@ -96,11 +106,25 @@ export function isCrewTicketCreatedInLocalCalendarMonth(t: CrewTicketApi, now = 
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
 
-function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
+export function getTicketStatus(ticket: Pick<CrewTicketApi, 'status'>): CrewTicketStatus {
+  return ticket.status === 'APPROVED' ? 'APPROVED' : 'UNAPPROVED';
+}
+
+export function getTicketStatusLabel(ticket: Pick<CrewTicketApi, 'status'>): string {
+  return getTicketStatus(ticket) === 'APPROVED' ? 'Approved' : 'Pending Approval';
+}
+
+export function canUseTicketPdf(ticket: Pick<CrewTicketApi, 'status' | 'pdf'>): boolean {
+  return getTicketStatus(ticket) === 'APPROVED' && Boolean(ticket.pdf);
+}
+
+export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
   const iso = getCrewTicketCreatedIso(row) ?? createdAtIsoFromMongoObjectId(row.id);
-  if (!iso) return row;
-  if (row.createdAt?.trim() === iso) return row;
-  return { ...row, createdAt: iso };
+  const normalizedStatus = getTicketStatus(row);
+  const base = row.status === normalizedStatus ? row : { ...row, status: normalizedStatus };
+  if (!iso) return base;
+  if (base.createdAt?.trim() === iso) return base;
+  return { ...base, createdAt: iso };
 }
 
 export interface GetCrewTicketsResponse {

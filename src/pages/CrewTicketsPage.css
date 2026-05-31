@@ -131,6 +131,46 @@
   color: hsl(var(--muted-foreground));
 }
 
+.crew-tickets-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.crew-tickets-status-badge.approved {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.crew-tickets-status-badge.pending {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.crew-tickets-pdf-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.crew-tickets-pdf-action:hover {
+  background: hsl(var(--accent));
+}
+
 .crew-tickets-pdf-missing {
   color: hsl(var(--muted-foreground));
 }
