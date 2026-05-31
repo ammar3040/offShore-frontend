@@ -185,7 +185,7 @@ const RigsPage = () => {
             { icon: Radio, label: 'Command Center' },
             { divider: true },
             { icon: Anchor, label: 'Projects', path: '/projects' },
-            { icon: CalendarDays, label: 'Timeline & Calendar' },
+            { icon: CalendarDays, label: 'Timeline & Calendar', path: '/timeline' },
             { divider: true },
             { icon: Bell, label: 'Notifications' },
           ].map((item, index) => {

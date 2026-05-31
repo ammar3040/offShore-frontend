@@ -5,6 +5,7 @@ import {
   Ship,
   FolderKanban,
   Anchor,
+  CalendarDays,
   LogOut,
   X,
   HelpCircle,
@@ -27,6 +28,7 @@ const mainNavItems = [
   { icon: Ship, label: 'Crew', path: '/crew' },
   { icon: FolderKanban, label: 'Projects', path: '/projects' },
   { icon: Anchor, label: 'Rigs', path: '/rig' },
+  { icon: CalendarDays, label: 'Timeline', path: '/timeline' },
   { icon: Ticket, label: 'Tickets', path: '/tickets' },
 ];
 
