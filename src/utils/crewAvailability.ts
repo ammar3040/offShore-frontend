@@ -86,3 +86,9 @@ export function getCrewAvailabilityLabel(kind: CrewAvailability): string {
   if (kind === 'endingSoon') return 'On a project; ends within 7 days';
   return 'On a project';
 }
+
+export function crewAvailabilityDotClass(kind: CrewAvailability): string {
+  if (kind === 'available') return 'user-mgmt-availability-dot user-mgmt-availability-dot--available';
+  if (kind === 'onProject') return 'user-mgmt-availability-dot user-mgmt-availability-dot--on-project';
+  return 'user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon';
+}

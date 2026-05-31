@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
-import { availabilityFromCrewSignal, type CrewAvailability } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
@@ -541,6 +541,21 @@ const CrewListPage = () => {
             </button>
           </div>
 
+          <div className="user-mgmt-availability-legend" role="list" aria-label="Availability legend">
+            <span className="user-mgmt-availability-legend-item" role="listitem">
+              <span className="user-mgmt-availability-dot user-mgmt-availability-dot--available" aria-hidden />
+              <span>Available</span>
+            </span>
+            <span className="user-mgmt-availability-legend-item" role="listitem">
+              <span className="user-mgmt-availability-dot user-mgmt-availability-dot--on-project" aria-hidden />
+              <span>On project</span>
+            </span>
+            <span className="user-mgmt-availability-legend-item" role="listitem">
+              <span className="user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon" aria-hidden />
+              <span>On project, ends in ≤7 days</span>
+            </span>
+          </div>
+
           <div className="subsea-pane">
             <div className="subsea-pane-head">
               <div className="subsea-pane-title">Crew Roster</div>
@@ -582,6 +597,11 @@ const CrewListPage = () => {
                           <tr key={member.id} onClick={() => openCrewDetail(member)}>
                             <td className="strong">
                               <div className="subsea-roster-name">
+                                <span
+                                  className={crewAvailabilityDotClass(kind)}
+                                  title={getCrewAvailabilityLabel(kind)}
+                                  aria-label={getCrewAvailabilityLabel(kind)}
+                                />
                                 <div className={`subsea-c-av subsea-c-av-${index % 6}`}>
                                   {getInitials(member.firstname, member.lastname)}
                                 </div>

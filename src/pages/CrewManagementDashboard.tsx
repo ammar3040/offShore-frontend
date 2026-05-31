@@ -29,7 +29,7 @@ import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewTickets, type CrewTicketApi } from '../api/ticket';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
-import { availabilityFromCrewSignal } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
 import './CrewManagementDashboard.css';
 
 type DashboardState = {
@@ -152,9 +152,11 @@ const CrewManagementDashboard = () => {
     return dashboard.crew.slice(0, 5).map((member) => {
       const project = member.activeProjects?.[0];
       const ticket = dashboard.tickets.find((item) => ticketCrewId(item) === member.id);
-      const type = availabilityFromCrewSignal(member.signal) === 'available' ? 'Ready for Mobilization' : 'Assigned';
+      const kind = availabilityFromCrewSignal(member.signal);
+      const type = kind === 'available' ? 'Ready for Mobilization' : 'Assigned';
       return {
         name: crewName(member),
+        kind,
         rank: member.organization || 'Crew',
         rig: project?.title || 'Unassigned',
         type,
@@ -444,7 +446,16 @@ const CrewManagementDashboard = () => {
                       ) : (
                         crewChanges.map((row) => (
                           <tr key={`${row.name}-${row.date}`} onClick={() => navigate('/crew')}>
-                            <td className="strong">{row.name}</td>
+                            <td className="strong">
+                              <div className="subsea-roster-name">
+                                <span
+                                  className={crewAvailabilityDotClass(row.kind)}
+                                  title={getCrewAvailabilityLabel(row.kind)}
+                                  aria-label={getCrewAvailabilityLabel(row.kind)}
+                                />
+                                <span>{row.name}</span>
+                              </div>
+                            </td>
                             <td>{row.rank}</td>
                             <td>{row.rig}</td>
                             <td><span className={`subsea-badge ${row.type === 'Ready for Mobilization' ? 'subsea-b-green' : 'subsea-b-teal'}`}>{row.type}</span></td>

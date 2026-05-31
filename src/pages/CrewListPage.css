@@ -147,42 +147,6 @@
   gap: 6px;
 }
 
-.user-mgmt-availability-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
-}
-
-@keyframes crew-availability-available-blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-
-.user-mgmt-availability-dot--available {
-  background-color: #22c55e;
-  animation: crew-availability-available-blink 1.2s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .user-mgmt-availability-dot--available {
-    animation: none;
-  }
-}
-
-.user-mgmt-availability-dot--on-project {
-  background-color: #ef4444;
-}
-
-.user-mgmt-availability-dot--ending-soon {
-  background-color: #eab308;
-}
-
 .user-mgmt-select-wrap {
   position: relative;
 }

@@ -25,7 +25,7 @@ import Modal from '../components/Modal';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getCrewAvailableForProject, getCrewEnrolledInProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { getProjectById, type ProjectApi } from '../api/project';
-import { availabilityFromCrewSignal } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
 import './ProjectsPage.css';
 import './RigsPage.css';
 
@@ -476,10 +476,20 @@ const ProjectDetailsPage = () => {
                         </thead>
                         <tbody>
                           {crew.map((member) => {
+                            const kind = availabilityFromCrewSignal(member.signal);
                             const status = crewStatusLabel(member);
                             return (
                               <tr key={member.id} onClick={() => navigate(`/crew/${member.id}`)}>
-                                <td className="strong">{crewName(member)}</td>
+                                <td className="strong">
+                                  <div className="subsea-roster-name">
+                                    <span
+                                      className={crewAvailabilityDotClass(kind)}
+                                      title={getCrewAvailabilityLabel(kind)}
+                                      aria-label={getCrewAvailabilityLabel(kind)}
+                                    />
+                                    <span>{crewName(member)}</span>
+                                  </div>
+                                </td>
                                 <td>{member.email || '—'}</td>
                                 <td>{member.organization || '—'}</td>
                                 <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
