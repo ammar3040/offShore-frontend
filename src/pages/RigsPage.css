@@ -1581,6 +1581,43 @@
   box-shadow: 0 2px 12px rgba(26, 86, 219, 0.08);
 }
 
+.subsea-proj-detail-hero {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+  margin-bottom: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.subsea-proj-detail-hero-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.subsea-proj-detail-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.subsea-proj-detail-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.subsea-proj-detail-sub {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
 .subsea-proj-card-top {
   padding: 14px 14px 10px;
   border-bottom: 1px solid var(--border);
@@ -2536,6 +2573,24 @@
   background-color: #f7f8fa !important;
 }
 
+/* Inline combobox lists (country/city/phone) in Subsea crew forms */
+.subsea-form-light .subsea-combobox-dropdown,
+.subsea-form-light [class*="absolute"][class*="top-full"] {
+  background: #ffffff !important;
+  border-color: #dde1e8 !important;
+  color: #111827 !important;
+}
+
+.subsea-form-light .subsea-combobox-dropdown li,
+.subsea-form-light [class*="absolute"][class*="top-full"] li {
+  color: #111827 !important;
+}
+
+.subsea-form-light .subsea-combobox-dropdown li:hover,
+.subsea-form-light [class*="absolute"][class*="top-full"] li:hover {
+  background: #f7f8fa !important;
+}
+
 /* Portaled dropdown overlays inside Subsea forms */
 .subsea-form-light-overlay,
 .admin-tickets-search-overlay {
@@ -2573,4 +2628,14 @@
 .subsea-form-light-overlay .text-muted-foreground,
 .admin-tickets-search-overlay .text-muted-foreground {
   color: #9ca3af !important;
+}
+
+.subsea-form-light-overlay li,
+.subsea-form-light-overlay [class*="cursor-pointer"] {
+  color: #111827 !important;
+}
+
+.subsea-form-light-overlay li:hover,
+.subsea-form-light-overlay [class*="hover:bg-muted"]:hover {
+  background: #f7f8fa !important;
 }

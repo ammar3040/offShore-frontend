@@ -19,6 +19,7 @@ import {
   Settings,
   ShieldCheck,
   Ship,
+  UserPlus,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -102,8 +103,12 @@ const CrewManagementDashboard = () => {
     };
   }, []);
 
-  const onBoardCount = dashboard.crew.filter((member) => availabilityFromCrewSignal(member.signal) !== 'available').length;
-  const onLeaveCount = Math.max(0, dashboard.crew.length - onBoardCount);
+  const readyForMobilizationCount = dashboard.crew.filter(
+    (member) => availabilityFromCrewSignal(member.signal) === 'available'
+  ).length;
+  const assignedToProjectCount = dashboard.crew.filter(
+    (member) => availabilityFromCrewSignal(member.signal) !== 'available'
+  ).length;
   const activeProjectsCount = dashboard.projects.filter((project) => (project.status || '').toLowerCase() === 'active').length;
   const expiringCrew = useMemo(() => {
     return dashboard.crew
@@ -118,16 +123,16 @@ const CrewManagementDashboard = () => {
 
   const kpis = useMemo(() => {
     const crewTotal = dashboard.crew.length;
-    const onBoardPct = crewTotal ? Math.round((onBoardCount / crewTotal) * 100) : 0;
-    const leavePct = crewTotal ? Math.round((onLeaveCount / crewTotal) * 100) : 0;
+    const mobilizationPct = crewTotal ? Math.round((readyForMobilizationCount / crewTotal) * 100) : 0;
+    const assignedPct = crewTotal ? Math.round((assignedToProjectCount / crewTotal) * 100) : 0;
     return [
       { label: 'Total Crew', value: loading ? '...' : String(crewTotal), meta: `${activeProjectsCount} active projects`, tone: 'up', bar: `${Math.min(100, crewTotal)}%`, color: 'blue', icon: true },
-      { label: 'On Board', value: loading ? '...' : String(onBoardCount), meta: `Across ${dashboard.rigs.length} rigs`, tone: 'flat', bar: `${onBoardPct}%`, color: 'teal' },
-      { label: 'On Leave', value: loading ? '...' : String(onLeaveCount), meta: `${leavePct}% of roster`, tone: 'flat', bar: `${leavePct}%`, color: 'amber' },
+      { label: 'Ready for Mobilization', value: loading ? '...' : String(readyForMobilizationCount), meta: 'Available and mobilized', tone: 'flat', bar: `${mobilizationPct}%`, color: 'green' },
+      { label: 'Mobilized', value: loading ? '...' : String(assignedToProjectCount), meta: `${assignedPct}% of roster`, tone: 'flat', bar: `${assignedPct}%`, color: 'teal' },
       { label: 'Cert Expiring', value: loading ? '...' : String(expiringCrew.length), meta: `${expiringCrew.filter((item) => item.days <= 7).length} critical`, tone: expiringCrew.length ? 'down' : 'flat', bar: `${Math.min(100, expiringCrew.length * 8)}%`, color: 'red' },
       { label: 'Flights Booked', value: loading ? '...' : String(dashboard.tickets.length), meta: 'Crew ticket records', tone: 'up', bar: `${Math.min(100, dashboard.tickets.length * 4)}%`, color: 'teal' },
     ];
-  }, [activeProjectsCount, dashboard.crew.length, dashboard.rigs.length, dashboard.tickets.length, expiringCrew, loading, onBoardCount, onLeaveCount]);
+  }, [activeProjectsCount, assignedToProjectCount, dashboard.crew.length, dashboard.tickets.length, expiringCrew, loading, readyForMobilizationCount]);
 
   const fleetRows = useMemo(() => {
     return dashboard.rigs.slice(0, 5).map((rig, index) => {
@@ -147,7 +152,7 @@ const CrewManagementDashboard = () => {
     return dashboard.crew.slice(0, 5).map((member) => {
       const project = member.activeProjects?.[0];
       const ticket = dashboard.tickets.find((item) => ticketCrewId(item) === member.id);
-      const type = availabilityFromCrewSignal(member.signal) === 'available' ? 'Available' : 'On Board';
+      const type = availabilityFromCrewSignal(member.signal) === 'available' ? 'Ready for Mobilization' : 'Assigned';
       return {
         name: crewName(member),
         rank: member.organization || 'Crew',
@@ -180,9 +185,9 @@ const CrewManagementDashboard = () => {
     }
     rows.push({
       icon: Users,
-      color: 'amber',
-      text: `${onBoardCount} crew currently assigned`,
-      meta: `${onLeaveCount} available / on leave`,
+      color: 'teal',
+      text: `${assignedToProjectCount} crew assigned to projects`,
+      meta: `${readyForMobilizationCount} ready for mobilization`,
     });
     rows.push({
       icon: FileText,
@@ -197,7 +202,7 @@ const CrewManagementDashboard = () => {
       meta: 'Admin crew-ticket API',
     });
     return rows.slice(0, 5);
-  }, [activeProjectsCount, dashboard.projects.length, dashboard.tickets, expiringCrew, onBoardCount, onLeaveCount]);
+  }, [activeProjectsCount, assignedToProjectCount, dashboard.projects.length, dashboard.tickets, expiringCrew, readyForMobilizationCount]);
 
   const certs = expiringCrew.slice(0, 4).map(({ member, expiry, days }) => ({
     days: `${days}d`,
@@ -288,6 +293,12 @@ const CrewManagementDashboard = () => {
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <Users size={13} /> Crew Roster <span className="subsea-sb-count">{loading ? '...' : dashboard.crew.length}</span>
           </button>
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
+            <UserPlus size={13} /> Ready for Mobilization <span className="subsea-sb-count">{loading ? '...' : readyForMobilizationCount}</span>
+          </button>
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
+            <Users size={13} /> Assigned to Project <span className="subsea-sb-count">{loading ? '...' : assignedToProjectCount}</span>
+          </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
             <Plane size={13} /> Flight Bookings <span className="subsea-sb-count">{loading ? '...' : dashboard.tickets.length}</span>
           </button>
@@ -333,6 +344,8 @@ const CrewManagementDashboard = () => {
               <div className="subsea-wb-sub">Here's what's happening across your fleet today from the integrated backend APIs.</div>
               <div className="subsea-wb-chips">
                 <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />{expiringCrew.length} certs need attention</span>
+                <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/crew')}><UserPlus size={12} />{loading ? '...' : readyForMobilizationCount} ready for mobilization</button>
+                <button type="button" className="subsea-wb-chip subsea-wb-chip-blue" onClick={() => navigate('/crew')}><Users size={12} />{loading ? '...' : assignedToProjectCount} assigned to projects</button>
                 <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />{dashboard.rigs.length} rigs loaded</button>
                 <span className="subsea-wb-chip subsea-wb-chip-blue"><Radio size={12} />Open Command Center</span>
               </div>
@@ -434,7 +447,7 @@ const CrewManagementDashboard = () => {
                             <td className="strong">{row.name}</td>
                             <td>{row.rank}</td>
                             <td>{row.rig}</td>
-                            <td><span className={`subsea-badge ${row.type === 'Available' ? 'subsea-b-amber' : 'subsea-b-green'}`}>{row.type}</span></td>
+                            <td><span className={`subsea-badge ${row.type === 'Ready for Mobilization' ? 'subsea-b-green' : 'subsea-b-teal'}`}>{row.type}</span></td>
                             <td className="mono">{row.date}</td>
                             <td><span className={`subsea-badge ${row.flight === 'Pending' ? 'subsea-b-orange' : 'subsea-b-blue'}`}>{row.flight}</span></td>
                           </tr>

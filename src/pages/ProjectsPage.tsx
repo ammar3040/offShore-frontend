@@ -274,6 +274,10 @@ const ProjectsPage = () => {
     }
   };
 
+  const openProjectDetails = useCallback((project: ProjectApi) => {
+    navigate(`/projects/${project.id}`);
+  }, [navigate]);
+
   return (
     <div className="subsea-shell">
       <nav className="subsea-nav" aria-label="Subseacore modules">
@@ -511,7 +515,19 @@ const ProjectsPage = () => {
                   const deadline = project.duration?.endDate ? formatDate(project.duration.endDate) : project.span || 'No deadline';
                   const initials = projectInitials(project);
                   return (
-                    <article key={project.id} className="subsea-proj-card">
+                    <article
+                      key={project.id}
+                      className="subsea-proj-card"
+                      onClick={() => openProjectDetails(project)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openProjectDetails(project);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
                       <div className="subsea-proj-card-top">
                         <div className={`subsea-proj-card-icon ${tone}`}>
                           <ProjectIcon size={16} />
@@ -547,7 +563,10 @@ const ProjectsPage = () => {
                           <button
                             type="button"
                             className="subsea-btn subsea-btn-default subsea-btn-sm"
-                            onClick={() => openInviteModal(project)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openInviteModal(project);
+                            }}
                           >
                             <UserPlus size={12} /> Invite
                           </button>
@@ -558,62 +577,26 @@ const ProjectsPage = () => {
                 })}
               </div>
 
-              <div className="subsea-g-main">
-                <div className="subsea-pane">
-                  <div className="subsea-pane-head">
-                    <div>
-                      <div className="subsea-pane-title">Active Tasks</div>
-                      <div className="subsea-pane-sub">My tasks across all projects</div>
-                    </div>
-                    <div className="subsea-pane-actions">
-                      <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setViewMode('list')}>View All</button>
-                    </div>
-                  </div>
-                  <div className="subsea-pane-body subsea-pane-body-flat">
-                    {[
-                      ['Confirm DP cert renewal for Carlos Mendez', 'STCW Renewal Programme · Completed May 16', 'Done', 'subsea-b-green', true],
-                      ['Book replacement crew for MV Poseidon Rex — Bosun role', 'Red Sea Crew Mobilisation · Due Jun 10', 'Urgent', 'subsea-b-red', false],
-                      ['Initiate June payroll batch in system', 'June 2025 Payroll Run · Due Jun 20', 'Pending', 'subsea-b-amber', false],
-                      ['Coordinate with Sembcorp on dry-dock phase 3 handover', 'MV Coral Star Dry Dock · Due Jul 01', 'Upcoming', 'subsea-b-blue', false],
-                    ].map(([task, meta, badge, badgeClass, done]) => (
-                      <div className="subsea-proj-task-row" key={task as string}>
-                        <div className={`subsea-proj-task-check${done ? ' done' : ''}`} />
-                        <div className="subsea-proj-task-main">
-                          <div className={`subsea-proj-task-text${done ? ' done' : ''}`}>{task}</div>
-                          <div className="subsea-proj-task-meta">{meta}</div>
+              <div className="subsea-pane">
+                <div className="subsea-pane-head"><div className="subsea-pane-title">Upcoming Deadlines</div></div>
+                <div className="subsea-feed">
+                  {paginatedProjects.slice(0, 4).map((project, index) => {
+                    const tone = projectTone(project.status, index);
+                    return (
+                      <button
+                        type="button"
+                        className="subsea-feed-item"
+                        key={`deadline-${project.id}`}
+                        onClick={() => openProjectDetails(project)}
+                      >
+                        <div className={`subsea-feed-icon ${tone}`}><Calendar size={13} /></div>
+                        <div>
+                          <div className="subsea-feed-text"><strong>{project.title}</strong></div>
+                          <div className="subsea-feed-meta">Deadline {project.duration?.endDate ? formatDate(project.duration.endDate) : project.span || 'TBC'}</div>
                         </div>
-                        <span className={`subsea-badge ${badgeClass}`}>{badge}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="subsea-pane subsea-mb-12">
-                    <div className="subsea-pane-head"><div className="subsea-pane-title">Project Health</div></div>
-                    <div className="subsea-pane-body subsea-pane-body-flat">
-                      <div className="subsea-metric-row"><span className="subsea-metric-label"><span className="subsea-badge subsea-b-green subsea-b-dot">On Track</span></span><span className="subsea-metric-val">{activeCount}</span></div>
-                      <div className="subsea-metric-row"><span className="subsea-metric-label"><span className="subsea-badge subsea-b-amber subsea-b-dot">At Risk</span></span><span className="subsea-metric-val">{projects.filter((p) => (p.status || '').toLowerCase() === 'pending').length}</span></div>
-                      <div className="subsea-metric-row"><span className="subsea-metric-label"><span className="subsea-badge subsea-b-red subsea-b-dot">Blocked</span></span><span className="subsea-metric-val">0</span></div>
-                      <div className="subsea-metric-row"><span className="subsea-metric-label"><span className="subsea-badge subsea-b-gray subsea-b-dot">Completed</span></span><span className="subsea-metric-val">{completedCount}</span></div>
-                    </div>
-                  </div>
-                  <div className="subsea-pane">
-                    <div className="subsea-pane-head"><div className="subsea-pane-title">Upcoming Deadlines</div></div>
-                    <div className="subsea-feed">
-                      {paginatedProjects.slice(0, 4).map((project, index) => {
-                        const tone = projectTone(project.status, index);
-                        return (
-                          <div className="subsea-feed-item" key={`deadline-${project.id}`}>
-                            <div className={`subsea-feed-icon ${tone}`}><Calendar size={13} /></div>
-                            <div>
-                              <div className="subsea-feed-text"><strong>{project.title}</strong></div>
-                              <div className="subsea-feed-meta">Deadline {project.duration?.endDate ? formatDate(project.duration.endDate) : project.span || 'TBC'}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -639,7 +622,7 @@ const ProjectsPage = () => {
                       const tone = projectTone(project.status, index);
                       const progress = projectProgress(project, index);
                       return (
-                        <tr key={project.id}>
+                        <tr key={project.id} onClick={() => openProjectDetails(project)}>
                           <td className="s">{project.title}</td>
                           <td>{project.duration?.endDate ? formatDate(project.duration.endDate) : project.span || '—'}</td>
                           <td>
@@ -651,7 +634,7 @@ const ProjectsPage = () => {
                             </div>
                           </td>
                           <td><span className={`subsea-badge ${statusClass(project.status)}`}>{project.status || 'Active'}</span></td>
-                          <td>
+                          <td onClick={(e) => e.stopPropagation()}>
                             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => openInviteModal(project)}>
                               Invite
                             </button>

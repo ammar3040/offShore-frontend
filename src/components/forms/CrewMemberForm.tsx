@@ -127,8 +127,27 @@ const defaultInputClass =
 const subseaInputClass =
   'border border-[#dde1e8] rounded-[5px] px-3 py-2 text-xs text-[#111827] bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(26,86,219,0.12)] focus:border-[#1a56db] disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#f7f8fa]';
 
+const defaultDropdownListClass =
+  'absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30';
+
+const subseaDropdownListClass =
+  'subsea-combobox-dropdown absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-[5px] border border-[#dde1e8] bg-white py-1 shadow-[0_8px_24px_rgba(15,23,42,0.12)] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-[#cbd5e1]';
+
+const defaultDropdownItemClass = 'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted';
+const subseaDropdownItemClass = 'cursor-pointer px-3 py-2 text-xs text-[#111827] hover:bg-[#f7f8fa]';
+
+const defaultDropdownItemSelectedClass = 'bg-muted';
+const subseaDropdownItemSelectedClass = 'bg-[#ebf0ff] text-[#1a56db]';
+
+const defaultDropdownEmptyClass = 'px-3 py-2 text-sm text-muted-foreground';
+const subseaDropdownEmptyClass = 'px-3 py-2 text-xs text-[#9ca3af]';
+
 const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member', theme = 'default' }: CrewMemberFormProps) => {
   const inputClass = theme === 'subsea' ? subseaInputClass : defaultInputClass;
+  const dropdownListClass = theme === 'subsea' ? subseaDropdownListClass : defaultDropdownListClass;
+  const dropdownItemClass = theme === 'subsea' ? subseaDropdownItemClass : defaultDropdownItemClass;
+  const dropdownItemSelectedClass = theme === 'subsea' ? subseaDropdownItemSelectedClass : defaultDropdownItemSelectedClass;
+  const dropdownEmptyClass = theme === 'subsea' ? subseaDropdownEmptyClass : defaultDropdownEmptyClass;
   const [formData, setFormData] = useState<CrewMemberFormData>(() => initialData ?? defaultFormData);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
   const [countryOpen, setCountryOpen] = useState(false);
@@ -527,13 +546,13 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                     })()}
                   </div>
                   {phoneCountryOpen && (
-                    <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                    <ul className={dropdownListClass}>
                       {filteredPhoneCountries.map((c) => (
                         <li
                           key={c.code}
                           className={cn(
-                          'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted',
-                          c.dialCode === phoneDialCode && 'bg-muted'
+                          dropdownItemClass,
+                          c.dialCode === phoneDialCode && dropdownItemSelectedClass
                         )}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
@@ -595,13 +614,13 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                     })()}
                   </div>
                   {altPhoneCountryOpen && (
-                    <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                    <ul className={dropdownListClass}>
                       {filteredAltPhoneCountries.map((c) => (
                         <li
                           key={c.code}
                           className={cn(
-                          'cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted',
-                          c.dialCode === altPhoneDialCode && 'bg-muted'
+                          dropdownItemClass,
+                          c.dialCode === altPhoneDialCode && dropdownItemSelectedClass
                         )}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
@@ -666,14 +685,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   required={!formData.country}
                 />
                 {countryOpen && (
-                  <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                  <ul className={dropdownListClass}>
                     {filteredCountries.length === 0 ? (
-                      <li className="px-3 py-2 text-sm text-muted-foreground">No countries found</li>
+                      <li className={dropdownEmptyClass}>No countries found</li>
                     ) : (
                       filteredCountries.map((c) => (
                         <li
                           key={c.isoCode}
-                          className="cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted"
+                          className={dropdownItemClass}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleCountrySelect(c)}
                         >
@@ -708,14 +727,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   disabled={!selectedCountryCode}
                 />
                 {cityOpen && selectedCountryCode && (
-                  <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
+                  <ul className={dropdownListClass}>
                     {filteredCities.length === 0 ? (
-                      <li className="px-3 py-2 text-sm text-muted-foreground">No cities found</li>
+                      <li className={dropdownEmptyClass}>No cities found</li>
                     ) : (
                       filteredCities.map((c) => (
                         <li
                           key={`${c.countryCode}-${c.stateCode}-${c.name}`}
-                          className="cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted"
+                          className={dropdownItemClass}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleCitySelect(c)}
                         >
@@ -1166,12 +1185,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 >
                   <ul className="py-1">
                     {filteredVisaCountries.length === 0 ? (
-                      <li className="px-3 py-2 text-sm text-muted-foreground">No countries found</li>
+                      <li className={dropdownEmptyClass}>No countries found</li>
                     ) : (
                       filteredVisaCountries.map((c) => (
                         <li
                           key={c.isoCode}
-                          className="cursor-pointer px-3 py-2 text-sm text-foreground hover:bg-muted"
+                          className={dropdownItemClass}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleVisaCountrySelect(c)}
                         >

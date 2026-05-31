@@ -77,6 +77,54 @@ export async function getProjects(): Promise<GetProjectsResponse> {
   return response.json();
 }
 
+function normalizeProject(raw: unknown): ProjectApi {
+  const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const duration = (p.duration && typeof p.duration === 'object' ? p.duration : {}) as Record<string, unknown>;
+  const participants = Array.isArray(p.participants) ? p.participants : [];
+  return {
+    id: String(p.id ?? p._id ?? ''),
+    title: String(p.title ?? ''),
+    description: String(p.description ?? ''),
+    duration: {
+      startDate: String(duration.startDate ?? duration.start_date ?? ''),
+      endDate: String(duration.endDate ?? duration.end_date ?? ''),
+    },
+    span: String(p.span ?? ''),
+    status: String(p.status ?? ''),
+    createdBy: String(p.createdBy ?? p.created_by ?? ''),
+    participants: participants.map(String),
+    createdAt: p.createdAt != null ? String(p.createdAt) : p.created_at != null ? String(p.created_at) : undefined,
+  };
+}
+
+export async function getProjectById(projectId: string): Promise<ProjectApi> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/project/${encodeURIComponent(projectId)}`, {
+      method: 'GET',
+      headers: getHeaders(),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      const raw = data?.project ?? data;
+      const project = normalizeProject(raw);
+      if (project.id) return project;
+    }
+  } catch {
+    clearTimeout(timeoutId);
+  }
+
+  const { projects } = await getProjects();
+  const project = projects.find((p) => p.id === projectId);
+  if (!project) throw new Error('Project not found');
+  return project;
+}
+
 export async function createProject(payload: CreateProjectPayload): Promise<ProjectApi> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
