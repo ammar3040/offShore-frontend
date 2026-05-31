@@ -67,7 +67,8 @@
 }
 
 .superadmin-ticket-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px minmax(260px, 1fr) auto;
   align-items: center;
   gap: 16px;
   padding: 16px;
@@ -98,7 +99,6 @@
 }
 
 .superadmin-ticket-main {
-  flex: 1;
   min-width: 0;
 }
 
@@ -107,7 +107,8 @@
   font-weight: 600;
   color: hsl(var(--foreground));
   margin-bottom: 4px;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 .superadmin-ticket-meta {
@@ -115,6 +116,7 @@
   color: hsl(var(--muted-foreground));
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .superadmin-ticket-sep {
@@ -124,15 +126,23 @@
 
 .superadmin-ticket-badges {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .superadmin-ticket-actions {
+  grid-column: 2 / -1;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
-  flex-shrink: 0;
+  min-width: 0;
+}
+
+.superadmin-ticket-actions button {
+  white-space: nowrap;
 }
 
 .superadmin-ticket-class,
@@ -360,7 +370,7 @@
   }
 
   .superadmin-ticket-card {
-    flex-wrap: wrap;
+    grid-template-columns: 36px minmax(0, 1fr);
     gap: 12px;
     padding: 14px;
   }
@@ -375,11 +385,13 @@
   }
 
   .superadmin-ticket-badges {
+    grid-column: 2;
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 
   .superadmin-ticket-actions {
-    flex-wrap: wrap;
+    grid-column: 1 / -1;
     width: 100%;
   }
 
