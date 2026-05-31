@@ -3036,7 +3036,7 @@
 
 .subsea-shell .admin-tickets-results-summary,
 .subsea-shell .admin-tickets-results-count-note {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -3060,6 +3060,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
+  color: var(--text-primary);
   box-shadow: none;
 }
 
@@ -3093,13 +3094,24 @@
 .subsea-shell .atfc-stops,
 .subsea-shell .atfc-fare-label,
 .subsea-shell .atfc-seg-meta {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 .subsea-shell .atfc-airline-code,
 .subsea-shell .atfc-fare-tab {
   background: var(--surface2);
   border-color: var(--border);
+}
+
+.subsea-shell .atfc-fare-tab-name,
+.subsea-shell .atfc-fare-tab-price {
+  color: var(--text-primary);
+}
+
+.subsea-shell .atfc-fare-tab-seats,
+.subsea-shell .atfc-toggle-icon,
+.subsea-shell .atfc-fare-empty {
+  color: var(--text-secondary);
 }
 
 .subsea-shell .atfc-route-plane {
