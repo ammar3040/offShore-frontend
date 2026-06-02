@@ -1783,8 +1783,11 @@ const AdminTicketsPage = () => {
                           datePlaceholder="Select date"
                           showTime={searchTripTypeUI === 'one-way'}
                           idPrefix="search-departure"
-                          onClear={searchTripTypeUI === 'one-way' ? () => { setDepartureTime(''); } : undefined}
-                          hasValue={!!departureTime}
+                          onClear={searchTripTypeUI === 'one-way' ? () => {
+                            setDepartureDate('');
+                            setDepartureTime('');
+                          } : undefined}
+                          hasValue={!!departureDate?.trim() || !!departureTime?.trim()}
                           disablePastDates
                           popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                         />
