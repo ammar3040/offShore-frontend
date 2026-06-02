@@ -213,6 +213,14 @@ function fmtDate(iso: string): string {
   }
 }
 
+/** True when the API sent a full datetime (not bare HH:mm). */
+function hasParseableDate(value: string): boolean {
+  if (!value?.trim()) return false;
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value.trim())) return false;
+  const d = new Date(value);
+  return !Number.isNaN(d.getTime());
+}
+
 const SEARCH_DEBOUNCE_MS = 300;
 
 const SEARCH_DROPDOWN_CONTENT_CLASS =
@@ -440,6 +448,7 @@ function FlightResultCard({
   const airlineName = (flight as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
   const airlineCode = (flight as { airlineCode?: string }).airlineCode ?? '';
   const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
+  const segments = flight.legs?.flatMap((leg) => leg.itinerary ?? []) ?? [];
 
   return (
     <div className={'atfc-card' + (hasMarineFare ? ' atfc-card--marine' : '')}>
@@ -539,36 +548,56 @@ function FlightResultCard({
 
       {expanded && (
         <div className="atfc-segments">
-          {flight.legs?.flatMap((leg) => leg.itinerary ?? []).map((seg, i) => (
-            <div key={i} className="atfc-seg">
-              <div className="atfc-seg-header">
-                <span className="atfc-seg-airline">{seg.airlineName} {seg.airlineCode} {seg.flightNumber}</span>
-                <span className="atfc-seg-cabin">{seg.cabin}</span>
-              </div>
-              <div className="atfc-seg-route">
-                <div className="atfc-seg-point">
-                  <span className="atfc-seg-time">{seg.departureTime ? fmtTime(seg.departureTime) : '—'}</span>
-                  <span className="atfc-seg-airport">{seg.fromAirport ?? seg.from}</span>
-                  {seg.fromTerminal && <span className="atfc-seg-terminal">Terminal {seg.fromTerminal}</span>}
+          {segments.map((seg, i) => {
+            const nextSeg = segments[i + 1];
+            const layoverArrival = seg.arrivalTime;
+            const layoverDeparture = nextSeg?.departureTime;
+
+            return (
+              <div key={i} className="atfc-seg">
+                <div className="atfc-seg-header">
+                  <span className="atfc-seg-airline">{seg.airlineName} {seg.airlineCode} {seg.flightNumber}</span>
+                  <span className="atfc-seg-cabin">{seg.cabin}</span>
                 </div>
-                <div className="atfc-seg-arrow">→</div>
-                <div className="atfc-seg-point">
-                  <span className="atfc-seg-time">{seg.arrivalTime ? fmtTime(seg.arrivalTime) : '—'}</span>
-                  <span className="atfc-seg-airport">{seg.toAirport ?? seg.to}</span>
-                  {seg.toTerminal && <span className="atfc-seg-terminal">Terminal {seg.toTerminal}</span>}
+                <div className="atfc-seg-route">
+                  <div className="atfc-seg-point">
+                    <span className="atfc-seg-time">{seg.departureTime ? fmtTime(seg.departureTime) : '—'}</span>
+                    {hasParseableDate(seg.departureTime) && (
+                      <span className="atfc-seg-date">{fmtDate(seg.departureTime)}</span>
+                    )}
+                    <span className="atfc-seg-airport">{seg.fromAirport ?? seg.from}</span>
+                    {seg.fromTerminal && <span className="atfc-seg-terminal">Terminal {seg.fromTerminal}</span>}
+                  </div>
+                  <div className="atfc-seg-arrow">→</div>
+                  <div className="atfc-seg-point">
+                    <span className="atfc-seg-time">{seg.arrivalTime ? fmtTime(seg.arrivalTime) : '—'}</span>
+                    {hasParseableDate(seg.arrivalTime) && (
+                      <span className="atfc-seg-date">{fmtDate(seg.arrivalTime)}</span>
+                    )}
+                    <span className="atfc-seg-airport">{seg.toAirport ?? seg.to}</span>
+                    {seg.toTerminal && <span className="atfc-seg-terminal">Terminal {seg.toTerminal}</span>}
+                  </div>
                 </div>
-              </div>
-              <div className="atfc-seg-meta">
-                <span>Baggage: {seg.baggage}</span>
-                <span>Cabin bag: {seg.cabinBaggage}</span>
-              </div>
-              {seg.layover && (
-                <div className="atfc-seg-layover">
-                  <span>Layover at {seg.layover.location}: {seg.layover.duration}</span>
+                <div className="atfc-seg-meta">
+                  <span>Baggage: {seg.baggage}</span>
+                  <span>Cabin bag: {seg.cabinBaggage}</span>
                 </div>
-              )}
-            </div>
-          ))}
+                {seg.layover && (
+                  <div className="atfc-seg-layover">
+                    <span>
+                      Layover at {seg.layover.location}: {seg.layover.duration}
+                      {hasParseableDate(layoverArrival) && (
+                        <> · Arrive {fmtDate(layoverArrival)} {fmtTime(layoverArrival)}</>
+                      )}
+                      {layoverDeparture && hasParseableDate(layoverDeparture) && (
+                        <> · Next departs {fmtDate(layoverDeparture)} {fmtTime(layoverDeparture)}</>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -1918,6 +1918,10 @@
   font-weight: 700;
   color: #0f172a;
 }
+.atfc-seg-date {
+  font-size: 0.75rem;
+  color: #64748b;
+}
 .atfc-seg-airport {
   font-size: 0.75rem;
   color: #374151;
@@ -2587,6 +2591,10 @@
   color: hsl(var(--foreground));
 }
 
+.layout--dark .atfc-seg-date {
+  color: hsl(var(--muted-foreground));
+}
+
 .layout--dark .atfc-seg-airport {
   color: hsl(var(--foreground));
 }
@@ -3085,6 +3093,10 @@
 .subsea-shell .atfc-fare-total,
 .subsea-shell .atfc-seg-time {
   color: var(--text-primary);
+}
+
+.subsea-shell .atfc-seg-date {
+  color: var(--text-secondary);
 }
 
 .subsea-shell .atfc-airline-code,
