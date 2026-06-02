@@ -175,13 +175,12 @@ function toYYYYMMDD(d: Date): string {
 function initialMultiSegments(): MultiFlightSegment[] {
   const a0 = AIRPORTS[0] ?? null;
   const a1 = AIRPORTS[1] ?? null;
-  const dep = toYYYYMMDD(new Date());
   return [
     {
       id: newSegmentId(),
       from: a0,
       to: a1,
-      departureDate: dep,
+      departureDate: '',
       departureTime: '',
       arrivalDate: '',
       arrivalTime: '',
@@ -190,7 +189,7 @@ function initialMultiSegments(): MultiFlightSegment[] {
       id: newSegmentId(),
       from: a1,
       to: a0,
-      departureDate: dep,
+      departureDate: '',
       departureTime: '',
       arrivalDate: '',
       arrivalTime: '',
@@ -624,7 +623,7 @@ const AdminTicketsPage = () => {
   const [preferNonStopPerLeg, setPreferNonStopPerLeg] = useState(false);
   const [searchFrom, setSearchFrom] = useState<Airport | null>(() => AIRPORTS[0] ?? null);
   const [searchTo, setSearchTo] = useState<Airport | null>(() => AIRPORTS[1] ?? null);
-  const [departureDate, setDepartureDate] = useState(() => toYYYYMMDD(new Date()));
+  const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
