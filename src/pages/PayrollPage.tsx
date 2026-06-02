@@ -17,6 +17,7 @@ import {
   Search,
   Settings,
   Ship,
+  Trash2,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -31,6 +32,7 @@ import {
 import {
   getPayrollRecords,
   upsertPayrollRecord,
+  deletePayrollRecord,
   payRateTypeLabel,
   type PayRateType,
   type PayrollRecord,
@@ -78,8 +80,8 @@ function crewFullName(crew: CrewMemberApi): string {
 }
 
 const PAY_RATE_OPTIONS: Array<{ value: PayRateType; label: string }> = [
-  { value: 'PER_HOUR', label: 'Per Hour' },
-  { value: 'PER_PROJECT', label: 'Per Project' },
+  { value: 'per_hour', label: 'Per Hour' },
+  { value: 'per_project', label: 'Per Project' },
 ];
 
 const PayrollPage = () => {
@@ -95,9 +97,10 @@ const PayrollPage = () => {
   const [editingRow, setEditingRow] = useState<PayrollRow | null>(null);
   const [formCrewId, setFormCrewId] = useState('');
   const [formProjectId, setFormProjectId] = useState('');
-  const [formPayRateType, setFormPayRateType] = useState<PayRateType>('PER_HOUR');
+  const [formPayRateType, setFormPayRateType] = useState<PayRateType>('per_hour');
   const [formPayAmount, setFormPayAmount] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
+  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const pageSize = 8;
@@ -109,7 +112,7 @@ const PayrollPage = () => {
       const [crewRes, payrollRes] = await Promise.all([getCrewList(), getPayrollRecords()]);
       const crewList = crewRes.crew ?? [];
       const payByKey = new Map<string, PayrollRecord>();
-      for (const record of payrollRes.records) {
+      for (const record of payrollRes.payrolls) {
         payByKey.set(`${record.crewId}:${record.projectId}`, record);
       }
 
@@ -211,7 +214,7 @@ const PayrollPage = () => {
     setEditingRow(null);
     setFormCrewId(uniqueCrewOptions[0]?.id ?? '');
     setFormProjectId('');
-    setFormPayRateType('PER_HOUR');
+    setFormPayRateType('per_hour');
     setFormPayAmount('');
     setSaveError(null);
     setPayModalOpen(true);
@@ -221,7 +224,7 @@ const PayrollPage = () => {
     setEditingRow(row);
     setFormCrewId(row.crewId);
     setFormProjectId(row.projectId);
-    setFormPayRateType(row.payRecord?.payRateType ?? 'PER_HOUR');
+    setFormPayRateType(row.payRecord?.rateType ?? 'per_hour');
     setFormPayAmount(row.payRecord != null ? String(row.payRecord.payAmount) : '');
     setSaveError(null);
     setPayModalOpen(true);
@@ -264,7 +267,7 @@ const PayrollPage = () => {
       await upsertPayrollRecord({
         crewId: formCrewId,
         projectId: formProjectId,
-        payRateType: formPayRateType,
+        rateType: formPayRateType,
         payAmount: amount,
       });
       await loadPayrollData();
@@ -273,6 +276,23 @@ const PayrollPage = () => {
       setSaveError(err instanceof Error ? err.message : 'Failed to save pay');
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleDeletePay = async (row: PayrollRow) => {
+    const payrollId = row.payRecord?.id;
+    if (!payrollId) return;
+    if (!window.confirm(`Remove pay configuration for ${row.crewName} on ${row.projectTitle}?`)) return;
+
+    setDeleteLoadingId(payrollId);
+    setError(null);
+    try {
+      await deletePayrollRecord(payrollId);
+      await loadPayrollData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete pay record');
+    } finally {
+      setDeleteLoadingId(null);
     }
   };
 
@@ -294,7 +314,7 @@ const PayrollPage = () => {
             { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll', path: '/payroll', active: true },
-            { icon: FileText, label: 'Contracts' },
+            { icon: FileText, label: 'Contracts', path: '/contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
@@ -500,9 +520,9 @@ const PayrollPage = () => {
                         <td>
                           {row.payRecord ? (
                             <span
-                              className={`payroll-rate-badge${row.payRecord.payRateType === 'PER_PROJECT' ? ' per-project' : ''}`}
+                              className={`payroll-rate-badge${row.payRecord.rateType === 'per_project' ? ' per-project' : ''}`}
                             >
-                              {payRateTypeLabel(row.payRecord.payRateType)}
+                              {payRateTypeLabel(row.payRecord.rateType)}
                             </span>
                           ) : (
                             <span className="payroll-empty-pay">Not set</span>
@@ -524,6 +544,17 @@ const PayrollPage = () => {
                             >
                               <Pencil size={12} /> {row.payRecord ? 'Update' : 'Add Pay'}
                             </button>
+                            {row.payRecord && (
+                              <button
+                                type="button"
+                                className="subsea-btn subsea-btn-default subsea-btn-sm"
+                                disabled={deleteLoadingId === row.payRecord.id}
+                                onClick={() => handleDeletePay(row)}
+                                aria-label={`Delete pay for ${row.crewName}`}
+                              >
+                                <Trash2 size={12} /> {deleteLoadingId === row.payRecord.id ? '…' : 'Delete'}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -626,7 +657,7 @@ const PayrollPage = () => {
 
           <div className="payroll-form-field">
             <label htmlFor="payroll-amount">
-              Pay Amount ({formPayRateType === 'PER_HOUR' ? 'per hour' : 'per project'})
+              Pay Amount ({formPayRateType === 'per_hour' ? 'per hour' : 'per project'})
             </label>
             <input
               id="payroll-amount"

@@ -151,7 +151,7 @@ const CrewDetailsPage = () => {
             { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts' },
+            { icon: FileText, label: 'Contracts', path: '/contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },

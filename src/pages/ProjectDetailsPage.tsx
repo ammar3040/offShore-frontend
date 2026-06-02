@@ -24,6 +24,7 @@ import {
 import Modal from '../components/Modal';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getCrewAvailableForProject, getCrewEnrolledInProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
+import { recordContractInvites } from '../lib/contractsStore';
 import { getProjectById, type ProjectApi } from '../api/project';
 import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
 import './ProjectsPage.css';
@@ -176,6 +177,7 @@ const ProjectDetailsPage = () => {
     setInviteError(null);
     try {
       await inviteCrewToProject(project.id, selectedCrewIds);
+      recordContractInvites(selectedCrewIds, project.id, project.title);
       setInviteSuccess(true);
       loadCrew(project.id);
       setTimeout(closeInviteModal, 1200);
@@ -209,7 +211,7 @@ const ProjectDetailsPage = () => {
             { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts' },
+            { icon: FileText, label: 'Contracts', path: '/contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },

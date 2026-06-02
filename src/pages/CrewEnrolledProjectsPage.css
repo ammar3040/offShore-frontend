@@ -150,8 +150,68 @@
   color: #6b7280;
 }
 
+.crew-enrolled-contract-box {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.crew-enrolled-contract-box:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  box-shadow: 0 2px 8px rgba(3, 105, 161, 0.12);
+}
+
+.crew-enrolled-contract-box:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}
+
+.crew-enrolled-contract-box-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #0369a1;
+  margin-bottom: 8px;
+}
+
+.crew-enrolled-contract-open-hint {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #0284c7;
+}
+
+.crew-enrolled-contract-message {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.crew-enrolled-contract-message--preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
 .crew-enrolled-invitation-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   margin-top: 18px;
   padding-top: 18px;
@@ -175,6 +235,71 @@
 .crew-enrolled-btn--accept {
   background: #059669;
   color: #fff;
+}
+
+.crew-enrolled-btn--accept:disabled {
+  background: #9ca3af;
+  color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.crew-enrolled-terms-hint {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.crew-contract-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.crew-contract-modal-scroll {
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.crew-contract-modal-body {
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #1e293b;
+}
+
+.crew-contract-modal-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #334155;
+  cursor: pointer;
+}
+
+.crew-contract-modal-terms input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: #059669;
+}
+
+.crew-contract-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
 }
 
 .crew-enrolled-btn--reject {
@@ -228,6 +353,29 @@
 .crew-panel-layout--dark .crew-enrolled-card-header h3 { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-enrolled-card-desc,
 .crew-panel-layout--dark .crew-enrolled-card-meta { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-enrolled-contract-box {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+.crew-panel-layout--dark .crew-enrolled-contract-box:hover {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--primary));
+  box-shadow: none;
+}
+.crew-panel-layout--dark .crew-enrolled-contract-box-head { color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-enrolled-contract-open-hint { color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-enrolled-contract-message { color: hsl(var(--foreground)); }
+.crew-panel-layout--dark .crew-enrolled-terms-hint { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-enrolled-btn--accept:disabled {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.crew-panel-layout--dark .crew-contract-modal-scroll {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+.crew-panel-layout--dark .crew-contract-modal-body { color: hsl(var(--foreground)); }
+.crew-panel-layout--dark .crew-contract-modal-terms { color: hsl(var(--foreground)); }
 .crew-panel-layout--dark .crew-enrolled-invitation-actions { border-top-color: hsl(var(--border)); }
 .crew-panel-layout--dark .crew-enrolled-btn--reject {
   background: hsl(var(--accent));

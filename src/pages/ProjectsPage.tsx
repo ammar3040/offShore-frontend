@@ -35,6 +35,7 @@ import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewAvailableForProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
+import { recordContractInvites } from '../lib/contractsStore';
 import './ProjectsPage.css';
 import './RigsPage.css';
 
@@ -265,6 +266,7 @@ const ProjectsPage = () => {
     setInviteError(null);
     try {
       await inviteCrewToProject(inviteProject.id, selectedCrewIds);
+      recordContractInvites(selectedCrewIds, inviteProject.id, inviteProject.title);
       setInviteSuccess(true);
       setTimeout(closeInviteModal, 1200);
     } catch (err) {
@@ -296,7 +298,7 @@ const ProjectsPage = () => {
             { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
             { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts' },
+            { icon: FileText, label: 'Contracts', path: '/contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
             { icon: Radio, label: 'Command Center' },
