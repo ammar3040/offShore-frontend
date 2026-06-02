@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import type { RigApi } from './rig';
 
 export interface ProjectDuration {
   startDate: string;
@@ -14,6 +15,7 @@ export interface ProjectApi {
   status: string;
   createdBy: string;
   participants: string[];
+  rig_id?: string | RigApi | null;
   createdAt?: string;
 }
 
@@ -81,6 +83,7 @@ function normalizeProject(raw: unknown): ProjectApi {
   const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const duration = (p.duration && typeof p.duration === 'object' ? p.duration : {}) as Record<string, unknown>;
   const participants = Array.isArray(p.participants) ? p.participants : [];
+  const rig = normalizeProjectRig(p.rig_id ?? p.rigId ?? p.rig);
   return {
     id: String(p.id ?? p._id ?? ''),
     title: String(p.title ?? ''),
@@ -93,7 +96,25 @@ function normalizeProject(raw: unknown): ProjectApi {
     status: String(p.status ?? ''),
     createdBy: String(p.createdBy ?? p.created_by ?? ''),
     participants: participants.map(String),
+    ...(rig !== undefined ? { rig_id: rig } : {}),
     createdAt: p.createdAt != null ? String(p.createdAt) : p.created_at != null ? String(p.created_at) : undefined,
+  };
+}
+
+function normalizeProjectRig(raw: unknown): ProjectApi['rig_id'] | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === 'string') return raw;
+  if (typeof raw !== 'object') return undefined;
+
+  const rig = raw as Record<string, unknown>;
+  return {
+    id: String(rig.id ?? rig._id ?? ''),
+    name: String(rig.name ?? ''),
+    address: String(rig.address ?? ''),
+    description: rig.description != null ? String(rig.description) : undefined,
+    createdBy: rig.createdBy != null ? String(rig.createdBy) : undefined,
+    createdAt: rig.createdAt != null ? String(rig.createdAt) : undefined,
+    updatedAt: rig.updatedAt != null ? String(rig.updatedAt) : undefined,
   };
 }
 

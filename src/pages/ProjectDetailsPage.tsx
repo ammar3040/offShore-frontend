@@ -26,6 +26,7 @@ import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getCrewAvailableForProject, getCrewEnrolledInProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { recordContractInvites } from '../lib/contractsStore';
 import { getProjectById, type ProjectApi } from '../api/project';
+import { getRigs, type RigApi } from '../api/rig';
 import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
 import './ProjectsPage.css';
 import './RigsPage.css';
@@ -78,10 +79,31 @@ function crewStatusLabel(member: CrewMemberApi): { label: string; className: str
   return { label: 'On Board', className: 'subsea-b-blue' };
 }
 
+function getProjectRigDetails(project: ProjectApi, rigs: RigApi[]): Partial<RigApi> | null {
+  const rig = project.rig_id;
+  if (!rig) return null;
+
+  if (typeof rig === 'string') {
+    return rigs.find((item) => item.id === rig) ?? { id: rig };
+  }
+
+  const matchedRig = rig.id ? rigs.find((item) => item.id === rig.id) : undefined;
+  return {
+    id: rig.id || matchedRig?.id,
+    name: rig.name || matchedRig?.name,
+    address: rig.address || matchedRig?.address,
+    description: rig.description || matchedRig?.description,
+    createdBy: rig.createdBy || matchedRig?.createdBy,
+    createdAt: rig.createdAt || matchedRig?.createdAt,
+    updatedAt: rig.updatedAt || matchedRig?.updatedAt,
+  };
+}
+
 const ProjectDetailsPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectApi | null>(null);
+  const [rigs, setRigs] = useState<RigApi[]>([]);
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
   const [loading, setLoading] = useState(() => Boolean(projectId));
   const [crewLoading, setCrewLoading] = useState(false);
@@ -111,10 +133,11 @@ const ProjectDetailsPage = () => {
     setLoading(true);
     setError(null);
 
-    getProjectById(projectId)
-      .then((res) => {
+    Promise.all([getProjectById(projectId), getRigs().catch(() => ({ rigs: [] as RigApi[] }))])
+      .then(([res, rigsRes]) => {
         if (cancelled) return;
         setProject(res);
+        setRigs(rigsRes.rigs ?? []);
         loadCrew(res.id);
       })
       .catch((err) => {
@@ -133,6 +156,7 @@ const ProjectDetailsPage = () => {
   const tone = project ? projectTone(project.status) : 'teal';
   const ProjectIcon = Wrench;
   const pageError = !projectId ? 'Missing project id' : error;
+  const rigDetails = useMemo(() => (project ? getProjectRigDetails(project, rigs) : null), [project, rigs]);
 
   const kpis = useMemo(() => {
     if (!project) return [];
@@ -427,6 +451,21 @@ const ProjectDetailsPage = () => {
                             <div className="subsea-feed-meta">{formatDate(project.duration?.endDate)}</div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                    <div className="subsea-pane subsea-mb-12">
+                      <div className="subsea-pane-head"><div className="subsea-pane-title">Rig Details</div></div>
+                      <div className="subsea-detail-grid">
+                        {rigDetails ? (
+                          <>
+                            <div className="subsea-detail-row"><div className="subsea-detail-label">Name</div><div className="subsea-detail-val">{rigDetails.name || '—'}</div></div>
+                            <div className="subsea-detail-row"><div className="subsea-detail-label">Address</div><div className="subsea-detail-val">{rigDetails.address || '—'}</div></div>
+                            <div className="subsea-detail-row"><div className="subsea-detail-label">Description</div><div className="subsea-detail-val">{rigDetails.description || '—'}</div></div>
+                            <div className="subsea-detail-row"><div className="subsea-detail-label">Rig ID</div><div className="subsea-detail-val">{rigDetails.id || '—'}</div></div>
+                          </>
+                        ) : (
+                          <div className="subsea-detail-row"><div className="subsea-detail-label">Assigned Rig</div><div className="subsea-detail-val">No rig assigned</div></div>
+                        )}
                       </div>
                     </div>
                     <div className="subsea-pane">
