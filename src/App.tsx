@@ -32,6 +32,7 @@ const SuperadminTicketsPage = lazy(() => import('./pages/SuperadminTicketsPage')
 const SuperadminAdminInvoicePage = lazy(() => import('./pages/SuperadminAdminInvoicePage'));
 const PayrollPage = lazy(() => import('./pages/PayrollPage'));
 const ContractsPage = lazy(() => import('./pages/ContractsPage'));
+const AdminBillsPage = lazy(() => import('./pages/AdminBillsPage'));
 
 function App() {
   return (
@@ -106,6 +107,7 @@ function App() {
                     <Route path="/tickets" element={<AdminTicketsPage />} />
                     <Route path="/payroll" element={<PayrollPage />} />
                     <Route path="/contracts" element={<ContractsPage />} />
+                    <Route path="/bills" element={<AdminBillsPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Layout>

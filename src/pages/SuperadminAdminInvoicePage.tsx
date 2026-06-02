@@ -185,6 +185,7 @@ const SuperadminAdminInvoicePage = () => {
     const generatedPdf = generatedPdfs[projectId];
     const existingPdf = invoiceRecords[projectId]?.pdf;
     const margin = parseFloat(margins[projectId]?.trim() ?? '');
+    const marginValue = Number.isFinite(margin) ? margin : undefined;
 
     if (!generatedPdf && !existingPdf) {
       toast.error('PDF required', {
@@ -195,16 +196,17 @@ const SuperadminAdminInvoicePage = () => {
 
     setSendingProjectId(projectId);
     try {
-      if (generatedPdf && !existingPdf) {
-        await uploadSuperadminAdminInvoicePdf(
-          projectId,
-          generatedPdf,
-          Number.isFinite(margin) ? margin : undefined
-        );
+      // Always upload the freshly generated PDF so the sent invoice reflects the
+      // latest margin/total (a stored PDF may be stale after a margin change).
+      if (generatedPdf) {
+        const uploadRes = await uploadSuperadminAdminInvoicePdf(projectId, generatedPdf, marginValue);
+        if (uploadRes.adminInvoice) {
+          setInvoiceRecords((prev) => ({ ...prev, [projectId]: uploadRes.adminInvoice! }));
+        }
       }
 
       const res = await sendSuperadminAdminInvoice(projectId, {
-        margin: Number.isFinite(margin) ? margin : undefined,
+        margin: marginValue,
         invoiceNumber: bill.invoiceNumber,
       });
 

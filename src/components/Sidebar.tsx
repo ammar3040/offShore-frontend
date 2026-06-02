@@ -11,6 +11,7 @@ import {
   HelpCircle,
   Ticket,
   FileText,
+  Receipt,
   Sun,
   Moon,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ const mainNavItems = [
   { icon: CalendarDays, label: 'Timeline', path: '/timeline' },
   { icon: Ticket, label: 'Tickets', path: '/tickets' },
   { icon: FileText, label: 'Contracts', path: '/contracts' },
+  { icon: Receipt, label: 'Bills', path: '/bills' },
 ];
 
 const Sidebar = ({ isOpen = true, onClose, theme = 'light', onToggleTheme }: SidebarProps) => {

@@ -5,9 +5,23 @@ import { defineConfig, loadEnv } from 'vite'
 
 // https://vite.dev/config/
 const DEFAULT_API_TARGET = 'https://marine-flight-backend.vercel.app'
+const BACKEND_ROUTE_PREFIXES = [
+  '/admin',
+  '/airports',
+  '/auth',
+  '/crew',
+  '/crew-availability',
+  '/crew-invite',
+  '/crew-ticket',
+  '/payroll',
+  '/project',
+  '/rig',
+  '/superadmin',
+  '/timesheet',
+]
 
 function resolveProxyTarget(env: Record<string, string>): string {
-  const explicit = env.VITE_API_PROXY_TARGET?.trim()
+  const explicit = env.VITE_API_BASE_URL?.trim()
   if (explicit) return explicit.replace(/\/+$/, '')
 
   // VITE_API_BASE_URL is the client path in dev (/api), not the upstream host — never use it as proxy target.
@@ -34,14 +48,16 @@ export default defineConfig(({ mode }) => {
       include: ['html2pdf.js'],
     },
     server: {
-      proxy: {
-        '/api': {
-          target: apiTarget,
-          changeOrigin: true,
-          secure: true,
-          rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
-        },
-      },
+      proxy: Object.fromEntries(
+        BACKEND_ROUTE_PREFIXES.map((prefix) => [
+          prefix,
+          {
+            target: apiTarget,
+            changeOrigin: true,
+            secure: true,
+          },
+        ])
+      ),
     },
   }
 })

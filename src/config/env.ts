@@ -8,11 +8,9 @@ const DEFAULT_PRODUCTION_API = 'https://marine-flight-backend.vercel.app';
 function normalizeApiBaseUrl(raw: string | undefined): string {
   const value = (raw ?? '').trim().replace(/\/+$/, '');
 
-  // In dev, always use the Vite proxy for remote API URLs to avoid browser CORS.
   if (import.meta.env.DEV) {
-    if (!value || value.startsWith('http://') || value.startsWith('https://')) {
-      return '/api';
-    }
+    if (value.startsWith('http://') || value.startsWith('https://')) return value;
+    if (!value) return '';
     return value;
   }
 
