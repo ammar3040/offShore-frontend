@@ -29,6 +29,7 @@ const AdminTicketsPage = lazy(() => import('./pages/AdminTicketsPage'));
 const SuperadminDashboard = lazy(() => import('./pages/SuperadminDashboard'));
 const SuperadminAdminsPage = lazy(() => import('./pages/SuperadminAdminsPage'));
 const SuperadminTicketsPage = lazy(() => import('./pages/SuperadminTicketsPage'));
+const PayrollPage = lazy(() => import('./pages/PayrollPage'));
 
 function App() {
   return (
@@ -100,6 +101,7 @@ function App() {
                     <Route path="/rig" element={<RigsPage />} />
                     <Route path="/timeline" element={<TimelinePage />} />
                     <Route path="/tickets" element={<AdminTicketsPage />} />
+                    <Route path="/payroll" element={<PayrollPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Layout>

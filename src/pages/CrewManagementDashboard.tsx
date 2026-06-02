@@ -230,7 +230,7 @@ const CrewManagementDashboard = () => {
             { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
             { icon: Ship, label: 'Rigs', path: '/rig' },
             { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
-            { icon: Wallet, label: 'Payroll' },
+            { icon: Wallet, label: 'Payroll', path: '/payroll' },
             { icon: FileText, label: 'Contracts' },
             { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
             { divider: true },
