@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
+import { getProjects, type ProjectApi } from '../api/project';
 import {
   getCrewList,
   getCrewById,
@@ -79,6 +80,16 @@ function crewFullName(crew: CrewMemberApi): string {
   return `${crew.firstname ?? ''} ${crew.lastname ?? ''}`.trim() || 'Unknown';
 }
 
+function entityId(value: { id?: string; _id?: string } | string | undefined): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value.trim();
+  return String(value.id ?? value._id ?? '').trim();
+}
+
+function payrollKey(crewId: string, projectId: string): string {
+  return `${crewId}:${projectId}`;
+}
+
 const PAY_RATE_OPTIONS: Array<{ value: PayRateType; label: string }> = [
   { value: 'per_hour', label: 'Per Hour' },
   { value: 'per_project', label: 'Per Project' },
@@ -109,44 +120,71 @@ const PayrollPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [crewRes, payrollRes] = await Promise.all([getCrewList(), getPayrollRecords()]);
+      const [crewRes, payrollRes, projectsRes] = await Promise.all([
+        getCrewList(),
+        getPayrollRecords(),
+        getProjects().catch(() => ({ projects: [] as ProjectApi[] })),
+      ]);
       const crewList = crewRes.crew ?? [];
+      const projectTitleById = new Map(
+        (projectsRes.projects ?? []).map((p) => [entityId(p), p.title || 'Untitled Project'])
+      );
+      const crewById = new Map(crewList.map((c) => [entityId(c), c]));
       const payByKey = new Map<string, PayrollRecord>();
       for (const record of payrollRes.payrolls) {
-        payByKey.set(`${record.crewId}:${record.projectId}`, record);
+        payByKey.set(payrollKey(record.crewId, record.projectId), record);
       }
 
       const crewProjects = await Promise.all(
         crewList.map(async (crew) => {
+          const crewId = entityId(crew);
           let projects = crew.activeProjects ?? [];
           if (projects.length === 0) {
             try {
-              const detail = await getCrewById(crew.id);
+              const detail = await getCrewById(crewId);
               projects = detail.projects ?? [];
             } catch {
               projects = [];
             }
           }
-          return { crew, projects };
+          return { crew, crewId, projects };
         })
       );
 
       const nextRows: PayrollRow[] = [];
-      for (const { crew, projects } of crewProjects) {
+      const seenKeys = new Set<string>();
+
+      for (const { crew, crewId, projects } of crewProjects) {
         for (const project of projects) {
-          const projectId = project.id;
+          const projectId = entityId(project);
           if (!projectId) continue;
+          const key = payrollKey(crewId, projectId);
+          seenKeys.add(key);
           const { startDate, endDate } = projectDates(project);
           nextRows.push({
-            crewId: crew.id,
+            crewId,
             crewName: crewFullName(crew),
             projectId,
-            projectTitle: project.title || 'Untitled Project',
+            projectTitle: project.title || projectTitleById.get(projectId) || 'Untitled Project',
             startDate,
             endDate,
-            payRecord: payByKey.get(`${crew.id}:${projectId}`),
+            payRecord: payByKey.get(key),
           });
         }
+      }
+
+      for (const record of payrollRes.payrolls) {
+        const key = payrollKey(record.crewId, record.projectId);
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        const crew = crewById.get(record.crewId);
+        nextRows.push({
+          crewId: record.crewId,
+          crewName: crew ? crewFullName(crew) : 'Unknown crew',
+          projectId: record.projectId,
+          projectTitle: projectTitleById.get(record.projectId) || 'Untitled Project',
+          payRecord: record,
+        });
       }
 
       nextRows.sort((a, b) => {
@@ -530,7 +568,7 @@ const PayrollPage = () => {
                         </td>
                         <td>
                           {row.payRecord ? (
-                            <span className="payroll-amount">{formatPayAmount(row.payRecord.payAmount)}</span>
+                            <span className="payroll-amount strong">{formatPayAmount(row.payRecord.payAmount)}</span>
                           ) : (
                             <span className="payroll-empty-pay">—</span>
                           )}

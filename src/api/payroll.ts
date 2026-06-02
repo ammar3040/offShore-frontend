@@ -50,21 +50,59 @@ function normalizeRateType(raw: unknown): PayRateType {
   return value === 'per_project' ? 'per_project' : 'per_hour';
 }
 
+function extractRefId(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'object') {
+    const o = value as Record<string, unknown>;
+    if (typeof o.$oid === 'string') return o.$oid.trim();
+    const nested = o._id ?? o.id;
+    if (nested != null && nested !== value) {
+      const extracted = extractRefId(nested);
+      if (extracted) return extracted;
+    }
+    if (typeof o.id === 'string') return o.id.trim();
+    if (typeof o._id === 'string') return o._id.trim();
+  }
+  return '';
+}
+
+function extractPayAmount(value: unknown): number {
+  if (value == null || value === '') return NaN;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  if (typeof value === 'string') {
+    const n = parseFloat(value);
+    return Number.isNaN(n) ? NaN : n;
+  }
+  if (typeof value === 'object') {
+    const o = value as Record<string, unknown>;
+    if (o.$numberDecimal != null) return extractPayAmount(o.$numberDecimal);
+  }
+  const n = Number(value);
+  return Number.isNaN(n) ? NaN : n;
+}
+
 function normalizePayroll(raw: unknown): PayrollRecord | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
-  const crewId = String(r.crewId ?? r.crew_id ?? '').trim();
-  const projectId = String(r.projectId ?? r.project_id ?? '').trim();
-  const payAmount = Number(r.payAmount ?? r.pay_amount);
-  const id = String(r.id ?? r._id ?? '').trim();
-  if (!crewId || !projectId || !id || Number.isNaN(payAmount)) return null;
+  const crewId = extractRefId(r.crewId ?? r.crew_id);
+  const projectId = extractRefId(r.projectId ?? r.project_id);
+  const payAmount = extractPayAmount(r.payAmount ?? r.pay_amount);
+  const id = extractRefId(r.id ?? r._id);
+  if (!crewId || !projectId || Number.isNaN(payAmount)) return null;
   return {
-    id,
+    id: id || `${crewId}:${projectId}`,
     crewId,
     projectId,
     rateType: normalizeRateType(r.rateType ?? r.rate_type),
     payAmount,
-    createdBy: r.createdBy != null ? String(r.createdBy) : r.created_by != null ? String(r.created_by) : undefined,
+    createdBy:
+      r.createdBy != null
+        ? extractRefId(r.createdBy) || String(r.createdBy)
+        : r.created_by != null
+          ? extractRefId(r.created_by) || String(r.created_by)
+          : undefined,
   };
 }
 

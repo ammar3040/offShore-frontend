@@ -18,7 +18,12 @@
 
 .payroll-amount {
   font-family: 'IBM Plex Mono', monospace;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.payroll-amount.strong {
+  display: inline-block;
 }
 
 .payroll-empty-pay {
