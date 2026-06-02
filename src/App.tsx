@@ -29,6 +29,7 @@ const AdminTicketsPage = lazy(() => import('./pages/AdminTicketsPage'));
 const SuperadminDashboard = lazy(() => import('./pages/SuperadminDashboard'));
 const SuperadminAdminsPage = lazy(() => import('./pages/SuperadminAdminsPage'));
 const SuperadminTicketsPage = lazy(() => import('./pages/SuperadminTicketsPage'));
+const SuperadminAdminInvoicePage = lazy(() => import('./pages/SuperadminAdminInvoicePage'));
 const PayrollPage = lazy(() => import('./pages/PayrollPage'));
 const ContractsPage = lazy(() => import('./pages/ContractsPage'));
 
@@ -53,6 +54,7 @@ function App() {
             <Route path="dashboard" element={<SuperadminDashboard />} />
             <Route path="admins" element={<SuperadminAdminsPage />} />
             <Route path="tickets" element={<SuperadminTicketsPage />} />
+            <Route path="admin-invoice" element={<SuperadminAdminInvoicePage />} />
             <Route index element={<Navigate to="/panel/superadmin/dashboard" replace />} />
           </Route>
 

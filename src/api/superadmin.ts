@@ -449,10 +449,12 @@ export async function getSuperadminCrewTickets(projectId?: string): Promise<{ cr
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const url = new URL(`${env.apiBaseUrl}/crew-ticket`);
-  if (projectId) url.searchParams.set('project_id', projectId);
+  let url = `${env.apiBaseUrl}/crew-ticket`;
+  if (projectId) {
+    url += `?project_id=${encodeURIComponent(projectId)}`;
+  }
 
-  const response = await fetch(url.toString(), {
+  const response = await fetch(url, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,

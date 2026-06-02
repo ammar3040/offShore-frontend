@@ -1,6 +1,6 @@
 import { type ReactNode, useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Ticket, LogOut, Shield, Menu, X, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, Ticket, Receipt, LogOut, Shield, Menu, X, Sun, Moon } from 'lucide-react';
 import { Toaster } from './ui/sonner';
 import { clearSuperadminSession } from '../lib/superadminAuth';
 import { getSuperadminTheme, setSuperadminTheme, type SuperadminTheme } from '../lib/superadminTheme';
@@ -14,6 +14,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/panel/superadmin/dashboard' },
   { icon: Users, label: 'Admins', path: '/panel/superadmin/admins' },
   { icon: Ticket, label: 'Crew Tickets', path: '/panel/superadmin/tickets' },
+  { icon: Receipt, label: 'Admin Invoices', path: '/panel/superadmin/admin-invoice' },
 ];
 
 const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {

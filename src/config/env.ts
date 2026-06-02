@@ -3,10 +3,26 @@
  * All environment variables must be prefixed with VITE_ to be accessible in the client
  */
 
+const DEFAULT_PRODUCTION_API = 'https://marine-flight-backend.vercel.app';
+
+function normalizeApiBaseUrl(raw: string | undefined): string {
+  const value = (raw ?? '').trim().replace(/\/+$/, '');
+
+  // In dev, always use the Vite proxy for remote API URLs to avoid browser CORS.
+  if (import.meta.env.DEV) {
+    if (!value || value.startsWith('http://') || value.startsWith('https://')) {
+      return '/api';
+    }
+    return value;
+  }
+
+  if (value) return value;
+  return DEFAULT_PRODUCTION_API;
+}
+
 export const env = {
   // API Configuration
-  // apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://marine-flight-backend.vercel.app',
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+  apiBaseUrl: normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
 
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 
@@ -47,6 +63,5 @@ export const env = {
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
 } as const;
-console.log("🚀 ~ env:", env)
-// Type-safe environment variable access
+
 export default env;

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lynq Travel Invoice {{invoice_number}}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f4f6f8;
+      font-family: Inter, Arial, sans-serif;
+      color: #333333;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .invoice-page {
+      width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+    }
+    table { border-collapse: collapse; }
+    .full { width: 100%; }
+    .invoice-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #999999;
+    }
+    .invoice-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #111111;
+    }
+    .amount-due {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a3a5c;
+    }
+    .invoice-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: #111111;
+      letter-spacing: -0.5px;
+      text-align: right;
+      margin: 0;
+      line-height: 1;
+    }
+    .addr-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #999999;
+      margin: 0;
+    }
+    .addr-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111111;
+      margin: 4px 0 0;
+    }
+    .addr-line {
+      font-size: 13px;
+      color: #555555;
+      margin: 2px 0 0;
+    }
+    .addr-fao {
+      font-size: 13px;
+      color: #555555;
+      margin: 4px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-page">
+
+    <!-- Header: logo + INVOICE -->
+    <table class="full">
+      <tr>
+        <td style="padding: 32px 40px 0 40px; vertical-align: middle; width: 50%;">
+          <div style="display: inline-block; line-height: 1;">
+            <div style="position: relative; display: inline-block;">
+              <span style="font-size: 34px; font-weight: 700; color: #1a3a5c; letter-spacing: -1px;">Lyn</span><span style="font-size: 34px; font-weight: 700; color: #1a73c8; letter-spacing: -1px;">q</span>
+              <svg width="30" height="18" viewBox="0 0 30 18" style="position: absolute; top: -6px; right: -16px;" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 14 C10 4, 22 2, 28 4 L20 8 C16 6, 9 8, 4 15 Z" fill="#1a73c8" />
+              </svg>
+            </div>
+            <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.5em; color: #1a3a5c; margin-top: 5px; padding-left: 2px;">TRAVEL</div>
+          </div>
+        </td>
+        <td style="padding: 32px 40px 0 40px; vertical-align: middle; width: 50%;">
+          <div class="invoice-title">INVOICE</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Blue divider -->
+    <div style="padding: 16px 40px 0 40px;">
+      <div style="border-top: 3px solid #1a73c8;"></div>
+    </div>
+
+    <!-- Invoice meta: No / Date / Due / Amount -->
+    <div style="padding: 16px 40px 0 40px;">
+      <table class="full" style="border: 1px solid #e8e8e8;">
+        <tr>
+          <td style="padding: 14px 16px; border-right: 1px solid #e8e8e8; width: 25%; vertical-align: top;">
+            <div class="invoice-label">Invoice No.</div>
+            <div class="invoice-value">{{invoice_number}}</div>
+          </td>
+          <td style="padding: 14px 16px; border-right: 1px solid #e8e8e8; width: 25%; vertical-align: top;">
+            <div class="invoice-label">Date of Issue</div>
+            <div class="invoice-value">{{issue_date}}</div>
+          </td>
+          <td style="padding: 14px 16px; border-right: 1px solid #e8e8e8; width: 25%; vertical-align: top;">
+            <div class="invoice-label">Due Date</div>
+            <div class="invoice-value">{{due_date}}</div>
+          </td>
+          <td style="padding: 14px 16px; width: 25%; vertical-align: top;">
+            <div class="invoice-label">Amount Due</div>
+            <div class="amount-due">{{amount_due}}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- From / To -->
+    <table class="full">
+      <tr>
+        <td style="padding: 24px 0 8px 40px; vertical-align: top; width: 50%;">
+          <p class="addr-label">FROM</p>
+          <p class="addr-name">Lynq Travel</p>
+          <p class="addr-line">United Kingdom</p>
+          <p class="addr-line">hello@lynq.click</p>
+        </td>
+        <td style="padding: 24px 40px 8px 0; vertical-align: top; width: 50%;">
+          <p class="addr-label">TO</p>
+          <p class="addr-name">{{client_company_name}}</p>
+          <p class="addr-line">{{client_address_html}}</p>
+          <p class="addr-fao">FAO: {{client_fao}}</p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Line items table -->
+    <div style="padding: 24px 40px 0 40px;">
+      <table class="full">
+        <tr style="background-color: #1a3a5c;">
+          <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #ffffff; padding: 10px 14px; width: 55%;">Description</td>
+          <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #ffffff; padding: 10px 14px; width: 15%; text-align: center;">QTY</td>
+          <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #ffffff; padding: 10px 14px; width: 15%; text-align: right;">Unit Price</td>
+          <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #ffffff; padding: 10px 14px; width: 15%; text-align: right;">Amount</td>
+        </tr>
+        {{line_items_rows}}
+      </table>
+    </div>
+
+    <!-- Totals -->
+    <div style="padding: 0 40px 8px 40px;">
+      <table class="full">
+        <tr>
+          <td style="width: 55%; padding: 10px 14px;"></td>
+          <td style="width: 30%; font-size: 13px; color: #555555; padding: 10px 14px; text-align: right;">Subtotal</td>
+          <td style="width: 15%; font-size: 13px; font-weight: 600; color: #111111; padding: 10px 14px; text-align: right;">{{subtotal}}</td>
+        </tr>
+        <tr>
+          <td style="width: 55%; padding: 4px 14px;"></td>
+          <td style="width: 30%; font-size: 13px; color: #555555; padding: 4px 14px; text-align: right;">VAT (0%)</td>
+          <td style="width: 15%; font-size: 13px; font-weight: 600; color: #111111; padding: 4px 14px; text-align: right;">{{vat_amount}}</td>
+        </tr>
+        <tr style="border-top: 2px solid #e0e0e0;">
+          <td style="width: 55%; padding: 14px 14px;"></td>
+          <td style="width: 30%; font-size: 14px; font-weight: 700; color: #111111; padding: 14px 14px; text-align: right;">TOTAL DUE</td>
+          <td style="width: 15%; font-size: 18px; font-weight: 700; color: #1a3a5c; padding: 14px 14px; text-align: right;">{{total_due}}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Divider -->
+    <div style="padding: 8px 40px 0 40px;">
+      <div style="border-top: 1px solid #e8e8e8;"></div>
+    </div>
+
+    <!-- Footer note -->
+    <div style="padding: 16px 40px 40px 40px; text-align: center; font-size: 11px; color: #888888;">
+      {{footer_note}}
+    </div>
+
+  </div>
+</body>
+</html>
