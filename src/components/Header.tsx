@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import { useCommandPaletteOpen, getModKeyLabel } from './CommandPalette';
 import './Header.css';
 
 interface HeaderProps {
@@ -24,6 +25,8 @@ interface HeaderProps {
 }
 
 const Header = ({ onMenuClick }: HeaderProps) => {
+  const openCommandPalette = useCommandPaletteOpen();
+  const modKey = getModKeyLabel();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [markup, setMarkup] = useState<number | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
@@ -90,14 +93,16 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <Menu size={24} />
         </button>
         <div className="header-brand">Offshore CRM</div>
-        <div className="search-container">
+        <button
+          type="button"
+          className="search-container search-trigger"
+          onClick={openCommandPalette}
+          aria-label="Open search"
+        >
           <Search size={18} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search"
-            className="search-input"
-          />
-        </div>
+          <span className="search-input search-input-fake">Search anything...</span>
+          <kbd className="search-kbd">{modKey}K</kbd>
+        </button>
       </div>
 
       <div className="header-right">

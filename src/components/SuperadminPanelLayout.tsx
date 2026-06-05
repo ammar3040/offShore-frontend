@@ -1,7 +1,9 @@
 import { type ReactNode, useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Ticket, Receipt, LogOut, Shield, Menu, X, Sun, Moon } from 'lucide-react';
+import { CommandPaletteProvider } from './CommandPalette';
 import { Toaster } from './ui/sonner';
+import { SUPERADMIN_COMMAND_PAGES } from '../config/commandPalette';
 import { clearSuperadminSession } from '../lib/superadminAuth';
 import { getSuperadminTheme, setSuperadminTheme, type SuperadminTheme } from '../lib/superadminTheme';
 import './SuperadminPanelLayout.css';
@@ -42,6 +44,7 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
+    <CommandPaletteProvider pages={SUPERADMIN_COMMAND_PAGES}>
     <div className={`superadmin-panel-layout${theme === 'dark' ? ' superadmin-panel-layout--dark dark' : ''}`}>
       <div
         className={`superadmin-panel-overlay${mobileOpen ? ' open' : ''}`}
@@ -128,6 +131,7 @@ const SuperadminPanelLayout = ({ children }: SuperadminPanelLayoutProps) => {
       </div>
       <Toaster theme={theme} richColors position="bottom-right" />
     </div>
+    </CommandPaletteProvider>
   );
 };
 

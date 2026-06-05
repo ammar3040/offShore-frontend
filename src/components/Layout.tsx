@@ -1,7 +1,9 @@
 import { type ReactNode, useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { CommandPaletteProvider } from './CommandPalette';
 import { Toaster } from './ui/sonner';
+import { ADMIN_COMMAND_PAGES } from '../config/commandPalette';
 import { getAdminTheme, setAdminTheme, type AdminTheme } from '../lib/adminTheme';
 import './Layout.css';
 
@@ -32,20 +34,26 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className={`layout${theme === 'dark' ? ' layout--dark dark' : ''}`}>
-      <div 
-        className={`sidebar-overlay ${isMobileMenuOpen ? 'active' : ''}`}
-        onClick={closeMobileMenu}
-      />
-      <Sidebar isOpen={isMobileMenuOpen} onClose={closeMobileMenu} theme={theme} onToggleTheme={toggleTheme} />
-      <div className="layout-main">
-        <Header onMenuClick={toggleMobileMenu} />
-        <main className="main-content">
-          {children}
-        </main>
+    <CommandPaletteProvider
+      pages={ADMIN_COMMAND_PAGES}
+      loadEntities
+      searchPlaceholder="Search pages, crew, projects, rigs..."
+    >
+      <div className={`layout${theme === 'dark' ? ' layout--dark dark' : ''}`}>
+        <div 
+          className={`sidebar-overlay ${isMobileMenuOpen ? 'active' : ''}`}
+          onClick={closeMobileMenu}
+        />
+        <Sidebar isOpen={isMobileMenuOpen} onClose={closeMobileMenu} theme={theme} onToggleTheme={toggleTheme} />
+        <div className="layout-main">
+          <Header onMenuClick={toggleMobileMenu} />
+          <main className="main-content">
+            {children}
+          </main>
+        </div>
+        <Toaster theme={getAdminTheme()} richColors position="bottom-right" />
       </div>
-      <Toaster theme={getAdminTheme()} richColors position="bottom-right" />
-    </div>
+    </CommandPaletteProvider>
   );
 };
 

@@ -13,7 +13,9 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
+import { CommandPaletteProvider } from './CommandPalette';
 import { Toaster } from './ui/sonner';
+import { CREW_PANEL_COMMAND_PAGES } from '../config/commandPalette';
 import { clearCrewSession } from '../lib/crewPanelAuth';
 import { getCrewPanelTheme, setCrewPanelTheme, type CrewPanelTheme } from '../lib/crewPanelTheme';
 import './CrewPanelLayout.css';
@@ -58,6 +60,7 @@ const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
   };
 
   return (
+    <CommandPaletteProvider pages={CREW_PANEL_COMMAND_PAGES}>
     <div className={`crew-panel-layout${theme === 'dark' ? ' crew-panel-layout--dark dark' : ''}`}>
       <aside className="crew-panel-sidebar">
         <div className="crew-panel-sidebar-header">
@@ -115,6 +118,7 @@ const CrewPanelLayout = ({ children }: CrewPanelLayoutProps) => {
       </div>
       <Toaster theme={theme} richColors position="bottom-right" />
     </div>
+    </CommandPaletteProvider>
   );
 };
 
