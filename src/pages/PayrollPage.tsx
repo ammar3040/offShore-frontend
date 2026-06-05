@@ -34,7 +34,9 @@ import {
   getPayrollRecords,
   upsertPayrollRecord,
   deletePayrollRecord,
+  payRateTypeBadgeClass,
   payRateTypeLabel,
+  payRateTypeUnitLabel,
   type PayRateType,
   type PayrollRecord,
 } from '../api/payroll';
@@ -92,6 +94,7 @@ function payrollKey(crewId: string, projectId: string): string {
 
 const PAY_RATE_OPTIONS: Array<{ value: PayRateType; label: string }> = [
   { value: 'per_hour', label: 'Per Hour' },
+  { value: 'per_day', label: 'Per Day' },
   { value: 'per_project', label: 'Per Project' },
 ];
 
@@ -558,7 +561,12 @@ const PayrollPage = () => {
                         <td>
                           {row.payRecord ? (
                             <span
-                              className={`payroll-rate-badge${row.payRecord.rateType === 'per_project' ? ' per-project' : ''}`}
+                              className={[
+                                'payroll-rate-badge',
+                                payRateTypeBadgeClass(row.payRecord.rateType),
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
                             >
                               {payRateTypeLabel(row.payRecord.rateType)}
                             </span>
@@ -695,7 +703,7 @@ const PayrollPage = () => {
 
           <div className="payroll-form-field">
             <label htmlFor="payroll-amount">
-              Pay Amount ({formPayRateType === 'per_hour' ? 'per hour' : 'per project'})
+              Pay Amount ({payRateTypeUnitLabel(formPayRateType)})
             </label>
             <input
               id="payroll-amount"

@@ -1,7 +1,9 @@
 import { env } from '../config/env';
 
 /** API rate_type values */
-export type PayRateType = 'per_hour' | 'per_project';
+export type PayRateType = 'per_hour' | 'per_project' | 'per_day';
+
+const PAY_RATE_TYPES: PayRateType[] = ['per_hour', 'per_project', 'per_day'];
 
 export interface PayrollRecord {
   id: string;
@@ -47,7 +49,7 @@ function getErrorMessage(response: Response, text: string): string {
 
 function normalizeRateType(raw: unknown): PayRateType {
   const value = String(raw ?? '').toLowerCase();
-  return value === 'per_project' ? 'per_project' : 'per_hour';
+  return PAY_RATE_TYPES.includes(value as PayRateType) ? (value as PayRateType) : 'per_hour';
 }
 
 function extractRefId(value: unknown): string {
@@ -207,5 +209,34 @@ export async function deletePayrollRecord(payrollId: string): Promise<void> {
 }
 
 export function payRateTypeLabel(type: PayRateType): string {
-  return type === 'per_project' ? 'Per Project' : 'Per Hour';
+  switch (type) {
+    case 'per_project':
+      return 'Per Project';
+    case 'per_day':
+      return 'Per Day';
+    default:
+      return 'Per Hour';
+  }
+}
+
+export function payRateTypeUnitLabel(type: PayRateType): string {
+  switch (type) {
+    case 'per_project':
+      return 'per project';
+    case 'per_day':
+      return 'per day';
+    default:
+      return 'per hour';
+  }
+}
+
+export function payRateTypeBadgeClass(type: PayRateType): string {
+  switch (type) {
+    case 'per_project':
+      return 'per-project';
+    case 'per_day':
+      return 'per-day';
+    default:
+      return '';
+  }
 }

@@ -16,6 +16,12 @@
   border-color: var(--teal-border);
 }
 
+.payroll-rate-badge.per-day {
+  background: var(--amber-light);
+  color: var(--amber);
+  border-color: var(--amber-border);
+}
+
 .payroll-amount {
   font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;

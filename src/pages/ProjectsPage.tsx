@@ -61,12 +61,23 @@ function statusClass(status: string): string {
   return 'subsea-b-teal';
 }
 
-function projectProgress(project: ProjectApi, index: number): number {
+function projectCompletion(project: ProjectApi): number {
   const status = (project.status || '').toLowerCase();
   if (status === 'completed') return 100;
-  if (status === 'pending' || status === 'draft') return 10 + (index % 3) * 13;
-  if (status === 'blocked') return 35;
-  return [68, 55, 80, 47, 62, 72][index % 6];
+
+  const startDate = project.duration?.startDate;
+  const endDate = project.duration?.endDate;
+  if (!startDate || !endDate) return 0;
+
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return 0;
+
+  const now = Date.now();
+  if (now <= start) return 0;
+  if (now >= end) return 100;
+
+  return Math.round(((now - start) / (end - start)) * 100);
 }
 
 function projectTone(status: string, index: number): 'blue' | 'teal' | 'green' | 'amber' | 'red' | 'orange' {
@@ -512,7 +523,7 @@ const ProjectsPage = () => {
               <div className="subsea-proj-board">
                 {paginatedProjects.map((project, index) => {
                   const tone = projectTone(project.status, index);
-                  const progress = projectProgress(project, index);
+                  const completion = projectCompletion(project);
                   const ProjectIcon = [Wrench, Users, Award, ShieldCheck, Banknote, Ship][index % 6];
                   const deadline = project.duration?.endDate ? formatDate(project.duration.endDate) : project.span || 'No deadline';
                   const initials = projectInitials(project);
@@ -545,16 +556,15 @@ const ProjectsPage = () => {
                       <div className="subsea-proj-card-body">
                         <div className="subsea-proj-progress">
                           <div className="subsea-proj-progress-label">
-                            <span className="subsea-proj-progress-text">Overall Progress</span>
-                            <span className="subsea-proj-progress-pct">{progress}%</span>
+                            <span className="subsea-proj-progress-text">Project Completion</span>
+                            <span className="subsea-proj-progress-pct">{completion}%</span>
                           </div>
                           <div className="subsea-prog-bar">
-                            <div className={`subsea-prog-fill ${tone}`} style={{ width: `${progress}%` }} />
+                            <div className={`subsea-prog-fill ${tone}`} style={{ width: `${completion}%` }} />
                           </div>
                         </div>
                         <div className="subsea-proj-meta-row">
                           <div className="subsea-proj-meta-item"><Calendar size={12} />{deadline}</div>
-                          <div className="subsea-proj-meta-item"><CheckSquare size={12} />{Math.round(progress / 8)}/{Math.max(9, Math.round(progress / 4))} tasks</div>
                         </div>
                         <div className="subsea-proj-card-actions">
                           <div className="subsea-proj-avatars">
@@ -614,7 +624,7 @@ const ProjectsPage = () => {
                     <tr>
                       <th>Project</th>
                       <th>Due Date</th>
-                      <th>Progress</th>
+                      <th>Completion</th>
                       <th>Status</th>
                       <th />
                     </tr>
@@ -622,7 +632,7 @@ const ProjectsPage = () => {
                   <tbody>
                     {paginatedProjects.map((project, index) => {
                       const tone = projectTone(project.status, index);
-                      const progress = projectProgress(project, index);
+                      const completion = projectCompletion(project);
                       return (
                         <tr key={project.id} onClick={() => openProjectDetails(project)}>
                           <td className="s">{project.title}</td>
@@ -630,9 +640,9 @@ const ProjectsPage = () => {
                           <td>
                             <div className="subsea-proj-list-progress">
                               <div className="subsea-prog-bar">
-                                <div className={`subsea-prog-fill ${tone}`} style={{ width: `${progress}%` }} />
+                                <div className={`subsea-prog-fill ${tone}`} style={{ width: `${completion}%` }} />
                               </div>
-                              <span>{progress}%</span>
+                              <span>{completion}%</span>
                             </div>
                           </td>
                           <td><span className={`subsea-badge ${statusClass(project.status)}`}>{project.status || 'Active'}</span></td>
