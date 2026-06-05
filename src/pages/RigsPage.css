@@ -881,6 +881,10 @@
   grid-template-columns: repeat(4, 1fr);
 }
 
+.subsea-kpi-strip-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .subsea-toolbar-row {
   display: flex;
   align-items: center;

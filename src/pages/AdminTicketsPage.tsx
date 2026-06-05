@@ -93,6 +93,7 @@ import './RigsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
 type TicketsTab = 'tickets' | 'search';
+type StatusFilter = 'all' | 'pending' | 'approved';
 
 /** Search tab trip UI; API uses SearchPayload tripType (`multi-city` maps to `one-way` per leg). */
 type SearchUITripType = 'one-way' | 'round-trip' | 'multi-city';
@@ -613,6 +614,7 @@ const AdminTicketsPage = () => {
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
   const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
@@ -852,13 +854,23 @@ const AdminTicketsPage = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const filteredTickets = useMemo(() => {
+  const projectFilteredTickets = useMemo(() => {
     if (projectFilter === 'all') return tickets;
     return tickets.filter((t) => {
       const pid = t.project_id?._id ?? (t.project_id as { id?: string })?.id;
       return pid === projectFilter;
     });
   }, [tickets, projectFilter]);
+
+  const filteredTickets = useMemo(() => {
+    if (statusFilter === 'pending') {
+      return projectFilteredTickets.filter((t) => getTicketStatus(t) !== 'APPROVED');
+    }
+    if (statusFilter === 'approved') {
+      return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'APPROVED');
+    }
+    return projectFilteredTickets;
+  }, [projectFilteredTickets, statusFilter]);
 
   const uniqueProjectsFromTickets = useMemo(() => {
     const seen = new Set<string>();
@@ -1320,20 +1332,20 @@ const AdminTicketsPage = () => {
   };
 
   const ticketSpend = useMemo(() => {
-    const priced = filteredTickets.filter((ticket) => typeof ticket.price === 'number');
+    const priced = projectFilteredTickets.filter((ticket) => typeof ticket.price === 'number');
     const total = priced.reduce((sum, ticket) => sum + (ticket.price ?? 0), 0);
     return {
       total,
       average: priced.length ? total / priced.length : 0,
     };
-  }, [filteredTickets]);
+  }, [projectFilteredTickets]);
 
   const pendingApprovalCount = useMemo(
-    () => filteredTickets.filter((ticket) => getTicketStatus(ticket) !== 'APPROVED').length,
-    [filteredTickets]
+    () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) !== 'APPROVED').length,
+    [projectFilteredTickets]
   );
 
-  const approvedTicketCount = filteredTickets.length - pendingApprovalCount;
+  const approvedTicketCount = projectFilteredTickets.length - pendingApprovalCount;
 
   const getTicketStatusBadgeClass = (ticket: CrewTicketApi) =>
     getTicketStatus(ticket) === 'APPROVED' ? 'subsea-b-green' : 'subsea-b-amber';
@@ -1425,13 +1437,31 @@ const AdminTicketsPage = () => {
         </div>
         <div className="subsea-sb-body">
           <div className="subsea-sb-group">Bookings</div>
-          <button type="button" className="subsea-sb-link active" onClick={() => setActiveTab('tickets')}>
-            <TicketIcon size={13} /> Active Bookings <span className="subsea-sb-count">{filteredTickets.length}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'all' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('tickets');
+              setStatusFilter('all');
+            }}
+          >
+            <TicketIcon size={13} /> Active Bookings <span className="subsea-sb-count">{projectFilteredTickets.length}</span>
           </button>
-          <button type="button" className="subsea-sb-link" onClick={() => setActiveTab('search')}>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeTab === 'search' ? ' active' : ''}`}
+            onClick={() => setActiveTab('search')}
+          >
             <Search size={13} /> Search Flights
           </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'pending' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('tickets');
+              setStatusFilter('pending');
+            }}
+          >
             <AlertTriangle size={13} /> Pending Approval <span className="subsea-sb-count subsea-sb-count-red">{pendingApprovalCount}</span>
           </button>
           <div className="subsea-sb-group">Operations</div>
@@ -2060,7 +2090,7 @@ const AdminTicketsPage = () => {
             <div className="subsea-kpi-strip subsea-kpi-strip-4">
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Active Bookings</div>
-                <div className="subsea-kpi-value">{filteredTickets.length}</div>
+                <div className="subsea-kpi-value">{projectFilteredTickets.length}</div>
                 <div className="subsea-kpi-meta flat">{approvedTicketCount} approved</div>
                 <div className="subsea-kpi-bar"><div className="subsea-kpi-fill blue" style={{ width: '60%' }} /></div>
               </div>
@@ -2087,7 +2117,16 @@ const AdminTicketsPage = () => {
             <div className="subsea-alert subsea-alert-info">
               <Info size={15} />
               <span><strong>{pendingApprovalCount} ticket{pendingApprovalCount !== 1 ? 's' : ''}</strong> awaiting superadmin approval. Download links appear after approval and PDF generation.</span>
-              <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Review Status</button>
+              <button
+                type="button"
+                className="subsea-btn subsea-btn-default subsea-btn-sm"
+                onClick={() => {
+                  setActiveTab('tickets');
+                  setStatusFilter('pending');
+                }}
+              >
+                Review Status
+              </button>
             </div>
 
             <div className="subsea-toolbar-row">
@@ -2116,8 +2155,24 @@ const AdminTicketsPage = () => {
             ) : filteredTickets.length === 0 ? (
               <div className="subsea-empty-panel">
                 <Plane size={34} />
-                <h3>{projectFilter === 'all' ? 'No tickets yet' : 'No tickets for this project'}</h3>
-                <p>{projectFilter === 'all' ? 'Create tickets for crew on your projects.' : 'Try selecting all projects or book a new flight.'}</p>
+                <h3>
+                  {statusFilter === 'pending'
+                    ? 'No tickets pending approval'
+                    : statusFilter === 'approved'
+                      ? 'No approved tickets'
+                      : projectFilter === 'all'
+                        ? 'No tickets yet'
+                        : 'No tickets for this project'}
+                </h3>
+                <p>
+                  {statusFilter === 'pending'
+                    ? 'All bookings in this view are approved, or none match the selected project.'
+                    : statusFilter === 'approved'
+                      ? 'No approved bookings match the current project filter.'
+                      : projectFilter === 'all'
+                        ? 'Create tickets for crew on your projects.'
+                        : 'Try selecting all projects or book a new flight.'}
+                </p>
                 <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
                   <Plus size={12} /> Book Flight
                 </button>
@@ -2129,7 +2184,16 @@ const AdminTicketsPage = () => {
                     <div className="subsea-pane-title">Upcoming Departures</div>
                     <div className="subsea-pane-actions">
                       <span className="subsea-pane-sub">Next 14 days</span>
-                      <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setProjectFilter('all')}>All Bookings</button>
+                      <button
+                        type="button"
+                        className="subsea-btn subsea-btn-default subsea-btn-sm"
+                        onClick={() => {
+                          setProjectFilter('all');
+                          setStatusFilter('all');
+                        }}
+                      >
+                        All Bookings
+                      </button>
                     </div>
                   </div>
                   <div className="subsea-pane-body">

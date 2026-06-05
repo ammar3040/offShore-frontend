@@ -51,17 +51,14 @@ function getRigRegion(rig: RigApi, index: number): string {
   return fromDescription || rigRegions[index % rigRegions.length];
 }
 
-function getRigStatus(index: number): { label: string; className: string; crew: string; fill: number; color: string } {
-  if (index === 0) {
-    return { label: 'Understaffed', className: 'subsea-b-amber', crew: '18 / 22', fill: 82, color: 'var(--amber)' };
-  }
+function getRigStatus(index: number): { label: string; className: string } {
   if (index === 5) {
-    return { label: 'Dry Dock', className: 'subsea-b-gray', crew: '4 / 18', fill: 22, color: 'var(--text-tertiary)' };
+    return { label: 'Dry Dock', className: 'subsea-b-gray' };
   }
   if (index === 3) {
-    return { label: 'In Transit', className: 'subsea-b-teal', crew: '14 / 14', fill: 100, color: 'var(--green)' };
+    return { label: 'In Transit', className: 'subsea-b-teal' };
   }
-  return { label: 'Full Crew', className: 'subsea-b-green', crew: '24 / 24', fill: 100, color: 'var(--green)' };
+  return { label: 'Operational', className: 'subsea-b-green' };
 }
 
 const RigsPage = () => {
@@ -119,7 +116,6 @@ const RigsPage = () => {
   }, [filteredRigs, page]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRigs.length / pageSize));
-  const operationalCount = Math.max(0, rigs.length - (rigs.length > 0 ? 1 : 0));
 
   const openCreateModal = () => {
     setIsCreateModalOpen(true);
@@ -237,16 +233,7 @@ const RigsPage = () => {
           <button type="button" className="subsea-sb-link active">
             <Anchor size={13} /> All Rigs <span className="subsea-sb-count">{loading ? '...' : rigs.length}</span>
           </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <Ship size={13} /> Fully Crewed <span className="subsea-sb-count">{operationalCount}</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <Users size={13} /> Understaffed <span className="subsea-sb-count subsea-sb-count-red">{rigs.length > 0 ? 1 : 0}</span>
-          </button>
           <div className="subsea-sb-group">Operations</div>
-          <button type="button" className="subsea-sb-link">
-            <Radio size={13} /> Live Positions
-          </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
             <ShieldCheck size={13} /> Compliance
           </button>
@@ -286,11 +273,9 @@ const RigsPage = () => {
             </div>
           </div>
 
-          <section className="subsea-kpi-strip subsea-kpi-strip-4">
+          <section className="subsea-kpi-strip subsea-kpi-strip-2">
             {[
               { label: 'Total Rigs', value: loading ? '...' : String(rigs.length), meta: '2 added this year', tone: 'up', bar: '60%', color: 'blue' },
-              { label: 'Fully Crewed', value: loading ? '...' : String(operationalCount), meta: rigs.length ? `${Math.round((operationalCount / rigs.length) * 100)}% of fleet` : 'No active rigs', tone: 'flat', bar: rigs.length ? `${Math.round((operationalCount / rigs.length) * 100)}%` : '0%', color: 'green' },
-              { label: 'Understaffed', value: loading ? '...' : String(rigs.length > 0 ? 1 : 0), meta: 'Needs urgent fill', tone: 'down', bar: rigs.length ? '9%' : '0%', color: 'red' },
               { label: 'In Dry Dock', value: loading ? '...' : String(rigs.length > 5 ? 1 : 0), meta: rigs.length > 5 ? paginatedRigs[5]?.name ?? 'Scheduled' : 'No dry dock', tone: 'flat', bar: rigs.length > 5 ? '9%' : '0%', color: 'amber' },
             ].map((kpi) => (
               <article key={kpi.label} className="subsea-kpi">
@@ -367,25 +352,12 @@ const RigsPage = () => {
                       </div>
                       <div className="subsea-rig-body">
                         <div className="subsea-rig-row">
-                          <span className="subsea-rig-row-label">Crew</span>
-                          <span className={index === 0 ? 'subsea-rig-row-val danger' : 'subsea-rig-row-val success'}>{status.crew}</span>
-                        </div>
-                        <div className="subsea-rig-row">
                           <span className="subsea-rig-row-label">Position</span>
                           <span className="subsea-rig-row-val mono">{rig.address || 'No position'}</span>
                         </div>
                         <div className="subsea-rig-row">
                           <span className="subsea-rig-row-label">Next Port</span>
                           <span className="subsea-rig-row-val">{index === 0 ? 'Djibouti · Jun 3' : `Created ${formatDate(rig.createdAt)}`}</span>
-                        </div>
-                        <div className="subsea-rig-row">
-                          <span className="subsea-rig-row-label">Crew fill</span>
-                          <div className="subsea-rig-progress">
-                            <div className="subsea-prog-bar">
-                              <div className="subsea-prog-fill" style={{ width: `${status.fill}%`, background: status.color }} />
-                            </div>
-                          </div>
-                          <span className="subsea-rig-pct" style={{ color: status.color }}>{status.fill}%</span>
                         </div>
                       </div>
                     </article>
