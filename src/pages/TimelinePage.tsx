@@ -44,6 +44,8 @@ const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day
 type ViewMode = 'calendar' | 'gantt';
 type EventTone = 'green' | 'amber' | 'blue' | 'red' | 'teal' | 'orange' | 'gray';
 type EventType = 'Sign-On' | 'Sign-Off' | 'Flight' | 'Project' | 'Certificate' | 'Fleet';
+type TimelineEventKind = 'Flight' | 'Project' | 'Certificate' | 'Fleet';
+type EventTypeFilter = 'all' | TimelineEventKind;
 
 interface TimelineEvent {
   id: string;
@@ -67,6 +69,7 @@ interface GanttItem {
   icon: typeof CalendarDays;
   projectId: string;
   rigId: string | null;
+  kind: TimelineEventKind;
 }
 
 interface GanttGroup {
@@ -141,7 +144,48 @@ function projectTone(status?: string): EventTone {
   if (normalized === 'completed') return 'green';
   if (normalized === 'pending' || normalized === 'draft') return 'amber';
   if (normalized === 'blocked') return 'red';
-  return 'orange';
+  return 'blue';
+}
+
+function ticketProjectId(ticket: CrewTicketApi): string | null {
+  const project = ticket.project_id;
+  if (!project) return null;
+  return project._id || (project as { id?: string }).id || null;
+}
+
+function ticketRigId(ticket: CrewTicketApi, rigs: RigApi[]): string | null {
+  const rig = ticket.rig_id;
+  if (!rig) return null;
+
+  let candidateId: string | null = null;
+  if (typeof rig === 'string') {
+    candidateId = rig;
+  } else {
+    const obj = rig as { id?: string; _id?: string };
+    candidateId = obj.id || obj._id || null;
+  }
+
+  if (!candidateId) return null;
+
+  const matched = rigs.find(
+    (item) => item.id === candidateId || (item as RigApi & { _id?: string })._id === candidateId
+  );
+  return matched?.id ?? candidateId;
+}
+
+function crewRigId(member: CrewMemberApi, projects: ProjectApi[], rigs: RigApi[]): string | null {
+  const activeTitle = member.activeProjects?.[0]?.title;
+  if (!activeTitle) return null;
+  const project = projects.find((item) => item.title === activeTitle);
+  return project ? projectRigId(project, rigs) : null;
+}
+
+function ganttKindLabel(kind: EventTypeFilter): string {
+  if (kind === 'all') return 'All events';
+  if (kind === 'Flight') return 'Flights';
+  if (kind === 'Project') return 'Projects';
+  if (kind === 'Certificate') return 'Certificate renewals';
+  return 'Fleet';
 }
 
 function projectRigId(project: ProjectApi, rigs: RigApi[]): string | null {
@@ -214,6 +258,7 @@ const TimelinePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedRigId, setSelectedRigId] = useState<string>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [selectedEventType, setSelectedEventType] = useState<EventTypeFilter>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -331,6 +376,21 @@ const TimelinePage = () => {
     return rows.sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [data]);
 
+  const filteredEvents = useMemo(() => {
+    if (selectedEventType === 'all') return events;
+    return events.filter((event) => event.type === selectedEventType);
+  }, [events, selectedEventType]);
+
+  const eventTypeCounts = useMemo(
+    () => ({
+      flights: events.filter((event) => event.type === 'Flight').length,
+      projects: events.filter((event) => event.type === 'Project').length,
+      certs: events.filter((event) => event.type === 'Certificate').length,
+      fleet: events.filter((event) => event.type === 'Fleet').length,
+    }),
+    [events]
+  );
+
   const schedulableProjects = useMemo(
     () =>
       data.projects.filter((project) => {
@@ -341,19 +401,14 @@ const TimelinePage = () => {
     [data.projects]
   );
 
-  const ganttProjectOptions = useMemo(() => {
-    if (selectedRigId === 'all') return schedulableProjects;
-    if (selectedRigId === UNASSIGNED_RIG_ID) {
-      return schedulableProjects.filter((project) => !projectRigId(project, data.rigs));
-    }
-    return schedulableProjects.filter((project) => projectRigId(project, data.rigs) === selectedRigId);
-  }, [schedulableProjects, selectedRigId, data.rigs]);
+  const allGanttItems = useMemo<GanttItem[]>(() => {
+    const rows: GanttItem[] = [];
 
-  const ganttItems = useMemo<GanttItem[]>(() => {
-    let rows: GanttItem[] = schedulableProjects.map((project) => {
-      const start = parseDate(project.duration?.startDate)!;
-      const end = parseDate(project.duration?.endDate)!;
-      return {
+    schedulableProjects.forEach((project) => {
+      const start = parseDate(project.duration?.startDate);
+      const end = parseDate(project.duration?.endDate);
+      if (!start || !end) return;
+      rows.push({
         id: `project-${project.id}`,
         label: project.title,
         detail: project.description || project.span || project.status || 'Project window',
@@ -363,8 +418,70 @@ const TimelinePage = () => {
         icon: FolderKanban,
         projectId: project.id,
         rigId: projectRigId(project, data.rigs),
-      };
+        kind: 'Project',
+      });
     });
+
+    data.tickets.forEach((ticket) => {
+      const date = parseDate(getCrewTicketCreatedIso(ticket));
+      if (!date) return;
+      rows.push({
+        id: `flight-${ticket.id}`,
+        label: `${ticketCrewName(ticket)} · ${ticketRoute(ticket)}`,
+        detail: ticket.project_id?.title ?? 'Flight booking',
+        start: date,
+        end: addDays(date, 1),
+        tone: ticket.pdf ? 'green' : 'blue',
+        icon: Plane,
+        projectId: ticketProjectId(ticket) ?? '',
+        rigId: ticketRigId(ticket, data.rigs),
+        kind: 'Flight',
+      });
+    });
+
+    data.crew.forEach((member) => {
+      const expiry = getCertificateExpiries(member)[0];
+      if (!expiry) return;
+      rows.push({
+        id: `cert-track-${member.id}`,
+        label: `${crewName(member)} cert renewal`,
+        detail: member.organization || 'Compliance watch',
+        start: addDays(expiry, -30),
+        end: expiry,
+        tone: daysBetween(new Date(), expiry) <= 30 ? 'red' : 'amber',
+        icon: BadgeCheck,
+        projectId: '',
+        rigId: crewRigId(member, data.projects, data.rigs),
+        kind: 'Certificate',
+      });
+    });
+
+    data.rigs.forEach((rig) => {
+      const created = parseDate(rig.createdAt);
+      if (!created) return;
+      rows.push({
+        id: `fleet-${rig.id}`,
+        label: rig.name,
+        detail: rig.address || rig.description || 'Fleet registration',
+        start: created,
+        end: addDays(created, 7),
+        tone: 'teal',
+        icon: Ship,
+        projectId: '',
+        rigId: rig.id,
+        kind: 'Fleet',
+      });
+    });
+
+    return rows;
+  }, [data.crew, data.projects, data.rigs, data.tickets, schedulableProjects]);
+
+  const ganttItems = useMemo<GanttItem[]>(() => {
+    let rows = allGanttItems;
+
+    if (selectedEventType !== 'all') {
+      rows = rows.filter((row) => row.kind === selectedEventType);
+    }
 
     if (selectedRigId !== 'all') {
       rows = rows.filter((row) => {
@@ -378,7 +495,7 @@ const TimelinePage = () => {
     }
 
     return rows.sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [schedulableProjects, selectedProjectId, selectedRigId, data.rigs]);
+  }, [allGanttItems, selectedEventType, selectedProjectId, selectedRigId]);
 
   const ganttGroups = useMemo<GanttGroup[]>(() => {
     const groups = new Map<string, GanttGroup>();
@@ -408,48 +525,83 @@ const TimelinePage = () => {
   }, [ganttItems, data.rigs]);
 
   const rigsWithProjects = useMemo(() => {
+    const scopedItems =
+      selectedEventType === 'all'
+        ? allGanttItems
+        : allGanttItems.filter((item) => item.kind === selectedEventType);
     const rigIds = new Set(
-      schedulableProjects
-        .map((project) => projectRigId(project, data.rigs))
-        .filter((id): id is string => Boolean(id))
+      scopedItems.map((item) => item.rigId).filter((id): id is string => Boolean(id))
     );
     return data.rigs.filter((rig) => rigIds.has(rig.id));
-  }, [data.rigs, schedulableProjects]);
+  }, [allGanttItems, data.rigs, selectedEventType]);
+
+  const ganttRigScopeItems = useMemo(
+    () =>
+      selectedEventType === 'all'
+        ? allGanttItems
+        : allGanttItems.filter((item) => item.kind === selectedEventType),
+    [allGanttItems, selectedEventType]
+  );
 
   const hasUnassignedProjects = useMemo(
-    () => schedulableProjects.some((project) => !projectRigId(project, data.rigs)),
-    [schedulableProjects, data.rigs]
+    () => ganttRigScopeItems.some((item) => !item.rigId),
+    [ganttRigScopeItems]
   );
+
+  const ganttProjectOptions = useMemo(() => {
+    const projectIds = new Set(
+      ganttRigScopeItems
+        .filter((item) => item.projectId && (item.kind === 'Project' || item.kind === 'Flight'))
+        .map((item) => item.projectId)
+    );
+    const options = schedulableProjects.filter((project) => projectIds.has(project.id));
+
+    if (selectedRigId === 'all') return options;
+    if (selectedRigId === UNASSIGNED_RIG_ID) {
+      return options.filter((project) => !projectRigId(project, data.rigs));
+    }
+    return options.filter((project) => projectRigId(project, data.rigs) === selectedRigId);
+  }, [ganttRigScopeItems, schedulableProjects, selectedRigId, data.rigs]);
+
+  const showProjectGanttFilter =
+    selectedEventType === 'all' || selectedEventType === 'Project' || selectedEventType === 'Flight';
 
   const handleRigFilter = (rigId: string) => {
     setSelectedRigId(rigId);
     setSelectedProjectId('all');
   };
 
+  const handleEventTypeFilter = (type: EventTypeFilter) => {
+    setSelectedEventType(type);
+    if (type !== 'Project' && type !== 'Flight' && type !== 'all') {
+      setSelectedProjectId('all');
+    }
+  };
+
   const monthStart = startOfMonth(calendarDate);
   const calendarDays = useMemo(() => buildCalendarDays(monthStart), [monthStart]);
   const eventsByDay = useMemo(() => {
     const map = new Map<string, TimelineEvent[]>();
-    events.forEach((event) => {
+    filteredEvents.forEach((event) => {
       const key = dateKey(event.date);
       const dayEvents = map.get(key) ?? [];
       dayEvents.push(event);
       map.set(key, dayEvents);
     });
     return map;
-  }, [events]);
+  }, [filteredEvents]);
 
   const visibleMonthEvents = useMemo(() => {
-    return events.filter(
+    return filteredEvents.filter(
       (event) => event.date.getFullYear() === monthStart.getFullYear() && event.date.getMonth() === monthStart.getMonth()
     );
-  }, [events, monthStart]);
+  }, [filteredEvents, monthStart]);
 
   const upcomingEvents = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return events.filter((event) => event.date >= today).slice(0, 9);
-  }, [events]);
+    return filteredEvents.filter((event) => event.date >= today).slice(0, 9);
+  }, [filteredEvents]);
 
   const summary = useMemo(() => {
     return {
@@ -553,10 +705,10 @@ const TimelinePage = () => {
                 className={`subsea-sb-link${selectedRigId === 'all' ? ' active' : ''}`}
                 onClick={() => handleRigFilter('all')}
               >
-                <Ship size={13} /> All rigs <span className="subsea-sb-count">{schedulableProjects.length}</span>
+                <Ship size={13} /> All rigs <span className="subsea-sb-count">{ganttRigScopeItems.length}</span>
               </button>
               {rigsWithProjects.map((rig) => {
-                const count = schedulableProjects.filter((project) => projectRigId(project, data.rigs) === rig.id).length;
+                const count = ganttRigScopeItems.filter((item) => item.rigId === rig.id).length;
                 return (
                   <button
                     key={rig.id}
@@ -574,23 +726,46 @@ const TimelinePage = () => {
                   className={`subsea-sb-link${selectedRigId === UNASSIGNED_RIG_ID ? ' active' : ''}`}
                   onClick={() => handleRigFilter(UNASSIGNED_RIG_ID)}
                 >
-                  <Ship size={13} /> Unassigned <span className="subsea-sb-count">{schedulableProjects.filter((project) => !projectRigId(project, data.rigs)).length}</span>
+                  <Ship size={13} /> Unassigned <span className="subsea-sb-count">{ganttRigScopeItems.filter((item) => !item.rigId).length}</span>
                 </button>
               )}
             </>
           )}
           <div className="subsea-sb-group">Event Types</div>
-          <button type="button" className="subsea-sb-link">
-            <Plane size={13} /> Flights <span className="subsea-sb-count">{summary.flights}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedEventType === 'all' ? ' active' : ''}`}
+            onClick={() => handleEventTypeFilter('all')}
+          >
+            <CalendarDays size={13} /> All events <span className="subsea-sb-count">{events.length}</span>
           </button>
-          <button type="button" className="subsea-sb-link">
-            <FolderKanban size={13} /> Projects <span className="subsea-sb-count">{summary.projects}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedEventType === 'Flight' ? ' active' : ''}`}
+            onClick={() => handleEventTypeFilter('Flight')}
+          >
+            <Plane size={13} /> Flights <span className="subsea-sb-count">{eventTypeCounts.flights}</span>
           </button>
-          <button type="button" className="subsea-sb-link">
-            <BadgeCheck size={13} /> Cert Expiries <span className="subsea-sb-count subsea-sb-count-red">{summary.certs}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedEventType === 'Project' ? ' active' : ''}`}
+            onClick={() => handleEventTypeFilter('Project')}
+          >
+            <FolderKanban size={13} /> Projects <span className="subsea-sb-count">{eventTypeCounts.projects}</span>
           </button>
-          <button type="button" className="subsea-sb-link">
-            <Ship size={13} /> Fleet <span className="subsea-sb-count">{summary.fleet}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedEventType === 'Certificate' ? ' active' : ''}`}
+            onClick={() => handleEventTypeFilter('Certificate')}
+          >
+            <BadgeCheck size={13} /> Cert Expiries <span className="subsea-sb-count subsea-sb-count-red">{eventTypeCounts.certs}</span>
+          </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedEventType === 'Fleet' ? ' active' : ''}`}
+            onClick={() => handleEventTypeFilter('Fleet')}
+          >
+            <Ship size={13} /> Fleet <span className="subsea-sb-count">{eventTypeCounts.fleet}</span>
           </button>
         </div>
       </aside>
@@ -602,7 +777,7 @@ const TimelinePage = () => {
             <span className="subsea-crumb-sep">/</span>
             <span className="subsea-crumb-active">Timeline & Calendar</span>
           </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />Live schedule · {events.length} events</div>
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />Live schedule · {filteredEvents.length} events</div>
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
@@ -638,8 +813,8 @@ const TimelinePage = () => {
 
           <section className="subsea-kpi-strip timeline-kpi-strip">
             {[
-              { label: 'Timeline Events', value: loading ? '...' : String(events.length), meta: `${visibleMonthEvents.length} this month`, tone: 'flat', bar: '76%', color: 'blue' },
-              { label: 'Project Windows', value: loading ? '...' : String(summary.projects), meta: 'Active application projects', tone: 'up', bar: '64%', color: 'orange' },
+              { label: 'Timeline Events', value: loading ? '...' : String(filteredEvents.length), meta: `${visibleMonthEvents.length} this month`, tone: 'flat', bar: '76%', color: 'blue' },
+              { label: 'Project Windows', value: loading ? '...' : String(summary.projects), meta: 'Active application projects', tone: 'up', bar: '64%', color: 'blue' },
               { label: 'Flight Records', value: loading ? '...' : String(summary.flights), meta: 'Crew ticket flow', tone: 'flat', bar: '52%', color: 'teal' },
               { label: 'Compliance Alerts', value: loading ? '...' : String(summary.certs), meta: 'Certificates needing action', tone: summary.certs ? 'down' : 'flat', bar: `${Math.min(100, summary.certs * 16)}%`, color: 'red' },
               { label: 'Fleet Records', value: loading ? '...' : String(summary.fleet), meta: 'Rigs in the system', tone: 'flat', bar: '48%', color: 'green' },
@@ -676,12 +851,12 @@ const TimelinePage = () => {
                     <div className="timeline-legend" aria-label="Timeline event legend">
                       {[
                         ['blue', 'Flight'],
-                        ['orange', 'Project'],
+                        ['blue', 'Project'],
                         ['red', 'Certificate'],
                         ['teal', 'Fleet'],
                         ['green', 'Complete'],
-                      ].map(([tone, label]) => (
-                        <span key={tone} className="timeline-legend-item">
+                      ].map(([tone, label], index) => (
+                        <span key={`${tone}-${label}-${index}`} className="timeline-legend-item">
                           <span className={`timeline-legend-dot timeline-legend-${tone}`} />
                           {label}
                         </span>
@@ -723,7 +898,11 @@ const TimelinePage = () => {
                       </div>
                       <div className="timeline-table-wrap">
                         {visibleMonthEvents.length === 0 ? (
-                          <div className="timeline-empty">No events are scheduled for this month.</div>
+                          <div className="timeline-empty">
+                            {selectedEventType === 'all'
+                              ? 'No events are scheduled for this month.'
+                              : `No ${ganttKindLabel(selectedEventType).toLowerCase()} are scheduled for this month.`}
+                          </div>
                         ) : (
                           <table className="timeline-table">
                             <thead>
@@ -753,7 +932,7 @@ const TimelinePage = () => {
                         <div><UserCheck size={13} className="green" /><span>Available crew</span><strong>{summary.signOns}</strong></div>
                         <div><UserMinus size={13} className="amber" /><span>Assigned / unavailable</span><strong>{summary.signOffs}</strong></div>
                         <div><Ticket size={13} className="blue" /><span>Flight bookings</span><strong>{summary.flights}</strong></div>
-                        <div><FolderKanban size={13} className="orange" /><span>Projects</span><strong>{summary.projects}</strong></div>
+                        <div><FolderKanban size={13} className="blue" /><span>Projects</span><strong>{summary.projects}</strong></div>
                         <div><AlertTriangle size={13} className="red" /><span>Compliance alerts</span><strong>{summary.certs}</strong></div>
                         <div><Ship size={13} className="teal" /><span>Fleet records</span><strong>{summary.fleet}</strong></div>
                       </div>
@@ -765,8 +944,8 @@ const TimelinePage = () => {
                   <section className="subsea-pane">
                     <div className="subsea-pane-head timeline-gantt-head">
                       <div>
-                        <div className="subsea-pane-title">Rig & Project Gantt - {MONTH_FORMAT.format(monthStart)}</div>
-                        <div className="subsea-pane-sub">Project windows grouped by rig</div>
+                        <div className="subsea-pane-title">{ganttKindLabel(selectedEventType)} Gantt - {MONTH_FORMAT.format(monthStart)}</div>
+                        <div className="subsea-pane-sub">Grouped by rig · {ganttItems.length} items</div>
                       </div>
                       <div className="timeline-gantt-filters">
                         <div className="subsea-filter-wrap">
@@ -784,26 +963,28 @@ const TimelinePage = () => {
                           </select>
                           <ChevronDown size={14} className="subsea-filter-chevron" />
                         </div>
-                        <div className="subsea-filter-wrap">
-                          <span className="subsea-filter-label">Project</span>
-                          <select
-                            className="subsea-filter-select"
-                            value={selectedProjectId}
-                            onChange={(e) => setSelectedProjectId(e.target.value)}
-                          >
-                            <option value="all">All projects</option>
-                            {ganttProjectOptions.map((project) => (
-                              <option key={project.id} value={project.id}>{project.title}</option>
-                            ))}
-                          </select>
-                          <ChevronDown size={14} className="subsea-filter-chevron" />
-                        </div>
+                        {showProjectGanttFilter && (
+                          <div className="subsea-filter-wrap">
+                            <span className="subsea-filter-label">Project</span>
+                            <select
+                              className="subsea-filter-select"
+                              value={selectedProjectId}
+                              onChange={(e) => setSelectedProjectId(e.target.value)}
+                            >
+                              <option value="all">All projects</option>
+                              {ganttProjectOptions.map((project) => (
+                                <option key={project.id} value={project.id}>{project.title}</option>
+                              ))}
+                            </select>
+                            <ChevronDown size={14} className="subsea-filter-chevron" />
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="timeline-gantt-wrap">
                       <div className="timeline-gantt">
                         <div className="timeline-gantt-header">
-                          <div className="timeline-gantt-label">Rig / Project</div>
+                          <div className="timeline-gantt-label">Rig / {selectedEventType === 'Flight' ? 'Flight' : selectedEventType === 'Certificate' ? 'Renewal' : selectedEventType === 'Fleet' ? 'Fleet' : 'Project'}</div>
                           <div className="timeline-gantt-dates">
                             {ganttTicks.map((tick) => (
                               <div key={dateKey(tick)} className={`timeline-gantt-date${dateKey(tick) === todayKey ? ' today-col' : ''}`}>
@@ -813,7 +994,11 @@ const TimelinePage = () => {
                           </div>
                         </div>
                         {ganttGroups.length === 0 ? (
-                          <div className="timeline-empty">No project windows match the selected rig or project filters.</div>
+                          <div className="timeline-empty">
+                            {selectedEventType === 'all'
+                              ? 'No timeline items match the selected filters.'
+                              : `No ${ganttKindLabel(selectedEventType).toLowerCase()} match the selected filters.`}
+                          </div>
                         ) : (
                           ganttGroups.map((group) => (
                             <div key={group.rigId} className="timeline-gantt-group">

@@ -80,7 +80,7 @@
 .timeline-legend-orange,
 .timeline-gantt-orange,
 .timeline-feed-orange {
-  background: var(--orange);
+  background: var(--blue);
 }
 
 .timeline-legend-red,
@@ -214,9 +214,9 @@
 }
 
 .timeline-event-orange {
-  background: var(--orange-light);
-  color: var(--orange);
-  border-left: 2px solid var(--orange);
+  background: var(--blue-light);
+  color: var(--blue);
+  border-left: 2px solid var(--blue);
 }
 
 .timeline-event-red {
@@ -349,7 +349,7 @@
 .timeline-summary-list .green { color: var(--green); }
 .timeline-summary-list .amber { color: var(--amber); }
 .timeline-summary-list .blue { color: var(--blue); }
-.timeline-summary-list .orange { color: var(--orange); }
+.timeline-summary-list .orange { color: var(--blue); }
 .timeline-summary-list .red { color: var(--red); }
 .timeline-summary-list .teal { color: var(--teal); }
 
