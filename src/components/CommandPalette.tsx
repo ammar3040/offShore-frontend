@@ -29,6 +29,7 @@ import {
 import { getCrewList } from '../api/crew';
 import { getProjects } from '../api/project';
 import { getRigs } from '../api/rig';
+import './CommandPalette.css';
 
 interface CommandPaletteContextValue {
   open: () => void;
@@ -92,7 +93,13 @@ function CommandPalette({
   }, [entities]);
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      className="command-palette-dialog"
+      commandClassName="command-palette-command"
+      overlayClassName="command-palette-overlay"
+    >
       <CommandInput placeholder={searchPlaceholder} />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
@@ -115,7 +122,7 @@ function CommandPalette({
           <>
             <CommandSeparator />
             {entitiesLoading ? (
-              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <div className="command-palette-loading flex items-center justify-center gap-2 py-6 text-sm">
                 <Loader2 className="size-4 animate-spin" />
                 Loading crew, projects, and rigs...
               </div>
