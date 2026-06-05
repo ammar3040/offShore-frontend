@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   Bell,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -64,7 +65,17 @@ interface GanttItem {
   end: Date;
   tone: EventTone;
   icon: typeof CalendarDays;
+  projectId: string;
+  rigId: string | null;
 }
+
+interface GanttGroup {
+  rigId: string;
+  rigName: string;
+  items: GanttItem[];
+}
+
+const UNASSIGNED_RIG_ID = 'unassigned';
 
 interface TimelineState {
   crew: CrewMemberApi[];
@@ -133,6 +144,32 @@ function projectTone(status?: string): EventTone {
   return 'orange';
 }
 
+function projectRigId(project: ProjectApi, rigs: RigApi[]): string | null {
+  const rig = project.rig_id;
+  if (!rig) return null;
+
+  let candidateId: string | null = null;
+  if (typeof rig === 'string') {
+    candidateId = rig;
+  } else {
+    const obj = rig as RigApi & { _id?: string };
+    candidateId = obj.id || obj._id || null;
+  }
+
+  if (!candidateId) return null;
+
+  const matched = rigs.find(
+    (item) => item.id === candidateId || (item as RigApi & { _id?: string })._id === candidateId
+  );
+  return matched?.id ?? candidateId;
+}
+
+function ganttBarStyle(item: GanttItem, windowStart: Date): { left: string; width: string } {
+  const left = Math.max(0, Math.min(100, (daysBetween(windowStart, item.start) * DAY_MS) / (WEEK_MS * 12) * 100));
+  const width = Math.max(4, Math.min(100 - left, (Math.max(1, daysBetween(item.start, item.end)) * DAY_MS) / (WEEK_MS * 12) * 100));
+  return { left: `${left}%`, width: `${width}%` };
+}
+
 function badgeClass(tone: EventTone): string {
   return `subsea-b-${tone}`;
 }
@@ -175,6 +212,8 @@ const TimelinePage = () => {
   const [data, setData] = useState<TimelineState>({ crew: [], projects: [], rigs: [], tickets: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRigId, setSelectedRigId] = useState<string>('all');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -292,14 +331,29 @@ const TimelinePage = () => {
     return rows.sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [data]);
 
-  const ganttItems = useMemo<GanttItem[]>(() => {
-    const rows: GanttItem[] = [];
+  const schedulableProjects = useMemo(
+    () =>
+      data.projects.filter((project) => {
+        const start = parseDate(project.duration?.startDate);
+        const end = parseDate(project.duration?.endDate);
+        return Boolean(start && end);
+      }),
+    [data.projects]
+  );
 
-    data.projects.forEach((project) => {
-      const start = parseDate(project.duration?.startDate);
-      const end = parseDate(project.duration?.endDate);
-      if (!start || !end) return;
-      rows.push({
+  const ganttProjectOptions = useMemo(() => {
+    if (selectedRigId === 'all') return schedulableProjects;
+    if (selectedRigId === UNASSIGNED_RIG_ID) {
+      return schedulableProjects.filter((project) => !projectRigId(project, data.rigs));
+    }
+    return schedulableProjects.filter((project) => projectRigId(project, data.rigs) === selectedRigId);
+  }, [schedulableProjects, selectedRigId, data.rigs]);
+
+  const ganttItems = useMemo<GanttItem[]>(() => {
+    let rows: GanttItem[] = schedulableProjects.map((project) => {
+      const start = parseDate(project.duration?.startDate)!;
+      const end = parseDate(project.duration?.endDate)!;
+      return {
         id: `project-${project.id}`,
         label: project.title,
         detail: project.description || project.span || project.status || 'Project window',
@@ -307,27 +361,70 @@ const TimelinePage = () => {
         end,
         tone: projectTone(project.status),
         icon: FolderKanban,
-      });
+        projectId: project.id,
+        rigId: projectRigId(project, data.rigs),
+      };
     });
 
-    data.crew.slice(0, 8).forEach((member) => {
-      const expiry = getCertificateExpiries(member)[0];
-      if (!expiry) return;
-      rows.push({
-        id: `cert-track-${member.id}`,
-        label: `${crewName(member)} cert renewal`,
-        detail: member.organization || 'Compliance watch',
-        start: addDays(expiry, -30),
-        end: expiry,
-        tone: daysBetween(new Date(), expiry) <= 30 ? 'red' : 'amber',
-        icon: BadgeCheck,
+    if (selectedRigId !== 'all') {
+      rows = rows.filter((row) => {
+        const rowRigId = row.rigId ?? UNASSIGNED_RIG_ID;
+        return rowRigId === selectedRigId;
       });
+    }
+
+    if (selectedProjectId !== 'all') {
+      rows = rows.filter((row) => row.projectId === selectedProjectId);
+    }
+
+    return rows.sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [schedulableProjects, selectedProjectId, selectedRigId, data.rigs]);
+
+  const ganttGroups = useMemo<GanttGroup[]>(() => {
+    const groups = new Map<string, GanttGroup>();
+
+    ganttItems.forEach((item) => {
+      const rigId = item.rigId ?? UNASSIGNED_RIG_ID;
+      const rigName =
+        rigId === UNASSIGNED_RIG_ID
+          ? 'Unassigned'
+          : data.rigs.find((rig) => rig.id === rigId)?.name ?? 'Unknown rig';
+
+      const group = groups.get(rigId) ?? { rigId, rigName, items: [] };
+      group.items.push(item);
+      groups.set(rigId, group);
     });
 
-    return rows
-      .sort((a, b) => a.start.getTime() - b.start.getTime())
-      .slice(0, 10);
-  }, [data.crew, data.projects]);
+    return Array.from(groups.values())
+      .map((group) => ({
+        ...group,
+        items: group.items.sort((a, b) => a.start.getTime() - b.start.getTime()),
+      }))
+      .sort((a, b) => {
+        if (a.rigId === UNASSIGNED_RIG_ID) return 1;
+        if (b.rigId === UNASSIGNED_RIG_ID) return -1;
+        return a.rigName.localeCompare(b.rigName);
+      });
+  }, [ganttItems, data.rigs]);
+
+  const rigsWithProjects = useMemo(() => {
+    const rigIds = new Set(
+      schedulableProjects
+        .map((project) => projectRigId(project, data.rigs))
+        .filter((id): id is string => Boolean(id))
+    );
+    return data.rigs.filter((rig) => rigIds.has(rig.id));
+  }, [data.rigs, schedulableProjects]);
+
+  const hasUnassignedProjects = useMemo(
+    () => schedulableProjects.some((project) => !projectRigId(project, data.rigs)),
+    [schedulableProjects, data.rigs]
+  );
+
+  const handleRigFilter = (rigId: string) => {
+    setSelectedRigId(rigId);
+    setSelectedProjectId('all');
+  };
 
   const monthStart = startOfMonth(calendarDate);
   const calendarDays = useMemo(() => buildCalendarDays(monthStart), [monthStart]);
@@ -448,6 +545,40 @@ const TimelinePage = () => {
           <button type="button" className={`subsea-sb-link${viewMode === 'gantt' ? ' active' : ''}`} onClick={() => setViewMode('gantt')}>
             <FolderKanban size={13} /> Gantt Chart <span className="subsea-sb-count">{ganttItems.length}</span>
           </button>
+          {viewMode === 'gantt' && (
+            <>
+              <div className="subsea-sb-group">Rigs</div>
+              <button
+                type="button"
+                className={`subsea-sb-link${selectedRigId === 'all' ? ' active' : ''}`}
+                onClick={() => handleRigFilter('all')}
+              >
+                <Ship size={13} /> All rigs <span className="subsea-sb-count">{schedulableProjects.length}</span>
+              </button>
+              {rigsWithProjects.map((rig) => {
+                const count = schedulableProjects.filter((project) => projectRigId(project, data.rigs) === rig.id).length;
+                return (
+                  <button
+                    key={rig.id}
+                    type="button"
+                    className={`subsea-sb-link${selectedRigId === rig.id ? ' active' : ''}`}
+                    onClick={() => handleRigFilter(rig.id)}
+                  >
+                    <Anchor size={13} /> {rig.name} <span className="subsea-sb-count">{count}</span>
+                  </button>
+                );
+              })}
+              {hasUnassignedProjects && (
+                <button
+                  type="button"
+                  className={`subsea-sb-link${selectedRigId === UNASSIGNED_RIG_ID ? ' active' : ''}`}
+                  onClick={() => handleRigFilter(UNASSIGNED_RIG_ID)}
+                >
+                  <Ship size={13} /> Unassigned <span className="subsea-sb-count">{schedulableProjects.filter((project) => !projectRigId(project, data.rigs)).length}</span>
+                </button>
+              )}
+            </>
+          )}
           <div className="subsea-sb-group">Event Types</div>
           <button type="button" className="subsea-sb-link">
             <Plane size={13} /> Flights <span className="subsea-sb-count">{summary.flights}</span>
@@ -632,14 +763,47 @@ const TimelinePage = () => {
               ) : (
                 <>
                   <section className="subsea-pane">
-                    <div className="subsea-pane-head">
-                      <div className="subsea-pane-title">Application Flow Gantt - {MONTH_FORMAT.format(monthStart)}</div>
-                      <div className="subsea-pane-sub">Project spans and compliance windows</div>
+                    <div className="subsea-pane-head timeline-gantt-head">
+                      <div>
+                        <div className="subsea-pane-title">Rig & Project Gantt - {MONTH_FORMAT.format(monthStart)}</div>
+                        <div className="subsea-pane-sub">Project windows grouped by rig</div>
+                      </div>
+                      <div className="timeline-gantt-filters">
+                        <div className="subsea-filter-wrap">
+                          <span className="subsea-filter-label">Rig</span>
+                          <select
+                            className="subsea-filter-select"
+                            value={selectedRigId}
+                            onChange={(e) => handleRigFilter(e.target.value)}
+                          >
+                            <option value="all">All rigs</option>
+                            {rigsWithProjects.map((rig) => (
+                              <option key={rig.id} value={rig.id}>{rig.name}</option>
+                            ))}
+                            {hasUnassignedProjects && <option value={UNASSIGNED_RIG_ID}>Unassigned</option>}
+                          </select>
+                          <ChevronDown size={14} className="subsea-filter-chevron" />
+                        </div>
+                        <div className="subsea-filter-wrap">
+                          <span className="subsea-filter-label">Project</span>
+                          <select
+                            className="subsea-filter-select"
+                            value={selectedProjectId}
+                            onChange={(e) => setSelectedProjectId(e.target.value)}
+                          >
+                            <option value="all">All projects</option>
+                            {ganttProjectOptions.map((project) => (
+                              <option key={project.id} value={project.id}>{project.title}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={14} className="subsea-filter-chevron" />
+                        </div>
+                      </div>
                     </div>
                     <div className="timeline-gantt-wrap">
                       <div className="timeline-gantt">
                         <div className="timeline-gantt-header">
-                          <div className="timeline-gantt-label">Project / Activity</div>
+                          <div className="timeline-gantt-label">Rig / Project</div>
                           <div className="timeline-gantt-dates">
                             {ganttTicks.map((tick) => (
                               <div key={dateKey(tick)} className={`timeline-gantt-date${dateKey(tick) === todayKey ? ' today-col' : ''}`}>
@@ -648,32 +812,43 @@ const TimelinePage = () => {
                             ))}
                           </div>
                         </div>
-                        {ganttItems.length === 0 ? (
-                          <div className="timeline-empty">No project or compliance windows are available for this period.</div>
+                        {ganttGroups.length === 0 ? (
+                          <div className="timeline-empty">No project windows match the selected rig or project filters.</div>
                         ) : (
-                          ganttItems.map((item) => {
-                            const Icon = item.icon;
-                            const left = Math.max(0, Math.min(100, (daysBetween(ganttWindowStart, item.start) * DAY_MS) / (WEEK_MS * 12) * 100));
-                            const width = Math.max(4, Math.min(100 - left, (Math.max(1, daysBetween(item.start, item.end)) * DAY_MS) / (WEEK_MS * 12) * 100));
-                            return (
-                              <div key={item.id} className="timeline-gantt-row">
-                                <div className="timeline-gantt-row-label">
-                                  <span className={`timeline-gantt-row-icon timeline-gantt-${item.tone}`}><Icon size={12} /></span>
-                                  {item.label}
+                          ganttGroups.map((group) => (
+                            <div key={group.rigId} className="timeline-gantt-group">
+                              <div className="timeline-gantt-group-row">
+                                <div className="timeline-gantt-group-label">
+                                  <span className="timeline-gantt-row-icon timeline-gantt-teal"><Ship size={12} /></span>
+                                  {group.rigName}
+                                  <span className="timeline-gantt-group-count">{group.items.length}</span>
                                 </div>
-                                <div className="timeline-gantt-row-body">
-                                  <div className="timeline-gantt-grid-lines">
-                                    {ganttTicks.map((tick) => (
-                                      <span key={dateKey(tick)} className={dateKey(tick) === todayKey ? 'today-line' : ''} />
-                                    ))}
-                                  </div>
-                                  <div className={`timeline-gantt-bar timeline-gantt-${item.tone}`} style={{ left: `${left}%`, width: `${width}%` }}>
-                                    {item.detail}
-                                  </div>
-                                </div>
+                                <div className="timeline-gantt-group-body" />
                               </div>
-                            );
-                          })
+                              {group.items.map((item) => {
+                                const Icon = item.icon;
+                                const barStyle = ganttBarStyle(item, ganttWindowStart);
+                                return (
+                                  <div key={item.id} className="timeline-gantt-row timeline-gantt-row-nested">
+                                    <div className="timeline-gantt-row-label">
+                                      <span className={`timeline-gantt-row-icon timeline-gantt-${item.tone}`}><Icon size={12} /></span>
+                                      {item.label}
+                                    </div>
+                                    <div className="timeline-gantt-row-body">
+                                      <div className="timeline-gantt-grid-lines">
+                                        {ganttTicks.map((tick) => (
+                                          <span key={dateKey(tick)} className={dateKey(tick) === todayKey ? 'today-line' : ''} />
+                                        ))}
+                                      </div>
+                                      <div className={`timeline-gantt-bar timeline-gantt-${item.tone}`} style={barStyle}>
+                                        {item.detail}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))
                         )}
                       </div>
                     </div>

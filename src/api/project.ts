@@ -76,7 +76,15 @@ export async function getProjects(): Promise<GetProjectsResponse> {
     throw new Error(message);
   }
 
-  return response.json();
+  const data = await response.json();
+  const raw = Array.isArray(data?.projects)
+    ? data.projects
+    : Array.isArray(data?.project)
+      ? data.project
+      : Array.isArray(data)
+        ? data
+        : [];
+  return { projects: raw.map(normalizeProject).filter((project: ProjectApi) => project.id) };
 }
 
 function normalizeProject(raw: unknown): ProjectApi {
