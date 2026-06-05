@@ -7,7 +7,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronLeft,
-  CircleDollarSign,
   Download,
   FileText,
   Filter,
@@ -63,6 +62,8 @@ import {
   type CrewTicketApi,
   getTicketStatus,
   getTicketStatusLabel,
+  isCrewTicketCreatedInLocalCalendarMonth,
+  parseCrewTicketCreatedAt,
 } from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
@@ -100,6 +101,7 @@ type SearchUITripType = 'one-way' | 'round-trip' | 'multi-city';
 type FlightSortValue = `${FlightSortBy}:${FlightSortOrder}`;
 
 const MAX_MULTI_SEGMENTS = 6;
+const RECENT_BOOKINGS_PAGE_SIZE = 6;
 
 type MultiFlightSegment = {
   id: string;
@@ -172,6 +174,33 @@ function getCurrencySymbol(code: CurrencyCode): string {
 function toYYYYMMDD(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
+
+function isCrewTicketCreatedInPreviousLocalCalendarMonth(t: CrewTicketApi, now = new Date()): boolean {
+  const d = parseCrewTicketCreatedAt(t);
+  if (!d) return false;
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return d.getFullYear() === prev.getFullYear() && d.getMonth() === prev.getMonth();
+}
+
+function formatTicketClass(cls?: string): string {
+  if (!cls?.trim()) return 'Unspecified';
+  return cls
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function sumPricedTickets(tickets: CrewTicketApi[]): { total: number; count: number; average: number } {
+  const priced = tickets.filter((ticket) => typeof ticket.price === 'number');
+  const total = priced.reduce((sum, ticket) => sum + (ticket.price ?? 0), 0);
+  return {
+    total,
+    count: priced.length,
+    average: priced.length ? total / priced.length : 0,
+  };
+}
+
+const METRIC_BAR_COLORS = ['blue', 'teal', 'amber', 'green', 'blue'] as const;
 
 function initialMultiSegments(): MultiFlightSegment[] {
   const a0 = AIRPORTS[0] ?? null;
@@ -615,6 +644,7 @@ const AdminTicketsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [recentBookingsPage, setRecentBookingsPage] = useState(1);
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
   const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
@@ -871,6 +901,10 @@ const AdminTicketsPage = () => {
     }
     return projectFilteredTickets;
   }, [projectFilteredTickets, statusFilter]);
+
+  useEffect(() => {
+    setRecentBookingsPage(1);
+  }, [projectFilter, statusFilter]);
 
   const uniqueProjectsFromTickets = useMemo(() => {
     const seen = new Set<string>();
@@ -1331,21 +1365,140 @@ const AdminTicketsPage = () => {
     }
   };
 
-  const ticketSpend = useMemo(() => {
-    const priced = projectFilteredTickets.filter((ticket) => typeof ticket.price === 'number');
-    const total = priced.reduce((sum, ticket) => sum + (ticket.price ?? 0), 0);
+  const ticketDashboardStats = useMemo(() => {
+    const totalBookings = projectFilteredTickets.length;
+    const mtdTickets = projectFilteredTickets.filter((ticket) =>
+      isCrewTicketCreatedInLocalCalendarMonth(ticket)
+    );
+    const lastMonthTickets = projectFilteredTickets.filter((ticket) =>
+      isCrewTicketCreatedInPreviousLocalCalendarMonth(ticket)
+    );
+    const mtdSpend = sumPricedTickets(mtdTickets);
+    const lastMonthSpend = sumPricedTickets(lastMonthTickets);
+    const approvedCount = projectFilteredTickets.filter(
+      (ticket) => getTicketStatus(ticket) === 'APPROVED'
+    ).length;
+    const pendingCount = totalBookings - approvedCount;
+
+    let spendChangeMeta = 'No priced bookings this month';
+    let spendChangeTone: 'up' | 'down' | 'flat' = 'flat';
+    if (mtdSpend.count > 0) {
+      if (lastMonthSpend.total > 0) {
+        const pctChange = ((mtdSpend.total - lastMonthSpend.total) / lastMonthSpend.total) * 100;
+        const rounded = Math.round(Math.abs(pctChange));
+        if (pctChange > 0) {
+          spendChangeMeta = `+${rounded}% vs last month`;
+          spendChangeTone = 'down';
+        } else if (pctChange < 0) {
+          spendChangeMeta = `-${rounded}% vs last month`;
+          spendChangeTone = 'up';
+        } else {
+          spendChangeMeta = 'Flat vs last month';
+        }
+      } else {
+        spendChangeMeta = 'No spend last month';
+        spendChangeTone = 'flat';
+      }
+    }
+
+    const classCounts = new Map<string, number>();
+    for (const ticket of mtdTickets) {
+      const label = formatTicketClass(ticket.class);
+      classCounts.set(label, (classCounts.get(label) ?? 0) + 1);
+    }
+    const topClassEntry = [...classCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const avgCostMeta = mtdSpend.count
+      ? `${mtdSpend.count} priced booking${mtdSpend.count !== 1 ? 's' : ''}${topClassEntry ? ` · ${topClassEntry[0]}` : ''}`
+      : 'No priced bookings this month';
+
+    const spendByDestinationMap = new Map<string, number>();
+    for (const ticket of projectFilteredTickets) {
+      if (typeof ticket.price !== 'number') continue;
+      const dest = ticket.to?.COUNTRYNAME?.trim() || ticket.to?.COUNTRY?.trim() || 'Unknown destination';
+      spendByDestinationMap.set(dest, (spendByDestinationMap.get(dest) ?? 0) + ticket.price);
+    }
+    const spendByDestinationEntries = [...spendByDestinationMap.entries()].sort((a, b) => b[1] - a[1]);
+    const topDestinationSpend = spendByDestinationEntries[0]?.[1] ?? 0;
+    const spendByDestination = spendByDestinationEntries.slice(0, 5).map(([label, amount], index) => ({
+      label,
+      amount,
+      barPct: topDestinationSpend ? Math.round((amount / topDestinationSpend) * 100) : 0,
+      color: METRIC_BAR_COLORS[index % METRIC_BAR_COLORS.length],
+    }));
+
+    const classBookingMap = new Map<string, number>();
+    for (const ticket of projectFilteredTickets) {
+      const label = formatTicketClass(ticket.class);
+      classBookingMap.set(label, (classBookingMap.get(label) ?? 0) + 1);
+    }
+    const bookingsByClass = [...classBookingMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({
+        label,
+        count,
+        pct: totalBookings ? Math.round((count / totalBookings) * 100) : 0,
+      }));
+
+    const combinedSpend = mtdSpend.total + lastMonthSpend.total;
+    const spendMtdBarPct = combinedSpend
+      ? Math.round((mtdSpend.total / combinedSpend) * 100)
+      : mtdTickets.length
+        ? Math.min(100, mtdTickets.length * 10)
+        : 0;
+
     return {
-      total,
-      average: priced.length ? total / priced.length : 0,
+      totalBookings,
+      approvedCount,
+      pendingCount,
+      mtdSpend,
+      spendChangeMeta,
+      spendChangeTone,
+      avgCostMeta,
+      spendByDestination,
+      bookingsByClass,
+      activeBookingsBarPct: totalBookings ? Math.round((approvedCount / totalBookings) * 100) : 0,
+      pendingBarPct: totalBookings ? Math.round((pendingCount / totalBookings) * 100) : 0,
+      spendMtdBarPct,
+      avgCostBarPct: mtdTickets.length
+        ? Math.round((mtdSpend.count / mtdTickets.length) * 100)
+        : 0,
+      pendingMeta:
+        pendingCount > 0
+          ? `${pendingCount} awaiting superadmin`
+          : 'None awaiting approval',
     };
   }, [projectFilteredTickets]);
+
+  const sortedRecentBookings = useMemo(
+    () =>
+      [...filteredTickets].sort((a, b) => {
+        const aTime = parseCrewTicketCreatedAt(a)?.getTime() ?? 0;
+        const bTime = parseCrewTicketCreatedAt(b)?.getTime() ?? 0;
+        return bTime - aTime;
+      }),
+    [filteredTickets]
+  );
+
+  const recentBookingsTotalPages = Math.max(
+    1,
+    Math.ceil(sortedRecentBookings.length / RECENT_BOOKINGS_PAGE_SIZE)
+  );
+
+  useEffect(() => {
+    if (recentBookingsPage > recentBookingsTotalPages) {
+      setRecentBookingsPage(recentBookingsTotalPages);
+    }
+  }, [recentBookingsPage, recentBookingsTotalPages]);
+
+  const paginatedRecentBookings = useMemo(() => {
+    const start = (recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE;
+    return sortedRecentBookings.slice(start, start + RECENT_BOOKINGS_PAGE_SIZE);
+  }, [sortedRecentBookings, recentBookingsPage]);
 
   const pendingApprovalCount = useMemo(
     () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) !== 'APPROVED').length,
     [projectFilteredTickets]
   );
-
-  const approvedTicketCount = projectFilteredTickets.length - pendingApprovalCount;
 
   const getTicketStatusBadgeClass = (ticket: CrewTicketApi) =>
     getTicketStatus(ticket) === 'APPROVED' ? 'subsea-b-green' : 'subsea-b-amber';
@@ -1468,9 +1621,6 @@ const AdminTicketsPage = () => {
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
             <Plane size={13} /> Upcoming Departures
           </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
-            <CircleDollarSign size={13} /> Spend Control
-          </button>
         </div>
       </aside>
 
@@ -1481,7 +1631,10 @@ const AdminTicketsPage = () => {
             <span className="subsea-crumb-sep">/</span>
             <span className="subsea-crumb-active">Flight Bookings</span>
           </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+          <div className="subsea-sync-pill">
+            <span className="subsea-sync-dot" />
+            GMDSS Online · {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
+          </div>
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
@@ -2090,27 +2243,43 @@ const AdminTicketsPage = () => {
             <div className="subsea-kpi-strip subsea-kpi-strip-4">
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Active Bookings</div>
-                <div className="subsea-kpi-value">{projectFilteredTickets.length}</div>
-                <div className="subsea-kpi-meta flat">{approvedTicketCount} approved</div>
-                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill blue" style={{ width: '60%' }} /></div>
+                <div className="subsea-kpi-value">{ticketDashboardStats.totalBookings}</div>
+                <div className="subsea-kpi-meta flat">{ticketDashboardStats.approvedCount} approved</div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill blue" style={{ width: `${ticketDashboardStats.activeBookingsBarPct}%` }} />
+                </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Pending Approval</div>
                 <div className="subsea-kpi-value">{pendingApprovalCount}</div>
-                <div className="subsea-kpi-meta down">Superadmin review</div>
-                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill amber" style={{ width: '26%' }} /></div>
+                <div className={`subsea-kpi-meta ${pendingApprovalCount ? 'down' : 'flat'}`}>
+                  {ticketDashboardStats.pendingMeta}
+                </div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill amber" style={{ width: `${ticketDashboardStats.pendingBarPct}%` }} />
+                </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Total Spend MTD</div>
-                <div className="subsea-kpi-value">{ticketSpend.total ? displayMoney(ticketSpend.total) : '£48.2K'}</div>
-                <div className="subsea-kpi-meta up">-12% vs last month</div>
-                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill teal" style={{ width: '70%' }} /></div>
+                <div className="subsea-kpi-value">{displayMoney(ticketDashboardStats.mtdSpend.total)}</div>
+                <div className={`subsea-kpi-meta ${ticketDashboardStats.spendChangeTone}`}>
+                  {ticketDashboardStats.spendChangeMeta}
+                </div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill teal" style={{ width: `${ticketDashboardStats.spendMtdBarPct}%` }} />
+                </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Avg Ticket Cost</div>
-                <div className="subsea-kpi-value">{ticketSpend.average ? displayMoney(ticketSpend.average) : '£1,555'}</div>
-                <div className="subsea-kpi-meta flat">Economy + 1 bag</div>
-                <div className="subsea-kpi-bar"><div className="subsea-kpi-fill green" style={{ width: '45%' }} /></div>
+                <div className="subsea-kpi-value">
+                  {ticketDashboardStats.mtdSpend.count
+                    ? displayMoney(ticketDashboardStats.mtdSpend.average)
+                    : '—'}
+                </div>
+                <div className="subsea-kpi-meta flat">{ticketDashboardStats.avgCostMeta}</div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill green" style={{ width: `${ticketDashboardStats.avgCostBarPct}%` }} />
+                </div>
               </div>
             </div>
 
@@ -2181,9 +2350,13 @@ const AdminTicketsPage = () => {
               <div className="subsea-g2">
                 <div className="subsea-pane">
                   <div className="subsea-pane-head">
-                    <div className="subsea-pane-title">Upcoming Departures</div>
+                    <div className="subsea-pane-title">Recent Bookings</div>
                     <div className="subsea-pane-actions">
-                      <span className="subsea-pane-sub">Next 14 days</span>
+                      <span className="subsea-pane-sub">
+                        {sortedRecentBookings.length > 0
+                          ? `${(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-${Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of ${sortedRecentBookings.length}`
+                          : '0 bookings'}
+                      </span>
                       <button
                         type="button"
                         className="subsea-btn subsea-btn-default subsea-btn-sm"
@@ -2197,7 +2370,7 @@ const AdminTicketsPage = () => {
                     </div>
                   </div>
                   <div className="subsea-pane-body">
-                    {filteredTickets.slice(0, 6).map((ticket) => (
+                    {paginatedRecentBookings.map((ticket) => (
                       <div
                         key={ticket.id}
                         className={`subsea-flight-card${getTicketStatus(ticket) !== 'APPROVED' ? ' pending' : ''}`}
@@ -2263,32 +2436,79 @@ const AdminTicketsPage = () => {
                       </div>
                     ))}
                   </div>
+                  {sortedRecentBookings.length > RECENT_BOOKINGS_PAGE_SIZE && (
+                    <div className="subsea-pagination">
+                      <span>
+                        Showing {(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-
+                        {Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of{' '}
+                        {sortedRecentBookings.length} bookings
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          className="subsea-btn subsea-btn-default subsea-btn-sm"
+                          disabled={recentBookingsPage <= 1}
+                          onClick={() => setRecentBookingsPage((p) => Math.max(1, p - 1))}
+                        >
+                          Previous
+                        </button>
+                        {Array.from({ length: recentBookingsTotalPages }, (_, i) => i + 1).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            className={`subsea-btn subsea-btn-sm ${p === recentBookingsPage ? 'subsea-btn-primary' : 'subsea-btn-default'}`}
+                            onClick={() => setRecentBookingsPage(p)}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="subsea-btn subsea-btn-default subsea-btn-sm"
+                          disabled={recentBookingsPage >= recentBookingsTotalPages}
+                          onClick={() => setRecentBookingsPage((p) => Math.min(recentBookingsTotalPages, p + 1))}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <div className="subsea-pane subsea-mb-12">
-                    <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Route Type</div></div>
+                    <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Destination</div></div>
                     <div className="subsea-pane-body subsea-pane-body-compact">
-                      <div className="subsea-metric-row"><div className="subsea-metric-grow"><div className="subsea-metric-label">North Sea routes</div><div className="subsea-prog-bar"><div className="subsea-prog-fill blue" style={{ width: '62%' }} /></div></div><div className="subsea-metric-val">£29.8K</div></div>
-                      <div className="subsea-metric-row"><div className="subsea-metric-grow"><div className="subsea-metric-label">Middle East / Red Sea</div><div className="subsea-prog-bar"><div className="subsea-prog-fill teal" style={{ width: '25%' }} /></div></div><div className="subsea-metric-val">£12.1K</div></div>
-                      <div className="subsea-metric-row"><div className="subsea-metric-grow"><div className="subsea-metric-label">Gulf of Mexico</div><div className="subsea-prog-bar"><div className="subsea-prog-fill amber" style={{ width: '13%' }} /></div></div><div className="subsea-metric-val">£6.3K</div></div>
+                      {ticketDashboardStats.spendByDestination.length === 0 ? (
+                        <div className="subsea-state">No priced bookings yet</div>
+                      ) : (
+                        ticketDashboardStats.spendByDestination.map((row) => (
+                          <div className="subsea-metric-row" key={row.label}>
+                            <div className="subsea-metric-grow">
+                              <div className="subsea-metric-label">{row.label}</div>
+                              <div className="subsea-prog-bar">
+                                <div className={`subsea-prog-fill ${row.color}`} style={{ width: `${row.barPct}%` }} />
+                              </div>
+                            </div>
+                            <div className="subsea-metric-val">{displayMoney(row.amount)}</div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                   <div className="subsea-pane">
-                    <div className="subsea-pane-head"><div className="subsea-pane-title">Preferred Airlines</div></div>
+                    <div className="subsea-pane-head"><div className="subsea-pane-title">Bookings by Cabin Class</div></div>
                     <div className="subsea-pane-body subsea-pane-body-compact">
-                      {[
-                        ['British Airways', '38%'],
-                        ['Emirates', '24%'],
-                        ['KLM', '18%'],
-                        ['SAS', '12%'],
-                        ['Other', '8%'],
-                      ].map(([airline, pct]) => (
-                        <div className="subsea-metric-row" key={airline}>
-                          <span className="subsea-metric-label">{airline}</span>
-                          <span className="subsea-metric-val">{pct}</span>
-                        </div>
-                      ))}
+                      {ticketDashboardStats.bookingsByClass.length === 0 ? (
+                        <div className="subsea-state">No bookings yet</div>
+                      ) : (
+                        ticketDashboardStats.bookingsByClass.map((row) => (
+                          <div className="subsea-metric-row" key={row.label}>
+                            <span className="subsea-metric-label">{row.label}</span>
+                            <span className="subsea-metric-val">{row.count} ({row.pct}%)</span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
