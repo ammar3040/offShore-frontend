@@ -339,7 +339,20 @@ const RigsPage = () => {
                 {paginatedRigs.map((rig, index) => {
                   const status = getRigStatus(index);
                   return (
-                    <article key={rig.id} className="subsea-rig-card">
+                    <article
+                      key={rig.id}
+                      className="subsea-rig-card"
+                      onClick={() => navigate(`/rig/${rig.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate(`/rig/${rig.id}`);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View details for ${rig.name}`}
+                    >
                       <div className="subsea-rig-top">
                         <div className={`subsea-rig-icon subsea-rig-icon-${index % 4}`}>
                           <Ship size={18} />

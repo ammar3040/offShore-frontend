@@ -24,6 +24,7 @@ const CrewAvailabilityPage = lazy(() => import('./pages/CrewAvailabilityPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailsPage = lazy(() => import('./pages/ProjectDetailsPage'));
 const RigsPage = lazy(() => import('./pages/RigsPage'));
+const RigDetailsPage = lazy(() => import('./pages/RigDetailsPage'));
 const TimelinePage = lazy(() => import('./pages/TimelinePage'));
 const AdminTicketsPage = lazy(() => import('./pages/AdminTicketsPage'));
 const SuperadminDashboard = lazy(() => import('./pages/SuperadminDashboard'));
@@ -103,6 +104,7 @@ function App() {
                     <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
                     <Route path="/rig" element={<RigsPage />} />
+                    <Route path="/rig/:rigId" element={<RigDetailsPage />} />
                     <Route path="/timeline" element={<TimelinePage />} />
                     <Route path="/tickets" element={<AdminTicketsPage />} />
                     <Route path="/payroll" element={<PayrollPage />} />
