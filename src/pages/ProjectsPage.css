@@ -1,3 +1,41 @@
+.projects-proj-board .subsea-proj-card-top {
+  padding: 10px 12px 8px;
+}
+
+.projects-proj-board .subsea-proj-card-icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 6px;
+}
+
+.projects-proj-board .subsea-proj-card-sub {
+  min-height: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.projects-proj-board .subsea-proj-badge-row {
+  margin-top: 6px;
+}
+
+.projects-proj-board .subsea-proj-card-body {
+  padding: 8px 12px;
+}
+
+.projects-proj-board .subsea-proj-progress {
+  margin-bottom: 6px;
+}
+
+.projects-proj-board .subsea-proj-meta-row {
+  margin-top: 6px;
+}
+
+.projects-proj-board .subsea-proj-card-actions {
+  margin-top: 6px;
+}
+
 .projects-page {
   width: 100%;
   max-width: 100%;

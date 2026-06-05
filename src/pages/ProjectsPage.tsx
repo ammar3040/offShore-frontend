@@ -520,7 +520,7 @@ const ProjectsPage = () => {
             </div>
           ) : viewMode === 'board' ? (
             <>
-              <div className="subsea-proj-board">
+              <div className="subsea-proj-board projects-proj-board">
                 {paginatedProjects.map((project, index) => {
                   const tone = projectTone(project.status, index);
                   const completion = projectCompletion(project);
