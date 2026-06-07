@@ -13,7 +13,6 @@ import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getCrewAvailableForProject, getCrewEnrolledInProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
-import { recordContractInvites } from '../lib/contractsStore';
 import { getProjectById, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
@@ -190,7 +189,6 @@ const ProjectDetailsPage = () => {
     setInviteError(null);
     try {
       await inviteCrewToProject(project.id, selectedCrewIds);
-      recordContractInvites(selectedCrewIds, project.id, project.title);
       setInviteSuccess(true);
       loadCrew(project.id);
       setTimeout(closeInviteModal, 1200);

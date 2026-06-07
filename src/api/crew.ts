@@ -560,6 +560,10 @@ export interface CrewProjectInvitation {
   endDate?: string;
   invitedAt?: string;
   invitationStatus?: 'pending' | 'accepted' | 'declined';
+  contractBody?: string;
+  contractTitle?: string;
+  contractSignedAt?: string;
+  contractEndDate?: string;
 }
 
 export interface GetCrewProjectInvitationsResponse {
@@ -597,6 +601,10 @@ export async function getCrewProjectInvitations(): Promise<GetCrewProjectInvitat
       const startVal = proj?.startDate ?? (d && typeof d === 'object' && 'startDate' in d ? d.startDate : undefined);
       const endVal = proj?.endDate ?? (d && typeof d === 'object' && 'endDate' in d ? d.endDate : undefined);
       const projId = proj && typeof proj === 'object' && '_id' in proj ? proj._id : proj?.id;
+      const contractBody = inv?.contract_body ?? inv?.contractBody;
+      const contractTitle = inv?.contract_title ?? inv?.contractTitle;
+      const contractSignedAt = inv?.contract_signed_at ?? inv?.contractSignedAt;
+      const contractEndDate = inv?.contract_end_date ?? inv?.contractEndDate;
       return {
         id: String(inv?.id ?? ''),
         projectId: String(projId ?? inv?.projectId ?? ''),
@@ -607,6 +615,10 @@ export async function getCrewProjectInvitations(): Promise<GetCrewProjectInvitat
         endDate: endVal != null ? String(endVal) : undefined,
         invitedAt: inv?.createdAt != null ? String(inv.createdAt) : inv?.invitedAt != null ? String(inv.invitedAt) : undefined,
         invitationStatus: (inv?.acceptanceStatus ?? inv?.invitationStatus) as 'pending' | 'accepted' | 'declined' | undefined,
+        contractBody: contractBody != null ? String(contractBody) : undefined,
+        contractTitle: contractTitle != null ? String(contractTitle) : undefined,
+        contractSignedAt: contractSignedAt != null ? String(contractSignedAt) : undefined,
+        contractEndDate: contractEndDate != null ? String(contractEndDate) : undefined,
       };
     });
     return { invitations };
@@ -616,16 +628,26 @@ export async function getCrewProjectInvitations(): Promise<GetCrewProjectInvitat
   }
 }
 
+export interface AcceptCrewInvitationOptions {
+  termsAgreed?: boolean;
+}
+
 /**
  * Accepts a project invitation (requires crew token).
- * POST /crew-invite/project/:project_id/accept
+ * PATCH /crew-invite/project/:project_id/accept
  */
-export async function acceptCrewInvitation(projectId: string): Promise<void> {
+export async function acceptCrewInvitation(
+  projectId: string,
+  options?: AcceptCrewInvitationOptions
+): Promise<void> {
   const token = localStorage.getItem(env.crewTokenKey);
   if (!token) throw new Error('Not authenticated');
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const body =
+    options?.termsAgreed === true ? JSON.stringify({ terms_agreed: true }) : undefined;
 
   const response = await fetch(`${env.apiBaseUrl}/crew-invite/project/${encodeURIComponent(projectId)}/accept`, {
     method: 'PATCH',
@@ -633,6 +655,7 @@ export async function acceptCrewInvitation(projectId: string): Promise<void> {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
+    body,
     signal: controller.signal,
   });
   clearTimeout(timeoutId);
@@ -1132,20 +1155,30 @@ export interface InviteCrewToProjectResponse {
   invites: CrewInviteToProjectItem[];
 }
 
+export interface InviteCrewToProjectOptions {
+  contractBody?: string;
+  contractTitle?: string;
+}
+
 /**
  * Invites crew members to a project (admin). Requires admin auth token.
  * POST /crew-invite/project/:project_id
- * Body: { crew_ids: string[] }
+ * Body: { crew_ids, contract_body?, contract_title? }
  */
 export async function inviteCrewToProject(
   projectId: string,
-  crewIds: string[]
+  crewIds: string[],
+  options?: InviteCrewToProjectOptions
 ): Promise<InviteCrewToProjectResponse> {
   const token = getAuthToken();
   if (!token) throw new Error('Not authenticated');
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const payload: Record<string, unknown> = { crew_ids: crewIds };
+  if (options?.contractBody) payload.contract_body = options.contractBody;
+  if (options?.contractTitle) payload.contract_title = options.contractTitle;
 
   const response = await fetch(
     `${env.apiBaseUrl}/crew-invite/project/${encodeURIComponent(projectId)}`,
@@ -1155,7 +1188,7 @@ export async function inviteCrewToProject(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ crew_ids: crewIds }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     }
   );

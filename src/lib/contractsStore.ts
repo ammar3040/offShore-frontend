@@ -1,26 +1,16 @@
-const PENDING_KEY = 'offshore-contract-pending';
-const SIGNED_KEY = 'offshore-contracts-signed';
+const DRAFTS_KEY = 'offshore-contract-drafts';
 
-export interface PendingContractInvite {
-  crewId: string;
-  projectId: string;
-  projectTitle: string;
-  contractMessage: string;
-  invitedAt: string;
-}
-
-export interface SignedProjectContract {
+export interface ContractDraft {
   id: string;
-  crewId: string;
-  crewName: string;
+  title: string;
   projectId: string;
   projectTitle: string;
-  contractEndDate: string;
-  signedAt: string;
-}
-
-export function buildContractInviteMessage(projectTitle: string): string {
-  return `You have been invited to join "${projectTitle}". Open the project contract to read the full terms, agree below, then accept and sign to enroll.`;
+  body: string;
+  crewIds: string[];
+  status: 'draft' | 'sent';
+  createdAt: string;
+  updatedAt: string;
+  sentAt?: string;
 }
 
 export interface ContractDocumentInput {
@@ -44,7 +34,32 @@ function formatContractDate(iso?: string): string {
   }
 }
 
-/** Full contract text shown in the crew contract review overlay. */
+export const DEFAULT_CONTRACT_DRAFT_TEMPLATE = `PROJECT ASSIGNMENT AGREEMENT
+
+This Project Assignment Agreement ("Agreement") is entered between Offshore CRM Operations and the assigned crew member.
+
+1. Assignment Scope
+The crew member agrees to perform duties on the assigned project in accordance with site procedures, supervisor direction, and applicable maritime regulations.
+
+2. Term
+Assignment period is as defined in the project schedule. The contract end date reflects scheduled project completion unless extended in writing by operations.
+
+3. Safety & Compliance
+The crew member shall follow all HSE policies, permit-to-work requirements, PPE standards, and incident reporting obligations while on assignment.
+
+4. Reporting & Availability
+Daily activity reporting, timesheet submission, and availability updates must be maintained through the crew portal for the duration of the assignment.
+
+5. Compensation
+Compensation is governed by the payroll rate configured for this project assignment and applicable company pay policies.
+
+6. Confidentiality
+Operational data, client information, and safety reports must be handled as confidential and not disclosed outside authorized channels.
+
+7. Acceptance
+By checking "I agree to the terms and conditions" and selecting Accept and sign, the crew member confirms they have read this Agreement and accept assignment to the project.`;
+
+/** Fallback contract text when no admin-drafted body is attached on the invite. */
 export function buildFullContractDocument(input: ContractDocumentInput): string {
   const period =
     input.startDate || input.endDate
@@ -84,13 +99,9 @@ export function buildFullContractDocument(input: ContractDocumentInput): string 
     .join('\n');
 }
 
-function contractKey(crewId: string, projectId: string): string {
-  return `${crewId}:${projectId}`;
-}
-
-function readPending(): PendingContractInvite[] {
+function readDrafts(): ContractDraft[] {
   try {
-    const raw = localStorage.getItem(PENDING_KEY);
+    const raw = localStorage.getItem(DRAFTS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -99,106 +110,64 @@ function readPending(): PendingContractInvite[] {
   }
 }
 
-function writePending(items: PendingContractInvite[]): void {
-  localStorage.setItem(PENDING_KEY, JSON.stringify(items));
+function writeDrafts(items: ContractDraft[]): void {
+  localStorage.setItem(DRAFTS_KEY, JSON.stringify(items));
 }
 
-function readSigned(): SignedProjectContract[] {
-  try {
-    const raw = localStorage.getItem(SIGNED_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeSigned(items: SignedProjectContract[]): void {
-  localStorage.setItem(SIGNED_KEY, JSON.stringify(items));
-}
-
-export function recordContractInvite(params: {
-  crewId: string;
-  projectId: string;
-  projectTitle: string;
-}): void {
-  const key = contractKey(params.crewId, params.projectId);
-  const next: PendingContractInvite = {
-    crewId: params.crewId,
-    projectId: params.projectId,
-    projectTitle: params.projectTitle,
-    contractMessage: buildContractInviteMessage(params.projectTitle),
-    invitedAt: new Date().toISOString(),
-  };
-  const items = readPending().filter((p) => contractKey(p.crewId, p.projectId) !== key);
-  items.push(next);
-  writePending(items);
-}
-
-export function recordContractInvites(
-  crewIds: string[],
-  projectId: string,
-  projectTitle: string
-): void {
-  for (const crewId of crewIds) {
-    recordContractInvite({ crewId, projectId, projectTitle });
-  }
-}
-
-export function getContractInviteMessage(crewId: string, projectId: string): string | null {
-  const item = readPending().find(
-    (p) => contractKey(p.crewId, p.projectId) === contractKey(crewId, projectId)
+export function getContractDrafts(): ContractDraft[] {
+  return readDrafts().sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
-  return item?.contractMessage ?? null;
 }
 
-export function removePendingContractInvite(crewId: string, projectId: string): void {
-  const key = contractKey(crewId, projectId);
-  writePending(readPending().filter((p) => contractKey(p.crewId, p.projectId) !== key));
+export function getContractDraftById(id: string): ContractDraft | null {
+  return readDrafts().find((d) => d.id === id) ?? null;
 }
 
-export function resolveContractEndDate(projectEndDate?: string): string {
-  if (projectEndDate) {
-    try {
-      const d = new Date(projectEndDate);
-      if (!Number.isNaN(d.getTime())) return d.toISOString();
-    } catch {
-      /* fall through */
-    }
+export function saveContractDraft(
+  input: Pick<ContractDraft, 'title' | 'projectId' | 'projectTitle' | 'body' | 'crewIds' | 'status'> & {
+    id?: string;
   }
-  const end = new Date();
-  end.setMonth(end.getMonth() + 6);
-  return end.toISOString();
-}
+): ContractDraft {
+  const now = new Date().toISOString();
+  const items = readDrafts();
+  const existing = input.id ? items.find((d) => d.id === input.id) : undefined;
 
-export function signProjectContract(params: {
-  crewId: string;
-  crewName: string;
-  projectId: string;
-  projectTitle: string;
-  contractEndDate: string;
-}): SignedProjectContract {
-  const key = contractKey(params.crewId, params.projectId);
-  const signedAt = new Date().toISOString();
-  const record: SignedProjectContract = {
-    id: crypto.randomUUID(),
-    crewId: params.crewId,
-    crewName: params.crewName,
-    projectId: params.projectId,
-    projectTitle: params.projectTitle,
-    contractEndDate: params.contractEndDate,
-    signedAt,
+  const record: ContractDraft = {
+    id: existing?.id ?? crypto.randomUUID(),
+    title: input.title.trim() || input.projectTitle || 'Untitled contract',
+    projectId: input.projectId,
+    projectTitle: input.projectTitle,
+    body: input.body,
+    crewIds: input.crewIds,
+    status: input.status,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    sentAt: input.status === 'sent' ? existing?.sentAt ?? now : existing?.sentAt,
   };
-  const items = readSigned().filter((s) => contractKey(s.crewId, s.projectId) !== key);
-  items.push(record);
-  writeSigned(items);
-  removePendingContractInvite(params.crewId, params.projectId);
+
+  const next = items.filter((d) => d.id !== record.id);
+  next.push(record);
+  writeDrafts(next);
   return record;
 }
 
-export function getSignedContracts(): SignedProjectContract[] {
-  return readSigned().sort(
-    (a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime()
-  );
+export function markContractDraftSent(id: string): ContractDraft | null {
+  const items = readDrafts();
+  const idx = items.findIndex((d) => d.id === id);
+  if (idx < 0) return null;
+  const now = new Date().toISOString();
+  const updated: ContractDraft = {
+    ...items[idx],
+    status: 'sent',
+    updatedAt: now,
+    sentAt: now,
+  };
+  items[idx] = updated;
+  writeDrafts(items);
+  return updated;
+}
+
+export function deleteContractDraft(id: string): void {
+  writeDrafts(readDrafts().filter((d) => d.id !== id));
 }

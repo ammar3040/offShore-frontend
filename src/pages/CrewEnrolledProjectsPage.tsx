@@ -12,12 +12,7 @@ import {
   type CrewProjectInvitation,
 } from '../api/crew';
 import Modal from '../components/Modal';
-import {
-  buildFullContractDocument,
-  getContractInviteMessage,
-  resolveContractEndDate,
-  signProjectContract,
-} from '../lib/contractsStore';
+import { buildFullContractDocument } from '../lib/contractsStore';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
 import './CrewEnrolledProjectsPage.css';
 
@@ -73,15 +68,7 @@ const CrewEnrolledProjectsPage = () => {
     try {
       const crew = crewMe ?? (await getCrewMe());
       if (!crew?.id) throw new Error('Could not load your crew profile');
-      await acceptCrewInvitation(inv.projectId);
-      const crewName = `${crew.firstname ?? ''} ${crew.lastname ?? ''}`.trim() || 'Crew member';
-      signProjectContract({
-        crewId: crew.id,
-        crewName,
-        projectId: inv.projectId,
-        projectTitle: inv.title,
-        contractEndDate: resolveContractEndDate(inv.endDate),
-      });
+      await acceptCrewInvitation(inv.projectId, { termsAgreed: true });
       if (!crewMe) setCrewMe(crew);
       setContractModalInvite(null);
       setTermsAgreedByInviteId((prev) => {
@@ -98,16 +85,12 @@ const CrewEnrolledProjectsPage = () => {
   };
 
   const fullContractText = (inv: CrewProjectInvitation): string => {
-    const summary =
-      crewMe?.id != null
-        ? getContractInviteMessage(crewMe.id, inv.projectId) ?? undefined
-        : undefined;
+    if (inv.contractBody) return inv.contractBody;
     return buildFullContractDocument({
-      projectTitle: inv.title,
+      projectTitle: inv.contractTitle ?? inv.title,
       projectDescription: inv.description,
       startDate: inv.startDate,
       endDate: inv.endDate,
-      summaryMessage: summary,
     });
   };
 
@@ -288,7 +271,11 @@ const CrewEnrolledProjectsPage = () => {
       <Modal
         isOpen={!!contractModalInvite}
         onClose={closeContractModal}
-        title={contractModalInvite ? `Project contract — ${contractModalInvite.title}` : 'Project contract'}
+        title={
+          contractModalInvite
+            ? `Project contract — ${contractModalInvite.contractTitle ?? contractModalInvite.title}`
+            : 'Project contract'
+        }
         size="large"
       >
         {contractModalInvite && (

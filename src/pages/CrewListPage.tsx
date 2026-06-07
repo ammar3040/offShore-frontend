@@ -25,7 +25,6 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
-import { recordContractInvite } from '../lib/contractsStore';
 import { getProjects, type ProjectApi } from '../api/project';
 import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
@@ -194,13 +193,6 @@ const CrewListPage = () => {
     setInviteError(null);
     try {
       await inviteCrewToProject(selectedProjectId, [inviteCrewMember.id]);
-      const projectTitle =
-        projects.find((p) => p.id === selectedProjectId)?.title ?? 'Project assignment';
-      recordContractInvite({
-        crewId: inviteCrewMember.id,
-        projectId: selectedProjectId,
-        projectTitle,
-      });
       setInviteSuccess(true);
       void refreshCrewData();
       setTimeout(closeInviteModal, 1200);
