@@ -56,13 +56,23 @@ export interface CrewTicketApi {
   approvedAt?: string;
   /** Superadmin identifier/email when returned by backend. */
   approvedBy?: string;
-  /** URL to uploaded ticket PDF when present */
+  /** True when a PDF is stored server-side (fetch via GET /crew-ticket/:id/pdf). */
+  hasPdf?: boolean;
+  /** Relative API path for authenticated PDF download. */
+  pdfDownloadUrl?: string;
+  /** @deprecated Legacy Cloudinary URL — no longer returned by API; do not open directly. */
   pdf?: string;
   createdAt?: string;
 }
 
-/** Raw API row may use snake_case timestamps. */
-export type CrewTicketApiRaw = CrewTicketApi & { created_at?: string };
+/** Raw API row may use snake_case timestamps or legacy pdf fields. */
+export type CrewTicketApiRaw = CrewTicketApi & {
+  created_at?: string;
+  has_pdf?: boolean;
+  pdf_download_url?: string;
+};
+
+export type CrewTicketPdfAuthRole = 'admin' | 'crew' | 'superadmin';
 
 function createdAtIsoFromMongoObjectId(id: string): string | undefined {
   if (!/^[a-f0-9]{24}$/i.test(id)) return undefined;
@@ -114,17 +124,56 @@ export function getTicketStatusLabel(ticket: Pick<CrewTicketApi, 'status'>): str
   return getTicketStatus(ticket) === 'APPROVED' ? 'Approved' : 'Pending Approval';
 }
 
-export function canUseTicketPdf(ticket: Pick<CrewTicketApi, 'status' | 'pdf'>): boolean {
-  return getTicketStatus(ticket) === 'APPROVED' && Boolean(ticket.pdf);
+export function ticketHasStoredPdf(ticket: Pick<CrewTicketApi, 'hasPdf' | 'pdf'>): boolean {
+  if (typeof ticket.hasPdf === 'boolean') return ticket.hasPdf;
+  return Boolean(ticket.pdf);
+}
+
+export function canUseTicketPdf(
+  ticket: Pick<CrewTicketApi, 'status' | 'hasPdf' | 'pdf'>
+): boolean {
+  return getTicketStatus(ticket) === 'APPROVED' && ticketHasStoredPdf(ticket);
+}
+
+export function getCrewTicketPdfFilename(
+  ticket: Pick<CrewTicketApi, 'id' | 'bookingReference'>
+): string {
+  return `crew-ticket-${ticket.bookingReference ?? ticket.id}.pdf`;
 }
 
 export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
   const iso = getCrewTicketCreatedIso(row) ?? createdAtIsoFromMongoObjectId(row.id);
   const normalizedStatus = getTicketStatus(row);
-  const base = row.status === normalizedStatus ? row : { ...row, status: normalizedStatus };
-  if (!iso) return base;
-  if (base.createdAt?.trim() === iso) return base;
-  return { ...base, createdAt: iso };
+  const hasPdf =
+    typeof row.hasPdf === 'boolean'
+      ? row.hasPdf
+      : typeof row.has_pdf === 'boolean'
+        ? row.has_pdf
+        : Boolean(row.pdf);
+  const pdfDownloadUrl =
+    typeof row.pdfDownloadUrl === 'string'
+      ? row.pdfDownloadUrl
+      : typeof row.pdf_download_url === 'string'
+        ? row.pdf_download_url
+        : row.id
+          ? `/crew-ticket/${row.id}/pdf`
+          : undefined;
+
+  const { pdf: _legacyPdf, has_pdf: _hasPdf, pdf_download_url: _pdfDownloadUrl, ...rest } = row;
+  const base =
+    row.status === normalizedStatus
+      ? rest
+      : { ...rest, status: normalizedStatus };
+
+  const normalized: CrewTicketApi = {
+    ...base,
+    hasPdf,
+    pdfDownloadUrl: hasPdf ? pdfDownloadUrl : undefined,
+  };
+
+  if (!iso) return normalized;
+  if (normalized.createdAt?.trim() === iso) return normalized;
+  return { ...normalized, createdAt: iso };
 }
 
 export interface GetCrewTicketsResponse {
@@ -157,6 +206,93 @@ function getHeaders(): HeadersInit {
     headers['Authorization'] = `Bearer ${token}`;
   }
   return headers;
+}
+
+function getCrewTicketPdfAuthHeaders(role?: CrewTicketPdfAuthRole): HeadersInit {
+  const pick = (key: string) => localStorage.getItem(key);
+
+  if (role === 'crew') {
+    const token = pick(env.crewTokenKey);
+    if (!token) throw new Error('Not authenticated');
+    return { Authorization: `Bearer ${token}` };
+  }
+  if (role === 'superadmin') {
+    const token = pick(env.superadminTokenKey);
+    if (!token) throw new Error('Not authenticated');
+    return { Authorization: `Bearer ${token}` };
+  }
+  if (role === 'admin') {
+    const token = pick(env.authTokenKey);
+    if (!token) throw new Error('Not authenticated');
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  const token = pick(env.superadminTokenKey) ?? pick(env.authTokenKey) ?? pick(env.crewTokenKey);
+  if (!token) throw new Error('Not authenticated');
+  return { Authorization: `Bearer ${token}` };
+}
+
+/** Fetch ticket PDF via authenticated backend stream (private Cloudinary assets). */
+export async function fetchCrewTicketPdfBlob(
+  ticketId: string,
+  role?: CrewTicketPdfAuthRole
+): Promise<Blob> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(
+    `${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/pdf`,
+    {
+      method: 'GET',
+      headers: getCrewTicketPdfAuthHeaders(role),
+      signal: controller.signal,
+    }
+  );
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text) as Record<string, unknown>;
+        message =
+          (typeof errorData.message === 'string' && errorData.message) ||
+          (typeof errorData.error === 'string' && errorData.error) ||
+          message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
+
+export async function openCrewTicketPdf(
+  ticket: Pick<CrewTicketApi, 'id' | 'bookingReference'>,
+  role?: CrewTicketPdfAuthRole
+): Promise<void> {
+  const blob = await fetchCrewTicketPdfBlob(ticket.id, role);
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function downloadCrewTicketPdf(
+  ticket: Pick<CrewTicketApi, 'id' | 'bookingReference'>,
+  role?: CrewTicketPdfAuthRole
+): Promise<void> {
+  const blob = await fetchCrewTicketPdfBlob(ticket.id, role);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = getCrewTicketPdfFilename(ticket);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**

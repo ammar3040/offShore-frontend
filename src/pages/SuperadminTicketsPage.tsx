@@ -2,7 +2,14 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, FileCheck, Send, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { approveCrewTicket, getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket } from '../api/superadmin';
-import { canUseTicketPdf, getTicketStatus, getTicketStatusLabel, type CrewTicketApi } from '../api/ticket';
+import {
+  canUseTicketPdf,
+  getTicketStatus,
+  getTicketStatusLabel,
+  openCrewTicketPdf,
+  ticketHasStoredPdf,
+  type CrewTicketApi,
+} from '../api/ticket';
 import {
   Dialog,
   DialogContent,
@@ -165,6 +172,17 @@ const SuperadminTicketsPage = () => {
       toast.error('Send failed', { description: err instanceof Error ? err.message : 'Failed to send ticket email.' });
     } finally {
       setSendingTicketId(null);
+    }
+  };
+
+  const handleOpenTicketPdf = async (ticket: CrewTicketApi) => {
+    if (!canUseTicketPdf(ticket)) return;
+    try {
+      await openCrewTicketPdf(ticket, 'superadmin');
+    } catch (err) {
+      toast.error('Failed to open ticket PDF', {
+        description: err instanceof Error ? err.message : 'Please try again.',
+      });
     }
   };
 
@@ -355,14 +373,14 @@ const SuperadminTicketsPage = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className={t.pdf ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
+                    className={ticketHasStoredPdf(t) ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
                     onClick={(e) => { e.stopPropagation(); handleUploadClick(t.id); }}
                     disabled={uploadingTicketId === t.id}
-                    title={t.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
+                    title={ticketHasStoredPdf(t) ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
                   >
                     {uploadingTicketId === t.id ? (
                       <span className="superadmin-ticket-upload-spinner" />
-                    ) : t.pdf ? (
+                    ) : ticketHasStoredPdf(t) ? (
                       <>
                         <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
                           <FileCheck size={16} />
@@ -545,7 +563,7 @@ const SuperadminTicketsPage = () => {
                   size="sm"
                   disabled={!canUseTicketPdf(selectedTicket)}
                   onClick={() => {
-                    if (canUseTicketPdf(selectedTicket)) window.open(selectedTicket.pdf, '_blank', 'noopener,noreferrer');
+                    void handleOpenTicketPdf(selectedTicket);
                   }}
                   title={canUseTicketPdf(selectedTicket) ? 'View generated ticket PDF' : 'Available after approval'}
                 >
@@ -555,14 +573,14 @@ const SuperadminTicketsPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className={selectedTicket.pdf ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
+                  className={ticketHasStoredPdf(selectedTicket) ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
                   onClick={(e) => { e.stopPropagation(); handleUploadClick(selectedTicket.id); }}
                   disabled={uploadingTicketId === selectedTicket.id}
-                  title={selectedTicket.pdf ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
+                  title={ticketHasStoredPdf(selectedTicket) ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
                 >
                   {uploadingTicketId === selectedTicket.id ? (
                     <span className="superadmin-ticket-upload-spinner" />
-                  ) : selectedTicket.pdf ? (
+                  ) : ticketHasStoredPdf(selectedTicket) ? (
                     <>
                       <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
                         <FileCheck size={16} />

@@ -2,7 +2,15 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plane, FileCheck } from 'lucide-react';
 import { getCrewMe } from '../api/crew';
-import { canUseTicketPdf, getCrewTicketsByCrewId, getTicketStatus, getTicketStatusLabel, type CrewTicketApi } from '../api/ticket';
+import { toast } from 'sonner';
+import {
+  canUseTicketPdf,
+  getCrewTicketsByCrewId,
+  getTicketStatus,
+  getTicketStatusLabel,
+  openCrewTicketPdf,
+  type CrewTicketApi,
+} from '../api/ticket';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +70,17 @@ const CrewTicketsPage = () => {
   const getProjectTitle = (t: CrewTicketApi) => {
     const p = t.project_id;
     return p?.title ?? (p as { title?: string })?.title ?? '—';
+  };
+
+  const handleOpenTicketPdf = async (ticket: CrewTicketApi) => {
+    if (!canUseTicketPdf(ticket)) return;
+    try {
+      await openCrewTicketPdf(ticket, 'crew');
+    } catch (err) {
+      toast.error('Failed to open ticket PDF', {
+        description: err instanceof Error ? err.message : 'Please try again.',
+      });
+    }
   };
 
   if (loading) {
@@ -157,7 +176,7 @@ const CrewTicketsPage = () => {
                         title="Open approved ticket PDF"
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.open(ticket.pdf, '_blank', 'noopener,noreferrer');
+                          void handleOpenTicketPdf(ticket);
                         }}
                       >
                         <FileCheck size={16} className="mr-1" />
@@ -229,7 +248,7 @@ const CrewTicketsPage = () => {
                       <button
                         type="button"
                         className="crew-tickets-pdf-action"
-                        onClick={() => window.open(selectedTicket.pdf, '_blank', 'noopener,noreferrer')}
+                        onClick={() => void handleOpenTicketPdf(selectedTicket)}
                       >
                         <FileCheck size={16} className="mr-1" />
                         View approved ticket

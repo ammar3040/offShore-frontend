@@ -22,7 +22,12 @@ import {
 import { getCrewList, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
-import { getCrewTickets, getCrewTicketCreatedIso, type CrewTicketApi } from '../api/ticket';
+import {
+  getCrewTickets,
+  getCrewTicketCreatedIso,
+  ticketHasStoredPdf,
+  type CrewTicketApi,
+} from '../api/ticket';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import {
@@ -360,8 +365,8 @@ const TimelinePage = () => {
         reference: `${ticketRoute(ticket)} · ${ticket.project_id?.title ?? 'Project flight'}`,
         crew,
         type: 'Flight',
-        status: ticket.pdf ? 'Ticket uploaded' : 'Booked',
-        tone: ticket.pdf ? 'green' : 'blue',
+        status: ticketHasStoredPdf(ticket) ? 'Ticket uploaded' : 'Booked',
+        tone: ticketHasStoredPdf(ticket) ? 'green' : 'blue',
         icon: Plane,
       });
     });
@@ -596,7 +601,7 @@ const TimelinePage = () => {
         detail: ticket.project_id?.title ?? 'Flight booking',
         start: date,
         end: addDays(date, 1),
-        tone: ticket.pdf ? 'green' : 'blue',
+        tone: ticketHasStoredPdf(ticket) ? 'green' : 'blue',
         icon: Plane,
         projectId: ticketProjectId(ticket) ?? '',
         rigId: ticketRigId(ticket, data.rigs),

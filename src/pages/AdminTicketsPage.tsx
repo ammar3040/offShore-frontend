@@ -47,6 +47,7 @@ import {
   createFlightTicket,
   cancelCrewTicket,
   canUseTicketPdf,
+  openCrewTicketPdf,
   type CreateFlightTicketPayload,
   type AirportLocation,
   type CrewTicketApi,
@@ -912,6 +913,17 @@ const AdminTicketsPage = () => {
       setCancelTicketSubmitting(false);
     }
   }, [ticketToConfirmCancel]);
+
+  const handleOpenTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
+    if (!canUseTicketPdf(ticket)) return;
+    try {
+      await openCrewTicketPdf(ticket, 'admin');
+    } catch (err) {
+      toast.error('Failed to open ticket PDF', {
+        description: err instanceof Error ? err.message : 'Please try again.',
+      });
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -2395,7 +2407,7 @@ const AdminTicketsPage = () => {
                             className="subsea-icon-action"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (canUseTicketPdf(ticket)) window.open(ticket.pdf, '_blank', 'noopener,noreferrer');
+                              void handleOpenTicketPdf(ticket);
                             }}
                             disabled={!canUseTicketPdf(ticket)}
                             title={canUseTicketPdf(ticket) ? 'View approved ticket PDF' : 'PDF available after approval'}
@@ -2688,7 +2700,7 @@ const AdminTicketsPage = () => {
                       size="sm"
                       disabled={!canUseTicketPdf(selectedTicket)}
                       onClick={() => {
-                        if (canUseTicketPdf(selectedTicket)) window.open(selectedTicket.pdf, '_blank', 'noopener,noreferrer');
+                        void handleOpenTicketPdf(selectedTicket);
                       }}
                     >
                       <Download size={16} className="mr-2" />
