@@ -1,24 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  Anchor,
   BadgeCheck,
-  Bell,
-  CalendarDays,
   Download,
   FileText,
   Filter,
-  HelpCircle,
-  LayoutDashboard,
-  Plane,
-  Radio,
   Receipt,
   Search,
-  Settings,
-  Ship,
-  Users,
-  Wallet,
 } from 'lucide-react';
+import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { fetchAdminInvoicePdfBlob, getAdminInvoices, type AdminInvoiceApi } from '../api/adminInvoice';
 import { getProjects, type ProjectApi } from '../api/project';
@@ -49,7 +38,6 @@ function getBillStatus(invoice: AdminInvoiceApi): BillStatus {
 }
 
 const AdminBillsPage = () => {
-  const navigate = useNavigate();
   const [invoices, setInvoices] = useState<AdminInvoiceApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,62 +144,7 @@ const AdminBillsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <nav className="subsea-nav" aria-label="Subseacore modules">
-        <button type="button" className="subsea-brand" aria-label="Subseacore">
-          <span className="subsea-mark">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 17l4-8 4 4 4-6 4 10" />
-              <circle cx="12" cy="5" r="2" />
-            </svg>
-          </span>
-        </button>
-        <div className="subsea-nav-items">
-          {[
-            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Rigs', path: '/rig' },
-            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
-            { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts', path: '/contracts' },
-            { icon: Receipt, label: 'Bills', path: '/bills', active: true },
-            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
-            { divider: true },
-            { icon: Radio, label: 'Command Center' },
-            { divider: true },
-            { icon: Anchor, label: 'Projects', path: '/projects' },
-            { icon: CalendarDays, label: 'Timeline & Calendar', path: '/timeline' },
-            { divider: true },
-            { icon: Bell, label: 'Notifications' },
-          ].map((item, index) => {
-            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`subsea-ni${item.active ? ' active' : ''}`}
-                aria-label={item.label}
-                onClick={() => item.path && navigate(item.path)}
-              >
-                <Icon size={17} />
-                {item.badge && <span className="subsea-ni-badge" />}
-                <span className="subsea-ni-tip">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="subsea-nav-foot">
-          <button type="button" className="subsea-ni" aria-label="Settings">
-            <Settings size={17} />
-            <span className="subsea-ni-tip">Settings</span>
-          </button>
-          <button type="button" className="subsea-ni" aria-label="Help">
-            <HelpCircle size={17} />
-            <span className="subsea-ni-tip">Help</span>
-          </button>
-          <SubseaProfileMenu />
-        </div>
-      </nav>
+      <SubseaNavRail activeModule="bills" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">

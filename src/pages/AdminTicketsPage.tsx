@@ -1,32 +1,22 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   AlertTriangle,
-  Anchor,
-  BadgeCheck,
-  Bell,
-  CalendarDays,
   ChevronDown,
   ChevronLeft,
   Download,
-  FileText,
   Filter,
-  HelpCircle,
   Info,
-  LayoutDashboard,
   Plane,
   Plus,
-  Radio,
   Search,
-  Settings,
-  Ship,
   Ticket as TicketIcon,
   Trash2,
-  Users,
-  Wallet,
   X,
   Ban,
+  CircleDollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SubseaNavRail } from '@/components/SubseaNavRail';
 import { SubseaProfileMenu } from '@/components/SubseaProfileMenu';
 import { SUBSEA_FORM_LIGHT_CLASS } from '@/lib/subseaTheme';
 import { useNavigate } from 'react-router-dom';
@@ -93,7 +83,7 @@ import './AdminTicketsPage.css';
 import './RigsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
-type TicketsTab = 'tickets' | 'search';
+type TicketsTab = 'tickets' | 'search' | 'spends';
 type StatusFilter = 'all' | 'pending' | 'approved';
 
 /** Search tab trip UI; API uses SearchPayload tripType (`multi-city` maps to `one-way` per leg). */
@@ -251,12 +241,66 @@ function hasParseableDate(value: string): boolean {
   return !Number.isNaN(d.getTime());
 }
 
+function parseFlightDateTime(value: string): Date | null {
+  if (!hasParseableDate(value)) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Calendar nights between departure and arrival (e.g. 48h Mon→Wed = 2 overnights). */
+function countFlightOvernights(departureIso: string, arrivalIso: string): number {
+  const departure = parseFlightDateTime(departureIso);
+  const arrival = parseFlightDateTime(arrivalIso);
+  if (!departure || !arrival || arrival <= departure) return 0;
+
+  const depDay = Date.UTC(departure.getFullYear(), departure.getMonth(), departure.getDate());
+  const arrDay = Date.UTC(arrival.getFullYear(), arrival.getMonth(), arrival.getDate());
+  const dayDiff = Math.round((arrDay - depDay) / 86_400_000);
+  return Math.max(0, dayDiff);
+}
+
 const SEARCH_DEBOUNCE_MS = 300;
 
 const SEARCH_DROPDOWN_CONTENT_CLASS =
   'admin-tickets-search-overlay w-[var(--radix-dropdown-menu-trigger-width)] max-h-[260px] overflow-y-auto';
 
 const SEARCH_SELECT_CONTENT_CLASS = 'admin-tickets-search-overlay';
+
+function SearchFieldClearButton({
+  visible,
+  onClear,
+  label,
+}: {
+  visible: boolean;
+  onClear: () => void;
+  label: string;
+}) {
+  if (!visible) return null;
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className="admin-tickets-search-clear-inline"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClear();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.stopPropagation();
+          e.preventDefault();
+          onClear();
+        }
+      }}
+      title="Clear"
+      aria-label={label}
+    >
+      <X size={14} />
+    </span>
+  );
+}
 
 function getAirportCode(airport: Airport): string {
   if (airport.Code) return airport.Code;
@@ -473,6 +517,7 @@ function FlightResultCard({
   const departureTime = firstLeg?.departureTime ?? '';
   const arrivalTime = lastLeg?.arrivalTime ?? '';
   const duration = firstLeg?.duration ?? '—';
+  const overnightCount = countFlightOvernights(departureTime, arrivalTime);
   const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
   const via = firstLeg?.via;
   const airlineName = (flight as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
@@ -509,6 +554,11 @@ function FlightResultCard({
             <span className="atfc-stops">
               {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}${via ? ` via ${via}` : ''}`}
             </span>
+            {overnightCount > 0 ? (
+              <span className="atfc-overnight-badge" title={`${overnightCount} overnight${overnightCount !== 1 ? 's' : ''} in transit`}>
+                {overnightCount} overnight{overnightCount !== 1 ? 's' : ''}
+              </span>
+            ) : null}
           </div>
           <div className="atfc-route-endpoint atfc-route-endpoint-right">
             <span className="atfc-time">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
@@ -1501,7 +1551,9 @@ const AdminTicketsPage = () => {
   );
 
   const getTicketStatusBadgeClass = (ticket: CrewTicketApi) =>
-    getTicketStatus(ticket) === 'APPROVED' ? 'subsea-b-green' : 'subsea-b-amber';
+    getTicketStatus(ticket) === 'APPROVED'
+      ? 'subsea-b-green subsea-flight-status-approved'
+      : 'subsea-b-orange subsea-flight-status-pending';
 
   const routeCode = (location?: AirportLocation) => {
     const name = location?.Name ?? '';
@@ -1519,61 +1571,7 @@ const AdminTicketsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <nav className="subsea-nav" aria-label="Subseacore modules">
-        <button type="button" className="subsea-brand" aria-label="Subseacore">
-          <span className="subsea-mark">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 17l4-8 4 4 4-6 4 10" />
-              <circle cx="12" cy="5" r="2" />
-            </svg>
-          </span>
-        </button>
-        <div className="subsea-nav-items">
-          {[
-            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Rigs', path: '/rig' },
-            { icon: Plane, label: 'Flight Bookings', path: '/tickets', active: true },
-            { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts', path: '/contracts' },
-            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
-            { divider: true },
-            { icon: Radio, label: 'Command Center' },
-            { divider: true },
-            { icon: Anchor, label: 'Projects', path: '/projects' },
-            { icon: CalendarDays, label: 'Timeline & Calendar', path: '/timeline' },
-            { divider: true },
-            { icon: Bell, label: 'Notifications' },
-          ].map((item, index) => {
-            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`subsea-ni${item.active ? ' active' : ''}`}
-                aria-label={item.label}
-                onClick={() => item.path && navigate(item.path)}
-              >
-                <Icon size={17} />
-                {item.badge && <span className="subsea-ni-badge" />}
-                <span className="subsea-ni-tip">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="subsea-nav-foot">
-          <button type="button" className="subsea-ni" aria-label="Settings">
-            <Settings size={17} />
-            <span className="subsea-ni-tip">Settings</span>
-          </button>
-          <button type="button" className="subsea-ni" aria-label="Help">
-            <HelpCircle size={17} />
-            <span className="subsea-ni-tip">Help</span>
-          </button>
-          <SubseaProfileMenu />
-        </div>
-      </nav>
+      <SubseaNavRail activeModule="tickets" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -1606,6 +1604,13 @@ const AdminTicketsPage = () => {
             onClick={() => setActiveTab('search')}
           >
             <Search size={13} /> Search Flights
+          </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeTab === 'spends' ? ' active' : ''}`}
+            onClick={() => setActiveTab('spends')}
+          >
+            <CircleDollarSign size={13} /> Report Spends
           </button>
           <button
             type="button"
@@ -1729,12 +1734,17 @@ const AdminTicketsPage = () => {
                                 variant="outline"
                                 className="admin-tickets-search-control"
                               >
-                                <span className="truncate">
+                                <span className="truncate flex-1 text-left min-w-0">
                                   {searchProjectId
                                     ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
                                     : 'Select project'}
                                 </span>
-                                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                                <SearchFieldClearButton
+                                  visible={!!searchProjectId}
+                                  onClear={() => setSearchProjectId('')}
+                                  label="Clear project"
+                                />
+                                <ChevronDown size={16} className="shrink-0 opacity-50" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -1760,17 +1770,6 @@ const AdminTicketsPage = () => {
                               </DropdownMenuGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          {searchProjectId ? (
-                            <button
-                              type="button"
-                              className="admin-tickets-search-clear-btn"
-                              onClick={() => setSearchProjectId('')}
-                              title="Clear"
-                              aria-label="Clear project"
-                            >
-                              <X size={14} />
-                            </button>
-                          ) : null}
                         </div>
                       </div>
                       <div className="admin-tickets-search-field admin-tickets-search-field-col-6 admin-tickets-search-field-crew">
@@ -1784,7 +1783,7 @@ const AdminTicketsPage = () => {
                                 disabled={!searchProjectId}
                                 className="admin-tickets-search-control"
                               >
-                                <span className="truncate">
+                                <span className="truncate flex-1 text-left min-w-0">
                                   {!searchProjectId
                                     ? 'Select a project first'
                                     : searchCrewLoading
@@ -1793,7 +1792,12 @@ const AdminTicketsPage = () => {
                                         ? 'Select crew members…'
                                         : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
                                 </span>
-                                <ChevronDown size={16} className="shrink-0 ml-2 opacity-50" />
+                                <SearchFieldClearButton
+                                  visible={searchCrewIds.length > 0}
+                                  onClear={() => setSearchCrewIds([])}
+                                  label="Clear crew members"
+                                />
+                                <ChevronDown size={16} className="shrink-0 opacity-50" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -1823,17 +1827,6 @@ const AdminTicketsPage = () => {
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          {searchCrewIds.length > 0 ? (
-                            <button
-                              type="button"
-                              className="admin-tickets-search-clear-btn"
-                              onClick={() => setSearchCrewIds([])}
-                              title="Clear"
-                              aria-label="Clear crew members"
-                            >
-                              <X size={14} />
-                            </button>
-                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -1930,8 +1923,8 @@ const AdminTicketsPage = () => {
                                 datePlaceholder="Select date"
                                 showTime={true}
                                 idPrefix={`multi-dep-${seg.id}`}
-                                onClear={() => updateMultiSegment(i, { departureTime: '' })}
-                                hasValue={!!seg.departureTime}
+                                onClear={() => updateMultiSegment(i, { departureDate: '', departureTime: '' })}
+                                hasValue={!!seg.departureDate?.trim() || !!seg.departureTime?.trim()}
                                 disablePastDates
                                 popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                               />
@@ -1994,10 +1987,10 @@ const AdminTicketsPage = () => {
                           datePlaceholder="Select date"
                           showTime={searchTripTypeUI === 'one-way'}
                           idPrefix="search-departure"
-                          onClear={searchTripTypeUI === 'one-way' ? () => {
+                          onClear={() => {
                             setDepartureDate('');
                             setDepartureTime('');
-                          } : undefined}
+                          }}
                           hasValue={!!departureDate?.trim() || !!departureTime?.trim()}
                           disablePastDates
                           popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
@@ -2036,8 +2029,11 @@ const AdminTicketsPage = () => {
                             datePlaceholder="Select date"
                             showTime={true}
                             idPrefix="search-return"
-                            onClear={() => setReturnTime('')}
-                            hasValue={!!returnTime}
+                            onClear={() => {
+                              setReturnDate('');
+                              setReturnTime('');
+                            }}
+                            hasValue={!!returnDate?.trim() || !!returnTime?.trim()}
                             popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                           />
                         </div>
@@ -2063,12 +2059,18 @@ const AdminTicketsPage = () => {
                       </div>
                       <div className="admin-tickets-search-field admin-tickets-search-field-col-4 admin-tickets-search-field-cabin">
                         <label htmlFor="search-cabin">Cabin class</label>
+                        <div className="admin-tickets-search-field-with-clear">
                         <Select
                           value={cabinClass}
                           onValueChange={(v) => setCabinClass(v as CabinClass)}
                         >
                           <SelectTrigger id="search-cabin" className="admin-tickets-search-control">
                             <SelectValue placeholder="Select cabin" />
+                            <SearchFieldClearButton
+                              visible={cabinClass !== 'economy'}
+                              onClear={() => setCabinClass('economy')}
+                              label="Clear cabin class"
+                            />
                           </SelectTrigger>
                           <SelectContent className={SEARCH_SELECT_CONTENT_CLASS}>
                             {CABIN_OPTIONS.map((o) => (
@@ -2078,6 +2080,7 @@ const AdminTicketsPage = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                        </div>
                       </div>
                     </div>
                   </section>
@@ -2240,7 +2243,7 @@ const AdminTicketsPage = () => {
               </div>
             </div>
 
-            <div className="subsea-kpi-strip subsea-kpi-strip-4">
+            <div className="subsea-kpi-strip subsea-kpi-strip-2">
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Active Bookings</div>
                 <div className="subsea-kpi-value">{ticketDashboardStats.totalBookings}</div>
@@ -2257,28 +2260,6 @@ const AdminTicketsPage = () => {
                 </div>
                 <div className="subsea-kpi-bar">
                   <div className="subsea-kpi-fill amber" style={{ width: `${ticketDashboardStats.pendingBarPct}%` }} />
-                </div>
-              </div>
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Total Spend MTD</div>
-                <div className="subsea-kpi-value">{displayMoney(ticketDashboardStats.mtdSpend.total)}</div>
-                <div className={`subsea-kpi-meta ${ticketDashboardStats.spendChangeTone}`}>
-                  {ticketDashboardStats.spendChangeMeta}
-                </div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill teal" style={{ width: `${ticketDashboardStats.spendMtdBarPct}%` }} />
-                </div>
-              </div>
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Avg Ticket Cost</div>
-                <div className="subsea-kpi-value">
-                  {ticketDashboardStats.mtdSpend.count
-                    ? displayMoney(ticketDashboardStats.mtdSpend.average)
-                    : '—'}
-                </div>
-                <div className="subsea-kpi-meta flat">{ticketDashboardStats.avgCostMeta}</div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill green" style={{ width: `${ticketDashboardStats.avgCostBarPct}%` }} />
                 </div>
               </div>
             </div>
@@ -2347,7 +2328,7 @@ const AdminTicketsPage = () => {
                 </button>
               </div>
             ) : (
-              <div className="subsea-g2">
+              <div>
                 <div className="subsea-pane">
                   <div className="subsea-pane-head">
                     <div className="subsea-pane-title">Recent Bookings</div>
@@ -2474,46 +2455,95 @@ const AdminTicketsPage = () => {
                     </div>
                   )}
                 </div>
-
-                <div>
-                  <div className="subsea-pane subsea-mb-12">
-                    <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Destination</div></div>
-                    <div className="subsea-pane-body subsea-pane-body-compact">
-                      {ticketDashboardStats.spendByDestination.length === 0 ? (
-                        <div className="subsea-state">No priced bookings yet</div>
-                      ) : (
-                        ticketDashboardStats.spendByDestination.map((row) => (
-                          <div className="subsea-metric-row" key={row.label}>
-                            <div className="subsea-metric-grow">
-                              <div className="subsea-metric-label">{row.label}</div>
-                              <div className="subsea-prog-bar">
-                                <div className={`subsea-prog-fill ${row.color}`} style={{ width: `${row.barPct}%` }} />
-                              </div>
-                            </div>
-                            <div className="subsea-metric-val">{displayMoney(row.amount)}</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                  <div className="subsea-pane">
-                    <div className="subsea-pane-head"><div className="subsea-pane-title">Bookings by Cabin Class</div></div>
-                    <div className="subsea-pane-body subsea-pane-body-compact">
-                      {ticketDashboardStats.bookingsByClass.length === 0 ? (
-                        <div className="subsea-state">No bookings yet</div>
-                      ) : (
-                        ticketDashboardStats.bookingsByClass.map((row) => (
-                          <div className="subsea-metric-row" key={row.label}>
-                            <span className="subsea-metric-label">{row.label}</span>
-                            <span className="subsea-metric-val">{row.count} ({row.pct}%)</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
+          </TabsContent>
+          <TabsContent value="spends" className="mt-0">
+            <div className="subsea-page-head">
+              <div>
+                <h1>Report Spends</h1>
+                <p>Flight spend analytics · {projectFilteredTickets.length} bookings in scope</p>
+              </div>
+            </div>
+
+            <div className="subsea-kpi-strip subsea-kpi-strip-4">
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Total Spend MTD</div>
+                <div className="subsea-kpi-value">{displayMoney(ticketDashboardStats.mtdSpend.total)}</div>
+                <div className={`subsea-kpi-meta ${ticketDashboardStats.spendChangeTone}`}>
+                  {ticketDashboardStats.spendChangeMeta}
+                </div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill teal" style={{ width: `${ticketDashboardStats.spendMtdBarPct}%` }} />
+                </div>
+              </div>
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Avg Ticket Cost</div>
+                <div className="subsea-kpi-value">
+                  {ticketDashboardStats.mtdSpend.count
+                    ? displayMoney(ticketDashboardStats.mtdSpend.average)
+                    : '—'}
+                </div>
+                <div className="subsea-kpi-meta flat">{ticketDashboardStats.avgCostMeta}</div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill green" style={{ width: `${ticketDashboardStats.avgCostBarPct}%` }} />
+                </div>
+              </div>
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Priced Bookings</div>
+                <div className="subsea-kpi-value">{ticketDashboardStats.mtdSpend.count}</div>
+                <div className="subsea-kpi-meta flat">This month</div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill blue" style={{ width: `${Math.min(100, ticketDashboardStats.mtdSpend.count * 10)}%` }} />
+                </div>
+              </div>
+              <div className="subsea-kpi">
+                <div className="subsea-kpi-label">Destinations</div>
+                <div className="subsea-kpi-value">{ticketDashboardStats.spendByDestination.length}</div>
+                <div className="subsea-kpi-meta flat">With recorded spend</div>
+                <div className="subsea-kpi-bar">
+                  <div className="subsea-kpi-fill amber" style={{ width: `${Math.min(100, ticketDashboardStats.spendByDestination.length * 20)}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="subsea-g2">
+              <div className="subsea-pane">
+                <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Destination</div></div>
+                <div className="subsea-pane-body subsea-pane-body-compact">
+                  {ticketDashboardStats.spendByDestination.length === 0 ? (
+                    <div className="subsea-state">No priced bookings yet</div>
+                  ) : (
+                    ticketDashboardStats.spendByDestination.map((row) => (
+                      <div className="subsea-metric-row" key={row.label}>
+                        <div className="subsea-metric-grow">
+                          <div className="subsea-metric-label">{row.label}</div>
+                          <div className="subsea-prog-bar">
+                            <div className={`subsea-prog-fill ${row.color}`} style={{ width: `${row.barPct}%` }} />
+                          </div>
+                        </div>
+                        <div className="subsea-metric-val">{displayMoney(row.amount)}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="subsea-pane">
+                <div className="subsea-pane-head"><div className="subsea-pane-title">Bookings by Cabin Class</div></div>
+                <div className="subsea-pane-body subsea-pane-body-compact">
+                  {ticketDashboardStats.bookingsByClass.length === 0 ? (
+                    <div className="subsea-state">No bookings yet</div>
+                  ) : (
+                    ticketDashboardStats.bookingsByClass.map((row) => (
+                      <div className="subsea-metric-row" key={row.label}>
+                        <span className="subsea-metric-label">{row.label}</span>
+                        <span className="subsea-metric-val">{row.count} ({row.pct}%)</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
         </main>

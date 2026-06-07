@@ -4,31 +4,27 @@ import {
   Anchor,
   ArrowUpRight,
   BadgeCheck,
-  Bell,
-  CalendarDays,
   CircleDollarSign,
   Download,
   FileText,
   Filter,
-  HelpCircle,
   LayoutDashboard,
   Plane,
   Plus,
   Radio,
-  Receipt,
   Search,
-  Settings,
   ShieldCheck,
   Ship,
   UserPlus,
   Users,
-  Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getCrewList, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewTickets, type CrewTicketApi } from '../api/ticket';
+import { useCommandPaletteOpen } from '../components/CommandPalette';
+import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
 import './CrewManagementDashboard.css';
@@ -74,6 +70,7 @@ function ticketRoute(ticket?: CrewTicketApi): string {
 
 const CrewManagementDashboard = () => {
   const navigate = useNavigate();
+  const openCommandPalette = useCommandPaletteOpen();
   const [dashboard, setDashboard] = useState<DashboardState>({ crew: [], rigs: [], projects: [], tickets: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,19 +132,49 @@ const CrewManagementDashboard = () => {
     ];
   }, [activeProjectsCount, assignedToProjectCount, dashboard.crew.length, dashboard.tickets.length, expiringCrew, loading, readyForMobilizationCount]);
 
-  const fleetRows = useMemo(() => {
-    return dashboard.rigs.slice(0, 5).map((rig, index) => {
-      const status = index === 0 && dashboard.crew.length > 0 ? 'Active' : 'Operational';
-      return {
-        rig: rig.name,
-        type: rig.description?.split('·')[0]?.trim() || 'Rig',
-        location: rig.address || '—',
-        crew: '—',
-        status,
-        port: rig.createdAt ? `Added ${formatDate(rig.createdAt)}` : '—',
-      };
-    });
-  }, [dashboard.rigs, dashboard.crew.length]);
+  const crewMobilizationRows = useMemo(() => {
+    return [...dashboard.crew]
+      .sort((a, b) => {
+        const aAvailable = availabilityFromCrewSignal(a.signal) === 'available' ? 0 : 1;
+        const bAvailable = availabilityFromCrewSignal(b.signal) === 'available' ? 0 : 1;
+        return aAvailable - bAvailable;
+      })
+      .slice(0, 8)
+      .map((member) => {
+        const project = member.activeProjects?.[0];
+        const kind = availabilityFromCrewSignal(member.signal);
+        const status =
+          kind === 'available' ? 'Available' : kind === 'endingSoon' ? 'Sign-Off Due' : 'In Project';
+        const statusClass =
+          kind === 'available' ? 'subsea-b-green' : kind === 'endingSoon' ? 'subsea-b-amber' : 'subsea-b-blue';
+        const certExpiry = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
+        const certDays = daysUntil(certExpiry);
+        const certs =
+          certDays != null && certDays >= 0 && certDays <= 30
+            ? `Expires in ${certDays}d`
+            : certExpiry
+              ? 'Valid'
+              : '—';
+        const certClass =
+          certDays != null && certDays >= 0 && certDays <= 7
+            ? 'subsea-b-red'
+            : certDays != null && certDays <= 30
+              ? 'subsea-b-amber'
+              : 'subsea-b-green';
+        return {
+          id: member.id,
+          name: crewName(member),
+          kind,
+          rank: member.organization || 'Crew',
+          rig: project?.title || 'Unassigned',
+          status,
+          statusClass,
+          certs,
+          certClass,
+          mobilization: kind === 'available' ? 'Ready for Mobilization' : 'Assigned',
+        };
+      });
+  }, [dashboard.crew]);
 
   const crewChanges = useMemo(() => {
     return dashboard.crew.slice(0, 5).map((member) => {
@@ -216,62 +243,7 @@ const CrewManagementDashboard = () => {
 
   return (
     <div className="subsea-shell">
-      <nav className="subsea-nav" aria-label="Subseacore modules">
-        <button type="button" className="subsea-brand" aria-label="Subseacore">
-          <span className="subsea-mark">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 17l4-8 4 4 4-6 4 10" />
-              <circle cx="12" cy="5" r="2" />
-            </svg>
-          </span>
-        </button>
-        <div className="subsea-nav-items">
-          {[
-            { icon: LayoutDashboard, label: 'Dashboard', path: '/', active: true },
-            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Rigs', path: '/rig' },
-            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
-            { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts', path: '/contracts' },
-            { icon: Receipt, label: 'Bills', path: '/bills' },
-            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
-            { divider: true },
-            { icon: Radio, label: 'Command Center' },
-            { divider: true },
-            { icon: Anchor, label: 'Projects', path: '/projects' },
-            { icon: CalendarDays, label: 'Timeline & Calendar', path: '/timeline' },
-            { divider: true },
-            { icon: Bell, label: 'Notifications' },
-          ].map((item, index) => {
-            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`subsea-ni${item.active ? ' active' : ''}`}
-                aria-label={item.label}
-                onClick={() => item.path && navigate(item.path)}
-              >
-                <Icon size={17} />
-                {item.badge && <span className="subsea-ni-badge" />}
-                <span className="subsea-ni-tip">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="subsea-nav-foot">
-          <button type="button" className="subsea-ni" aria-label="Settings">
-            <Settings size={17} />
-            <span className="subsea-ni-tip">Settings</span>
-          </button>
-          <button type="button" className="subsea-ni" aria-label="Help">
-            <HelpCircle size={17} />
-            <span className="subsea-ni-tip">Help</span>
-          </button>
-          <SubseaProfileMenu />
-        </div>
-      </nav>
+      <SubseaNavRail activeModule="dashboard" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -351,7 +323,7 @@ const CrewManagementDashboard = () => {
                 <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/crew')}><UserPlus size={12} />{loading ? '...' : readyForMobilizationCount} ready for mobilization</button>
                 <button type="button" className="subsea-wb-chip subsea-wb-chip-blue" onClick={() => navigate('/crew')}><Users size={12} />{loading ? '...' : assignedToProjectCount} assigned to projects</button>
                 <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />{dashboard.rigs.length} rigs loaded</button>
-                <span className="subsea-wb-chip subsea-wb-chip-blue"><Radio size={12} />Open Command Center</span>
+                <button type="button" className="subsea-wb-chip subsea-wb-chip-blue" onClick={openCommandPalette}><Radio size={12} />Open Command Center</button>
               </div>
             </div>
             <div className="subsea-wb-right">
@@ -395,33 +367,48 @@ const CrewManagementDashboard = () => {
               <div className="subsea-pane">
                 <div className="subsea-pane-head">
                   <div>
-                    <div className="subsea-pane-title">Fleet Status</div>
-                    <div className="subsea-pane-sub">{loading ? 'Loading rigs...' : `${dashboard.rigs.length} rigs · backend data`}</div>
+                    <div className="subsea-pane-title">Crew Mobilization</div>
+                    <div className="subsea-pane-sub">
+                      {loading ? 'Loading crew...' : `${readyForMobilizationCount} available · ${assignedToProjectCount} in project`}
+                    </div>
                   </div>
                   <div className="subsea-pane-actions">
-                    <span className="subsea-badge subsea-b-teal subsea-b-dot">All systems nominal</span>
-                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/rig')}>View Fleet</button>
+                    <span className="subsea-badge subsea-b-green subsea-b-dot">{loading ? '...' : `${readyForMobilizationCount} ready`}</span>
+                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/crew')}>View Crew</button>
                   </div>
                 </div>
                 <div className="subsea-table-wrap">
                   <table className="subsea-table">
                     <thead>
-                      <tr><th>Rig</th><th>Type</th><th>Location</th><th>Crew</th><th>Status</th><th>Next Port Call</th></tr>
+                      <tr><th>Crew Member</th><th>Rank</th><th>Assignment</th><th>Status</th><th>Mobilization</th><th>Certs</th></tr>
                     </thead>
                     <tbody>
                       {loading ? (
-                        <tr><td colSpan={6} className="subsea-empty-cell">Loading fleet data...</td></tr>
-                      ) : fleetRows.length === 0 ? (
-                        <tr><td colSpan={6} className="subsea-empty-cell">No rigs found from backend.</td></tr>
+                        <tr><td colSpan={6} className="subsea-empty-cell">Loading crew data...</td></tr>
+                      ) : crewMobilizationRows.length === 0 ? (
+                        <tr><td colSpan={6} className="subsea-empty-cell">No crew members found from backend.</td></tr>
                       ) : (
-                        fleetRows.map((row, index) => (
-                          <tr key={row.rig}>
-                            <td className="strong"><Ship size={12} className={`subsea-table-icon subsea-tone-${index % 4}`} />{row.rig}</td>
-                            <td>{row.type}</td>
-                            <td className="mono">{row.location}</td>
-                            <td><span className="subsea-text-green">{row.crew}</span></td>
-                            <td><span className="subsea-badge subsea-b-green">{row.status}</span></td>
-                            <td className="muted">{row.port}</td>
+                        crewMobilizationRows.map((row) => (
+                          <tr key={row.id} onClick={() => navigate('/crew')}>
+                            <td className="strong">
+                              <div className="subsea-roster-name">
+                                <span
+                                  className={crewAvailabilityDotClass(row.kind)}
+                                  title={getCrewAvailabilityLabel(row.kind)}
+                                  aria-label={getCrewAvailabilityLabel(row.kind)}
+                                />
+                                <span>{row.name}</span>
+                              </div>
+                            </td>
+                            <td>{row.rank}</td>
+                            <td>{row.rig}</td>
+                            <td><span className={`subsea-badge ${row.statusClass}`}>{row.status}</span></td>
+                            <td>
+                              <span className={`subsea-badge ${row.mobilization === 'Ready for Mobilization' ? 'subsea-b-green' : 'subsea-b-teal'}`}>
+                                {row.mobilization}
+                              </span>
+                            </td>
+                            <td><span className={`subsea-badge ${row.certClass}`}>{row.certs}</span></td>
                           </tr>
                         ))
                       )}

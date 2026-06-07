@@ -1,40 +1,31 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   AlertTriangle,
-  Anchor,
   Award,
   BadgeCheck,
   Banknote,
-  Bell,
   Calendar,
-  CalendarDays,
   CheckSquare,
   ChevronDown,
-  FileText,
   Filter,
   FolderKanban,
-  HelpCircle,
   Kanban,
-  LayoutDashboard,
   List,
-  Plane,
   Plus,
-  Radio,
   Search,
-  Settings,
   ShieldCheck,
   Ship,
   UserPlus,
   Users,
-  Wallet,
   Wrench,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
+import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
-import { getCrewAvailableForProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
+import { getCrewAvailableForProject, getCrewList, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { recordContractInvites } from '../lib/contractsStore';
 import './ProjectsPage.css';
 import './RigsPage.css';
@@ -88,6 +79,78 @@ function projectTone(status: string, index: number): 'blue' | 'teal' | 'green' |
   return ['teal', 'red', 'amber', 'blue', 'green', 'orange'][index % 6] as 'blue' | 'teal' | 'green' | 'amber' | 'red' | 'orange';
 }
 
+const CERT_EXPIRY_WINDOW_DAYS = 30;
+
+type AtRiskCertRow = {
+  id: string;
+  crewId: string;
+  crewName: string;
+  document: string;
+  projectTitle: string;
+  expiry: string;
+  daysUntil: number;
+  statusLabel: string;
+  statusClassName: string;
+};
+
+function formatCertDate(value?: string): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function daysUntilCertExpiry(value?: string): number | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return Math.ceil((date.getTime() - today.getTime()) / 86_400_000);
+}
+
+function buildAtRiskCertRows(crew: CrewMemberApi[]): AtRiskCertRow[] {
+  const rows: AtRiskCertRow[] = [];
+
+  for (const member of crew) {
+    const crewName = `${member.firstname ?? ''} ${member.lastname ?? ''}`.trim() || 'Unnamed crew';
+    const projectTitle = member.activeProjects?.[0]?.title || 'Unassigned';
+    const documents: Array<{ document: string; expiry?: string }> = [
+      { document: 'Passport', expiry: member.passport?.expiry_date },
+      { document: 'Identity Document', expiry: member.identity?.expiry_date },
+      {
+        document: 'Crew Certificate',
+        expiry: member.certificate_expiry_date || member.crew_certificate?.expiry_date,
+      },
+      { document: 'Visa', expiry: member.visa_expiry_date },
+    ];
+
+    for (const { document, expiry } of documents) {
+      if (!expiry) continue;
+      const daysUntil = daysUntilCertExpiry(expiry);
+      if (daysUntil == null || daysUntil < 0 || daysUntil > CERT_EXPIRY_WINDOW_DAYS) continue;
+
+      const statusLabel = daysUntil <= 7 ? `Critical (${daysUntil}d)` : `Expiring (${daysUntil}d)`;
+      const statusClassName = daysUntil <= 7 ? 'subsea-b-red' : 'subsea-b-amber';
+
+      rows.push({
+        id: `${member.id}-${document.toLowerCase().replace(/\s+/g, '-')}`,
+        crewId: member.id,
+        crewName,
+        document,
+        projectTitle,
+        expiry: formatCertDate(expiry),
+        daysUntil,
+        statusLabel,
+        statusClassName,
+      });
+    }
+  }
+
+  return rows.sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
 function projectInitials(project: ProjectApi): string[] {
   const participants = project.participants ?? [];
   if (participants.length === 0) return ['JO', 'SM'];
@@ -126,6 +189,9 @@ const ProjectsPage = () => {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+
+  const [allCrew, setAllCrew] = useState<CrewMemberApi[]>([]);
+  const [crewRosterLoading, setCrewRosterLoading] = useState(true);
 
   const pageSize = 6;
 
@@ -166,6 +232,32 @@ const ProjectsPage = () => {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setCrewRosterLoading(true);
+    getCrewList()
+      .then((res) => {
+        if (!cancelled) setAllCrew(res.crew ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setAllCrew([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCrewRosterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const atRiskCertRows = useMemo(() => buildAtRiskCertRows(allCrew), [allCrew]);
+  const atRiskCrewCount = useMemo(
+    () => new Set(atRiskCertRows.map((row) => row.crewId)).size,
+    [atRiskCertRows]
+  );
+
+  const showAtRiskView = statusFilter === 'at-risk';
+
   const filteredProjects = useMemo(() => {
     let list = projects;
     if (search.trim()) {
@@ -176,11 +268,23 @@ const ProjectsPage = () => {
           (p.description || '').toLowerCase().includes(q)
       );
     }
-    if (statusFilter !== 'all') {
+    if (statusFilter !== 'all' && statusFilter !== 'at-risk') {
       list = list.filter((p) => (p.status || '').toLowerCase() === statusFilter);
     }
     return list;
   }, [projects, search, statusFilter]);
+
+  const paginatedAtRiskRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return atRiskCertRows.slice(start, start + pageSize);
+  }, [atRiskCertRows, page]);
+
+  const atRiskTotalPages = Math.max(1, Math.ceil(atRiskCertRows.length / pageSize));
+
+  const openAtRiskView = useCallback(() => {
+    setStatusFilter('at-risk');
+    setPage(1);
+  }, []);
 
   const paginatedProjects = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -293,61 +397,7 @@ const ProjectsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <nav className="subsea-nav" aria-label="Subseacore modules">
-        <button type="button" className="subsea-brand" aria-label="Subseacore">
-          <span className="subsea-mark">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 17l4-8 4 4 4-6 4 10" />
-              <circle cx="12" cy="5" r="2" />
-            </svg>
-          </span>
-        </button>
-        <div className="subsea-nav-items">
-          {[
-            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-            { icon: Users, label: 'Crew Management', path: '/crew', badge: true },
-            { icon: Ship, label: 'Rigs', path: '/rig' },
-            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
-            { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts', path: '/contracts' },
-            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
-            { divider: true },
-            { icon: Radio, label: 'Command Center' },
-            { divider: true },
-            { icon: Anchor, label: 'Projects', path: '/projects', active: true },
-            { icon: CalendarDays, label: 'Timeline & Calendar', path: '/timeline' },
-            { divider: true },
-            { icon: Bell, label: 'Notifications' },
-          ].map((item, index) => {
-            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`subsea-ni${item.active ? ' active' : ''}`}
-                aria-label={item.label}
-                onClick={() => item.path && navigate(item.path)}
-              >
-                <Icon size={17} />
-                {item.badge && <span className="subsea-ni-badge" />}
-                <span className="subsea-ni-tip">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="subsea-nav-foot">
-          <button type="button" className="subsea-ni" aria-label="Settings">
-            <Settings size={17} />
-            <span className="subsea-ni-tip">Settings</span>
-          </button>
-          <button type="button" className="subsea-ni" aria-label="Help">
-            <HelpCircle size={17} />
-            <span className="subsea-ni-tip">Help</span>
-          </button>
-          <SubseaProfileMenu />
-        </div>
-      </nav>
+      <SubseaNavRail activeModule="projects" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -372,16 +422,41 @@ const ProjectsPage = () => {
         </div>
         <div className="subsea-sb-body">
           <div className="subsea-sb-group">Portfolio</div>
-          <button type="button" className="subsea-sb-link active" onClick={() => setStatusFilter('all')}>
+          <button
+            type="button"
+            className={`subsea-sb-link${statusFilter === 'all' ? ' active' : ''}`}
+            onClick={() => {
+              setStatusFilter('all');
+              setPage(1);
+            }}
+          >
             <FolderKanban size={13} /> All Projects <span className="subsea-sb-count">{projects.length}</span>
           </button>
-          <button type="button" className="subsea-sb-link" onClick={() => setStatusFilter('active')}>
+          <button
+            type="button"
+            className={`subsea-sb-link${statusFilter === 'active' ? ' active' : ''}`}
+            onClick={() => {
+              setStatusFilter('active');
+              setPage(1);
+            }}
+          >
             <CheckSquare size={13} /> Active <span className="subsea-sb-count">{activeCount}</span>
           </button>
-          <button type="button" className="subsea-sb-link" onClick={() => setStatusFilter('pending')}>
-            <AlertTriangle size={13} /> At Risk <span className="subsea-sb-count subsea-sb-count-red">{projects.filter((p) => (p.status || '').toLowerCase() === 'pending').length}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${statusFilter === 'at-risk' ? ' active' : ''}`}
+            onClick={openAtRiskView}
+          >
+            <AlertTriangle size={13} /> At Risk <span className="subsea-sb-count subsea-sb-count-red">{crewRosterLoading ? '...' : atRiskCrewCount}</span>
           </button>
-          <button type="button" className="subsea-sb-link" onClick={() => setStatusFilter('completed')}>
+          <button
+            type="button"
+            className={`subsea-sb-link${statusFilter === 'completed' ? ' active' : ''}`}
+            onClick={() => {
+              setStatusFilter('completed');
+              setPage(1);
+            }}
+          >
             <BadgeCheck size={13} /> Completed <span className="subsea-sb-count">{completedCount}</span>
           </button>
           <div className="subsea-sb-group">Views</div>
@@ -459,12 +534,21 @@ const ProjectsPage = () => {
               <div className="subsea-kpi-meta flat">67% of portfolio</div>
               <div className="subsea-kpi-bar"><div className="subsea-kpi-fill green" style={{ width: '67%' }} /></div>
             </div>
-            <div className="subsea-kpi">
+            <button
+              type="button"
+              className={`subsea-kpi subsea-kpi-clickable${showAtRiskView ? ' subsea-kpi-active' : ''}`}
+              onClick={openAtRiskView}
+            >
               <div className="subsea-kpi-label">At Risk</div>
-              <div className="subsea-kpi-value">{projects.filter((p) => (p.status || '').toLowerCase() === 'pending').length}</div>
-              <div className="subsea-kpi-meta down">Attention needed</div>
-              <div className="subsea-kpi-bar"><div className="subsea-kpi-fill amber" style={{ width: '22%' }} /></div>
-            </div>
+              <div className="subsea-kpi-value">{crewRosterLoading ? '...' : atRiskCrewCount}</div>
+              <div className="subsea-kpi-meta down">Certs expiring within 30 days</div>
+              <div className="subsea-kpi-bar">
+                <div
+                  className="subsea-kpi-fill amber"
+                  style={{ width: `${allCrew.length ? Math.min(100, Math.round((atRiskCrewCount / allCrew.length) * 100)) : 0}%` }}
+                />
+              </div>
+            </button>
             <div className="subsea-kpi">
               <div className="subsea-kpi-label">Open Tasks</div>
               <div className="subsea-kpi-value">{projects.length ? projects.length * 5 + 17 : 47}</div>
@@ -473,6 +557,7 @@ const ProjectsPage = () => {
             </div>
           </div>
 
+          {!showAtRiskView ? (
           <div className="subsea-toolbar-row">
             <div className="subsea-tb-search">
               <Search size={13} />
@@ -504,8 +589,54 @@ const ProjectsPage = () => {
               <ChevronDown size={14} className="subsea-filter-chevron" />
             </div>
           </div>
+          ) : null}
 
-          {loading ? (
+          {showAtRiskView ? (
+            crewRosterLoading ? (
+              <div className="subsea-state" role="status">Loading crew certifications...</div>
+            ) : atRiskCertRows.length === 0 ? (
+              <div className="subsea-empty-panel">
+                <BadgeCheck size={34} />
+                <h3>No crew at risk</h3>
+                <p>No crew certificates are expiring within the next 30 days.</p>
+              </div>
+            ) : (
+              <div className="subsea-pane">
+                <div className="subsea-pane-head">
+                  <div>
+                    <div className="subsea-pane-title">Crew at Risk — Certificate Expiry</div>
+                    <div className="subsea-pane-sub">
+                      {atRiskCrewCount} crew member{atRiskCrewCount !== 1 ? 's' : ''} · {atRiskCertRows.length} certificate{atRiskCertRows.length !== 1 ? 's' : ''} expiring within 30 days
+                    </div>
+                  </div>
+                </div>
+                <div className="subsea-table-wrap">
+                  <table className="subsea-table">
+                    <thead>
+                      <tr>
+                        <th>Crew Member</th>
+                        <th>Project</th>
+                        <th>Document</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedAtRiskRows.map((row) => (
+                        <tr key={row.id} onClick={() => navigate(`/crew/${row.crewId}`)}>
+                          <td className="strong">{row.crewName}</td>
+                          <td>{row.projectTitle}</td>
+                          <td>{row.document}</td>
+                          <td className="mono">{row.expiry}</td>
+                          <td><span className={`subsea-badge ${row.statusClassName}`}>{row.statusLabel}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          ) : loading ? (
             <div className="subsea-state" role="status">Loading projects...</div>
           ) : error ? (
             <div className="subsea-empty-panel" role="alert">{error}</div>
@@ -660,7 +791,29 @@ const ProjectsPage = () => {
             </div>
           )}
 
-          {filteredProjects.length > pageSize && (
+          {showAtRiskView && atRiskCertRows.length > pageSize && (
+            <div className="subsea-pagination">
+              <span className="subsea-pagination-info">
+                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, atRiskCertRows.length)} of {atRiskCertRows.length} at-risk certificates
+              </span>
+              <div className="subsea-pagination-btns">
+                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
+                {Array.from({ length: atRiskTotalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`subsea-pagination-btn${p === page ? ' active' : ''}`}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= atRiskTotalPages} onClick={() => setPage((p) => Math.min(atRiskTotalPages, p + 1))}>Next</button>
+              </div>
+            </div>
+          )}
+
+          {!showAtRiskView && filteredProjects.length > pageSize && (
             <div className="subsea-pagination">
               <span className="subsea-pagination-info">
                 Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredProjects.length)} of {filteredProjects.length} projects

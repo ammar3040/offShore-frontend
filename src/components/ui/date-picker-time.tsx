@@ -30,6 +30,39 @@ function toDateString(d: Date): string {
   return format(d, "yyyy-MM-dd")
 }
 
+function InlineClearButton({
+  onClear,
+  label,
+}: {
+  onClear: () => void
+  label: string
+}) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className="admin-tickets-search-clear-inline"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        e.preventDefault()
+        onClear()
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.stopPropagation()
+          e.preventDefault()
+          onClear()
+        }
+      }}
+      title="Clear"
+      aria-label={label}
+    >
+      <X className="h-3.5 w-3.5" />
+    </span>
+  )
+}
+
 export interface DatePickerTimeProps {
   /** YYYY-MM-DD */
   date?: string
@@ -100,8 +133,13 @@ export function DatePickerTime({
                 triggerClassName
               )}
             >
-              {dateObj ? format(dateObj, "PPP") : datePlaceholder}
-              <ChevronDown className="h-4 w-4 opacity-50" />
+              <span className="truncate flex-1 text-left min-w-0">
+                {dateObj ? format(dateObj, "PPP") : datePlaceholder}
+              </span>
+              {onClear && showClear ? (
+                <InlineClearButton onClear={onClear} label={`Clear ${dateLabel.toLowerCase()}`} />
+              ) : null}
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent
@@ -126,28 +164,18 @@ export function DatePickerTime({
       {showTime && (
         <Field className="min-w-[100px] flex-1">
           <FieldLabel htmlFor={`${idPrefix}-time`}>{timeLabel}</FieldLabel>
-          <div className="flex items-center gap-2">
+          <div className="admin-tickets-datetime-time-wrap">
             <Input
               type="time"
               id={`${idPrefix}-time`}
               value={time ?? ""}
               onChange={(e) => onTimeChange(e.target.value)}
               placeholder={timePlaceholder}
-              className="appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+              className="appearance-none bg-background admin-tickets-datetime-time-input [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
             />
-            {onClear && showClear && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={onClear}
-                title="Clear"
-                aria-label="Clear"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+            {onClear && showClear ? (
+              <InlineClearButton onClear={onClear} label={`Clear ${timeLabel.toLowerCase()}`} />
+            ) : null}
           </div>
         </Field>
       )}

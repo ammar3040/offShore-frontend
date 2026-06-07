@@ -1,3 +1,22 @@
+.subsea-kpi-clickable {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.subsea-kpi-clickable:hover {
+  border-color: var(--border, #e5e7eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.subsea-kpi-clickable.subsea-kpi-active {
+  border-color: var(--amber-border, #fcd34d);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15);
+}
+
 .projects-proj-board .subsea-proj-card-top {
   padding: 10px 12px 8px;
 }

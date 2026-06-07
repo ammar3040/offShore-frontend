@@ -1,30 +1,21 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Anchor,
   Award,
-  BadgeCheck,
-  Bell,
   Briefcase,
-  CalendarDays,
   CreditCard,
   Download,
   FileText,
   Filter,
   FolderOpen,
-  HelpCircle,
-  LayoutDashboard,
   Loader2,
   Mail,
   MapPin,
   Pencil,
   Plane,
   Plus,
-  Radio,
   Search,
   Send,
-  Settings,
-  ShieldCheck,
   Ship,
   Trash2,
   Upload,
@@ -32,14 +23,13 @@ import {
   UserCheck,
   UserMinus,
   UserPlus,
-  Users,
-  Wallet,
 } from 'lucide-react';
 import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { recordContractInvite } from '../lib/contractsStore';
 import { getProjects, type ProjectApi } from '../api/project';
 import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
+import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
@@ -68,10 +58,12 @@ function formatRosterDate(iso?: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
 }
 
+type RosterTab = 'available' | 'inProject';
+
 function crewStatus(kind: CrewAvailability): { label: string; className: string } {
   if (kind === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (kind === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
-  return { label: 'On Board', className: 'subsea-b-blue' };
+  return { label: 'In Project', className: 'subsea-b-blue' };
 }
 
 const CrewListPage = () => {
@@ -80,6 +72,7 @@ const CrewListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [rosterTab, setRosterTab] = useState<RosterTab>('available');
   const [page, setPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
@@ -141,7 +134,10 @@ const CrewListPage = () => {
   }, [loadCrew]);
 
   const filteredCrew = useMemo(() => {
-    let list = crew;
+    let list = crew.filter((member) => {
+      const kind = availabilityFromCrewSignal(member.signal);
+      return rosterTab === 'available' ? kind === 'available' : kind !== 'available';
+    });
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
@@ -151,7 +147,7 @@ const CrewListPage = () => {
       );
     }
     return list;
-  }, [crew, search]);
+  }, [crew, rosterTab, search]);
 
   const paginatedCrew = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -376,61 +372,7 @@ const CrewListPage = () => {
 
   return (
     <div className="subsea-shell">
-      <nav className="subsea-nav" aria-label="Subseacore modules">
-        <button type="button" className="subsea-brand" aria-label="Subseacore">
-          <span className="subsea-mark">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 17l4-8 4 4 4-6 4 10" />
-              <circle cx="12" cy="5" r="2" />
-            </svg>
-          </span>
-        </button>
-        <div className="subsea-nav-items">
-          {[
-            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-            { icon: Users, label: 'Crew Management', path: '/crew', active: true, badge: true },
-            { icon: Ship, label: 'Rigs', path: '/rig' },
-            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
-            { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts', path: '/contracts' },
-            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
-            { divider: true },
-            { icon: Radio, label: 'Command Center' },
-            { divider: true },
-            { icon: Anchor, label: 'Projects', path: '/projects' },
-            { icon: CalendarDays, label: 'Timeline & Calendar', path: '/timeline' },
-            { divider: true },
-            { icon: Bell, label: 'Notifications' },
-          ].map((item, index) => {
-            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`subsea-ni${item.active ? ' active' : ''}`}
-                aria-label={item.label}
-                onClick={() => item.path && navigate(item.path)}
-              >
-                <Icon size={17} />
-                {item.badge && <span className="subsea-ni-badge" />}
-                <span className="subsea-ni-tip">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="subsea-nav-foot">
-          <button type="button" className="subsea-ni" aria-label="Settings">
-            <Settings size={17} />
-            <span className="subsea-ni-tip">Settings</span>
-          </button>
-          <button type="button" className="subsea-ni" aria-label="Help">
-            <HelpCircle size={17} />
-            <span className="subsea-ni-tip">Help</span>
-          </button>
-          <SubseaProfileMenu />
-        </div>
-      </nav>
+      <SubseaNavRail activeModule="crew" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -447,14 +389,25 @@ const CrewListPage = () => {
         </div>
         <div className="subsea-sb-body">
           <div className="subsea-sb-group">Crew</div>
-          <button type="button" className="subsea-sb-link active">
-            <Users size={13} /> Crew Roster <span className="subsea-sb-count">{loading ? '...' : crew.length}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${rosterTab === 'available' ? ' active' : ''}`}
+            onClick={() => {
+              setRosterTab('available');
+              setPage(1);
+            }}
+          >
+            <UserPlus size={13} /> Available <span className="subsea-sb-count">{loading ? '...' : availableCount}</span>
           </button>
-          <button type="button" className="subsea-sb-link">
-            <UserCheck size={13} /> On Board <span className="subsea-sb-count">{onProjectCount}</span>
-          </button>
-          <button type="button" className="subsea-sb-link">
-            <UserPlus size={13} /> Available <span className="subsea-sb-count">{availableCount}</span>
+          <button
+            type="button"
+            className={`subsea-sb-link${rosterTab === 'inProject' ? ' active' : ''}`}
+            onClick={() => {
+              setRosterTab('inProject');
+              setPage(1);
+            }}
+          >
+            <UserCheck size={13} /> In Project <span className="subsea-sb-count">{loading ? '...' : onProjectCount}</span>
           </button>
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
@@ -462,13 +415,6 @@ const CrewListPage = () => {
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
             <Plane size={13} /> Crew Flights <span className="subsea-sb-count">31</span>
-          </button>
-          <div className="subsea-sb-group">Compliance</div>
-          <button type="button" className="subsea-sb-link">
-            <BadgeCheck size={13} /> Certifications <span className="subsea-sb-count subsea-sb-count-red">14</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
-            <ShieldCheck size={13} /> MLC Compliance
           </button>
         </div>
       </aside>
@@ -512,8 +458,8 @@ const CrewListPage = () => {
           <section className="subsea-kpi-strip subsea-kpi-strip-4">
             {[
               { label: 'Total Crew', value: loading ? '...' : String(crew.length), meta: '+12 this month', tone: 'up', bar: '71%', color: 'blue' },
-              { label: 'On Board', value: loading ? '...' : String(onProjectCount), meta: `${crew.length ? Math.round((onProjectCount / crew.length) * 100) : 0}% of roster`, tone: 'flat', bar: `${crew.length ? Math.round((onProjectCount / crew.length) * 100) : 0}%`, color: 'teal' },
-              { label: 'Avg Tour Length', value: '84d', meta: 'Industry: 90d', tone: 'flat', bar: '55%', color: 'green' },
+              { label: 'Available', value: loading ? '...' : String(availableCount), meta: `${crew.length ? Math.round((availableCount / crew.length) * 100) : 0}% of roster`, tone: 'flat', bar: `${crew.length ? Math.round((availableCount / crew.length) * 100) : 0}%`, color: 'green' },
+              { label: 'In Project', value: loading ? '...' : String(onProjectCount), meta: `${crew.length ? Math.round((onProjectCount / crew.length) * 100) : 0}% of roster`, tone: 'flat', bar: `${crew.length ? Math.round((onProjectCount / crew.length) * 100) : 0}%`, color: 'teal' },
               { label: 'Nationalities', value: loading ? '...' : String(nationalityCount || '—'), meta: 'GBR, PHL, IND, NOR...', tone: 'flat', bar: '40%', color: 'amber' },
             ].map((kpi) => (
               <article key={kpi.label} className="subsea-kpi">
@@ -556,17 +502,17 @@ const CrewListPage = () => {
             </span>
             <span className="user-mgmt-availability-legend-item" role="listitem">
               <span className="user-mgmt-availability-dot user-mgmt-availability-dot--on-project" aria-hidden />
-              <span>On project</span>
+              <span>In project</span>
             </span>
             <span className="user-mgmt-availability-legend-item" role="listitem">
               <span className="user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon" aria-hidden />
-              <span>On project, ends in ≤7 days</span>
+              <span>In project, ends in ≤7 days</span>
             </span>
           </div>
 
           <div className="subsea-pane">
             <div className="subsea-pane-head">
-              <div className="subsea-pane-title">Crew Roster</div>
+              <div className="subsea-pane-title">{rosterTab === 'available' ? 'Available Crew' : 'Crew In Project'}</div>
               <div className="subsea-pane-actions">
                 <span className="subsea-pane-sub">{loading ? 'Loading...' : `${filteredCrew.length} members`}</span>
               </div>
@@ -593,7 +539,9 @@ const CrewListPage = () => {
                   <tbody>
                     {paginatedCrew.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="subsea-empty-cell">No crew members found.</td>
+                        <td colSpan={8} className="subsea-empty-cell">
+                          {rosterTab === 'available' ? 'No available crew members found.' : 'No crew members currently in project.'}
+                        </td>
                       </tr>
                     ) : (
                       paginatedCrew.map((member, index) => {

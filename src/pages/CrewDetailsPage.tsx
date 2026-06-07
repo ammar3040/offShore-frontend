@@ -1,39 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Anchor,
   ArrowLeft,
   BadgeCheck,
   Banknote,
-  Bell,
   Calendar,
-  CalendarDays,
   CreditCard,
   FileText,
-  HelpCircle,
   History,
   IdCard,
-  LayoutDashboard,
   Mail,
   MapPin,
   MessageSquare,
   Phone,
   Plane,
   Printer,
-  Radio,
   RefreshCw,
   Settings,
   Ship,
   User,
-  Users,
-  Wallet,
 } from 'lucide-react';
 import { getCrewById, type CrewAssignedProject, type CrewMemberApi } from '../api/crew';
+import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { availabilityFromCrewSignal } from '../utils/crewAvailability';
 import './RigsPage.css';
 
-type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'pay';
+type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay';
 
 const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
 const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer'];
@@ -70,7 +63,7 @@ function statusMeta(crew?: CrewMemberApi | null): { label: string; className: st
   const availability = availabilityFromCrewSignal(crew?.signal);
   if (availability === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (availability === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
-  return { label: 'On Board', className: 'subsea-b-blue' };
+  return { label: 'In Project', className: 'subsea-b-blue' };
 }
 
 function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi | null) {
@@ -130,60 +123,13 @@ const CrewDetailsPage = () => {
     { id: 'records', label: 'Records', icon: History },
     { id: 'documents', label: 'Documents', icon: BadgeCheck, badge: certExpiry ? '1' : undefined },
     { id: 'jobs', label: 'Jobs', icon: Ship },
+    { id: 'visa', label: 'Visa', icon: IdCard },
     { id: 'pay', label: 'Pay', icon: Banknote },
   ];
 
   return (
     <div className="subsea-shell">
-      <nav className="subsea-nav" aria-label="Subseacore modules">
-        <button type="button" className="subsea-brand" aria-label="Subseacore">
-          <span className="subsea-mark">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 17l4-8 4 4 4-6 4 10" />
-              <circle cx="12" cy="5" r="2" />
-            </svg>
-          </span>
-        </button>
-        <div className="subsea-nav-items">
-          {[
-            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-            { icon: Users, label: 'Crew Management', path: '/crew', active: true, badge: true },
-            { icon: Ship, label: 'Rigs', path: '/rig' },
-            { icon: Plane, label: 'Flight Bookings', path: '/tickets' },
-            { icon: Wallet, label: 'Payroll', path: '/payroll' },
-            { icon: FileText, label: 'Contracts', path: '/contracts' },
-            { icon: BadgeCheck, label: 'Documents & Certs', badge: true },
-            { divider: true },
-            { icon: Radio, label: 'Command Center' },
-            { divider: true },
-            { icon: Anchor, label: 'Projects', path: '/projects' },
-            { icon: CalendarDays, label: 'Timeline & Calendar', path: '/timeline' },
-            { divider: true },
-            { icon: Bell, label: 'Notifications' },
-          ].map((item, index) => {
-            if ('divider' in item) return <span key={`divider-${index}`} className="subsea-nav-sep" />;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={`subsea-ni${item.active ? ' active' : ''}`}
-                aria-label={item.label}
-                onClick={() => item.path && navigate(item.path)}
-              >
-                <Icon size={17} />
-                {item.badge && <span className="subsea-ni-badge" />}
-                <span className="subsea-ni-tip">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="subsea-nav-foot">
-          <button type="button" className="subsea-ni" aria-label="Settings"><Settings size={17} /><span className="subsea-ni-tip">Settings</span></button>
-          <button type="button" className="subsea-ni" aria-label="Help"><HelpCircle size={17} /><span className="subsea-ni-tip">Help</span></button>
-          <SubseaProfileMenu />
-        </div>
-      </nav>
+      <SubseaNavRail activeModule="crew" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -406,6 +352,15 @@ const CrewDetailsPage = () => {
                     </div>
                   </div>
                 </>
+              )}
+
+              {activeTab === 'visa' && (
+                <div className="subsea-pane">
+                  <div className="subsea-pane-head">
+                    <div className="subsea-pane-title">Visa</div>
+                  </div>
+                  <div className="subsea-empty-cell">No visa records yet.</div>
+                </div>
               )}
 
               {activeTab === 'pay' && (

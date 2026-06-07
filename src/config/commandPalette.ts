@@ -9,6 +9,7 @@ import {
   Wallet,
   FileText,
   Receipt,
+  BadgeCheck,
   FolderKanban,
   User,
   Settings,
@@ -42,6 +43,7 @@ export const ADMIN_COMMAND_PAGES: CommandPalettePage[] = [
   { icon: Wallet, label: 'Payroll', path: '/payroll', keywords: 'pay salary wages' },
   { icon: FileText, label: 'Contracts', path: '/contracts', keywords: 'agreements documents' },
   { icon: Receipt, label: 'Bills', path: '/bills', keywords: 'invoices billing' },
+  { icon: BadgeCheck, label: 'Documents & Certs', path: '/documents', keywords: 'certifications certificates expiry' },
 ];
 
 export const CREW_PANEL_COMMAND_PAGES: CommandPalettePage[] = [
