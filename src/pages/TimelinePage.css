@@ -598,6 +598,28 @@
   text-align: center;
 }
 
+.timeline-crew-link {
+  gap: 8px !important;
+}
+
+.timeline-crew-link-dot {
+  flex-shrink: 0;
+}
+
+.timeline-crew-link-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-crew-row {
+  cursor: pointer;
+}
+
+.timeline-crew-detail-pane {
+  margin-top: 14px;
+}
+
 @media (max-width: 1200px) {
   .timeline-kpi-strip {
     grid-template-columns: repeat(3, 1fr);

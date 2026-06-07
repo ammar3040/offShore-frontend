@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle,
   Anchor,
   BadgeCheck,
   CalendarDays,
@@ -15,9 +15,9 @@ import {
   Search,
   ShieldCheck,
   Ship,
-  Ticket,
   UserCheck,
   UserMinus,
+  Users,
 } from 'lucide-react';
 import { getCrewList, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
@@ -25,6 +25,12 @@ import { getRigs, type RigApi } from '../api/rig';
 import { getCrewTickets, getCrewTicketCreatedIso, type CrewTicketApi } from '../api/ticket';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
+import {
+  availabilityFromCrewSignal,
+  crewAvailabilityDotClass,
+  getCrewAvailabilityLabel,
+  type CrewAvailability,
+} from '../utils/crewAvailability';
 import './RigsPage.css';
 import './TimelinePage.css';
 
@@ -36,8 +42,22 @@ const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day
 type ViewMode = 'calendar' | 'gantt';
 type EventTone = 'green' | 'amber' | 'blue' | 'red' | 'teal' | 'orange' | 'gray';
 type EventType = 'Sign-On' | 'Sign-Off' | 'Flight' | 'Project' | 'Certificate' | 'Fleet';
-type TimelineEventKind = 'Flight' | 'Project' | 'Certificate' | 'Fleet';
+type TimelineEventKind = 'Sign-On' | 'Sign-Off' | 'Flight' | 'Project' | 'Certificate' | 'Fleet';
 type EventTypeFilter = 'all' | TimelineEventKind;
+
+interface CrewRosterRow {
+  id: string;
+  name: string;
+  organization: string;
+  project: string;
+  nationality: string;
+  email: string;
+  availability: CrewAvailability;
+  availabilityLabel: string;
+  certLabel: string;
+  certTone: EventTone;
+  nextEvent?: string;
+}
 
 interface TimelineEvent {
   id: string;
@@ -172,12 +192,56 @@ function crewRigId(member: CrewMemberApi, projects: ProjectApi[], rigs: RigApi[]
   return project ? projectRigId(project, rigs) : null;
 }
 
+function certStatus(member: CrewMemberApi): { label: string; tone: EventTone } {
+  const expiry = getCertificateExpiries(member)[0];
+  if (!expiry) return { label: '—', tone: 'gray' };
+  const days = daysBetween(new Date(), expiry);
+  if (days < 0) return { label: 'Expired', tone: 'red' };
+  if (days <= 7) return { label: `Expires in ${days}d`, tone: 'red' };
+  if (days <= 30) return { label: `Expires in ${days}d`, tone: 'amber' };
+  return { label: formatShortDate(expiry), tone: 'green' };
+}
+
+function availabilityBadgeClass(kind: CrewAvailability): string {
+  if (kind === 'available') return 'subsea-b-green';
+  if (kind === 'endingSoon') return 'subsea-b-amber';
+  return 'subsea-b-blue';
+}
+
+function availabilityBadgeLabel(kind: CrewAvailability): string {
+  if (kind === 'available') return 'Available';
+  if (kind === 'endingSoon') return 'Sign-off due';
+  return 'On project';
+}
+
+function crewMatchesSearch(member: CrewMemberApi, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const name = crewName(member).toLowerCase();
+  const project = member.activeProjects?.[0]?.title?.toLowerCase() ?? '';
+  return (
+    name.includes(q) ||
+    (member.email ?? '').toLowerCase().includes(q) ||
+    (member.organization ?? '').toLowerCase().includes(q) ||
+    (member.nationality ?? '').toLowerCase().includes(q) ||
+    project.includes(q)
+  );
+}
+
 function ganttKindLabel(kind: EventTypeFilter): string {
   if (kind === 'all') return 'All events';
+  if (kind === 'Sign-On') return 'Sign-ons';
+  if (kind === 'Sign-Off') return 'Sign-offs';
   if (kind === 'Flight') return 'Flights';
   if (kind === 'Project') return 'Projects';
   if (kind === 'Certificate') return 'Certificate renewals';
   return 'Fleet';
+}
+
+function projectParticipants(project: ProjectApi, crew: CrewMemberApi[]): CrewMemberApi[] {
+  const ids = new Set((project.participants ?? []).map((id) => String(id)));
+  if (ids.size === 0) return [];
+  return crew.filter((member) => ids.has(String(member.id)));
 }
 
 function projectRigId(project: ProjectApi, rigs: RigApi[]): string | null {
@@ -242,11 +306,14 @@ function buildCalendarDays(month: Date): Date[] {
 }
 
 const TimelinePage = () => {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [calendarDate, setCalendarDate] = useState(() => startOfMonth(new Date()));
   const [data, setData] = useState<TimelineState>({ crew: [], projects: [], rigs: [], tickets: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCrewId, setSelectedCrewId] = useState<string>('all');
   const [selectedRigId, setSelectedRigId] = useState<string>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedEventType, setSelectedEventType] = useState<EventTypeFilter>('all');
@@ -303,13 +370,17 @@ const TimelinePage = () => {
       const tone = projectTone(project.status);
       const start = parseDate(project.duration?.startDate);
       const end = parseDate(project.duration?.endDate);
+      const participants = projectParticipants(project, data.crew);
+
       if (start) {
         rows.push({
           id: `project-start-${project.id}`,
           date: start,
           title: `${project.title} starts`,
           reference: project.description || project.span || 'Project mobilisation',
-          crew: `${project.participants?.length ?? 0} participants`,
+          crew: participants.length > 0
+            ? participants.map((member) => crewName(member)).join(', ')
+            : `${project.participants?.length ?? 0} participants`,
           type: 'Project',
           status: project.status || 'Active',
           tone,
@@ -322,13 +393,45 @@ const TimelinePage = () => {
           date: end,
           title: `${project.title} deadline`,
           reference: project.description || project.span || 'Project completion',
-          crew: `${project.participants?.length ?? 0} participants`,
+          crew: participants.length > 0
+            ? participants.map((member) => crewName(member)).join(', ')
+            : `${project.participants?.length ?? 0} participants`,
           type: 'Project',
           status: project.status || 'Due',
           tone: tone === 'green' ? 'teal' : tone,
           icon: ShieldCheck,
         });
       }
+
+      participants.forEach((member) => {
+        const name = crewName(member);
+        if (start) {
+          rows.push({
+            id: `sign-on-${project.id}-${member.id}`,
+            date: start,
+            title: `${name} sign-on`,
+            reference: `${project.title} · ${member.organization || 'Crew mobilisation'}`,
+            crew: name,
+            type: 'Sign-On',
+            status: 'Scheduled',
+            tone: 'green',
+            icon: UserCheck,
+          });
+        }
+        if (end) {
+          rows.push({
+            id: `sign-off-${project.id}-${member.id}`,
+            date: end,
+            title: `${name} sign-off`,
+            reference: `${project.title} · ${member.organization || 'Crew demobilisation'}`,
+            crew: name,
+            type: 'Sign-Off',
+            status: 'Scheduled',
+            tone: 'amber',
+            icon: UserMinus,
+          });
+        }
+      });
     });
 
     data.crew.forEach((member) => {
@@ -367,13 +470,84 @@ const TimelinePage = () => {
     return rows.sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [data]);
 
+  const sidebarCrewOptions = useMemo(() => {
+    return [...data.crew]
+      .filter((member) => crewMatchesSearch(member, searchQuery))
+      .sort((a, b) => crewName(a).localeCompare(crewName(b)))
+      .map((member) => ({
+        id: member.id,
+        name: crewName(member),
+        availability: availabilityFromCrewSignal(member.signal),
+      }));
+  }, [data.crew, searchQuery]);
+
+  const crewRosterRows = useMemo<CrewRosterRow[]>(() => {
+    return [...data.crew]
+      .filter((member) => crewMatchesSearch(member, searchQuery))
+      .filter((member) => selectedCrewId === 'all' || member.id === selectedCrewId)
+      .sort((a, b) => crewName(a).localeCompare(crewName(b)))
+      .map((member) => {
+        const project = member.activeProjects?.[0];
+        const availability = availabilityFromCrewSignal(member.signal);
+        const cert = certStatus(member);
+        const nextDate =
+          project?.duration?.endDate && availability !== 'available'
+            ? `Sign-off ${formatShortDate(parseDate(project.duration.endDate) ?? new Date())}`
+            : project?.duration?.startDate && availability === 'available'
+              ? `Starts ${formatShortDate(parseDate(project.duration.startDate) ?? new Date())}`
+              : undefined;
+        return {
+          id: member.id,
+          name: crewName(member),
+          organization: member.organization || '—',
+          project: project?.title || 'Unassigned',
+          nationality: member.nationality || '—',
+          email: member.email || '—',
+          availability,
+          availabilityLabel: getCrewAvailabilityLabel(availability),
+          certLabel: cert.label,
+          certTone: cert.tone,
+          nextEvent: nextDate,
+        };
+      });
+  }, [data.crew, searchQuery, selectedCrewId]);
+
   const filteredEvents = useMemo(() => {
-    if (selectedEventType === 'all') return events;
-    return events.filter((event) => event.type === selectedEventType);
-  }, [events, selectedEventType]);
+    const q = searchQuery.trim().toLowerCase();
+    let rows = events;
+
+    if (selectedEventType !== 'all') {
+      rows = rows.filter((event) => event.type === selectedEventType);
+    }
+
+    if (selectedCrewId !== 'all') {
+      const member = data.crew.find((item) => item.id === selectedCrewId);
+      const name = member ? crewName(member).toLowerCase() : '';
+      rows = rows.filter(
+        (event) =>
+          event.crew.toLowerCase().includes(name) ||
+          event.title.toLowerCase().includes(name) ||
+          event.reference.toLowerCase().includes(name)
+      );
+    }
+
+    if (q) {
+      rows = rows.filter(
+        (event) =>
+          event.title.toLowerCase().includes(q) ||
+          event.reference.toLowerCase().includes(q) ||
+          event.crew.toLowerCase().includes(q) ||
+          event.type.toLowerCase().includes(q)
+      );
+    }
+
+    return rows;
+  }, [events, selectedEventType, selectedCrewId, searchQuery, data.crew]);
 
   const eventTypeCounts = useMemo(
     () => ({
+      signOns: events.filter((event) => event.type === 'Sign-On').length,
+      signOffs: events.filter((event) => event.type === 'Sign-Off').length,
       flights: events.filter((event) => event.type === 'Flight').length,
       projects: events.filter((event) => event.type === 'Project').length,
       certs: events.filter((event) => event.type === 'Certificate').length,
@@ -427,6 +601,26 @@ const TimelinePage = () => {
         projectId: ticketProjectId(ticket) ?? '',
         rigId: ticketRigId(ticket, data.rigs),
         kind: 'Flight',
+      });
+    });
+
+    data.projects.forEach((project) => {
+      const start = parseDate(project.duration?.startDate);
+      const end = parseDate(project.duration?.endDate);
+      if (!start || !end) return;
+      projectParticipants(project, data.crew).forEach((member) => {
+        rows.push({
+          id: `crew-window-${project.id}-${member.id}`,
+          label: `${crewName(member)} · ${project.title}`,
+          detail: member.organization || 'Crew assignment',
+          start,
+          end,
+          tone: availabilityFromCrewSignal(member.signal) === 'endingSoon' ? 'amber' : 'green',
+          icon: UserCheck,
+          projectId: project.id,
+          rigId: projectRigId(project, data.rigs),
+          kind: 'Sign-On',
+        });
       });
     });
 
@@ -595,9 +789,16 @@ const TimelinePage = () => {
   }, [filteredEvents]);
 
   const summary = useMemo(() => {
+    const available = data.crew.filter(
+      (member) => availabilityFromCrewSignal(member.signal) === 'available'
+    ).length;
+    const assigned = data.crew.length - available;
     return {
-      signOns: data.crew.filter((member) => (member.signal || '').toUpperCase() === 'GREEN').length,
-      signOffs: data.crew.filter((member) => (member.signal || '').toUpperCase() !== 'GREEN').length,
+      crewTotal: data.crew.length,
+      available,
+      assigned,
+      signOns: events.filter((event) => event.type === 'Sign-On').length,
+      signOffs: events.filter((event) => event.type === 'Sign-Off').length,
       flights: data.tickets.length,
       projects: data.projects.length,
       certs: events.filter((event) => event.type === 'Certificate' && event.tone === 'red').length,
@@ -623,7 +824,12 @@ const TimelinePage = () => {
         <div className="subsea-sb-search">
           <div className="subsea-sb-search-wrap">
             <Search size={13} />
-            <input type="text" placeholder="Search events..." />
+            <input
+              type="text"
+              placeholder="Search crew, events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </div>
         <div className="subsea-sb-body">
@@ -668,6 +874,25 @@ const TimelinePage = () => {
               )}
             </>
           )}
+          <div className="subsea-sb-group">Crew</div>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedCrewId === 'all' ? ' active' : ''}`}
+            onClick={() => setSelectedCrewId('all')}
+          >
+            <Users size={13} /> All crew <span className="subsea-sb-count">{data.crew.length}</span>
+          </button>
+          {sidebarCrewOptions.slice(0, 12).map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              className={`subsea-sb-link timeline-crew-link${selectedCrewId === row.id ? ' active' : ''}`}
+              onClick={() => setSelectedCrewId(row.id)}
+            >
+              <span className={`${crewAvailabilityDotClass(row.availability)} timeline-crew-link-dot`} />
+              <span className="timeline-crew-link-name">{row.name}</span>
+            </button>
+          ))}
           <div className="subsea-sb-group">Event Types</div>
           <button
             type="button"
@@ -675,6 +900,20 @@ const TimelinePage = () => {
             onClick={() => handleEventTypeFilter('all')}
           >
             <CalendarDays size={13} /> All events <span className="subsea-sb-count">{events.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedEventType === 'Sign-On' ? ' active' : ''}`}
+            onClick={() => handleEventTypeFilter('Sign-On')}
+          >
+            <UserCheck size={13} /> Sign-ons <span className="subsea-sb-count">{eventTypeCounts.signOns}</span>
+          </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${selectedEventType === 'Sign-Off' ? ' active' : ''}`}
+            onClick={() => handleEventTypeFilter('Sign-Off')}
+          >
+            <UserMinus size={13} /> Sign-offs <span className="subsea-sb-count">{eventTypeCounts.signOffs}</span>
           </button>
           <button
             type="button"
@@ -750,11 +989,11 @@ const TimelinePage = () => {
 
           <section className="subsea-kpi-strip timeline-kpi-strip">
             {[
-              { label: 'Timeline Events', value: loading ? '...' : String(filteredEvents.length), meta: `${visibleMonthEvents.length} this month`, tone: 'flat', bar: '76%', color: 'blue' },
-              { label: 'Project Windows', value: loading ? '...' : String(summary.projects), meta: 'Active application projects', tone: 'up', bar: '64%', color: 'blue' },
+              { label: 'Crew Roster', value: loading ? '...' : String(summary.crewTotal), meta: `${summary.available} available · ${summary.assigned} assigned`, tone: 'flat', bar: `${summary.crewTotal ? Math.round((summary.available / summary.crewTotal) * 100) : 0}%`, color: 'green' },
+              { label: 'Sign-Ons', value: loading ? '...' : String(summary.signOns), meta: 'Scheduled mobilisations', tone: 'up', bar: `${Math.min(100, summary.signOns * 8)}%`, color: 'green' },
+              { label: 'Sign-Offs', value: loading ? '...' : String(summary.signOffs), meta: 'Scheduled demob dates', tone: 'flat', bar: `${Math.min(100, summary.signOffs * 8)}%`, color: 'amber' },
               { label: 'Flight Records', value: loading ? '...' : String(summary.flights), meta: 'Crew ticket flow', tone: 'flat', bar: '52%', color: 'teal' },
               { label: 'Compliance Alerts', value: loading ? '...' : String(summary.certs), meta: 'Certificates needing action', tone: summary.certs ? 'down' : 'flat', bar: `${Math.min(100, summary.certs * 16)}%`, color: 'red' },
-              { label: 'Fleet Records', value: loading ? '...' : String(summary.fleet), meta: 'Rigs in the system', tone: 'flat', bar: '48%', color: 'green' },
             ].map((kpi) => (
               <article key={kpi.label} className="subsea-kpi">
                 <div className="subsea-kpi-label">{kpi.label}</div>
@@ -787,11 +1026,12 @@ const TimelinePage = () => {
                     </div>
                     <div className="timeline-legend" aria-label="Timeline event legend">
                       {[
+                        ['green', 'Sign-On'],
+                        ['amber', 'Sign-Off'],
                         ['blue', 'Flight'],
                         ['blue', 'Project'],
                         ['red', 'Certificate'],
                         ['teal', 'Fleet'],
-                        ['green', 'Complete'],
                       ].map(([tone, label], index) => (
                         <span key={`${tone}-${label}-${index}`} className="timeline-legend-item">
                           <span className={`timeline-legend-dot timeline-legend-${tone}`} />
@@ -863,16 +1103,102 @@ const TimelinePage = () => {
                     </div>
                     <div className="subsea-pane">
                       <div className="subsea-pane-head">
-                        <div className="subsea-pane-title">Event Summary</div>
+                        <div>
+                          <div className="subsea-pane-title">Crew Roster</div>
+                          <div className="subsea-pane-sub">
+                            {loading ? 'Loading crew...' : `${crewRosterRows.length} crew member${crewRosterRows.length === 1 ? '' : 's'}`}
+                          </div>
+                        </div>
+                        <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/crew')}>
+                          View all
+                        </button>
                       </div>
-                      <div className="timeline-summary-list">
-                        <div><UserCheck size={13} className="green" /><span>Available crew</span><strong>{summary.signOns}</strong></div>
-                        <div><UserMinus size={13} className="amber" /><span>Assigned / unavailable</span><strong>{summary.signOffs}</strong></div>
-                        <div><Ticket size={13} className="blue" /><span>Flight bookings</span><strong>{summary.flights}</strong></div>
-                        <div><FolderKanban size={13} className="blue" /><span>Projects</span><strong>{summary.projects}</strong></div>
-                        <div><AlertTriangle size={13} className="red" /><span>Compliance alerts</span><strong>{summary.certs}</strong></div>
-                        <div><Ship size={13} className="teal" /><span>Fleet records</span><strong>{summary.fleet}</strong></div>
+                      <div className="timeline-table-wrap">
+                        {crewRosterRows.length === 0 ? (
+                          <div className="timeline-empty">No crew members match your filters.</div>
+                        ) : (
+                          <table className="timeline-table timeline-table-compact">
+                            <thead>
+                              <tr>
+                                <th>Crew</th>
+                                <th>Role</th>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th>Cert</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {crewRosterRows.map((row) => (
+                                <tr
+                                  key={row.id}
+                                  className="timeline-crew-row"
+                                  onClick={() => navigate(`/crew/${row.id}`)}
+                                >
+                                  <td className="timeline-strong">
+                                    <div className="subsea-roster-name">
+                                      <span
+                                        className={crewAvailabilityDotClass(row.availability)}
+                                        title={row.availabilityLabel}
+                                        aria-label={row.availabilityLabel}
+                                      />
+                                      <span>{row.name}</span>
+                                    </div>
+                                  </td>
+                                  <td>{row.organization}</td>
+                                  <td>{row.project}</td>
+                                  <td>
+                                    <span className={`subsea-badge ${availabilityBadgeClass(row.availability)}`}>
+                                      {availabilityBadgeLabel(row.availability)}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={`subsea-badge ${badgeClass(row.certTone)}`}>{row.certLabel}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
                       </div>
+                    </div>
+                  </section>
+
+                  <section className="subsea-pane timeline-crew-detail-pane">
+                    <div className="subsea-pane-head">
+                      <div className="subsea-pane-title">Crew Details</div>
+                      <div className="subsea-pane-sub">Contact, nationality and next rotation</div>
+                    </div>
+                    <div className="timeline-table-wrap">
+                      {crewRosterRows.length === 0 ? (
+                        <div className="timeline-empty">No crew details to display.</div>
+                      ) : (
+                        <table className="timeline-table">
+                          <thead>
+                            <tr>
+                              <th>Crew Member</th>
+                              <th>Email</th>
+                              <th>Nationality</th>
+                              <th>Current Project</th>
+                              <th>Next Event</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {crewRosterRows.map((row) => (
+                              <tr
+                                key={`detail-${row.id}`}
+                                className="timeline-crew-row"
+                                onClick={() => navigate(`/crew/${row.id}`)}
+                              >
+                                <td className="timeline-strong">{row.name}</td>
+                                <td>{row.email}</td>
+                                <td>{row.nationality}</td>
+                                <td>{row.project}</td>
+                                <td>{row.nextEvent || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
                     </div>
                   </section>
                 </>
@@ -1001,25 +1327,62 @@ const TimelinePage = () => {
                     </div>
                     <div className="subsea-pane">
                       <div className="subsea-pane-head">
-                        <div className="subsea-pane-title">Crew Rotation Signal</div>
-                        <div className="subsea-pane-sub">Current roster status</div>
+                        <div>
+                          <div className="subsea-pane-title">Crew Rotation Signal</div>
+                          <div className="subsea-pane-sub">
+                            {loading ? 'Loading crew...' : `${summary.available} available · ${summary.assigned} on project`}
+                          </div>
+                        </div>
+                        <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/crew')}>
+                          View all
+                        </button>
                       </div>
                       <div className="timeline-table-wrap">
-                        <table className="timeline-table timeline-table-compact">
-                          <thead><tr><th>Crew</th><th>Project</th><th>Status</th></tr></thead>
-                          <tbody>
-                            {data.crew.slice(0, 8).map((member) => {
-                              const available = (member.signal || '').toUpperCase() === 'GREEN';
-                              return (
-                                <tr key={member.id}>
-                                  <td className="timeline-strong">{crewName(member)}</td>
-                                  <td>{member.activeProjects?.[0]?.title || 'Unassigned'}</td>
-                                  <td><span className={`subsea-badge ${available ? 'subsea-b-green' : 'subsea-b-amber'}`}>{available ? 'Ready' : 'Assigned'}</span></td>
+                        {crewRosterRows.length === 0 ? (
+                          <div className="timeline-empty">No crew members match your filters.</div>
+                        ) : (
+                          <table className="timeline-table timeline-table-compact">
+                            <thead>
+                              <tr>
+                                <th>Crew</th>
+                                <th>Role</th>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th>Cert</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {crewRosterRows.map((row) => (
+                                <tr
+                                  key={row.id}
+                                  className="timeline-crew-row"
+                                  onClick={() => navigate(`/crew/${row.id}`)}
+                                >
+                                  <td className="timeline-strong">
+                                    <div className="subsea-roster-name">
+                                      <span
+                                        className={crewAvailabilityDotClass(row.availability)}
+                                        title={row.availabilityLabel}
+                                        aria-label={row.availabilityLabel}
+                                      />
+                                      <span>{row.name}</span>
+                                    </div>
+                                  </td>
+                                  <td>{row.organization}</td>
+                                  <td>{row.project}</td>
+                                  <td>
+                                    <span className={`subsea-badge ${availabilityBadgeClass(row.availability)}`}>
+                                      {availabilityBadgeLabel(row.availability)}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={`subsea-badge ${badgeClass(row.certTone)}`}>{row.certLabel}</span>
+                                  </td>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
                       </div>
                     </div>
                   </section>

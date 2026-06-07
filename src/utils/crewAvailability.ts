@@ -69,6 +69,23 @@ export function getCrewAvailability(crewId: string, projects: ProjectApi[]): Cre
 }
 
 /**
+ * Availability for crew listed on a project details page. Enrolled members on an
+ * ongoing project are on board (or sign-off due); only show available once the
+ * project is no longer current.
+ */
+export function getProjectEnrollmentAvailability(project: ProjectApi): CrewAvailability {
+  const today = stripToLocalDate(new Date());
+  if (!isOngoingProject(project, today)) return 'available';
+
+  const end = project.duration?.endDate ? parseYmd(project.duration.endDate) : null;
+  if (end) {
+    const d = daysFromTodayTo(end, today);
+    if (d >= 0 && d <= 7) return 'endingSoon';
+  }
+  return 'onProject';
+}
+
+/**
  * Maps API `signal` to UI availability. Backend may send YELLOW, RED, GREEN;
  * some payloads use ORANGE for the same meaning as YELLOW.
  */

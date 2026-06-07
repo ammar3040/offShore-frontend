@@ -15,7 +15,12 @@ import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getCrewAvailableForProject, getCrewEnrolledInProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { getProjectById, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
-import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
+import {
+  crewAvailabilityDotClass,
+  getCrewAvailabilityLabel,
+  getProjectEnrollmentAvailability,
+  type CrewAvailability,
+} from '../utils/crewAvailability';
 import './ProjectsPage.css';
 import './RigsPage.css';
 
@@ -60,8 +65,7 @@ function crewName(member: CrewMemberApi): string {
   return `${member.firstname ?? ''} ${member.lastname ?? ''}`.trim() || 'Unnamed crew';
 }
 
-function crewStatusLabel(member: CrewMemberApi): { label: string; className: string } {
-  const kind = availabilityFromCrewSignal(member.signal);
+function crewStatusLabel(kind: CrewAvailability): { label: string; className: string } {
   if (kind === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (kind === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
   return { label: 'On Board', className: 'subsea-b-blue' };
@@ -450,8 +454,8 @@ const ProjectDetailsPage = () => {
                         </thead>
                         <tbody>
                           {crew.map((member) => {
-                            const kind = availabilityFromCrewSignal(member.signal);
-                            const status = crewStatusLabel(member);
+                            const kind = getProjectEnrollmentAvailability(project);
+                            const status = crewStatusLabel(kind);
                             return (
                               <tr key={member.id} onClick={() => navigate(`/crew/${member.id}`)}>
                                 <td className="strong">
