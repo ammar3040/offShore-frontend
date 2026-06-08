@@ -49,9 +49,9 @@ export interface BookFare {
 
 /** Payload for POST /crew-ticket/book (matches backend bookFlightSchema) */
 export interface BookFlightPayload {
-  project_id: string;
+  project_id?: string;
   rig_id?: string;
-  crew_ids: string[];
+  crew_ids?: string[];
   flight: {
     id: string;
     legs: BookLeg[];
@@ -140,9 +140,9 @@ export async function searchFlights(payload: SearchPayload): Promise<SearchFligh
  * Returns tickets that are created pending approval. On error throws with message.
  */
 export async function bookFlight(params: {
-  project_id: string;
+  project_id?: string;
   rig_id?: string;
-  crew_ids: string[];
+  crew_ids?: string[];
   flight: Flight;
   cashback?: number;
   price?: number;
@@ -162,9 +162,9 @@ export async function bookFlight(params: {
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const body: BookFlightPayload = {
-    project_id: params.project_id,
+    ...(params.project_id ? { project_id: params.project_id } : {}),
     ...(params.rig_id ? { rig_id: params.rig_id } : {}),
-    crew_ids: params.crew_ids,
+    ...(params.crew_ids && params.crew_ids.length > 0 ? { crew_ids: params.crew_ids } : {}),
     flight: {
       id: params.flight.id,
       legs: (params.flight.legs ?? []).map((leg) => ({

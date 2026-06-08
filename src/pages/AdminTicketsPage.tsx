@@ -1240,14 +1240,6 @@ const AdminTicketsPage = () => {
 
   const handleBookNow = useCallback(
     async (flight: Flight) => {
-      if (!searchProjectId) {
-        toast.error('No project selected', { description: 'Please select a project in the search form before booking.' });
-        return;
-      }
-      if (searchCrewIds.length === 0) {
-        toast.error('No crew selected', { description: 'Please select at least one crew member in the search form.' });
-        return;
-      }
       const bookKey =
         searchTripTypeUI === 'multi-city' ? `${activeMultiLegIndex}::${flight.id}` : flight.id;
       setBookingFlightKey(bookKey);
@@ -1255,8 +1247,8 @@ const AdminTicketsPage = () => {
         const firstFare = flight.fares?.[0];
         const priceAmount = firstFare?.totalFare ?? 0;
         const data = await bookFlight({
-          project_id: searchProjectId,
-          crew_ids: searchCrewIds,
+          ...(searchProjectId ? { project_id: searchProjectId } : {}),
+          ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
           flight,
           cashback: flight.cashback ?? 0,
           price: priceAmount,
@@ -1266,7 +1258,7 @@ const AdminTicketsPage = () => {
           infants: 0,
         });
         const returnedTickets = Array.isArray(data.crewTickets) ? data.crewTickets : Array.isArray(data.tickets) ? data.tickets : [];
-        const ticketCount = returnedTickets.length || searchCrewIds.length;
+        const ticketCount = returnedTickets.length || searchCrewIds.length || adults;
         const refNote = data.bookingReference ? ` Ref: ${data.bookingReference}` : '';
         const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked and sent for approval.${refNote}`;
 
