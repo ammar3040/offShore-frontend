@@ -41,7 +41,7 @@ import {
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
-import { getCrewEnrolledInProject, type CrewMemberApi } from '../api/crew';
+import { getCrewEnrolledInProject, getCrewList, type CrewMemberApi } from '../api/crew';
 import {
   getCrewTickets,
   createFlightTicket,
@@ -764,6 +764,7 @@ const AdminTicketsPage = () => {
   const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
+  const [searchCrewFilter, setSearchCrewFilter] = useState('');
   const [, setAdminMarkup] = useState<number | null>(null);
   const selectedFlightSortValue = `${flightSortBy}:${flightSortOrder}` as FlightSortValue;
 
@@ -778,18 +779,39 @@ const AdminTicketsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!searchProjectId) {
-      setSearchCrewList([]);
-      setSearchCrewIds([]);
-      return;
-    }
+    let cancelled = false;
     setSearchCrewLoading(true);
-    getCrewEnrolledInProject(searchProjectId)
-      .then((res) => setSearchCrewList(res.crew ?? []))
-      .catch(() => setSearchCrewList([]))
-      .finally(() => setSearchCrewLoading(false));
-    setSearchCrewIds([]);
+    const loader = searchProjectId
+      ? getCrewEnrolledInProject(searchProjectId)
+      : getCrewList();
+    loader
+      .then((res) => {
+        if (cancelled) return;
+        const crew = res.crew ?? [];
+        setSearchCrewList(crew);
+        setSearchCrewIds((prev) => prev.filter((id) => crew.some((c) => c.id === id)));
+      })
+      .catch(() => {
+        if (!cancelled) setSearchCrewList([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSearchCrewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [searchProjectId]);
+
+  const filteredSearchCrewList = useMemo(() => {
+    const q = searchCrewFilter.trim().toLowerCase();
+    if (!q) return searchCrewList;
+    return searchCrewList.filter((c) => {
+      const name = `${c.firstname ?? ''} ${c.lastname ?? ''}`.trim().toLowerCase();
+      return name.includes(q) || (c.email?.toLowerCase().includes(q) ?? false);
+    });
+  }, [searchCrewList, searchCrewFilter]);
+
+  const searchAdultCount = searchCrewIds.length > 0 ? searchCrewIds.length : Math.max(1, adults);
 
   const toggleCrewSearch = useCallback((crewId: string) => {
     setSearchCrewIds((prev) =>
@@ -1083,7 +1105,7 @@ const AdminTicketsPage = () => {
           from: seg.from,
           to: seg.to,
           departureDate: dDate,
-          adults,
+          adults: searchAdultCount,
           children: 0,
           infants: 0,
           cabinClass,
@@ -1116,7 +1138,7 @@ const AdminTicketsPage = () => {
           departureDate: dDate,
           returnDate: searchTripTypeUI === 'round-trip' ? rDate : undefined,
           ...(searchTripTypeUI === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
-          adults,
+          adults: searchAdultCount,
           children: 0,
           infants: 0,
           cabinClass,
@@ -1162,7 +1184,7 @@ const AdminTicketsPage = () => {
       departureTime,
       arrivalDate,
       arrivalTime,
-      adults,
+      searchAdultCount,
       cabinClass,
       currency,
       flightSortBy,
@@ -1253,12 +1275,12 @@ const AdminTicketsPage = () => {
           cashback: flight.cashback ?? 0,
           price: priceAmount,
           currency,
-          adult: adults,
+          adult: searchAdultCount,
           children: 0,
           infants: 0,
         });
         const returnedTickets = Array.isArray(data.crewTickets) ? data.crewTickets : Array.isArray(data.tickets) ? data.tickets : [];
-        const ticketCount = returnedTickets.length || searchCrewIds.length || adults;
+        const ticketCount = returnedTickets.length || searchCrewIds.length || searchAdultCount;
         const refNote = data.bookingReference ? ` Ref: ${data.bookingReference}` : '';
         const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked and sent for approval.${refNote}`;
 
@@ -1312,7 +1334,7 @@ const AdminTicketsPage = () => {
     [
       searchProjectId,
       searchCrewIds,
-      adults,
+      searchAdultCount,
       currency,
       searchTripTypeUI,
       activeMultiLegIndex,
@@ -1729,7 +1751,7 @@ const AdminTicketsPage = () => {
                     <h3 className="admin-tickets-search-section-title">Assignment</h3>
                     <div className="admin-tickets-search-section-grid">
                       <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
-                        <label htmlFor="search-project">Project</label>
+                        <label htmlFor="search-project">Project (optional)</label>
                         <div className="admin-tickets-search-field-with-clear">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1741,7 +1763,7 @@ const AdminTicketsPage = () => {
                                 <span className="truncate flex-1 text-left min-w-0">
                                   {searchProjectId
                                     ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
-                                    : 'Select project'}
+                                    : 'No project'}
                                 </span>
                                 <SearchFieldClearButton
                                   visible={!!searchProjectId}
@@ -1760,7 +1782,7 @@ const AdminTicketsPage = () => {
                                   onSelect={() => setSearchProjectId('')}
                                   className={!searchProjectId ? 'admin-tickets-search-option-selected' : ''}
                                 >
-                                  Select project
+                                  No project
                                 </DropdownMenuItem>
                                 {projects.map((p) => (
                                   <DropdownMenuItem
@@ -1784,17 +1806,14 @@ const AdminTicketsPage = () => {
                               <Button
                                 id="search-crew"
                                 variant="outline"
-                                disabled={!searchProjectId}
                                 className="admin-tickets-search-control"
                               >
                                 <span className="truncate flex-1 text-left min-w-0">
-                                  {!searchProjectId
-                                    ? 'Select a project first'
-                                    : searchCrewLoading
-                                      ? 'Loading…'
-                                      : searchCrewIds.length === 0
-                                        ? 'Select crew members…'
-                                        : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
+                                  {searchCrewLoading
+                                    ? 'Loading…'
+                                    : searchCrewIds.length === 0
+                                      ? 'Select crew members…'
+                                      : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
                                 </span>
                                 <SearchFieldClearButton
                                   visible={searchCrewIds.length > 0}
@@ -1807,14 +1826,30 @@ const AdminTicketsPage = () => {
                             <DropdownMenuContent
                               className={SEARCH_DROPDOWN_CONTENT_CLASS}
                               align="start"
+                              onCloseAutoFocus={() => setSearchCrewFilter('')}
                             >
+                              <div className="px-2 py-1.5">
+                                <Input
+                                  value={searchCrewFilter}
+                                  onChange={(e) => setSearchCrewFilter(e.target.value)}
+                                  placeholder="Search crew…"
+                                  className="h-8"
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                              </div>
                               {searchCrewLoading && searchCrewList.length === 0 ? (
                                 <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
                               ) : searchCrewList.length === 0 ? (
-                                <DropdownMenuLabel>No crew enrolled in this project.</DropdownMenuLabel>
+                                <DropdownMenuLabel>
+                                  {searchProjectId
+                                    ? 'No crew enrolled in this project.'
+                                    : 'No crew members found.'}
+                                </DropdownMenuLabel>
+                              ) : filteredSearchCrewList.length === 0 ? (
+                                <DropdownMenuLabel>No crew match your search.</DropdownMenuLabel>
                               ) : (
                                 <DropdownMenuGroup>
-                                  {searchCrewList.map((c) => (
+                                  {filteredSearchCrewList.map((c) => (
                                     <DropdownMenuCheckboxItem
                                       key={c.id}
                                       checked={searchCrewIds.includes(c.id)}
