@@ -145,11 +145,12 @@ const CrewDetailsPage = () => {
   );
 
   const handleSubmitEdit = async (data: CrewMemberFormData) => {
-    if (!crew) return;
+    const crewIdToUpdate = editCrew?.id ?? crew?.id;
+    if (!crewIdToUpdate) return;
     setEditLoading(true);
     setEditError(null);
     try {
-      const res = await updateCrewMember(crew.id, data);
+      const res = await updateCrewMember(crewIdToUpdate, data);
       if (!res.ok) {
         const text = await res.text();
         let msg = `Request failed (${res.status})`;
@@ -479,6 +480,7 @@ const CrewDetailsPage = () => {
           >
             <CrewMemberForm
               key={editCrew.id}
+              mode="edit"
               onSubmit={handleSubmitEdit}
               onCancel={closeEditModal}
               isLoading={editLoading}

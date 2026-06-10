@@ -649,6 +649,7 @@ const CrewListPage = () => {
             >
               <CrewMemberForm
                 key={editingCrew.id}
+                mode="edit"
                 onSubmit={handleSubmitEdit}
                 onCancel={closeEditModal}
                 isLoading={editLoading}

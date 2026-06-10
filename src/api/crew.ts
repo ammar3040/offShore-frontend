@@ -309,27 +309,45 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   formData.append('identity_issue_date', data.identityIssueDate);
   formData.append('identity_expiry_date', data.identityExpiryDate);
 
-  const validCerts = data.certificates.filter(
-    (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document
+  const certsWithMeta = data.certificates.filter(
+    (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate
   );
-  if (validCerts.length === 1) {
-    const cert = validCerts[0]!;
+  const certsWithDocs = certsWithMeta.filter((c) => c.document);
+
+  if (certsWithDocs.length === 1 && certsWithMeta.length === 1) {
+    const cert = certsWithDocs[0]!;
     formData.append('certificate_name', cert.certificateName.trim());
     formData.append('certificate_issue_date', cert.issueDate);
     formData.append('certificate_expiry_date', cert.expiryDate);
     formData.append('certificate_document', cert.document!);
-  } else if (validCerts.length > 1) {
+  } else if (certsWithDocs.length > 1) {
     formData.append(
       'certificates',
       JSON.stringify(
-        validCerts.map((c) => ({
+        certsWithMeta.map((c) => ({
           certificate_name: c.certificateName.trim(),
           issue_date: c.issueDate,
           expiry_date: c.expiryDate,
         }))
       )
     );
-    validCerts.forEach((c) => formData.append('certificate_document', c.document!));
+    certsWithDocs.forEach((c) => formData.append('certificate_document', c.document!));
+  } else if (certsWithMeta.length === 1) {
+    const cert = certsWithMeta[0]!;
+    formData.append('certificate_name', cert.certificateName.trim());
+    formData.append('certificate_issue_date', cert.issueDate);
+    formData.append('certificate_expiry_date', cert.expiryDate);
+  } else if (certsWithMeta.length > 1) {
+    formData.append(
+      'certificates',
+      JSON.stringify(
+        certsWithMeta.map((c) => ({
+          certificate_name: c.certificateName.trim(),
+          issue_date: c.issueDate,
+          expiry_date: c.expiryDate,
+        }))
+      )
+    );
   }
 
   if (data.azerbaijanVantageNumber?.trim()) {

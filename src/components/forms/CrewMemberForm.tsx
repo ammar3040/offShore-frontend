@@ -81,6 +81,8 @@ interface CrewMemberFormProps {
   initialData?: CrewMemberFormData;
   submitLabel?: string;
   theme?: 'default' | 'subsea';
+  /** Relaxes certificate file requirement when editing an existing crew member */
+  mode?: 'create' | 'edit';
 }
 
 const defaultFormData: CrewMemberFormData = {
@@ -142,7 +144,7 @@ const subseaDropdownItemSelectedClass = 'bg-[#ebf0ff] text-[#1a56db]';
 const defaultDropdownEmptyClass = 'px-3 py-2 text-sm text-muted-foreground';
 const subseaDropdownEmptyClass = 'px-3 py-2 text-xs text-[#9ca3af]';
 
-const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member', theme = 'default' }: CrewMemberFormProps) => {
+const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, submitLabel = 'Add Crew Member', theme = 'default', mode = 'create' }: CrewMemberFormProps) => {
   const inputClass = theme === 'subsea' ? subseaInputClass : defaultInputClass;
   const dropdownListClass = theme === 'subsea' ? subseaDropdownListClass : defaultDropdownListClass;
   const dropdownItemClass = theme === 'subsea' ? subseaDropdownItemClass : defaultDropdownItemClass;
@@ -436,10 +438,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
     e.preventDefault();
     if (!formData.country?.trim()) return;
     if (!formData.city?.trim()) return;
-    const validCerts = formData.certificates.filter(
-      (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document
-    );
-    if (validCerts.length === 0) return;
+    if (mode === 'create') {
+      const validCerts = formData.certificates.filter(
+        (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document
+      );
+      if (validCerts.length === 0) return;
+    }
     await onSubmit(formData);
   };
 
