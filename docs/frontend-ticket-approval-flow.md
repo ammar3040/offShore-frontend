@@ -60,23 +60,7 @@ Mirrors admin invoices: browser builds PDF → upload → backend stores URL.
 
 **Recommended orchestration (Option A):**
 
-```ts
-async function approveAndUploadTicketPdf(
-  ticketId: string,
-  bookingReference: string,
-  generatePdfBlob: () => Promise<Blob>
-) {
-  const { crewTicket } = await approveCrewTicket(ticketId, bookingReference);
-
-  if (!crewTicket.hasPdf) {
-    const pdfBlob = await generatePdfBlob();
-    const { crewTicket: withPdf } = await uploadCrewTicketPdf(ticketId, pdfBlob);
-    return withPdf;
-  }
-
-  return crewTicket;
-}
-```
+Frontend **always** generates and uploads the PDF after approve, overwriting any PDF the backend may have created during approval. Implemented in `src/lib/crewTicket/approveAndUploadTicketPdf.ts`. Use `regenerateAndUploadTicketPdf()` to replace PDFs on already-approved tickets.
 
 ```mermaid
 sequenceDiagram
@@ -132,7 +116,7 @@ Content-Type: application/json
 
 **Errors:** `400` (missing reference), `401`, `403`, `404`, `409` (already approved), `500`
 
-**Backend side-effect:** tries `generateAndUploadTicketPdf()` after approval. Check `crewTicket.hasPdf` — do not assume PDF exists.
+**Backend side-effect:** may try server-side PDF generation after approval — the frontend ignores that and always uploads its own PDF (Option A).
 
 **Frontend implementation:** `approveCrewTicket()` in `src/api/superadmin.ts`.
 

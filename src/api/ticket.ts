@@ -48,8 +48,10 @@ export interface CrewTicketFlightItinerarySegment {
   arrivalTime?: string;
   duration?: string;
   cabin?: string;
+  aircraft?: string;
   baggage?: string;
   cabinBaggage?: string;
+  layover?: { location?: string; duration?: string } | null;
 }
 
 export interface CrewTicketFlightLeg {

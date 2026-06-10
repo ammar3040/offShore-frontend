@@ -14,21 +14,17 @@ export interface ApproveAndUploadTicketPdfResult {
 }
 
 /**
- * Option A flow: approve ticket, generate PDF in browser, upload to backend.
+ * Option A: approve ticket, always generate PDF in the browser, upload to backend.
+ * Ignores any PDF the backend may have created during approve — frontend is the source of truth.
  */
 export async function approveAndUploadTicketPdf(
   ticketId: string,
   bookingReference: string
 ): Promise<ApproveAndUploadTicketPdfResult> {
   const approveRes = await approveCrewTicket(ticketId, bookingReference);
-  let crewTicket = approveRes.crewTicket;
-
-  if (ticketHasStoredPdf(crewTicket)) {
-    return { crewTicket, message: approveRes.message, pdfUploaded: true };
-  }
 
   const fullTicketRes = await getCrewTicketById(ticketId, 'superadmin');
-  const ticketForPdf = fullTicketRes.crewTicket ?? crewTicket;
+  const ticketForPdf = fullTicketRes.crewTicket ?? approveRes.crewTicket;
 
   const pdfBlob = await generateCrewTicketPdfBlob(ticketForPdf);
   const pdfFile = new File([pdfBlob], getCrewTicketPdfFilename(ticketForPdf), {
@@ -40,13 +36,35 @@ export async function approveAndUploadTicketPdf(
     message?: string;
   };
 
-  if (uploadRes.crewTicket) {
-    crewTicket = uploadRes.crewTicket;
-  }
+  const crewTicket = uploadRes.crewTicket ?? approveRes.crewTicket;
 
   return {
     crewTicket,
     message: uploadRes.message ?? approveRes.message,
+    pdfUploaded: ticketHasStoredPdf(crewTicket),
+  };
+}
+
+/** Regenerate and upload a frontend PDF for an already-approved ticket (replaces stored PDF). */
+export async function regenerateAndUploadTicketPdf(ticketId: string): Promise<ApproveAndUploadTicketPdfResult> {
+  const fullTicketRes = await getCrewTicketById(ticketId, 'superadmin');
+  const ticketForPdf = fullTicketRes.crewTicket;
+
+  const pdfBlob = await generateCrewTicketPdfBlob(ticketForPdf);
+  const pdfFile = new File([pdfBlob], getCrewTicketPdfFilename(ticketForPdf), {
+    type: 'application/pdf',
+  });
+
+  const uploadRes = (await uploadSuperadminCrewTicketPdf(ticketId, pdfFile)) as {
+    crewTicket?: CrewTicketApi;
+    message?: string;
+  };
+
+  const crewTicket = uploadRes.crewTicket ?? ticketForPdf;
+
+  return {
+    crewTicket,
+    message: uploadRes.message,
     pdfUploaded: ticketHasStoredPdf(crewTicket),
   };
 }

@@ -1,7 +1,7 @@
 /** Placeholders for flight-ticket-email.mjml (compiled to HTML at build time). */
 export interface CrewTicketTemplateData {
   bookingReference: string;
-  routePreview: string;
+  previewText: string;
   passengerName: string;
   vesselName: string;
   cabin: string;
@@ -9,6 +9,6 @@ export interface CrewTicketTemplateData {
   baggage: string;
   issueDate: string;
   flightSections: string;
-  pdfLinkHtml: string;
   supportPhone: string;
+  footerBaggage: string;
 }

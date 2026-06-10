@@ -9,11 +9,31 @@ function prepareCrewTicketHtmlForPdf(html: string): string {
     'font-size:0px;padding:0;word-break:break-word;',
     'font-size:13px;line-height:1.6;padding:0;word-break:break-word;'
   );
-  const pdfLayoutCss = `<style>
+
+  // html2pdf clones only the <body> element into its own frame, so any CSS
+  // living in <head> (the mj-style classes and the responsive column media
+  // queries) is lost in the final PDF. Copy every head <style> into the body
+  // and pin MJML column widths so the layout never depends on media queries.
+  const headStyles = Array.from(withTableFix.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi))
+    .map((match) => match[1])
+    .join('\n');
+
+  const columnWidths = new Set<string>();
+  for (const match of withTableFix.matchAll(/mj-column-per-(\d+)/g)) {
+    columnWidths.add(match[1]);
+  }
+  const columnCss = Array.from(columnWidths)
+    .map((width) => `.mj-column-per-${width} { width: ${width}% !important; }`)
+    .join('\n');
+
+  const pdfCss = `<style>
     html, body { overflow: visible !important; background: #EAEEF4 !important; }
     table { border-collapse: collapse; }
+    ${headStyles}
+    ${columnCss}
   </style>`;
-  return withTableFix.replace('</head>', `${pdfLayoutCss}</head>`);
+
+  return withTableFix.replace(/<body([^>]*)>/i, (bodyTag) => `${bodyTag}${pdfCss}`);
 }
 
 function renderCrewTicketHtml(ticket: CrewTicketApi): string {

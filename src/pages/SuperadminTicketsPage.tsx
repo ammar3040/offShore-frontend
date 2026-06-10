@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, FileCheck, Send, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket } from '../api/superadmin';
-import { approveAndUploadTicketPdf } from '../lib/crewTicket/approveAndUploadTicketPdf';
+import { approveAndUploadTicketPdf, regenerateAndUploadTicketPdf } from '../lib/crewTicket/approveAndUploadTicketPdf';
 import {
   canUseTicketPdf,
   getTicketStatus,
@@ -39,6 +39,7 @@ const SuperadminTicketsPage = () => {
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
   const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
   const [approvingTicketId, setApprovingTicketId] = useState<string | null>(null);
+  const [regeneratingTicketId, setRegeneratingTicketId] = useState<string | null>(null);
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<CrewTicketApi | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
@@ -184,6 +185,32 @@ const SuperadminTicketsPage = () => {
       toast.error('Failed to open ticket PDF', {
         description: err instanceof Error ? err.message : 'Please try again.',
       });
+    }
+  };
+
+  const handleRegeneratePdf = async (ticket: CrewTicketApi, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (getTicketStatus(ticket) !== 'APPROVED') return;
+
+    setRegeneratingTicketId(ticket.id);
+    try {
+      const res = await regenerateAndUploadTicketPdf(ticket.id);
+      replaceTicket(res.crewTicket);
+      if (res.pdfUploaded) {
+        toast.success('PDF regenerated', {
+          description: 'Ticket PDF was generated in the browser and uploaded.',
+        });
+      } else {
+        toast.warning('Regeneration incomplete', {
+          description: 'PDF was generated but upload may have failed. Try again or upload manually.',
+        });
+      }
+    } catch (err) {
+      toast.error('PDF regeneration failed', {
+        description: err instanceof Error ? err.message : 'Could not regenerate ticket PDF.',
+      });
+    } finally {
+      setRegeneratingTicketId(null);
     }
   };
 
@@ -379,13 +406,31 @@ const SuperadminTicketsPage = () => {
                       {approvalErrors[t.id] ? <span className="superadmin-ticket-approve-error">{approvalErrors[t.id]}</span> : null}
                     </div>
                   )}
+                  {getTicketStatus(t) === 'APPROVED' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => handleRegeneratePdf(t, e)}
+                      disabled={regeneratingTicketId === t.id}
+                      title="Regenerate ticket PDF in browser and upload"
+                    >
+                      {regeneratingTicketId === t.id ? (
+                        <span className="superadmin-ticket-upload-spinner" />
+                      ) : (
+                        <>
+                          <FileText size={16} />
+                          Regenerate PDF
+                        </>
+                      )}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
                     className={ticketHasStoredPdf(t) ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
                     onClick={(e) => { e.stopPropagation(); handleUploadClick(t.id); }}
-                    disabled={uploadingTicketId === t.id}
-                    title={ticketHasStoredPdf(t) ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
+                    disabled={uploadingTicketId === t.id || getTicketStatus(t) !== 'APPROVED'}
+                    title={getTicketStatus(t) !== 'APPROVED' ? 'Approve ticket first' : ticketHasStoredPdf(t) ? 'Upload a PDF file to replace the stored ticket' : 'Upload ticket PDF file'}
                   >
                     {uploadingTicketId === t.id ? (
                       <span className="superadmin-ticket-upload-spinner" />
@@ -581,13 +626,31 @@ const SuperadminTicketsPage = () => {
                   <FileCheck size={16} />
                   View PDF
                 </Button>
+                {getTicketStatus(selectedTicket) === 'APPROVED' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => handleRegeneratePdf(selectedTicket, e)}
+                    disabled={regeneratingTicketId === selectedTicket.id}
+                    title="Regenerate ticket PDF in browser and upload"
+                  >
+                    {regeneratingTicketId === selectedTicket.id ? (
+                      <span className="superadmin-ticket-upload-spinner" />
+                    ) : (
+                      <>
+                        <FileText size={16} />
+                        Regenerate PDF
+                      </>
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   className={ticketHasStoredPdf(selectedTicket) ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
                   onClick={(e) => { e.stopPropagation(); handleUploadClick(selectedTicket.id); }}
-                  disabled={uploadingTicketId === selectedTicket.id}
-                  title={ticketHasStoredPdf(selectedTicket) ? 'Click to re-upload PDF' : 'Upload ticket PDF'}
+                  disabled={uploadingTicketId === selectedTicket.id || getTicketStatus(selectedTicket) !== 'APPROVED'}
+                  title={getTicketStatus(selectedTicket) !== 'APPROVED' ? 'Approve ticket first' : ticketHasStoredPdf(selectedTicket) ? 'Upload a PDF file to replace the stored ticket' : 'Upload ticket PDF file'}
                 >
                   {uploadingTicketId === selectedTicket.id ? (
                     <span className="superadmin-ticket-upload-spinner" />
