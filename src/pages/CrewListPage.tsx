@@ -50,13 +50,6 @@ function field(value: string | undefined): string {
 const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
 const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer', 'MV Gulf Endeavour'];
 
-function formatRosterDate(iso?: string): string {
-  if (!iso) return '—';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
-}
-
 type RosterTab = 'available' | 'inProject';
 
 function crewStatus(kind: CrewAvailability): { label: string; className: string } {
@@ -523,7 +516,6 @@ const CrewListPage = () => {
                       <th>Nationality</th>
                       <th>Rig</th>
                       <th>Status</th>
-                      <th>Tour End</th>
                       <th>Certs</th>
                       <th />
                     </tr>
@@ -531,7 +523,7 @@ const CrewListPage = () => {
                   <tbody>
                     {paginatedCrew.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="subsea-empty-cell">
+                        <td colSpan={7} className="subsea-empty-cell">
                           {rosterTab === 'available' ? 'No available crew members found.' : 'No crew members currently in project.'}
                         </td>
                       </tr>
@@ -560,7 +552,6 @@ const CrewListPage = () => {
                             <td className="mono">{member.nationality || member.country || '—'}</td>
                             <td>{project?.title || SAMPLE_RIGS[index % SAMPLE_RIGS.length]}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
-                            <td className="mono">{formatRosterDate(project?.duration?.endDate)}</td>
                             <td>
                               <span className={`subsea-badge ${certExpiring ? 'subsea-b-amber' : 'subsea-b-green'}`}>
                                 {certExpiring ? '1 expiring' : 'All valid'}
