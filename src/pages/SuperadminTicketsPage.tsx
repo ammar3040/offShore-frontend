@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, FileCheck, Send, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { approveCrewTicket, getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket } from '../api/superadmin';
+import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket } from '../api/superadmin';
+import { approveAndUploadTicketPdf } from '../lib/crewTicket/approveAndUploadTicketPdf';
 import {
   canUseTicketPdf,
   getTicketStatus,
@@ -160,8 +161,8 @@ const SuperadminTicketsPage = () => {
 
   const handleSendTicketClick = async (ticketId: string) => {
     const ticket = tickets.find((item) => item.id === ticketId);
-    if (ticket && !canUseTicketPdf(ticket)) {
-      toast.error('Ticket not ready', { description: 'Approve the ticket and generate its PDF before sending email.' });
+    if (ticket && (!canUseTicketPdf(ticket) || !ticketHasStoredPdf(ticket))) {
+      toast.error('Ticket not ready', { description: 'Approve the ticket and upload its PDF before sending email.' });
       return;
     }
     setSendingTicketId(ticketId);
@@ -197,14 +198,22 @@ const SuperadminTicketsPage = () => {
     setApprovingTicketId(ticket.id);
     setApprovalErrors((prev) => ({ ...prev, [ticket.id]: '' }));
     try {
-      const res = await approveCrewTicket(ticket.id, bookingReference);
+      const res = await approveAndUploadTicketPdf(ticket.id, bookingReference);
       replaceTicket(res.crewTicket);
       setApprovalRefs((prev) => {
         const next = { ...prev };
         delete next[ticket.id];
         return next;
       });
-      toast.success('Ticket approved', { description: res.message || 'PDF generated successfully.' });
+      if (res.pdfUploaded) {
+        toast.success('Ticket approved', {
+          description: res.message || 'Ticket approved and PDF uploaded successfully.',
+        });
+      } else {
+        toast.warning('Ticket approved', {
+          description: 'Approval succeeded but PDF upload failed. Use Upload PDF to attach manually.',
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not approve the ticket. Please try again.';
       setApprovalErrors((prev) => ({ ...prev, [ticket.id]: message }));
@@ -400,8 +409,8 @@ const SuperadminTicketsPage = () => {
                     variant="outline"
                     size="sm"
                     onClick={(e) => { e.stopPropagation(); handleSendTicketClick(t.id); }}
-                    disabled={sendingTicketId === t.id || !canUseTicketPdf(t)}
-                    title={canUseTicketPdf(t) ? 'Send ticket to crew email' : 'Approve and generate PDF before sending email'}
+                    disabled={sendingTicketId === t.id || !canUseTicketPdf(t) || !ticketHasStoredPdf(t)}
+                    title={ticketHasStoredPdf(t) ? 'Send ticket to crew email' : 'Approve and upload PDF before sending email'}
                   >
                     {sendingTicketId === t.id ? (
                       <span className="superadmin-ticket-send-spinner" />
@@ -499,12 +508,14 @@ const SuperadminTicketsPage = () => {
             <section className="superadmin-tickets-detail-section">
               <h3 className="superadmin-tickets-detail-heading">Approval & PDF</h3>
               <p className="superadmin-tickets-detail-pdf-status">
-                {canUseTicketPdf(selectedTicket) ? (
+                {getTicketStatus(selectedTicket) !== 'APPROVED' ? (
+                  <span className="superadmin-tickets-detail-pdf-missing">Pending approval</span>
+                ) : ticketHasStoredPdf(selectedTicket) ? (
                   <span className="superadmin-tickets-detail-pdf-uploaded">
-                    <FileCheck size={16} /> Approved PDF generated
+                    <FileCheck size={16} /> PDF uploaded
                   </span>
                 ) : (
-                  <span className="superadmin-tickets-detail-pdf-missing">Pending approval</span>
+                  <span className="superadmin-tickets-detail-pdf-missing">Approved — PDF not uploaded yet</span>
                 )}
               </p>
               <dl className="superadmin-tickets-detail-list">
@@ -600,8 +611,8 @@ const SuperadminTicketsPage = () => {
                   variant="outline"
                   size="sm"
                   onClick={(e) => { e.stopPropagation(); handleSendTicketClick(selectedTicket.id); }}
-                  disabled={sendingTicketId === selectedTicket.id || !canUseTicketPdf(selectedTicket)}
-                  title={canUseTicketPdf(selectedTicket) ? 'Send ticket to crew email' : 'Approve and generate PDF before sending email'}
+                  disabled={sendingTicketId === selectedTicket.id || !canUseTicketPdf(selectedTicket) || !ticketHasStoredPdf(selectedTicket)}
+                  title={ticketHasStoredPdf(selectedTicket) ? 'Send ticket to crew email' : 'Approve and upload PDF before sending email'}
                 >
                   {sendingTicketId === selectedTicket.id ? (
                     <span className="superadmin-ticket-send-spinner" />

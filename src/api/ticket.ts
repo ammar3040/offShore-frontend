@@ -36,6 +36,40 @@ export interface CrewTicketRigRef {
 
 export type CrewTicketStatus = 'UNAPPROVED' | 'APPROVED';
 
+export interface CrewTicketFlightItinerarySegment {
+  airlineName?: string;
+  airlineCode?: string;
+  flightNumber?: string;
+  from?: string;
+  to?: string;
+  fromAirport?: string;
+  toAirport?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  cabin?: string;
+  baggage?: string;
+  cabinBaggage?: string;
+}
+
+export interface CrewTicketFlightLeg {
+  from?: string;
+  to?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  duration?: string;
+  airlineName?: string;
+  airlineCode?: string;
+  itinerary?: CrewTicketFlightItinerarySegment[];
+}
+
+export interface CrewTicketFlightSnapshot {
+  airlineName?: string;
+  airlineCode?: string;
+  currency?: string;
+  legs?: CrewTicketFlightLeg[];
+  fares?: Array<{ totalFare?: number; cabin?: string; name?: string }>;
+}
+
 export interface CrewTicketApi {
   id: string;
   crew_id: CrewTicketCrewRef;
@@ -66,6 +100,8 @@ export interface CrewTicketApi {
   pdfDownloadUrl?: string;
   /** @deprecated Legacy Cloudinary URL — no longer returned by API; do not open directly. */
   pdf?: string;
+  /** Flight details captured at booking time — used for PDF rendering. */
+  flightSnapshot?: CrewTicketFlightSnapshot;
   createdAt?: string;
 }
 
@@ -156,15 +192,12 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
         : undefined;
   const iso = getCrewTicketCreatedIso(row) ?? (id ? createdAtIsoFromMongoObjectId(id) : undefined);
   const normalizedStatus = getTicketStatus(row);
-  let hasPdf =
+  const hasPdf =
     typeof row.hasPdf === 'boolean'
       ? row.hasPdf
       : typeof row.has_pdf === 'boolean'
         ? row.has_pdf
         : Boolean(row.pdf);
-  if (!hasPdf && normalizedStatus === 'APPROVED') {
-    hasPdf = true;
-  }
   const pdfDownloadUrl =
     typeof row.pdfDownloadUrl === 'string'
       ? row.pdfDownloadUrl
@@ -185,7 +218,7 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
     id,
     bookingReference,
     hasPdf,
-    pdfDownloadUrl: hasPdf ? pdfDownloadUrl : undefined,
+    pdfDownloadUrl,
   };
 
   if (!iso) return normalized;
@@ -376,6 +409,45 @@ export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTic
   const raw = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
   const crewTickets = raw.map((t: CrewTicketApiRaw) => normalizeCrewTicket(t));
   return { crewTickets };
+}
+
+/**
+ * Fetches a single crew ticket by id. GET /crew-ticket/:id
+ */
+export async function getCrewTicketById(
+  ticketId: string,
+  role?: CrewTicketPdfAuthRole
+): Promise<{ crewTicket: CrewTicketApi }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getCrewTicketPdfAuthHeaders(role),
+    },
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  const raw = (data?.crewTicket ?? data?.ticket ?? data) as CrewTicketApiRaw;
+  return { crewTicket: normalizeCrewTicket(raw) };
 }
 
 /**

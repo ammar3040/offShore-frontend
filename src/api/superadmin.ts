@@ -452,7 +452,7 @@ export async function sendSuperadminCrewTicketEmail(ticketId: string): Promise<u
   return response.json();
 }
 
-/** Approve a crew ticket and generate the PDF. PATCH /crew-ticket/:id/approve */
+/** Approve a crew ticket. PATCH /crew-ticket/:id/approve (PDF is generated client-side via approveAndUploadTicketPdf) */
 export async function approveCrewTicket(ticketId: string, bookingReference: string): Promise<ApproveCrewTicketResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
