@@ -45,6 +45,11 @@ import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewEnrolledInProject, getCrewList, type CrewMemberApi } from '../api/crew';
 import {
+  availabilityFromCrewSignal,
+  crewAvailabilityDotClass,
+  getCrewAvailabilityLabel,
+} from '../utils/crewAvailability';
+import {
   getCrewTickets,
   createFlightTicket,
   cancelCrewTicket,
@@ -784,15 +789,10 @@ const AdminTicketsPage = () => {
   useEffect(() => {
     let cancelled = false;
     setSearchCrewLoading(true);
-    const loader = searchProjectId
-      ? getCrewEnrolledInProject(searchProjectId)
-      : getCrewList();
-    loader
+    getCrewList()
       .then((res) => {
         if (cancelled) return;
-        const crew = res.crew ?? [];
-        setSearchCrewList(crew);
-        setSearchCrewIds((prev) => prev.filter((id) => crew.some((c) => c.id === id)));
+        setSearchCrewList(res.crew ?? []);
       })
       .catch(() => {
         if (!cancelled) setSearchCrewList([]);
@@ -803,7 +803,7 @@ const AdminTicketsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [searchProjectId]);
+  }, []);
 
   const filteredSearchCrewList = useMemo(() => {
     const q = searchCrewFilter.trim().toLowerCase();
@@ -1866,28 +1866,38 @@ const AdminTicketsPage = () => {
                               {searchCrewLoading && searchCrewList.length === 0 ? (
                                 <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
                               ) : searchCrewList.length === 0 ? (
-                                <DropdownMenuLabel>
-                                  {searchProjectId
-                                    ? 'No crew enrolled in this project.'
-                                    : 'No crew members found.'}
-                                </DropdownMenuLabel>
+                                <DropdownMenuLabel>No crew members found.</DropdownMenuLabel>
                               ) : filteredSearchCrewList.length === 0 ? (
                                 <DropdownMenuLabel>No crew match your search.</DropdownMenuLabel>
                               ) : (
                                 <DropdownMenuGroup>
-                                  {filteredSearchCrewList.map((c) => (
-                                    <DropdownMenuCheckboxItem
-                                      key={c.id}
-                                      checked={searchCrewIds.includes(c.id)}
-                                      onCheckedChange={() => toggleCrewSearch(c.id)}
-                                      onSelect={(e) => e.preventDefault()}
-                                    >
-                                      <div className="flex flex-col min-w-0">
-                                        <span>{c.firstname} {c.lastname}</span>
-                                        <span className="text-xs text-muted-foreground truncate">{c.email}</span>
-                                      </div>
-                                    </DropdownMenuCheckboxItem>
-                                  ))}
+                                  {filteredSearchCrewList.map((c) => {
+                                    const availability = availabilityFromCrewSignal(c.signal);
+                                    const activeProject = c.activeProjects?.[0]?.title;
+                                    return (
+                                      <DropdownMenuCheckboxItem
+                                        key={c.id}
+                                        checked={searchCrewIds.includes(c.id)}
+                                        onCheckedChange={() => toggleCrewSearch(c.id)}
+                                        onSelect={(e) => e.preventDefault()}
+                                      >
+                                        <div className="flex items-start gap-2 min-w-0 w-full">
+                                          <span
+                                            className={crewAvailabilityDotClass(availability)}
+                                            title={getCrewAvailabilityLabel(availability)}
+                                            aria-label={getCrewAvailabilityLabel(availability)}
+                                          />
+                                          <div className="flex flex-col min-w-0 flex-1">
+                                            <span>{c.firstname} {c.lastname}</span>
+                                            <span className="text-xs text-muted-foreground truncate">{c.email}</span>
+                                            {activeProject ? (
+                                              <span className="text-xs text-muted-foreground truncate">{activeProject}</span>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      </DropdownMenuCheckboxItem>
+                                    );
+                                  })}
                                 </DropdownMenuGroup>
                               )}
                             </DropdownMenuContent>
