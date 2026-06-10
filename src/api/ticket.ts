@@ -46,6 +46,7 @@ export interface CrewTicketFlightItinerarySegment {
   toAirport?: string;
   departureTime?: string;
   arrivalTime?: string;
+  duration?: string;
   cabin?: string;
   baggage?: string;
   cabinBaggage?: string;

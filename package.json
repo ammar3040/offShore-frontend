@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build:invoice": "mjml src/assets/lynq-travel-invoice.mjml -o src/assets/lynq-travel-invoice.html",
-    "build": "npm run build:invoice && tsc -b && vite build",
+    "build:ticket": "mjml src/assets/flight-ticket-email.mjml -o src/assets/flight-ticket-email.html",
+    "build:templates": "npm run build:invoice && npm run build:ticket",
+    "build": "npm run build:templates && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

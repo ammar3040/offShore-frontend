@@ -3,19 +3,18 @@ import type {
   CrewTicketFlightItinerarySegment,
   CrewTicketFlightLeg,
 } from '../../api/ticket';
-import { escapeHtml, formatGbp, formatInvoiceDate, formatTripLabel } from '../invoice/format';
+import { escapeHtml, formatInvoiceDate } from '../invoice/format';
 import type { CrewTicketTemplateData } from './types';
+
+const DEFAULT_MEALS = 'Included';
+const DEFAULT_BAGGAGE = 'As per airline';
+const DEFAULT_SUPPORT_PHONE = '+44 (0)20 7946 0958';
 
 function getCrewName(ticket: CrewTicketApi): string {
   const c = ticket.crew_id;
   const first = c?.firstname ?? '';
   const last = c?.lastname ?? '';
   return `${first} ${last}`.trim() || 'Passenger';
-}
-
-function getProjectTitle(ticket: CrewTicketApi): string {
-  const p = ticket.project_id;
-  return p?.title ?? (p as { title?: string })?.title ?? '—';
 }
 
 function getRigName(ticket: CrewTicketApi): string {
@@ -25,120 +24,244 @@ function getRigName(ticket: CrewTicketApi): string {
   return rig.name ?? (rig as { name?: string })?.name ?? '—';
 }
 
-function formatFlightDateTime(value?: string): string {
-  if (!value?.trim()) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatPassengers(ticket: CrewTicketApi): string {
-  const parts = [
-    ticket.adult ? `${ticket.adult} adult${ticket.adult === 1 ? '' : 's'}` : null,
-    ticket.children ? `${ticket.children} child${ticket.children === 1 ? '' : 'ren'}` : null,
-    ticket.infants ? `${ticket.infants} infant${ticket.infants === 1 ? '' : 's'}` : null,
-  ].filter(Boolean);
-  return parts.join(', ') || '—';
-}
-
 function formatClassLabel(value?: string): string {
   if (!value) return '—';
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function buildSegmentRow(segment: CrewTicketFlightItinerarySegment): string {
-  const airline = [segment.airlineName, segment.airlineCode].filter(Boolean).join(' ');
-  const flight = segment.flightNumber ? ` · ${segment.flightNumber}` : '';
-  const route = `${segment.from ?? '—'} → ${segment.to ?? '—'}`;
-  const airports = [segment.fromAirport, segment.toAirport].filter(Boolean).join(' → ');
-  const times = `${formatFlightDateTime(segment.departureTime)} → ${formatFlightDateTime(segment.arrivalTime)}`;
-  const cabin = segment.cabin ? `Cabin: ${segment.cabin}` : '';
-  const baggage = [segment.cabinBaggage, segment.baggage].filter(Boolean).join(' · ');
-
-  const details = [airline + flight, route, airports, times, cabin, baggage]
-    .filter((line) => line && line !== ' · ')
-    .map((line) => escapeHtml(line))
-    .join('<br/>');
-
-  return `<tr>
-    <td style="font-size: 13px; color: #333333; line-height: 1.7; padding: 16px; border: 1px solid #e0e0e0; border-top: none; vertical-align: top;">${details}</td>
-  </tr>`;
+function parseDate(value?: string): Date | null {
+  if (!value?.trim()) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function buildLegRow(leg: CrewTicketFlightLeg, legIndex: number): string {
-  const segments = leg.itinerary ?? [];
-  if (segments.length > 0) {
-    return segments.map((segment) => buildSegmentRow(segment)).join('\n');
+function formatTime(value?: string): string {
+  const d = parseDate(value);
+  if (!d) return value?.trim() || '—';
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function formatLegDate(value?: string): string {
+  const d = parseDate(value);
+  if (!d) return '—';
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function extractIata(code?: string): string {
+  if (!code?.trim()) return '—';
+  const trimmed = code.trim();
+  if (/^[A-Z]{3}$/i.test(trimmed)) return trimmed.toUpperCase();
+  const match = trimmed.match(/\b([A-Z]{3})\b/i);
+  return match ? match[1].toUpperCase() : trimmed.slice(0, 3).toUpperCase();
+}
+
+function getLegLabel(ticket: CrewTicketApi, legIndex: number, totalLegs: number): string {
+  const trip = ticket.trip?.toUpperCase() ?? '';
+  if (trip.includes('ROUND') && totalLegs >= 2) {
+    return legIndex === 0 ? 'OUTBOUND' : legIndex === 1 ? 'RETURN' : `LEG ${legIndex + 1}`;
   }
-
-  const airline = [leg.airlineName, leg.airlineCode].filter(Boolean).join(' ');
-  const route = `${leg.from ?? '—'} → ${leg.to ?? '—'}`;
-  const times = `${formatFlightDateTime(leg.departureTime)} → ${formatFlightDateTime(leg.arrivalTime)}`;
-  const duration = leg.duration ? `Duration: ${leg.duration}` : '';
-  const details = [`Leg ${legIndex + 1}`, airline, route, times, duration]
-    .filter(Boolean)
-    .map((line) => escapeHtml(line))
-    .join('<br/>');
-
-  return `<tr>
-    <td style="font-size: 13px; color: #333333; line-height: 1.7; padding: 16px; border: 1px solid #e0e0e0; border-top: none; vertical-align: top;">${details}</td>
-  </tr>`;
+  if (totalLegs === 1) return 'DEPARTURE';
+  return `LEG ${legIndex + 1}`;
 }
 
-function buildFlightLegsRows(ticket: CrewTicketApi): string {
+function collectSegments(ticket: CrewTicketApi): Array<{
+  segment: CrewTicketFlightItinerarySegment;
+  leg: CrewTicketFlightLeg;
+  legIndex: number;
+  segmentIndex: number;
+}> {
   const legs = ticket.flightSnapshot?.legs ?? [];
-  if (legs.length === 0) {
-    const from = ticket.from?.Name ?? '—';
-    const to = ticket.to?.Name ?? '—';
-    return `<tr>
-      <td style="font-size: 13px; color: #333333; line-height: 1.7; padding: 16px; border: 1px solid #e0e0e0; border-top: none; vertical-align: top;">
-        ${escapeHtml(`${from} → ${to}`)}<br/>
-        ${escapeHtml(formatTripLabel(ticket.trip))} · ${escapeHtml(formatClassLabel(ticket.class))}
-      </td>
-    </tr>`;
+  const collected: Array<{
+    segment: CrewTicketFlightItinerarySegment;
+    leg: CrewTicketFlightLeg;
+    legIndex: number;
+    segmentIndex: number;
+  }> = [];
+
+  legs.forEach((leg, legIndex) => {
+    const itinerary = leg.itinerary ?? [];
+    if (itinerary.length > 0) {
+      itinerary.forEach((segment, segmentIndex) => {
+        collected.push({ segment, leg, legIndex, segmentIndex });
+      });
+      return;
+    }
+
+    collected.push({
+      segment: {
+        airlineName: leg.airlineName,
+        airlineCode: leg.airlineCode,
+        from: leg.from,
+        to: leg.to,
+        departureTime: leg.departureTime,
+        arrivalTime: leg.arrivalTime,
+        cabin: ticket.class,
+      },
+      leg,
+      legIndex,
+      segmentIndex: 0,
+    });
+  });
+
+  if (collected.length === 0) {
+    collected.push({
+      segment: {
+        from: ticket.from?.Name,
+        to: ticket.to?.Name,
+        fromAirport: ticket.from?.COUNTRYNAME,
+        toAirport: ticket.to?.COUNTRYNAME,
+        cabin: ticket.class,
+      },
+      leg: {},
+      legIndex: 0,
+      segmentIndex: 0,
+    });
   }
 
-  return legs.map((leg, index) => buildLegRow(leg, index)).join('\n');
+  return collected;
+}
+
+function getTicketBaggageLabel(ticket: CrewTicketApi): string {
+  for (const leg of ticket.flightSnapshot?.legs ?? []) {
+    for (const segment of leg.itinerary ?? []) {
+      const baggage = segment.baggage?.trim() || segment.cabinBaggage?.trim();
+      if (baggage) return baggage;
+    }
+  }
+  return DEFAULT_BAGGAGE;
+}
+
+function buildFlightCode(segment: CrewTicketFlightItinerarySegment): string {
+  const airline = [segment.airlineName, segment.airlineCode].filter(Boolean).join(' ').trim();
+  const flightNumber = segment.flightNumber?.trim() ?? '';
+  if (airline && flightNumber) return `${airline} ${flightNumber}`;
+  return airline || flightNumber || '—';
+}
+
+function buildLayoverHtml(segment: CrewTicketFlightItinerarySegment): string {
+  const layover = (segment as CrewTicketFlightItinerarySegment & {
+    layover?: { location?: string; duration?: string } | null;
+  }).layover;
+  if (!layover?.location && !layover?.duration) return '';
+
+  const text = ['Layover', layover.location, layover.duration ? `· ${layover.duration}` : '']
+    .filter(Boolean)
+    .join(' ');
+
+  return `<div style="background:#FFF3D6;margin:0 auto;max-width:600px;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;max-width:600px;">
+      <tr>
+        <td style="padding:12px 30px;text-align:center;">
+          <span class="layover-text">${escapeHtml(text)}</span>
+        </td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+function buildSegmentCard(
+  ticket: CrewTicketApi,
+  segment: CrewTicketFlightItinerarySegment,
+  leg: CrewTicketFlightLeg,
+  legIndex: number,
+  totalLegs: number
+): string {
+  const legLabel = getLegLabel(ticket, legIndex, totalLegs);
+  const headerDate = formatLegDate(segment.departureTime ?? leg.departureTime);
+  const fromIata = extractIata(segment.from);
+  const toIata = extractIata(segment.to);
+  const fromAirport = segment.fromAirport?.trim() || segment.from?.trim() || '—';
+  const toAirport = segment.toAirport?.trim() || segment.to?.trim() || '—';
+  const duration = segment.duration?.trim() || leg.duration?.trim();
+  const cabin = segment.cabin?.trim() || formatClassLabel(ticket.class);
+  const baggage = segment.baggage?.trim() || segment.cabinBaggage?.trim() || getTicketBaggageLabel(ticket);
+  const details = [
+    duration ? `Duration: ${duration}` : null,
+    cabin ? `Cabin: ${cabin}` : null,
+    baggage ? `Baggage: ${baggage}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return `<div style="background:#FFFFFF;margin:0 auto;max-width:600px;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background:#FFFFFF;width:100%;max-width:600px;">
+      <tr>
+        <td style="padding:16px 30px 8px;font-family:Arial,Helvetica,sans-serif;">
+          <span class="flight-hdr-label">${escapeHtml(legLabel)} · ${escapeHtml(headerDate)}</span>
+          <span class="confirmed"> &nbsp; CONFIRMED</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:4px 30px 8px;">
+          <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation">
+            <tr>
+              <td width="40%" align="left" style="vertical-align:top;font-family:Arial,Helvetica,sans-serif;">
+                <span class="iata">${escapeHtml(fromIata)}</span><br/>
+                <span class="time">${escapeHtml(formatTime(segment.departureTime))}</span><br/>
+                <span class="detail-strip">${escapeHtml(fromAirport)}</span>
+              </td>
+              <td width="20%" align="center" style="color:#C9A84C;font-size:22px;vertical-align:middle;">→</td>
+              <td width="40%" align="right" style="vertical-align:top;font-family:Arial,Helvetica,sans-serif;">
+                <span class="iata">${escapeHtml(toIata)}</span><br/>
+                <span class="time">${escapeHtml(formatTime(segment.arrivalTime))}</span><br/>
+                <span class="detail-strip">${escapeHtml(toAirport)}</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 30px 8px;font-family:Arial,Helvetica,sans-serif;">
+          <span class="flight-code">${escapeHtml(buildFlightCode(segment))}</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 30px 18px;border-bottom:3px solid #0A1F44;font-family:Arial,Helvetica,sans-serif;">
+          <span class="detail-strip">${escapeHtml(details || '—')}</span>
+        </td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+function buildFlightSections(ticket: CrewTicketApi): string {
+  const legs = ticket.flightSnapshot?.legs ?? [];
+  const totalLegs = Math.max(legs.length, 1);
+  const segments = collectSegments(ticket);
+
+  return segments
+    .map(({ segment, leg, legIndex }) => {
+      const layover = buildLayoverHtml(segment);
+      const card = buildSegmentCard(ticket, segment, leg, legIndex, totalLegs);
+      return layover ? `${layover}${card}` : card;
+    })
+    .join('\n');
+}
+
+function getIssueDate(ticket: CrewTicketApi): string {
+  const approved = ticket.approvedAt ? new Date(ticket.approvedAt) : null;
+  if (approved && !Number.isNaN(approved.getTime())) return formatInvoiceDate(approved);
+  const created = ticket.createdAt ? new Date(ticket.createdAt) : new Date();
+  return Number.isNaN(created.getTime()) ? formatInvoiceDate(new Date()) : formatInvoiceDate(created);
 }
 
 export function buildCrewTicketTemplateData(ticket: CrewTicketApi): CrewTicketTemplateData {
   const from = ticket.from?.Name ?? '—';
   const to = ticket.to?.Name ?? '—';
-  const approvedDate = ticket.approvedAt ? new Date(ticket.approvedAt) : new Date();
-  const fare =
-    ticket.price != null
-      ? formatGbp(Number(ticket.price))
-      : ticket.flightSnapshot?.fares?.[0]?.totalFare != null
-        ? formatGbp(Number(ticket.flightSnapshot.fares[0].totalFare))
-        : '—';
+  const baggage = getTicketBaggageLabel(ticket);
 
   return {
-    booking_reference: escapeHtml(ticket.bookingReference?.trim() || '—'),
-    passenger_name: escapeHtml(getCrewName(ticket)),
-    passenger_email: escapeHtml(ticket.crew_id?.email?.trim() || '—'),
-    route_summary: escapeHtml(`${from} → ${to}`),
-    from_label: escapeHtml(from),
-    to_label: escapeHtml(to),
-    trip_label: escapeHtml(formatTripLabel(ticket.trip)),
-    class_label: escapeHtml(formatClassLabel(ticket.class)),
-    passengers_label: escapeHtml(formatPassengers(ticket)),
-    project_label: escapeHtml(getProjectTitle(ticket)),
-    rig_label: escapeHtml(getRigName(ticket)),
-    approved_date: escapeHtml(
-      Number.isNaN(approvedDate.getTime()) ? '—' : formatInvoiceDate(approvedDate)
-    ),
-    fare_label: escapeHtml(fare),
-    flight_legs_rows: buildFlightLegsRows(ticket),
-    footer_note:
-      'This is an electronic ticket receipt. Present your booking reference at check-in. &nbsp;|&nbsp; hello@lynq.click',
-    logo_src: '',
+    bookingReference: escapeHtml(ticket.bookingReference?.trim() || '—'),
+    routePreview: escapeHtml(`${from} → ${to}`),
+    passengerName: escapeHtml(getCrewName(ticket)),
+    vesselName: escapeHtml(getRigName(ticket)),
+    cabin: escapeHtml(formatClassLabel(ticket.class)),
+    meals: escapeHtml(DEFAULT_MEALS),
+    baggage: escapeHtml(baggage),
+    issueDate: escapeHtml(getIssueDate(ticket)),
+    flightSections: buildFlightSections(ticket),
+    pdfLinkHtml: '',
+    supportPhone: escapeHtml(DEFAULT_SUPPORT_PHONE),
   };
 }
 

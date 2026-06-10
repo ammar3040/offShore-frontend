@@ -373,7 +373,7 @@ async function uploadCrewTicketPdf(ticketId: string, pdfFile: File | Blob) {
 }
 ```
 
-For invoice-style browser PDF generation, reuse the pattern in `src/lib/invoice/generateInvoicePdf.ts` (`html2pdf.js` + HTML template).
+For invoice-style browser PDF generation, reuse the pattern in `src/lib/crewTicket/generateCrewTicketPdf.ts` (`html2pdf.js` + compiled `src/assets/flight-ticket-email.mjml`).
 
 ### Download / view PDF
 

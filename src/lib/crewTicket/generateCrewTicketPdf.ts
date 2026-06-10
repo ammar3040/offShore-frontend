@@ -1,24 +1,24 @@
 import html2pdf from 'html2pdf.js';
-import crewTicketTemplate from '../../assets/lynq-travel-crew-ticket.html?raw';
-import lynqLogoUrl from '../../assets/lynq-logo.png?url';
+import crewTicketTemplate from '../../assets/flight-ticket-email.html?raw';
 import type { CrewTicketApi } from '../../api/ticket';
 import { getCrewTicketPdfFilename } from '../../api/ticket';
 import { buildCrewTicketTemplateData, fillCrewTicketTemplate } from './buildCrewTicket';
 
 function prepareCrewTicketHtmlForPdf(html: string): string {
+  const withTableFix = html.replaceAll(
+    'font-size:0px;padding:0;word-break:break-word;',
+    'font-size:13px;line-height:1.6;padding:0;word-break:break-word;'
+  );
   const pdfLayoutCss = `<style>
-    html, body { overflow: visible !important; }
+    html, body { overflow: visible !important; background: #EAEEF4 !important; }
     table { border-collapse: collapse; }
   </style>`;
-  return html.replace('</head>', `${pdfLayoutCss}</head>`);
+  return withTableFix.replace('</head>', `${pdfLayoutCss}</head>`);
 }
 
 function renderCrewTicketHtml(ticket: CrewTicketApi): string {
   const templateData = buildCrewTicketTemplateData(ticket);
-  const html = fillCrewTicketTemplate(crewTicketTemplate, {
-    ...templateData,
-    logo_src: lynqLogoUrl,
-  });
+  const html = fillCrewTicketTemplate(crewTicketTemplate, templateData);
   return prepareCrewTicketHtmlForPdf(html);
 }
 
@@ -83,7 +83,7 @@ export async function generateCrewTicketPdfBlob(ticket: CrewTicketApi): Promise<
           scale: 2,
           useCORS: true,
           logging: false,
-          backgroundColor: '#ffffff',
+          backgroundColor: '#EAEEF4',
           windowWidth: 794,
           scrollY: 0,
         },
