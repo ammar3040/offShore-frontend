@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronLeft,
   Download,
+  ExternalLink,
   Filter,
   Info,
   Loader2,
@@ -48,7 +49,7 @@ import {
   createFlightTicket,
   cancelCrewTicket,
   canUseTicketPdf,
-  downloadCrewTicketPdf,
+  previewCrewTicketPdf,
   type CreateFlightTicketPayload,
   type AirportLocation,
   type CrewTicketApi,
@@ -700,7 +701,7 @@ const AdminTicketsPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
   const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
-  const [downloadingTicketId, setDownloadingTicketId] = useState<string | null>(null);
+  const [previewingTicketId, setPreviewingTicketId] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectApi | null>(null);
@@ -938,28 +939,37 @@ const AdminTicketsPage = () => {
     }
   }, [ticketToConfirmCancel]);
 
-  const handleDownloadTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
+  const handlePreviewTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
     if (!canUseTicketPdf(ticket)) {
       toast.info('Ticket PDF not available yet', {
-        description: 'Download is available after superadmin approval and PDF generation.',
+        description: 'Preview is available after superadmin approval and PDF generation.',
       });
       return;
     }
     if (!ticket.id?.trim()) {
-      toast.error('Failed to download ticket PDF', {
+      toast.error('Failed to open ticket PDF', {
         description: 'This ticket is missing an id.',
       });
       return;
     }
-    setDownloadingTicketId(ticket.id);
+
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) {
+      previewWindow.document.title = 'Loading ticket…';
+      previewWindow.document.body.innerHTML =
+        '<p style="font-family:sans-serif;padding:24px;margin:0">Loading ticket PDF…</p>';
+    }
+
+    setPreviewingTicketId(ticket.id);
     try {
-      await downloadCrewTicketPdf(ticket, 'admin');
+      await previewCrewTicketPdf(ticket, 'admin', previewWindow);
     } catch (err) {
-      toast.error('Failed to download ticket PDF', {
+      previewWindow?.close();
+      toast.error('Failed to open ticket PDF', {
         description: err instanceof Error ? err.message : 'Please try again.',
       });
     } finally {
-      setDownloadingTicketId(null);
+      setPreviewingTicketId(null);
     }
   }, []);
 
@@ -2450,22 +2460,22 @@ const AdminTicketsPage = () => {
                             className="subsea-icon-action"
                             onClick={(e) => {
                               e.stopPropagation();
-                              void handleDownloadTicketPdf(ticket);
+                              void handlePreviewTicketPdf(ticket);
                             }}
-                            disabled={downloadingTicketId === ticket.id}
+                            disabled={previewingTicketId === ticket.id}
                             aria-disabled={!canUseTicketPdf(ticket)}
                             title={
-                              downloadingTicketId === ticket.id
-                                ? 'Downloading ticket PDF…'
+                              previewingTicketId === ticket.id
+                                ? 'Opening ticket PDF…'
                                 : canUseTicketPdf(ticket)
-                                  ? 'Download approved ticket PDF'
+                                  ? 'Preview ticket PDF in new tab'
                                   : 'PDF available after approval'
                             }
                           >
-                            {downloadingTicketId === ticket.id ? (
+                            {previewingTicketId === ticket.id ? (
                               <Loader2 size={14} className="animate-spin" aria-hidden />
                             ) : (
-                              <Download size={14} />
+                              <ExternalLink size={14} />
                             )}
                           </button>
                           <button
@@ -2754,21 +2764,21 @@ const AdminTicketsPage = () => {
                       size="sm"
                       disabled={
                         !canUseTicketPdf(selectedTicket) ||
-                        downloadingTicketId === selectedTicket.id
+                        previewingTicketId === selectedTicket.id
                       }
                       onClick={() => {
-                        void handleDownloadTicketPdf(selectedTicket);
+                        void handlePreviewTicketPdf(selectedTicket);
                       }}
                     >
-                      {downloadingTicketId === selectedTicket.id ? (
+                      {previewingTicketId === selectedTicket.id ? (
                         <>
                           <Loader2 size={16} className="mr-2 animate-spin" aria-hidden />
-                          Downloading…
+                          Opening…
                         </>
                       ) : (
                         <>
-                          <Download size={16} className="mr-2" />
-                          {canUseTicketPdf(selectedTicket) ? 'View / download ticket' : 'Available after approval'}
+                          <ExternalLink size={16} className="mr-2" />
+                          {canUseTicketPdf(selectedTicket) ? 'Preview ticket' : 'Available after approval'}
                         </>
                       )}
                     </Button>

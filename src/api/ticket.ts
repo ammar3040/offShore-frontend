@@ -296,17 +296,31 @@ function scheduleRevokeObjectUrl(url: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export async function openCrewTicketPdf(
+export async function previewCrewTicketPdf(
   ticket: Pick<CrewTicketApi, 'id' | 'bookingReference'>,
-  role?: CrewTicketPdfAuthRole
+  role?: CrewTicketPdfAuthRole,
+  previewWindow?: Window | null
 ): Promise<void> {
   const blob = await fetchCrewTicketPdfBlob(ticket.id, role);
   const url = URL.createObjectURL(blob);
+  scheduleRevokeObjectUrl(url);
+
+  if (previewWindow && !previewWindow.closed) {
+    previewWindow.location.replace(url);
+    return;
+  }
+
   const opened = window.open(url, '_blank', 'noopener,noreferrer');
   if (!opened) {
     triggerBlobDownload(url, getCrewTicketPdfFilename(ticket));
   }
-  scheduleRevokeObjectUrl(url);
+}
+
+export async function openCrewTicketPdf(
+  ticket: Pick<CrewTicketApi, 'id' | 'bookingReference'>,
+  role?: CrewTicketPdfAuthRole
+): Promise<void> {
+  await previewCrewTicketPdf(ticket, role);
 }
 
 export async function downloadCrewTicketPdf(
