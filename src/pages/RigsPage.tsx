@@ -28,7 +28,7 @@ function formatDate(iso?: string): string {
 }
 
 const rigTypes = ['FPSO', 'DSV', 'PSV', 'OSV', 'CSV', 'Jack-up'];
-const rigRegions = ['Red Sea', 'North Sea', 'Norwegian Sea', 'Gulf of Mexico', 'Barents Sea', 'Dry Dock'];
+const rigRegions = ['Red Sea', 'North Sea', 'Norwegian Sea', 'Gulf of Mexico', 'Barents Sea', 'Persian Gulf'];
 
 function getRigType(rig: RigApi, index: number): string {
   const fromDescription = rig.description?.split('·')[0]?.trim();
@@ -40,14 +40,52 @@ function getRigRegion(rig: RigApi, index: number): string {
   return fromDescription || rigRegions[index % rigRegions.length];
 }
 
-function getRigStatus(index: number): { label: string; className: string } {
-  if (index === 5) {
-    return { label: 'Dry Dock', className: 'subsea-b-gray' };
+function getRigStatus(rig: RigApi): { label: string; className: string } {
+  const now = Date.now();
+  const createdAt = rig.createdAt ? new Date(rig.createdAt).getTime() : 0;
+  const updatedAt = rig.updatedAt ? new Date(rig.updatedAt).getTime() : createdAt;
+  const daysSinceUpdate = updatedAt ? (now - updatedAt) / (1000 * 60 * 60 * 24) : Infinity;
+
+  if (createdAt && now - createdAt < 14 * 24 * 60 * 60 * 1000) {
+    return { label: 'New', className: 'subsea-b-teal' };
   }
-  if (index === 3) {
-    return { label: 'In Transit', className: 'subsea-b-teal' };
+  if (daysSinceUpdate > 45) {
+    return { label: 'In Transit', className: 'subsea-b-amber' };
   }
   return { label: 'Operational', className: 'subsea-b-green' };
+}
+
+function computeFleetStats(rigs: RigApi[]) {
+  const types = new Set<string>();
+  const regions = new Map<string, number>();
+  let operational = 0;
+  let addedThisYear = 0;
+  const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime();
+
+  rigs.forEach((rig, index) => {
+    const type = getRigType(rig, index);
+    const region = getRigRegion(rig, index);
+    types.add(type);
+    regions.set(region, (regions.get(region) ?? 0) + 1);
+
+    const status = getRigStatus(rig);
+    if (status.label === 'Operational' || status.label === 'New') operational += 1;
+
+    const createdAt = rig.createdAt ? new Date(rig.createdAt).getTime() : 0;
+    if (createdAt >= yearStart) addedThisYear += 1;
+  });
+
+  const topRegion = [...regions.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
+  const operationalPct = rigs.length ? Math.round((operational / rigs.length) * 100) : 0;
+
+  return {
+    typeCount: types.size,
+    regionCount: regions.size,
+    operational,
+    operationalPct,
+    addedThisYear,
+    topRegion,
+  };
 }
 
 const RigsPage = () => {
@@ -105,6 +143,8 @@ const RigsPage = () => {
   }, [filteredRigs, page]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRigs.length / pageSize));
+
+  const fleetStats = useMemo(() => computeFleetStats(rigs), [rigs]);
 
   const openCreateModal = () => {
     setIsCreateModalOpen(true);
@@ -195,7 +235,11 @@ const RigsPage = () => {
           <div className="subsea-page-head">
             <div>
               <h1>Rig Fleet</h1>
-              <p>{loading ? 'Loading rigs...' : `${rigs.length} rigs · 4 rig types · 6 operating regions`}</p>
+              <p>
+                {loading
+                  ? 'Loading rigs...'
+                  : `${rigs.length} rigs · ${fleetStats.typeCount} rig types · ${fleetStats.regionCount} operating regions`}
+              </p>
             </div>
             <div className="subsea-ph-right">
               <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
@@ -206,8 +250,26 @@ const RigsPage = () => {
 
           <section className="subsea-kpi-strip subsea-kpi-strip-2">
             {[
-              { label: 'Total Rigs', value: loading ? '...' : String(rigs.length), meta: '2 added this year', tone: 'up', bar: '60%', color: 'blue' },
-              { label: 'In Dry Dock', value: loading ? '...' : String(rigs.length > 5 ? 1 : 0), meta: rigs.length > 5 ? paginatedRigs[5]?.name ?? 'Scheduled' : 'No dry dock', tone: 'flat', bar: rigs.length > 5 ? '9%' : '0%', color: 'amber' },
+              {
+                label: 'Total Rigs',
+                value: loading ? '...' : String(rigs.length),
+                meta: fleetStats.addedThisYear
+                  ? `${fleetStats.addedThisYear} added this year`
+                  : 'No new rigs this year',
+                tone: fleetStats.addedThisYear ? 'up' : 'flat',
+                bar: rigs.length ? `${Math.min(100, Math.round((rigs.length / Math.max(rigs.length, 10)) * 100))}%` : '0%',
+                color: 'blue',
+              },
+              {
+                label: 'Operational',
+                value: loading ? '...' : String(fleetStats.operational),
+                meta: rigs.length
+                  ? `${fleetStats.operationalPct}% of fleet · top region: ${fleetStats.topRegion}`
+                  : 'No rigs loaded',
+                tone: 'flat',
+                bar: `${fleetStats.operationalPct}%`,
+                color: 'green',
+              },
             ].map((kpi) => (
               <article key={kpi.label} className="subsea-kpi">
                 <div className="subsea-kpi-label">{kpi.label}</div>
@@ -253,7 +315,7 @@ const RigsPage = () => {
             <>
               <div className="subsea-rig-grid">
                 {paginatedRigs.map((rig, index) => {
-                  const status = getRigStatus(index);
+                  const status = getRigStatus(rig);
                   return (
                     <article
                       key={rig.id}
@@ -287,8 +349,8 @@ const RigsPage = () => {
                           <span className="subsea-rig-row-val mono">{rig.address || 'No position'}</span>
                         </div>
                         <div className="subsea-rig-row">
-                          <span className="subsea-rig-row-label">Next Port</span>
-                          <span className="subsea-rig-row-val">{index === 0 ? 'Djibouti · Jun 3' : `Created ${formatDate(rig.createdAt)}`}</span>
+                          <span className="subsea-rig-row-label">Last Updated</span>
+                          <span className="subsea-rig-row-val">{formatDate(rig.updatedAt ?? rig.createdAt)}</span>
                         </div>
                       </div>
                     </article>
