@@ -7,7 +7,13 @@ import {
   uploadSuperadminAdminInvoicePdf,
   type AdminInvoiceApi,
 } from '../api/adminInvoice';
-import { getSuperadminAdmins, getSuperadminCrewTickets, getSuperadminProjects } from '../api/superadmin';
+import {
+  getSuperadminAdmins,
+  getSuperadminCrewById,
+  getSuperadminCrewTickets,
+  getSuperadminProjects,
+} from '../api/superadmin';
+import type { CrewMemberApi } from '../api/crew';
 import { buildProjectInvoiceBills } from '../lib/invoice/buildInvoice';
 import { formatGbp } from '../lib/invoice/format';
 import { generateInvoicePdfFile } from '../lib/invoice/generateInvoicePdf';
@@ -66,13 +72,31 @@ const SuperadminAdminInvoicePage = () => {
             .map((invoice) => [invoice.projectId, String(invoice.margin)])
         );
 
+        const crewIds = [
+          ...new Set(
+            (ticketsRes.crewTickets ?? [])
+              .map((ticket) => ticket.crew_id?._id)
+              .filter((crewId): crewId is string => Boolean(crewId))
+          ),
+        ];
+        const crewProfiles = await Promise.all(
+          crewIds.map(async (crewId) => {
+            const crew = await getSuperadminCrewById(crewId);
+            return crew ? ([crewId, crew] as const) : null;
+          })
+        );
+        const crewById = Object.fromEntries(
+          crewProfiles.filter((entry): entry is readonly [string, CrewMemberApi] => entry != null)
+        ) as Record<string, CrewMemberApi>;
+
         const computedBills = buildProjectInvoiceBills(
           projectsRes.projects ?? [],
           ticketsRes.crewTickets ?? [],
           adminsRes.admins ?? [],
           Object.fromEntries(
             Object.entries(marginDefaults).map(([projectId, value]) => [projectId, Number(value)])
-          )
+          ),
+          crewById
         );
 
         setBills(computedBills);

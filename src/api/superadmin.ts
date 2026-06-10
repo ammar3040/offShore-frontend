@@ -1,5 +1,56 @@
 import { env } from '../config/env';
+import type { CrewMemberApi } from './crew';
 import { normalizeCrewTicket, type CrewTicketApi } from './ticket';
+
+function pickAdminString(raw: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = raw[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function normalizeAdmin(raw: Record<string, unknown>): AdminApi {
+  const id = String(raw.id ?? raw._id ?? '').trim();
+  return {
+    id,
+    firstname: pickAdminString(raw, 'firstname', 'firstName', 'first_name') ?? '',
+    lastname: pickAdminString(raw, 'lastname', 'lastName', 'last_name') ?? '',
+    email: pickAdminString(raw, 'email') ?? '',
+    phone: pickAdminString(raw, 'phone'),
+    company: pickAdminString(raw, 'company', 'companyName', 'company_name', 'organization'),
+    address: pickAdminString(raw, 'address'),
+    city: pickAdminString(raw, 'city'),
+    country: pickAdminString(raw, 'country'),
+    createdAt: pickAdminString(raw, 'createdAt', 'created_at'),
+    projectsCount: typeof raw.projectsCount === 'number' ? raw.projectsCount : undefined,
+    crewCount: typeof raw.crewCount === 'number' ? raw.crewCount : undefined,
+    cancellationOutstanding:
+      typeof raw.cancellationOutstanding === 'number' ? raw.cancellationOutstanding : undefined,
+    cancellationSlotsRemaining:
+      typeof raw.cancellationSlotsRemaining === 'number' ? raw.cancellationSlotsRemaining : undefined,
+  };
+}
+
+function normalizeCrewMember(raw: Record<string, unknown>): CrewMemberApi {
+  const id = String(raw.id ?? raw._id ?? '').trim();
+  return {
+    id,
+    firstname: pickAdminString(raw, 'firstname', 'firstName', 'first_name') ?? '',
+    lastname: pickAdminString(raw, 'lastname', 'lastName', 'last_name') ?? '',
+    dateOfBirth: pickAdminString(raw, 'dateOfBirth', 'date_of_birth') ?? '',
+    nationality: pickAdminString(raw, 'nationality') ?? '',
+    gender: pickAdminString(raw, 'gender') ?? '',
+    email: pickAdminString(raw, 'email') ?? '',
+    phone: pickAdminString(raw, 'phone') ?? '',
+    alternate_phone: pickAdminString(raw, 'alternate_phone', 'alternatePhone') ?? '',
+    address: pickAdminString(raw, 'address') ?? '',
+    city: pickAdminString(raw, 'city') ?? '',
+    country: pickAdminString(raw, 'country') ?? '',
+    postal_code: pickAdminString(raw, 'postal_code', 'postalCode') ?? '',
+    organization: pickAdminString(raw, 'organization'),
+  };
+}
 
 export interface SuperadminLoginPayload {
   email: string;
@@ -41,6 +92,10 @@ export interface AdminApi {
   lastname: string;
   email: string;
   phone?: string;
+  company?: string;
+  address?: string;
+  city?: string;
+  country?: string;
   createdAt?: string;
   projectsCount?: number;
   crewCount?: number;
@@ -183,7 +238,30 @@ export async function getSuperadminAdmins(): Promise<{ admins: AdminApi[] }> {
   }
 
   const data = await response.json();
-  return { admins: Array.isArray(data?.admins) ? data.admins : [] };
+  const admins = Array.isArray(data?.admins)
+    ? (data.admins as Record<string, unknown>[]).map(normalizeAdmin)
+    : [];
+  return { admins };
+}
+
+/** Crew profile for invoice addressing - GET /crew/:crew_id */
+export async function getSuperadminCrewById(crewId: string): Promise<CrewMemberApi | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(crewId)}`, {
+    method: 'GET',
+    headers: getHeaders(),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const crewRaw = (data?.crew ?? data) as Record<string, unknown>;
+  if (!crewRaw || typeof crewRaw !== 'object') return null;
+  return normalizeCrewMember(crewRaw);
 }
 
 /** Create admin - POST /superadmin/admins */

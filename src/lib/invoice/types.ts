@@ -1,3 +1,4 @@
+import type { CrewMemberApi } from '../../api/crew';
 import type { CrewTicketApi } from '../../api/ticket';
 import type { AdminApi } from '../../api/superadmin';
 import type { ProjectApi } from '../../api/project';
@@ -24,6 +25,7 @@ export interface ProjectInvoiceBill {
   invoiceNumber: string;
   issueDate: Date;
   dueDate: Date;
+  crewById?: Record<string, CrewMemberApi>;
 }
 
 export interface InvoiceTemplateData {
@@ -31,12 +33,16 @@ export interface InvoiceTemplateData {
   issue_date: string;
   due_date: string;
   amount_due: string;
-  client_company_name: string;
-  client_address_html: string;
+  from_name: string;
+  from_address_html: string;
+  from_email: string;
+  to_name: string;
+  to_address_html: string;
   client_fao: string;
   line_items_rows: string;
   subtotal: string;
   vat_amount: string;
   total_due: string;
   footer_note: string;
+  logo_src?: string;
 }

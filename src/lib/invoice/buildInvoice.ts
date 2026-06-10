@@ -1,6 +1,7 @@
+import type { CrewMemberApi } from '../../api/crew';
 import type { AdminApi } from '../../api/superadmin';
 import type { ProjectApi } from '../../api/project';
-import type { CrewTicketApi } from '../../api/ticket';
+import type { CrewTicketApi, CrewTicketCrewRef } from '../../api/ticket';
 import { getTicketStatus } from '../../api/ticket';
 import { escapeHtml, formatGbp, formatInvoiceDate, formatTripLabel } from './format';
 import type { InvoiceLineItem, InvoiceTemplateData, ProjectInvoiceBill } from './types';
@@ -55,7 +56,8 @@ export function buildProjectInvoiceBills(
   projects: ProjectApi[],
   tickets: CrewTicketApi[],
   admins: AdminApi[],
-  marginsByProject: Record<string, number> = {}
+  marginsByProject: Record<string, number> = {},
+  crewById: Record<string, CrewMemberApi> = {}
 ): ProjectInvoiceBill[] {
   const adminById = new Map(admins.map((admin) => [admin.id, admin]));
   const approvedTickets = tickets.filter((ticket) => getTicketStatus(ticket) === 'APPROVED');
@@ -87,9 +89,10 @@ export function buildProjectInvoiceBills(
         invoiceNumber: buildInvoiceNumber(project, index),
         issueDate,
         dueDate: addDays(issueDate, 1),
-      } satisfies ProjectInvoiceBill;
+        crewById,
+      } as ProjectInvoiceBill;
     })
-    .filter((bill): bill is ProjectInvoiceBill => bill != null);
+    .filter((bill): bill is ProjectInvoiceBill => bill !== null);
 }
 
 function buildLineItemRow(item: InvoiceLineItem, amountGbp: number): string {
@@ -102,18 +105,68 @@ function buildLineItemRow(item: InvoiceLineItem, amountGbp: number): string {
   ].join('<br/>');
 
   return `<tr>
-    <td style="font-size: 13px; color: #111111; padding: 16px 14px; border-bottom: 1px solid #f0f0f0; vertical-align: top;">${description}</td>
-    <td style="font-size: 13px; color: #333333; padding: 16px 14px; border-bottom: 1px solid #f0f0f0; text-align: center; vertical-align: top;">${item.qty}</td>
-    <td style="font-size: 13px; color: #333333; padding: 16px 14px; border-bottom: 1px solid #f0f0f0; text-align: right; vertical-align: top;">${formatGbp(item.unitPriceGbp)}</td>
-    <td style="font-size: 13px; color: #333333; padding: 16px 14px; border-bottom: 1px solid #f0f0f0; text-align: right; vertical-align: top;">${formatGbp(amountGbp)}</td>
+    <td style="font-size: 13px; color: #333333; line-height: 1.7; padding: 18px 16px 20px 16px; border: 1px solid #e0e0e0; border-top: none; border-right: none; vertical-align: top;">${description}</td>
+    <td style="font-size: 13px; color: #333333; padding: 18px 16px; border-bottom: 1px solid #e0e0e0; text-align: center; vertical-align: top;">${item.qty}</td>
+    <td style="font-size: 13px; color: #333333; padding: 18px 16px; border-bottom: 1px solid #e0e0e0; text-align: right; vertical-align: top;">${formatGbp(item.unitPriceGbp)}</td>
+    <td style="font-size: 13px; color: #333333; padding: 18px 16px; border: 1px solid #e0e0e0; border-top: none; border-left: none; text-align: right; vertical-align: top;">${formatGbp(amountGbp)}</td>
   </tr>`;
 }
 
-function buildClientAddressHtml(admin: AdminApi | null): string {
-  if (!admin) return 'United Kingdom';
-  const lines = [admin.email].filter(Boolean);
-  if (lines.length === 0) return 'United Kingdom';
-  return lines.map((line) => escapeHtml(line)).join('<br/>');
+function pickStringField(
+  source: Record<string, unknown> | null | undefined,
+  ...keys: string[]
+): string {
+  if (!source) return '';
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function getPrimaryTicket(bill: ProjectInvoiceBill): CrewTicketApi | null {
+  return bill.tickets[0] ?? null;
+}
+
+function getPrimaryCrewRef(bill: ProjectInvoiceBill): CrewTicketCrewRef | null {
+  return getPrimaryTicket(bill)?.crew_id ?? null;
+}
+
+function buildAirportCountryLabel(location: CrewTicketApi['from'] | undefined): string {
+  if (!location) return '';
+  return location.COUNTRYNAME?.trim() || location.COUNTRY?.trim() || '';
+}
+
+function buildFromName(bill: ProjectInvoiceBill): string {
+  const ticket = getPrimaryTicket(bill);
+  return escapeHtml(ticket?.from?.Name?.trim() || '—');
+}
+
+function buildToName(bill: ProjectInvoiceBill): string {
+  const ticket = getPrimaryTicket(bill);
+  return escapeHtml(ticket?.to?.Name?.trim() || '—');
+}
+
+function getPrimaryCrewProfile(bill: ProjectInvoiceBill): CrewMemberApi | CrewTicketCrewRef | null {
+  const crewRef = getPrimaryCrewRef(bill);
+  if (!crewRef) return null;
+  return bill.crewById?.[crewRef._id] ?? crewRef;
+}
+
+function buildFromAddressHtml(bill: ProjectInvoiceBill): string {
+  const ticket = getPrimaryTicket(bill);
+  return escapeHtml(buildAirportCountryLabel(ticket?.from) || '—');
+}
+
+function buildFromEmail(bill: ProjectInvoiceBill): string {
+  const crew = getPrimaryCrewProfile(bill);
+  const email = crew?.email?.trim() || pickStringField(crew as Record<string, unknown>, 'email');
+  return escapeHtml(email || '—');
+}
+
+function buildToAddressHtml(bill: ProjectInvoiceBill): string {
+  const ticket = getPrimaryTicket(bill);
+  return escapeHtml(buildAirportCountryLabel(ticket?.to) || '—');
 }
 
 export function buildInvoiceTemplateData(bill: ProjectInvoiceBill): InvoiceTemplateData {
@@ -136,8 +189,11 @@ export function buildInvoiceTemplateData(bill: ProjectInvoiceBill): InvoiceTempl
     issue_date: formatInvoiceDate(bill.issueDate),
     due_date: formatInvoiceDate(bill.dueDate),
     amount_due: formatGbp(grandTotal),
-    client_company_name: bill.admin ? `${bill.admin.firstname} ${bill.admin.lastname}`.trim() : bill.project.title,
-    client_address_html: buildClientAddressHtml(bill.admin),
+    from_name: buildFromName(bill),
+    from_address_html: buildFromAddressHtml(bill),
+    from_email: buildFromEmail(bill),
+    to_name: buildToName(bill),
+    to_address_html: buildToAddressHtml(bill),
     client_fao: adminName,
     line_items_rows: rows,
     subtotal: formatGbp(grandTotal),

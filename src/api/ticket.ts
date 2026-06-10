@@ -11,6 +11,10 @@ export interface CrewTicketCrewRef {
   firstname: string;
   lastname: string;
   email: string;
+  city?: string;
+  country?: string;
+  organization?: string;
+  address?: string;
   [key: string]: unknown;
 }
 

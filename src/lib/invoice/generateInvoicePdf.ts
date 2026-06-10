@@ -1,11 +1,29 @@
 import html2pdf from 'html2pdf.js';
 import invoiceTemplate from '../../assets/lynq-travel-invoice.html?raw';
+import lynqLogoUrl from '../../assets/lynq-logo.png?url';
 import { buildInvoiceTemplateData, fillInvoiceTemplate } from './buildInvoice';
 import type { ProjectInvoiceBill } from './types';
 
+function prepareInvoiceHtmlForPdf(html: string): string {
+  // MJML wraps tables in font-size:0 containers which html2canvas can clip.
+  const withTableFix = html.replaceAll(
+    'font-size:0px;padding:0;word-break:break-word;',
+    'font-size:13px;line-height:1.6;padding:0;word-break:break-word;'
+  );
+  const pdfLayoutCss = `<style>
+    html, body { overflow: visible !important; }
+    table { border-collapse: collapse; }
+  </style>`;
+  return withTableFix.replace('</head>', `${pdfLayoutCss}</head>`);
+}
+
 function renderInvoiceHtml(bill: ProjectInvoiceBill): string {
   const templateData = buildInvoiceTemplateData(bill);
-  return fillInvoiceTemplate(invoiceTemplate, templateData);
+  const html = fillInvoiceTemplate(invoiceTemplate, {
+    ...templateData,
+    logo_src: lynqLogoUrl,
+  });
+  return prepareInvoiceHtmlForPdf(html);
 }
 
 function waitForPaint(): Promise<void> {
@@ -26,7 +44,7 @@ async function withRenderedInvoice<T>(
 ): Promise<T> {
   const iframe = document.createElement('iframe');
   iframe.style.cssText =
-    'position:fixed;top:0;left:0;width:794px;height:1123px;border:0;visibility:hidden;z-index:-1;';
+    'position:fixed;top:0;left:0;width:794px;min-height:1123px;height:auto;border:0;visibility:hidden;z-index:-1;overflow:visible;';
   document.body.appendChild(iframe);
 
   try {
@@ -53,6 +71,9 @@ async function withRenderedInvoice<T>(
     const body = iframe.contentDocument?.body;
     if (!body) throw new Error('Invoice iframe body is empty.');
 
+    iframe.style.height = `${Math.max(body.scrollHeight, 1123)}px`;
+    await waitForPaint();
+
     return await capture(body);
   } finally {
     document.body.removeChild(iframe);
@@ -68,7 +89,14 @@ export async function generateInvoicePdfBlob(bill: ProjectInvoiceBill): Promise<
         margin: 0,
         filename: `${bill.invoiceNumber}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#f4f6f8' },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 794,
+          scrollY: 0,
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       })
       .from(body)
