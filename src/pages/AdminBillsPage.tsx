@@ -262,9 +262,6 @@ const AdminBillsPage = () => {
                           <span>Sent {formatDate(invoice.sentAt ?? invoice.createdAt)}</span>
                         </div>
                         <div className="admin-bills-card-amounts">
-                          {invoice.margin != null && Number(invoice.margin) > 0 ? (
-                            <span>Margin: {formatGbp(Number(invoice.margin))}</span>
-                          ) : null}
                           <strong>Total: {formatGbp(Number(invoice.total) || 0)}</strong>
                         </div>
                       </div>
