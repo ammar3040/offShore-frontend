@@ -4,6 +4,32 @@ import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 /** Single certificate from API (array or legacy single object) */
 type CrewCertApi = { certificate_name?: string; issue_date?: string; expiry_date?: string; certificate_document?: string };
 
+function pickString(raw: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = raw[key];
+    if (value != null && String(value).trim()) return String(value).trim();
+  }
+  return '';
+}
+
+/** Normalizes API date strings to YYYY-MM-DD for HTML date inputs. */
+function toDateInputValue(value?: string | null): string {
+  if (!value?.trim()) return '';
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return trimmed;
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeGender(value?: string | null): string {
+  const v = (value ?? '').trim().toLowerCase();
+  if (v === 'male' || v === 'female' || v === 'other' || v === 'prefer-not-to-say') return v;
+  if (v === 'm') return 'male';
+  if (v === 'f') return 'female';
+  return v;
+}
+
 /** Converts crew API response to CrewMemberFormData for edit form pre-fill. Handles both camelCase and snake_case. */
 export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
   const raw = crew as Record<string, unknown> & CrewMemberApi;
@@ -11,56 +37,77 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
   const i = crew.identity ?? raw.identity;
   const passport = typeof p === 'object' && p !== null ? (p as unknown as Record<string, unknown>) : {};
   const identity = typeof i === 'object' && i !== null ? (i as unknown as Record<string, unknown>) : {};
-  const certRaw = raw.crew_certificate;
+
+  const certRaw = raw.crew_certificate ?? raw.crew_certificates ?? raw.certificates;
   const certs: CrewCertApi[] = Array.isArray(certRaw)
     ? certRaw
     : certRaw && typeof certRaw === 'object'
       ? [certRaw as CrewCertApi]
       : [];
 
+  const legacyCertIssue = pickString(raw, 'certificate_issue_date', 'certificateIssueDate');
+  const legacyCertExpiry = pickString(raw, 'certificate_expiry_date', 'certificateExpiryDate');
+
   const certificates = certs.length > 0
     ? certs.map((c) => ({
         certificateName: String(c.certificate_name ?? 'Certificate').trim(),
-        issueDate: String(c.issue_date ?? '').trim(),
-        expiryDate: String(c.expiry_date ?? '').trim(),
+        issueDate: toDateInputValue(String(c.issue_date ?? '')),
+        expiryDate: toDateInputValue(String(c.expiry_date ?? '')),
         document: null as File | null,
       }))
-    : [{ certificateName: '', issueDate: '', expiryDate: '', document: null }];
+    : legacyCertIssue || legacyCertExpiry
+      ? [{
+          certificateName: pickString(raw, 'certificate_name', 'certificateName') || 'Certificate',
+          issueDate: toDateInputValue(legacyCertIssue),
+          expiryDate: toDateInputValue(legacyCertExpiry),
+          document: null as File | null,
+        }]
+      : [{ certificateName: '', issueDate: '', expiryDate: '', document: null }];
 
   return {
-    firstName: String(crew.firstname ?? raw.firstname ?? '').trim(),
-    lastName: String(crew.lastname ?? raw.lastname ?? '').trim(),
-    dateOfBirth: String(crew.dateOfBirth ?? raw.date_of_birth ?? '').trim(),
-    nationality: String(crew.nationality ?? raw.nationality ?? '').trim(),
-    gender: String(crew.gender ?? raw.gender ?? '').trim(),
-    email: String(crew.email ?? raw.email ?? '').trim(),
-    phone: String(crew.phone ?? raw.phone ?? '').trim(),
-    alternatePhone: String(crew.alternate_phone ?? raw.alternate_phone ?? '').trim(),
-    address: String(crew.address ?? raw.address ?? '').trim(),
-    city: String(crew.city ?? raw.city ?? '').trim(),
-    country: String(crew.country ?? raw.country ?? '').trim(),
-    postalCode: String(crew.postal_code ?? raw.postal_code ?? '').trim(),
-    passportNumber: String(passport.passport_number ?? '').trim(),
-    passportIssueDate: String(passport.issue_date ?? '').trim(),
-    passportExpiryDate: String(passport.expiry_date ?? '').trim(),
-    passportIssuingCountry: String(passport.issuing_country ?? '').trim(),
+    firstName: pickString(raw, 'firstname', 'firstName', 'first_name'),
+    lastName: pickString(raw, 'lastname', 'lastName', 'last_name'),
+    dateOfBirth: toDateInputValue(pickString(raw, 'dateOfBirth', 'date_of_birth')),
+    nationality: pickString(raw, 'nationality'),
+    gender: normalizeGender(pickString(raw, 'gender')),
+    email: pickString(raw, 'email'),
+    phone: pickString(raw, 'phone'),
+    alternatePhone: pickString(raw, 'alternate_phone', 'alternatePhone'),
+    address: pickString(raw, 'address'),
+    city: pickString(raw, 'city'),
+    country: pickString(raw, 'country'),
+    postalCode: pickString(raw, 'postal_code', 'postalCode'),
+    passportNumber: pickString(passport, 'passport_number', 'passportNumber') || pickString(raw, 'passport_number', 'passportNumber'),
+    passportIssueDate: toDateInputValue(
+      pickString(passport, 'issue_date', 'issueDate', 'passport_issue_date') || pickString(raw, 'passport_issue_date', 'passportIssueDate')
+    ),
+    passportExpiryDate: toDateInputValue(
+      pickString(passport, 'expiry_date', 'expiryDate', 'passport_expiry_date') || pickString(raw, 'passport_expiry_date', 'passportExpiryDate')
+    ),
+    passportIssuingCountry:
+      pickString(passport, 'issuing_country', 'issuingCountry', 'passport_issuing_country') ||
+      pickString(raw, 'passport_issuing_country', 'passportIssuingCountry'),
     passportDocuments: [],
-    identityType: String(identity.identity_type ?? '').trim(),
-    identityNumber: String(identity.identity_number ?? '').trim(),
-    identityIssueDate: String(identity.issue_date ?? '').trim(),
-    identityExpiryDate: String(identity.expiry_date ?? '').trim(),
+    identityType: pickString(identity, 'identity_type', 'identityType') || pickString(raw, 'identity_type', 'identityType'),
+    identityNumber: pickString(identity, 'identity_number', 'identityNumber') || pickString(raw, 'identity_number', 'identityNumber'),
+    identityIssueDate: toDateInputValue(
+      pickString(identity, 'issue_date', 'issueDate', 'identity_issue_date') || pickString(raw, 'identity_issue_date', 'identityIssueDate')
+    ),
+    identityExpiryDate: toDateInputValue(
+      pickString(identity, 'expiry_date', 'expiryDate', 'identity_expiry_date') || pickString(raw, 'identity_expiry_date', 'identityExpiryDate')
+    ),
     identityDocuments: [],
     certificates,
-    azerbaijanVantageNumber: String(crew.azerbaijan_vantage_number ?? raw.azerbaijan_vantage_number ?? '').trim(),
-    norwegianDNumber: String(crew.norwegian_d_number ?? raw.norwegian_d_number ?? '').trim(),
-    dawinciNumber: String(crew.dawinci_number ?? raw.dawinci_number ?? '').trim(),
-    vantageNumber: String(crew.vantage_number ?? raw.vantage_number ?? '').trim(),
-    organization: String(crew.organization ?? raw.organization ?? '').trim(),
-    linkedin: String(crew.linkedin ?? raw.linkedin ?? '').trim(),
-    visa: String(crew.visa ?? raw.visa ?? '').trim(),
-    visaCountry: String(crew.visa_country ?? raw.visa_country ?? '').trim(),
-    visaIssueDate: String(crew.visa_issue_date ?? raw.visa_issue_date ?? '').trim(),
-    visaExpiryDate: String(crew.visa_expiry_date ?? raw.visa_expiry_date ?? '').trim(),
+    azerbaijanVantageNumber: pickString(raw, 'azerbaijan_vantage_number', 'azerbaijanVantageNumber'),
+    norwegianDNumber: pickString(raw, 'norwegian_d_number', 'norwegianDNumber'),
+    dawinciNumber: pickString(raw, 'dawinci_number', 'dawinciNumber'),
+    vantageNumber: pickString(raw, 'vantage_number', 'vantageNumber'),
+    organization: pickString(raw, 'organization'),
+    linkedin: pickString(raw, 'linkedin'),
+    visa: pickString(raw, 'visa'),
+    visaCountry: pickString(raw, 'visa_country', 'visaCountry'),
+    visaIssueDate: toDateInputValue(pickString(raw, 'visa_issue_date', 'visaIssueDate')),
+    visaExpiryDate: toDateInputValue(pickString(raw, 'visa_expiry_date', 'visaExpiryDate')),
   };
 }
 

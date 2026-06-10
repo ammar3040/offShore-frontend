@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   FileText,
   History,
   IdCard,
+  Loader2,
   Mail,
   MapPin,
   MessageSquare,
@@ -20,11 +21,16 @@ import {
   Ship,
   User,
 } from 'lucide-react';
-import { getCrewById, type CrewAssignedProject, type CrewMemberApi } from '../api/crew';
+import { crewApiToFormData, getCrewById, updateCrewMember, type CrewAssignedProject, type CrewMemberApi } from '../api/crew';
+import ErrorAlertPopup from '../components/ErrorAlertPopup';
+import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
+import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import { availabilityFromCrewSignal } from '../utils/crewAvailability';
 import './RigsPage.css';
+
+const CrewMemberForm = lazy(() => import('../components/forms/CrewMemberForm'));
 
 type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay';
 
@@ -84,31 +90,89 @@ const CrewDetailsPage = () => {
   const [loading, setLoading] = useState(() => Boolean(crewId));
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editCrew, setEditCrew] = useState<CrewMemberApi | null>(null);
+  const [editPrefillLoading, setEditPrefillLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const loadCrewDetails = useCallback(async () => {
+    if (!crewId) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getCrewById(crewId);
+      setCrew(res.crew);
+      setProjects(res.projects ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load crew details');
+    } finally {
+      setLoading(false);
+    }
+  }, [crewId]);
 
   useEffect(() => {
-    if (!crewId) {
-      return;
+    void loadCrewDetails();
+  }, [loadCrewDetails]);
+
+  const openEditModal = async () => {
+    if (!crewId) return;
+    setIsEditModalOpen(true);
+    setEditError(null);
+    setEditPrefillLoading(true);
+    try {
+      const res = await getCrewById(crewId);
+      setEditCrew(res.crew);
+    } catch {
+      if (crew) setEditCrew(crew);
+    } finally {
+      setEditPrefillLoading(false);
     }
+  };
 
-    let cancelled = false;
-    getCrewById(crewId)
-      .then((res) => {
-        if (cancelled) return;
-        setCrew(res.crew);
-        setProjects(res.projects ?? []);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load crew details');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+  const closeEditModal = () => {
+    if (!editLoading) {
+      setIsEditModalOpen(false);
+      setEditCrew(null);
+      setEditError(null);
+    }
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [crewId]);
+  const editInitialData = useMemo(
+    () => (editCrew ? crewApiToFormData(editCrew) : undefined),
+    [editCrew]
+  );
+
+  const handleSubmitEdit = async (data: CrewMemberFormData) => {
+    if (!crew) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const res = await updateCrewMember(crew.id, data);
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = `Request failed (${res.status})`;
+        if (text) {
+          try {
+            const j = JSON.parse(text);
+            msg = j?.message || j?.error || msg;
+          } catch {
+            msg = text;
+          }
+        }
+        setEditError(msg);
+        return;
+      }
+      setIsEditModalOpen(false);
+      setEditError(null);
+      await loadCrewDetails();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update crew member');
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const status = statusMeta(crew);
   const pageError = !crewId ? 'Missing crew id' : error;
@@ -174,7 +238,7 @@ const CrewDetailsPage = () => {
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><Printer size={12} /> Print</button>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><MessageSquare size={12} /> Message</button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm"><User size={12} /> Edit Profile</button>
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => void openEditModal()} disabled={!crewId || loading}><User size={12} /> Edit Profile</button>
             <span className="subsea-vr" />
             <SubseaProfileMenu size="sm" />
           </div>
@@ -194,7 +258,7 @@ const CrewDetailsPage = () => {
             <div className="subsea-ph-right">
               <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><Printer size={11} /> Print</button>
               <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><MessageSquare size={11} /> Message</button>
-              <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm">Edit Profile</button>
+              <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => void openEditModal()} disabled={!crewId || loading}>Edit Profile</button>
             </div>
           </div>
 
@@ -394,6 +458,37 @@ const CrewDetailsPage = () => {
           ) : null}
         </main>
       </div>
+
+      <Modal isOpen={isEditModalOpen} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea">
+        {editError && (
+          <ErrorAlertPopup message={editError} onDismiss={() => setEditError(null)} />
+        )}
+        {editPrefillLoading ? (
+          <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading crew profile">
+            <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
+            <p>Loading profile…</p>
+          </div>
+        ) : editCrew && editInitialData ? (
+          <Suspense
+            fallback={
+              <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading form">
+                <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
+                <p>Loading form…</p>
+              </div>
+            }
+          >
+            <CrewMemberForm
+              key={editCrew.id}
+              onSubmit={handleSubmitEdit}
+              onCancel={closeEditModal}
+              isLoading={editLoading}
+              initialData={editInitialData}
+              submitLabel="Save Changes"
+              theme="subsea"
+            />
+          </Suspense>
+        ) : null}
+      </Modal>
     </div>
   );
 };

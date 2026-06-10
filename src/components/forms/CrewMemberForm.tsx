@@ -216,21 +216,43 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
     return ALL_COUNTRIES.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 50);
   }, [visaCountryQuery]);
 
+  const toDateInputValue = (value?: string) => {
+    if (!value?.trim()) return '';
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const date = new Date(trimmed);
+    if (Number.isNaN(date.getTime())) return trimmed;
+    return date.toISOString().slice(0, 10);
+  };
+
   // Pre-fill form when opening edit modal; sync once per mount when initialData exists
   useEffect(() => {
     if (initialData && !hasPrefilled.current) {
       // Normalize legacy single-certificate shape to certificates array
       const data = { ...initialData };
+      data.dateOfBirth = toDateInputValue(data.dateOfBirth);
+      data.passportIssueDate = toDateInputValue(data.passportIssueDate);
+      data.passportExpiryDate = toDateInputValue(data.passportExpiryDate);
+      data.identityIssueDate = toDateInputValue(data.identityIssueDate);
+      data.identityExpiryDate = toDateInputValue(data.identityExpiryDate);
+      data.visaIssueDate = toDateInputValue(data.visaIssueDate);
+      data.visaExpiryDate = toDateInputValue(data.visaExpiryDate);
       if (!data.certificates?.length && (initialData as unknown as Record<string, unknown>).certificateIssueDate != null) {
         const leg = initialData as typeof initialData & { certificateIssueDate?: string; certificateExpiryDate?: string; certificateDocuments?: File[] };
         data.certificates = [{
           certificateName: 'Certificate',
-          issueDate: leg.certificateIssueDate ?? '',
-          expiryDate: leg.certificateExpiryDate ?? '',
+          issueDate: toDateInputValue(leg.certificateIssueDate ?? ''),
+          expiryDate: toDateInputValue(leg.certificateExpiryDate ?? ''),
           document: leg.certificateDocuments?.[0] ?? null,
         }];
       } else if (!data.certificates?.length) {
         data.certificates = [{ certificateName: '', issueDate: '', expiryDate: '', document: null }];
+      } else {
+        data.certificates = data.certificates.map((cert) => ({
+          ...cert,
+          issueDate: toDateInputValue(cert.issueDate),
+          expiryDate: toDateInputValue(cert.expiryDate),
+        }));
       }
       setFormData(data);
       if (initialData.country) {
