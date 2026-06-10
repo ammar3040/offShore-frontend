@@ -130,9 +130,9 @@ export function ticketHasStoredPdf(ticket: Pick<CrewTicketApi, 'hasPdf' | 'pdf'>
 }
 
 export function canUseTicketPdf(
-  ticket: Pick<CrewTicketApi, 'status' | 'hasPdf' | 'pdf'>
+  ticket: Pick<CrewTicketApi, 'status' | 'hasPdf' | 'pdf' | 'bookingReference'>
 ): boolean {
-  return getTicketStatus(ticket) === 'APPROVED' && ticketHasStoredPdf(ticket);
+  return getTicketStatus(ticket) === 'APPROVED';
 }
 
 export function getCrewTicketPdfFilename(
@@ -142,21 +142,32 @@ export function getCrewTicketPdfFilename(
 }
 
 export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
-  const iso = getCrewTicketCreatedIso(row) ?? createdAtIsoFromMongoObjectId(row.id);
+  const raw = row as CrewTicketApiRaw & { _id?: string; booking_reference?: string };
+  const id = String(row.id ?? raw._id ?? '').trim();
+  const bookingReference =
+    typeof row.bookingReference === 'string'
+      ? row.bookingReference
+      : typeof raw.booking_reference === 'string'
+        ? raw.booking_reference
+        : undefined;
+  const iso = getCrewTicketCreatedIso(row) ?? (id ? createdAtIsoFromMongoObjectId(id) : undefined);
   const normalizedStatus = getTicketStatus(row);
-  const hasPdf =
+  let hasPdf =
     typeof row.hasPdf === 'boolean'
       ? row.hasPdf
       : typeof row.has_pdf === 'boolean'
         ? row.has_pdf
         : Boolean(row.pdf);
+  if (!hasPdf && normalizedStatus === 'APPROVED') {
+    hasPdf = true;
+  }
   const pdfDownloadUrl =
     typeof row.pdfDownloadUrl === 'string'
       ? row.pdfDownloadUrl
       : typeof row.pdf_download_url === 'string'
         ? row.pdf_download_url
-        : row.id
-          ? `/crew-ticket/${row.id}/pdf`
+        : id
+          ? `/crew-ticket/${id}/pdf`
           : undefined;
 
   const { pdf: _legacyPdf, has_pdf: _hasPdf, pdf_download_url: _pdfDownloadUrl, ...rest } = row;
@@ -167,6 +178,8 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
 
   const normalized: CrewTicketApi = {
     ...base,
+    id,
+    bookingReference,
     hasPdf,
     pdfDownloadUrl: hasPdf ? pdfDownloadUrl : undefined,
   };
@@ -270,14 +283,30 @@ export async function fetchCrewTicketPdfBlob(
   return response.blob();
 }
 
+function triggerBlobDownload(url: string, filename: string): void {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function scheduleRevokeObjectUrl(url: string): void {
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export async function openCrewTicketPdf(
   ticket: Pick<CrewTicketApi, 'id' | 'bookingReference'>,
   role?: CrewTicketPdfAuthRole
 ): Promise<void> {
   const blob = await fetchCrewTicketPdfBlob(ticket.id, role);
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank', 'noopener,noreferrer');
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    triggerBlobDownload(url, getCrewTicketPdfFilename(ticket));
+  }
+  scheduleRevokeObjectUrl(url);
 }
 
 export async function downloadCrewTicketPdf(
@@ -286,13 +315,8 @@ export async function downloadCrewTicketPdf(
 ): Promise<void> {
   const blob = await fetchCrewTicketPdfBlob(ticket.id, role);
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = getCrewTicketPdfFilename(ticket);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  triggerBlobDownload(url, getCrewTicketPdfFilename(ticket));
+  scheduleRevokeObjectUrl(url);
 }
 
 /**

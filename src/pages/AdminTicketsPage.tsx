@@ -6,6 +6,7 @@ import {
   Download,
   Filter,
   Info,
+  Loader2,
   Plane,
   Plus,
   Search,
@@ -47,7 +48,7 @@ import {
   createFlightTicket,
   cancelCrewTicket,
   canUseTicketPdf,
-  openCrewTicketPdf,
+  downloadCrewTicketPdf,
   type CreateFlightTicketPayload,
   type AirportLocation,
   type CrewTicketApi,
@@ -699,6 +700,7 @@ const AdminTicketsPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
   const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
+  const [downloadingTicketId, setDownloadingTicketId] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectApi | null>(null);
@@ -936,14 +938,28 @@ const AdminTicketsPage = () => {
     }
   }, [ticketToConfirmCancel]);
 
-  const handleOpenTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
-    if (!canUseTicketPdf(ticket)) return;
+  const handleDownloadTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
+    if (!canUseTicketPdf(ticket)) {
+      toast.info('Ticket PDF not available yet', {
+        description: 'Download is available after superadmin approval and PDF generation.',
+      });
+      return;
+    }
+    if (!ticket.id?.trim()) {
+      toast.error('Failed to download ticket PDF', {
+        description: 'This ticket is missing an id.',
+      });
+      return;
+    }
+    setDownloadingTicketId(ticket.id);
     try {
-      await openCrewTicketPdf(ticket, 'admin');
+      await downloadCrewTicketPdf(ticket, 'admin');
     } catch (err) {
-      toast.error('Failed to open ticket PDF', {
+      toast.error('Failed to download ticket PDF', {
         description: err instanceof Error ? err.message : 'Please try again.',
       });
+    } finally {
+      setDownloadingTicketId(null);
     }
   }, []);
 
@@ -2434,12 +2450,23 @@ const AdminTicketsPage = () => {
                             className="subsea-icon-action"
                             onClick={(e) => {
                               e.stopPropagation();
-                              void handleOpenTicketPdf(ticket);
+                              void handleDownloadTicketPdf(ticket);
                             }}
-                            disabled={!canUseTicketPdf(ticket)}
-                            title={canUseTicketPdf(ticket) ? 'View approved ticket PDF' : 'PDF available after approval'}
+                            disabled={downloadingTicketId === ticket.id}
+                            aria-disabled={!canUseTicketPdf(ticket)}
+                            title={
+                              downloadingTicketId === ticket.id
+                                ? 'Downloading ticket PDF…'
+                                : canUseTicketPdf(ticket)
+                                  ? 'Download approved ticket PDF'
+                                  : 'PDF available after approval'
+                            }
                           >
-                            <Download size={14} />
+                            {downloadingTicketId === ticket.id ? (
+                              <Loader2 size={14} className="animate-spin" aria-hidden />
+                            ) : (
+                              <Download size={14} />
+                            )}
                           </button>
                           <button
                             type="button"
@@ -2725,13 +2752,25 @@ const AdminTicketsPage = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={!canUseTicketPdf(selectedTicket)}
+                      disabled={
+                        !canUseTicketPdf(selectedTicket) ||
+                        downloadingTicketId === selectedTicket.id
+                      }
                       onClick={() => {
-                        void handleOpenTicketPdf(selectedTicket);
+                        void handleDownloadTicketPdf(selectedTicket);
                       }}
                     >
-                      <Download size={16} className="mr-2" />
-                      {canUseTicketPdf(selectedTicket) ? 'View / download ticket' : 'Available after approval'}
+                      {downloadingTicketId === selectedTicket.id ? (
+                        <>
+                          <Loader2 size={16} className="mr-2 animate-spin" aria-hidden />
+                          Downloading…
+                        </>
+                      ) : (
+                        <>
+                          <Download size={16} className="mr-2" />
+                          {canUseTicketPdf(selectedTicket) ? 'View / download ticket' : 'Available after approval'}
+                        </>
+                      )}
                     </Button>
                   </dd>
                 </div>

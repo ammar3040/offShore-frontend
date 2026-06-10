@@ -1223,10 +1223,16 @@
   transition: all 0.12s;
 }
 
-.subsea-icon-action:hover {
+.subsea-icon-action:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--surface2);
   color: var(--blue);
   border-color: var(--blue-border);
+}
+
+.subsea-icon-action:disabled,
+.subsea-icon-action[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .subsea-icon-action.danger:hover {
