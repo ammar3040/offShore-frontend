@@ -2,7 +2,7 @@ import html2pdf from 'html2pdf.js';
 import invoiceTemplate from '../../assets/lynq-travel-invoice.html?raw';
 import lynqLogoUrl from '../../assets/lynq-logo.png?url';
 import { buildInvoiceTemplateData, fillInvoiceTemplate } from './buildInvoice';
-import type { ProjectInvoiceBill } from './types';
+import type { TicketInvoiceBill } from './types';
 
 function prepareInvoiceHtmlForPdf(html: string): string {
   // MJML wraps tables in font-size:0 containers which html2canvas can clip.
@@ -17,7 +17,7 @@ function prepareInvoiceHtmlForPdf(html: string): string {
   return withTableFix.replace('</head>', `${pdfLayoutCss}</head>`);
 }
 
-function renderInvoiceHtml(bill: ProjectInvoiceBill): string {
+function renderInvoiceHtml(bill: TicketInvoiceBill): string {
   const templateData = buildInvoiceTemplateData(bill);
   const html = fillInvoiceTemplate(invoiceTemplate, {
     ...templateData,
@@ -80,7 +80,7 @@ async function withRenderedInvoice<T>(
   }
 }
 
-export async function generateInvoicePdfBlob(bill: ProjectInvoiceBill): Promise<Blob> {
+export async function generateInvoicePdfBlob(bill: TicketInvoiceBill): Promise<Blob> {
   const html = renderInvoiceHtml(bill);
 
   return withRenderedInvoice(html, async (body) => {
@@ -106,11 +106,11 @@ export async function generateInvoicePdfBlob(bill: ProjectInvoiceBill): Promise<
   });
 }
 
-export async function generateInvoicePdfFile(bill: ProjectInvoiceBill): Promise<File> {
+export async function generateInvoicePdfFile(bill: TicketInvoiceBill): Promise<File> {
   const blob = await generateInvoicePdfBlob(bill);
   return new File([blob], `${bill.invoiceNumber}.pdf`, { type: 'application/pdf' });
 }
 
-export function previewInvoiceHtml(bill: ProjectInvoiceBill): string {
+export function previewInvoiceHtml(bill: TicketInvoiceBill): string {
   return renderInvoiceHtml(bill);
 }

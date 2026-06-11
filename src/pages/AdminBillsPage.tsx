@@ -9,7 +9,12 @@ import {
 } from 'lucide-react';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
-import { fetchAdminInvoicePdfBlob, getAdminInvoices, type AdminInvoiceApi } from '../api/adminInvoice';
+import {
+  fetchAdminInvoicePdfBlob,
+  getAdminInvoiceKey,
+  getAdminInvoices,
+  type AdminInvoiceApi,
+} from '../api/adminInvoice';
 import { getProjects, type ProjectApi } from '../api/project';
 import { formatGbp } from '../lib/invoice/format';
 import './RigsPage.css';
@@ -80,7 +85,7 @@ const AdminBillsPage = () => {
   const getProjectTitle = (invoice: AdminInvoiceApi): string => {
     return (
       invoice.projectTitle ||
-      projectTitleById.get(invoice.projectId) ||
+      (invoice.projectId ? projectTitleById.get(invoice.projectId) : undefined) ||
       (invoice.projectId ? `Project ${invoice.projectId.slice(-6)}` : 'Untitled project')
     );
   };
@@ -101,8 +106,9 @@ const AdminBillsPage = () => {
     if (!q) return bills;
     return bills.filter((invoice) => {
       const title = getProjectTitle(invoice).toLowerCase();
+      const passenger = (invoice.passengerName ?? '').toLowerCase();
       const number = (invoice.invoiceNumber ?? '').toLowerCase();
-      return title.includes(q) || number.includes(q);
+      return title.includes(q) || passenger.includes(q) || number.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bills, search, projectTitleById]);
@@ -114,9 +120,10 @@ const AdminBillsPage = () => {
   const sentCount = useMemo(() => bills.filter((b) => getBillStatus(b) === 'Sent').length, [bills]);
 
   const handleViewPdf = async (invoice: AdminInvoiceApi) => {
-    if (!invoice.projectId) return;
+    const ticketId = getAdminInvoiceKey(invoice);
+    if (!ticketId) return;
     try {
-      const blob = await fetchAdminInvoicePdfBlob(invoice.projectId);
+      const blob = await fetchAdminInvoicePdfBlob(ticketId);
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -126,9 +133,10 @@ const AdminBillsPage = () => {
   };
 
   const handleDownloadPdf = async (invoice: AdminInvoiceApi) => {
-    if (!invoice.projectId) return;
+    const ticketId = getAdminInvoiceKey(invoice);
+    if (!ticketId) return;
     try {
-      const blob = await fetchAdminInvoicePdfBlob(invoice.projectId);
+      const blob = await fetchAdminInvoicePdfBlob(ticketId);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -158,7 +166,7 @@ const AdminBillsPage = () => {
             <Search size={13} />
             <input
               type="text"
-              placeholder="Search project, invoice..."
+              placeholder="Search passenger, project, invoice..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -194,8 +202,8 @@ const AdminBillsPage = () => {
         <main className="subsea-content">
           <div className="subsea-page-head">
             <div>
-              <h1>Project Bills</h1>
-              <p>Invoices issued by the superadmin for your projects. View or download the PDF.</p>
+              <h1>Ticket Bills</h1>
+              <p>One invoice per approved ticket, issued by the superadmin. View or download the PDF.</p>
             </div>
           </div>
 
@@ -237,7 +245,7 @@ const AdminBillsPage = () => {
             ) : filteredBills.length === 0 ? (
               <div className="admin-bills-empty">
                 {bills.length === 0
-                  ? 'No bills yet. Invoices will appear here once the superadmin sends them for your projects.'
+                  ? 'No bills yet. Invoices will appear here once the superadmin sends them for your approved tickets.'
                   : 'No bills match your search.'}
               </div>
             ) : (
@@ -245,14 +253,22 @@ const AdminBillsPage = () => {
                 {filteredBills.map((invoice) => {
                   const status = getBillStatus(invoice);
                   return (
-                    <div key={invoice.id ?? invoice.projectId} className="admin-bills-card">
+                    <div key={invoice.id ?? getAdminInvoiceKey(invoice)} className="admin-bills-card">
                       <div className="admin-bills-card-icon" title="Invoice">
                         <Receipt size={20} />
                       </div>
 
                       <div className="admin-bills-card-main">
-                        <div className="admin-bills-card-project">{getProjectTitle(invoice)}</div>
+                        <div className="admin-bills-card-project">
+                          {invoice.passengerName || getProjectTitle(invoice)}
+                        </div>
                         <div className="admin-bills-card-meta">
+                          {invoice.passengerName && (
+                            <>
+                              <span>{getProjectTitle(invoice)}</span>
+                              <span className="admin-bills-sep">·</span>
+                            </>
+                          )}
                           {invoice.invoiceNumber && (
                             <>
                               <span>{invoice.invoiceNumber}</span>

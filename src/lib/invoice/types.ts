@@ -14,10 +14,11 @@ export interface InvoiceLineItem {
   amountGbp: number;
 }
 
-export interface ProjectInvoiceBill {
+/** One invoice per approved crew ticket. */
+export interface TicketInvoiceBill {
+  ticket: CrewTicketApi;
   project: ProjectApi;
   admin: AdminApi | null;
-  tickets: CrewTicketApi[];
   lineItems: InvoiceLineItem[];
   ticketsSubtotalGbp: number;
   marginGbp: number;
@@ -27,6 +28,9 @@ export interface ProjectInvoiceBill {
   dueDate: Date;
   crewById?: Record<string, CrewMemberApi>;
 }
+
+/** @deprecated Use TicketInvoiceBill */
+export type ProjectInvoiceBill = TicketInvoiceBill;
 
 export interface InvoiceTemplateData {
   invoice_number: string;

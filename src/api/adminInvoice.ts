@@ -4,9 +4,12 @@ export type AdminInvoiceStatus = 'DRAFT' | 'GENERATED' | 'SENT';
 
 export interface AdminInvoiceApi {
   id?: string;
-  projectId: string;
-  /** Optional project title when the backend populates the project on the invoice. */
+  /** Crew ticket this invoice belongs to (primary key for upload/send/pdf). */
+  ticketId: string;
+  /** Project context for display; optional when populated from ticket. */
+  projectId?: string;
   projectTitle?: string;
+  passengerName?: string;
   invoiceNumber?: string;
   margin?: number | null;
   total?: number | null;
@@ -41,19 +44,62 @@ function getAdminAuthHeaders(): HeadersInit {
   return headers;
 }
 
+function extractRefId(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const id = obj.id ?? obj._id;
+    if (typeof id === 'string') return id;
+  }
+  return '';
+}
+
 function normalizeAdminInvoice(raw: Record<string, unknown>): AdminInvoiceApi {
-  const project = raw.project && typeof raw.project === 'object' ? (raw.project as Record<string, unknown>) : null;
+  const project =
+    raw.project && typeof raw.project === 'object' ? (raw.project as Record<string, unknown>) : null;
+  const ticketRef =
+    raw.crewTicket && typeof raw.crewTicket === 'object'
+      ? (raw.crewTicket as Record<string, unknown>)
+      : raw.crew_ticket && typeof raw.crew_ticket === 'object'
+        ? (raw.crew_ticket as Record<string, unknown>)
+        : raw.ticket && typeof raw.ticket === 'object'
+          ? (raw.ticket as Record<string, unknown>)
+          : null;
+  const crewRef =
+    ticketRef?.crew_id && typeof ticketRef.crew_id === 'object'
+      ? (ticketRef.crew_id as Record<string, unknown>)
+      : null;
+
+  const ticketId =
+    extractRefId(raw.ticketId ?? raw.ticket_id) ||
+    extractRefId(ticketRef) ||
+    extractRefId(raw.projectId ?? raw.project_id);
+
   const projectId =
-    raw.projectId ?? raw.project_id ?? (project ? project.id ?? project._id : undefined) ?? '';
+    extractRefId(raw.projectId ?? raw.project_id) ||
+    extractRefId(ticketRef?.project_id ?? ticketRef?.projectId) ||
+    extractRefId(project);
+
+  const passengerFirst = typeof crewRef?.firstname === 'string' ? crewRef.firstname : '';
+  const passengerLast = typeof crewRef?.lastname === 'string' ? crewRef.lastname : '';
+  const passengerFromCrew = `${passengerFirst} ${passengerLast}`.trim();
+
   return {
     id: raw.id != null ? String(raw.id) : raw._id != null ? String(raw._id) : undefined,
-    projectId: String(projectId),
+    ticketId,
+    projectId: projectId || undefined,
     projectTitle:
       typeof raw.projectTitle === 'string'
         ? raw.projectTitle
         : project && typeof project.title === 'string'
           ? project.title
-          : undefined,
+          : ticketRef && typeof ticketRef.project_id === 'object'
+            ? String((ticketRef.project_id as Record<string, unknown>).title ?? '')
+            : undefined,
+    passengerName:
+      typeof raw.passengerName === 'string'
+        ? raw.passengerName
+        : passengerFromCrew || undefined,
     invoiceNumber: typeof raw.invoiceNumber === 'string' ? raw.invoiceNumber : undefined,
     margin: typeof raw.margin === 'number' ? raw.margin : raw.margin != null ? Number(raw.margin) : null,
     total: typeof raw.total === 'number' ? raw.total : raw.total != null ? Number(raw.total) : null,
@@ -62,6 +108,11 @@ function normalizeAdminInvoice(raw: Record<string, unknown>): AdminInvoiceApi {
     sentAt: typeof raw.sentAt === 'string' ? raw.sentAt : null,
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : null,
   };
+}
+
+/** Primary lookup key for invoice records (ticket-scoped). */
+export function getAdminInvoiceKey(invoice: AdminInvoiceApi): string {
+  return invoice.ticketId;
 }
 
 function getErrorMessage(data: Record<string, unknown>, fallback: string): string {
@@ -107,12 +158,15 @@ export async function getSuperadminAdminInvoices(): Promise<{ adminInvoices: Adm
   }
 
   const data = await response.json();
-  return { adminInvoices: Array.isArray(data?.adminInvoices) ? data.adminInvoices : [] };
+  const list = Array.isArray(data?.adminInvoices) ? data.adminInvoices : [];
+  return {
+    adminInvoices: (list as Record<string, unknown>[]).map(normalizeAdminInvoice),
+  };
 }
 
-/** Upload admin invoice PDF - POST /superadmin/admin-invoice/:projectId/upload */
+/** Upload admin invoice PDF - POST /superadmin/admin-invoice/:ticketId/upload */
 export async function uploadSuperadminAdminInvoicePdf(
-  projectId: string,
+  ticketId: string,
   file: File,
   margin?: number
 ): Promise<{ adminInvoice?: AdminInvoiceApi; message?: string }> {
@@ -134,7 +188,7 @@ export async function uploadSuperadminAdminInvoicePdf(
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/superadmin/admin-invoice/${encodeURIComponent(projectId)}/upload`,
+    `${env.apiBaseUrl}/superadmin/admin-invoice/${encodeURIComponent(ticketId)}/upload`,
     {
       method: 'POST',
       headers,
@@ -158,7 +212,11 @@ export async function uploadSuperadminAdminInvoicePdf(
     throw new Error(getErrorMessage(data, `Request failed (${response.status})`));
   }
 
-  return data as { adminInvoice?: AdminInvoiceApi; message?: string };
+  const adminInvoice = data.adminInvoice
+    ? normalizeAdminInvoice(data.adminInvoice as Record<string, unknown>)
+    : undefined;
+
+  return { adminInvoice, message: typeof data.message === 'string' ? data.message : undefined };
 }
 
 /** List invoices (bills) for the logged-in admin - GET /admin/admin-invoices */
@@ -200,12 +258,12 @@ export async function getAdminInvoices(): Promise<{ adminInvoices: AdminInvoiceA
 }
 
 /** Fetch invoice PDF via authenticated backend stream (Cloudinary URLs may block direct browser access). */
-export async function fetchAdminInvoicePdfBlob(projectId: string): Promise<Blob> {
+export async function fetchAdminInvoicePdfBlob(ticketId: string): Promise<Blob> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/admin/admin-invoice/${encodeURIComponent(projectId)}/pdf`,
+    `${env.apiBaseUrl}/admin/admin-invoice/${encodeURIComponent(ticketId)}/pdf`,
     {
       method: 'GET',
       headers: getAdminAuthHeaders(),
@@ -231,16 +289,16 @@ export async function fetchAdminInvoicePdfBlob(projectId: string): Promise<Blob>
   return response.blob();
 }
 
-/** Send admin invoice email - POST /superadmin/admin-invoice/:projectId/send */
+/** Send admin invoice email - POST /superadmin/admin-invoice/:ticketId/send */
 export async function sendSuperadminAdminInvoice(
-  projectId: string,
+  ticketId: string,
   payload?: { margin?: number; invoiceNumber?: string }
 ): Promise<{ adminInvoice?: AdminInvoiceApi; message?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
   const response = await fetch(
-    `${env.apiBaseUrl}/superadmin/admin-invoice/${encodeURIComponent(projectId)}/send`,
+    `${env.apiBaseUrl}/superadmin/admin-invoice/${encodeURIComponent(ticketId)}/send`,
     {
       method: 'POST',
       headers: getHeaders(),
@@ -264,5 +322,9 @@ export async function sendSuperadminAdminInvoice(
     throw new Error(getErrorMessage(data, `Request failed (${response.status})`));
   }
 
-  return data as { adminInvoice?: AdminInvoiceApi; message?: string };
+  const adminInvoice = data.adminInvoice
+    ? normalizeAdminInvoice(data.adminInvoice as Record<string, unknown>)
+    : undefined;
+
+  return { adminInvoice, message: typeof data.message === 'string' ? data.message : undefined };
 }

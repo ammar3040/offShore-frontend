@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileCheck, FileText, Receipt, Send, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  getAdminInvoiceKey,
   getSuperadminAdminInvoices,
   sendSuperadminAdminInvoice,
   uploadSuperadminAdminInvoicePdf,
@@ -14,10 +15,10 @@ import {
   getSuperadminProjects,
 } from '../api/superadmin';
 import type { CrewMemberApi } from '../api/crew';
-import { buildProjectInvoiceBills } from '../lib/invoice/buildInvoice';
+import { buildTicketInvoiceBills, getTicketPassengerName } from '../lib/invoice/buildInvoice';
 import { formatGbp } from '../lib/invoice/format';
 import { generateInvoicePdfFile } from '../lib/invoice/generateInvoicePdf';
-import type { ProjectInvoiceBill } from '../lib/invoice/types';
+import type { TicketInvoiceBill } from '../lib/invoice/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,16 +35,16 @@ type GeneratedPdfState = Record<string, File>;
 const SuperadminAdminInvoicePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [bills, setBills] = useState<ProjectInvoiceBill[]>([]);
+  const [bills, setBills] = useState<TicketInvoiceBill[]>([]);
   const [invoiceRecords, setInvoiceRecords] = useState<Record<string, AdminInvoiceApi>>({});
   const [margins, setMargins] = useState<Record<string, string>>({});
-  const [generatingProjectId, setGeneratingProjectId] = useState<string | null>(null);
-  const [uploadingProjectId, setUploadingProjectId] = useState<string | null>(null);
-  const [sendingProjectId, setSendingProjectId] = useState<string | null>(null);
+  const [generatingTicketId, setGeneratingTicketId] = useState<string | null>(null);
+  const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
+  const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
   const [generatedPdfs, setGeneratedPdfs] = useState<GeneratedPdfState>({});
-  const [selectedBill, setSelectedBill] = useState<ProjectInvoiceBill | null>(null);
+  const [selectedBill, setSelectedBill] = useState<TicketInvoiceBill | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pendingUploadProjectId = useRef<string | null>(null);
+  const pendingUploadTicketId = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,14 +63,16 @@ const SuperadminAdminInvoicePage = () => {
         if (cancelled) return;
 
         const invoiceMap = Object.fromEntries(
-          (invoicesRes.adminInvoices ?? []).map((invoice) => [invoice.projectId, invoice])
+          (invoicesRes.adminInvoices ?? [])
+            .filter((invoice) => Boolean(getAdminInvoiceKey(invoice)))
+            .map((invoice) => [getAdminInvoiceKey(invoice), invoice])
         );
         setInvoiceRecords(invoiceMap);
 
         const marginDefaults = Object.fromEntries(
           (invoicesRes.adminInvoices ?? [])
-            .filter((invoice) => invoice.margin != null)
-            .map((invoice) => [invoice.projectId, String(invoice.margin)])
+            .filter((invoice) => invoice.margin != null && getAdminInvoiceKey(invoice))
+            .map((invoice) => [getAdminInvoiceKey(invoice), String(invoice.margin)])
         );
 
         const crewIds = [
@@ -89,12 +92,12 @@ const SuperadminAdminInvoicePage = () => {
           crewProfiles.filter((entry): entry is readonly [string, CrewMemberApi] => entry != null)
         ) as Record<string, CrewMemberApi>;
 
-        const computedBills = buildProjectInvoiceBills(
+        const computedBills = buildTicketInvoiceBills(
           projectsRes.projects ?? [],
           ticketsRes.crewTickets ?? [],
           adminsRes.admins ?? [],
           Object.fromEntries(
-            Object.entries(marginDefaults).map(([projectId, value]) => [projectId, Number(value)])
+            Object.entries(marginDefaults).map(([ticketId, value]) => [ticketId, Number(value)])
           ),
           crewById
         );
@@ -118,46 +121,54 @@ const SuperadminAdminInvoicePage = () => {
 
   const billsWithMargins = useMemo(() => {
     const marginNumbers = Object.fromEntries(
-      Object.entries(margins).map(([projectId, value]) => {
+      Object.entries(margins).map(([ticketId, value]) => {
         const parsed = parseFloat(value.trim());
-        return [projectId, Number.isFinite(parsed) && parsed > 0 ? parsed : 0];
+        return [ticketId, Number.isFinite(parsed) && parsed > 0 ? parsed : 0];
       })
     );
 
     return bills.map((bill) => {
-      const marginGbp = marginNumbers[bill.project.id] ?? 0;
+      const marginGbp = marginNumbers[bill.ticket.id] ?? 0;
       const totalGbp = bill.ticketsSubtotalGbp + marginGbp;
       return { ...bill, marginGbp, totalGbp };
     });
   }, [bills, margins]);
 
-  const getAdminLabel = (bill: ProjectInvoiceBill) => {
+  const getAdminLabel = (bill: TicketInvoiceBill) => {
     if (!bill.admin) return 'Unknown admin';
     return `${bill.admin.firstname} ${bill.admin.lastname}`.trim();
   };
 
-  const handleMarginChange = (projectId: string, value: string) => {
-    setMargins((prev) => ({ ...prev, [projectId]: value }));
+  const getPassengerLabel = (bill: TicketInvoiceBill) => getTicketPassengerName(bill.ticket);
+
+  const getRouteLabel = (bill: TicketInvoiceBill) => {
+    const from = bill.ticket.from?.Name ?? '—';
+    const to = bill.ticket.to?.Name ?? '—';
+    return `${from} → ${to}`;
+  };
+
+  const handleMarginChange = (ticketId: string, value: string) => {
+    setMargins((prev) => ({ ...prev, [ticketId]: value }));
     setGeneratedPdfs((prev) => {
       const next = { ...prev };
-      delete next[projectId];
+      delete next[ticketId];
       return next;
     });
   };
 
-  const handleDownloadGeneratedPdf = (projectId: string) => {
-    const file = generatedPdfs[projectId];
+  const handleDownloadGeneratedPdf = (ticketId: string) => {
+    const file = generatedPdfs[ticketId];
     if (!file) return;
     const url = URL.createObjectURL(file);
     window.open(url, '_blank', 'noopener,noreferrer');
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
-  const handleGeneratePdf = async (bill: ProjectInvoiceBill) => {
-    setGeneratingProjectId(bill.project.id);
+  const handleGeneratePdf = async (bill: TicketInvoiceBill) => {
+    setGeneratingTicketId(bill.ticket.id);
     try {
       const file = await generateInvoicePdfFile(bill);
-      setGeneratedPdfs((prev) => ({ ...prev, [bill.project.id]: file }));
+      setGeneratedPdfs((prev) => ({ ...prev, [bill.ticket.id]: file }));
       toast.success('PDF generated', {
         description: `${bill.invoiceNumber}.pdf is ready to attach or send.`,
       });
@@ -166,49 +177,49 @@ const SuperadminAdminInvoicePage = () => {
         description: err instanceof Error ? err.message : 'Could not generate invoice PDF.',
       });
     } finally {
-      setGeneratingProjectId(null);
+      setGeneratingTicketId(null);
     }
   };
 
-  const handleUploadClick = (projectId: string) => {
-    pendingUploadProjectId.current = projectId;
+  const handleUploadClick = (ticketId: string) => {
+    pendingUploadTicketId.current = ticketId;
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    const projectId = pendingUploadProjectId.current;
-    pendingUploadProjectId.current = null;
+    const ticketId = pendingUploadTicketId.current;
+    pendingUploadTicketId.current = null;
     event.target.value = '';
-    if (!file || !projectId) return;
+    if (!file || !ticketId) return;
 
-    const margin = parseFloat(margins[projectId]?.trim() ?? '');
-    setUploadingProjectId(projectId);
+    const margin = parseFloat(margins[ticketId]?.trim() ?? '');
+    setUploadingTicketId(ticketId);
     try {
       const res = await uploadSuperadminAdminInvoicePdf(
-        projectId,
+        ticketId,
         file,
         Number.isFinite(margin) ? margin : undefined
       );
       if (res.adminInvoice) {
-        setInvoiceRecords((prev) => ({ ...prev, [projectId]: res.adminInvoice! }));
+        setInvoiceRecords((prev) => ({ ...prev, [ticketId]: res.adminInvoice! }));
       }
-      setGeneratedPdfs((prev) => ({ ...prev, [projectId]: file }));
+      setGeneratedPdfs((prev) => ({ ...prev, [ticketId]: file }));
       toast.success('PDF attached', { description: res.message || 'Invoice PDF uploaded successfully.' });
     } catch (err) {
       toast.error('Upload failed', {
         description: err instanceof Error ? err.message : 'Could not upload invoice PDF.',
       });
     } finally {
-      setUploadingProjectId(null);
+      setUploadingTicketId(null);
     }
   };
 
-  const handleSendInvoice = async (bill: ProjectInvoiceBill) => {
-    const projectId = bill.project.id;
-    const generatedPdf = generatedPdfs[projectId];
-    const existingPdf = invoiceRecords[projectId]?.pdf;
-    const margin = parseFloat(margins[projectId]?.trim() ?? '');
+  const handleSendInvoice = async (bill: TicketInvoiceBill) => {
+    const ticketId = bill.ticket.id;
+    const generatedPdf = generatedPdfs[ticketId];
+    const existingPdf = invoiceRecords[ticketId]?.pdf;
+    const margin = parseFloat(margins[ticketId]?.trim() ?? '');
     const marginValue = Number.isFinite(margin) ? margin : undefined;
 
     if (!generatedPdf && !existingPdf) {
@@ -218,24 +229,22 @@ const SuperadminAdminInvoicePage = () => {
       return;
     }
 
-    setSendingProjectId(projectId);
+    setSendingTicketId(ticketId);
     try {
-      // Always upload the freshly generated PDF so the sent invoice reflects the
-      // latest margin/total (a stored PDF may be stale after a margin change).
       if (generatedPdf) {
-        const uploadRes = await uploadSuperadminAdminInvoicePdf(projectId, generatedPdf, marginValue);
+        const uploadRes = await uploadSuperadminAdminInvoicePdf(ticketId, generatedPdf, marginValue);
         if (uploadRes.adminInvoice) {
-          setInvoiceRecords((prev) => ({ ...prev, [projectId]: uploadRes.adminInvoice! }));
+          setInvoiceRecords((prev) => ({ ...prev, [ticketId]: uploadRes.adminInvoice! }));
         }
       }
 
-      const res = await sendSuperadminAdminInvoice(projectId, {
+      const res = await sendSuperadminAdminInvoice(ticketId, {
         margin: marginValue,
         invoiceNumber: bill.invoiceNumber,
       });
 
       if (res.adminInvoice) {
-        setInvoiceRecords((prev) => ({ ...prev, [projectId]: res.adminInvoice! }));
+        setInvoiceRecords((prev) => ({ ...prev, [ticketId]: res.adminInvoice! }));
       }
 
       toast.success('Invoice sent', {
@@ -246,14 +255,14 @@ const SuperadminAdminInvoicePage = () => {
         description: err instanceof Error ? err.message : 'Could not send invoice to admin.',
       });
     } finally {
-      setSendingProjectId(null);
+      setSendingTicketId(null);
     }
   };
 
-  const getInvoiceStatus = (projectId: string) => {
-    const record = invoiceRecords[projectId];
+  const getInvoiceStatus = (ticketId: string) => {
+    const record = invoiceRecords[ticketId];
     if (record?.status === 'SENT' || record?.sentAt) return 'Sent';
-    if (record?.pdf || generatedPdfs[projectId]) return 'PDF ready';
+    if (record?.pdf || generatedPdfs[ticketId]) return 'PDF ready';
     return 'Draft';
   };
 
@@ -263,7 +272,7 @@ const SuperadminAdminInvoicePage = () => {
         <div>
           <h1 className="superadmin-admin-invoice-title">Admin Invoices</h1>
           <p className="superadmin-admin-invoice-subtitle">
-            Review project bills, add an optional margin, generate the Lynq Travel invoice PDF, and send it to the admin.
+            One invoice per approved ticket. Add an optional margin, generate the Lynq Travel invoice PDF, and send it to the admin.
           </p>
         </div>
       </header>
@@ -286,35 +295,38 @@ const SuperadminAdminInvoicePage = () => {
       <Card className="superadmin-admin-invoice-content">
         <CardContent className="p-0">
           {loading ? (
-            <p className="superadmin-admin-invoice-empty">Loading project bills…</p>
+            <p className="superadmin-admin-invoice-empty">Loading ticket invoices…</p>
           ) : billsWithMargins.length === 0 ? (
             <p className="superadmin-admin-invoice-empty">
-              No billable projects yet. Approved crew tickets are required before an admin invoice can be created.
+              No billable tickets yet. Approved crew tickets are required before an admin invoice can be created.
             </p>
           ) : (
             <div className="superadmin-admin-invoice-list">
               {billsWithMargins.map((bill) => {
-                const projectId = bill.project.id;
-                const hasGeneratedPdf = Boolean(generatedPdfs[projectId] || invoiceRecords[projectId]?.pdf);
-                const status = getInvoiceStatus(projectId);
+                const ticketId = bill.ticket.id;
+                const hasGeneratedPdf = Boolean(generatedPdfs[ticketId] || invoiceRecords[ticketId]?.pdf);
+                const status = getInvoiceStatus(ticketId);
 
                 return (
-                  <div key={projectId} className="superadmin-admin-invoice-card">
+                  <div key={ticketId} className="superadmin-admin-invoice-card">
                     <div className="superadmin-admin-invoice-icon" title="Admin invoice">
                       <Receipt size={20} />
                     </div>
 
                     <div className="superadmin-admin-invoice-main">
-                      <div className="superadmin-admin-invoice-project">{bill.project.title}</div>
+                      <div className="superadmin-admin-invoice-project">{getPassengerLabel(bill)}</div>
                       <div className="superadmin-admin-invoice-meta">
-                        <span>{getAdminLabel(bill)}</span>
+                        <span>{bill.project.title}</span>
                         <span className="superadmin-admin-invoice-sep">·</span>
-                        <span>{bill.lineItems.length} ticket{bill.lineItems.length !== 1 ? 's' : ''}</span>
+                        <span>{getRouteLabel(bill)}</span>
                         <span className="superadmin-admin-invoice-sep">·</span>
                         <span>{bill.invoiceNumber}</span>
                       </div>
+                      <div className="superadmin-admin-invoice-meta">
+                        <span>{getAdminLabel(bill)}</span>
+                      </div>
                       <div className="superadmin-admin-invoice-amounts">
-                        <span>Tickets: {formatGbp(bill.ticketsSubtotalGbp)}</span>
+                        <span>Ticket: {formatGbp(bill.ticketsSubtotalGbp)}</span>
                         {bill.marginGbp > 0 ? <span>Margin: {formatGbp(bill.marginGbp)}</span> : null}
                         <strong>Total: {formatGbp(bill.totalGbp)}</strong>
                       </div>
@@ -334,8 +346,8 @@ const SuperadminAdminInvoicePage = () => {
                           min="0"
                           step="0.01"
                           placeholder="0.00"
-                          value={margins[projectId] ?? ''}
-                          onChange={(e) => handleMarginChange(projectId, e.target.value)}
+                          value={margins[ticketId] ?? ''}
+                          onChange={(e) => handleMarginChange(ticketId, e.target.value)}
                         />
                       </label>
 
@@ -343,10 +355,10 @@ const SuperadminAdminInvoicePage = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleGeneratePdf(bill)}
-                        disabled={generatingProjectId === projectId}
+                        disabled={generatingTicketId === ticketId}
                         title="Generate invoice PDF from Lynq Travel template"
                       >
-                        {generatingProjectId === projectId ? (
+                        {generatingTicketId === ticketId ? (
                           <span className="superadmin-admin-invoice-spinner" />
                         ) : (
                           <>
@@ -359,9 +371,9 @@ const SuperadminAdminInvoicePage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDownloadGeneratedPdf(projectId)}
-                        disabled={!generatedPdfs[projectId]}
-                        title={generatedPdfs[projectId] ? 'Preview generated PDF' : 'Generate PDF first'}
+                        onClick={() => handleDownloadGeneratedPdf(ticketId)}
+                        disabled={!generatedPdfs[ticketId]}
+                        title={generatedPdfs[ticketId] ? 'Preview generated PDF' : 'Generate PDF first'}
                       >
                         <FileCheck size={16} />
                         View PDF
@@ -371,11 +383,11 @@ const SuperadminAdminInvoicePage = () => {
                         variant="outline"
                         size="sm"
                         className={hasGeneratedPdf ? 'superadmin-admin-invoice-pdf-btn--ready' : ''}
-                        onClick={() => handleUploadClick(projectId)}
-                        disabled={uploadingProjectId === projectId}
+                        onClick={() => handleUploadClick(ticketId)}
+                        disabled={uploadingTicketId === ticketId}
                         title={hasGeneratedPdf ? 'Replace attached PDF' : 'Attach invoice PDF'}
                       >
-                        {uploadingProjectId === projectId ? (
+                        {uploadingTicketId === ticketId ? (
                           <span className="superadmin-admin-invoice-spinner" />
                         ) : hasGeneratedPdf ? (
                           <>
@@ -394,10 +406,10 @@ const SuperadminAdminInvoicePage = () => {
                         variant="default"
                         size="sm"
                         onClick={() => handleSendInvoice(bill)}
-                        disabled={sendingProjectId === projectId || !hasGeneratedPdf}
+                        disabled={sendingTicketId === ticketId || !hasGeneratedPdf}
                         title={hasGeneratedPdf ? 'Send invoice to admin' : 'Generate or attach PDF first'}
                       >
-                        {sendingProjectId === projectId ? (
+                        {sendingTicketId === ticketId ? (
                           <span className="superadmin-admin-invoice-spinner" />
                         ) : (
                           <>
@@ -432,8 +444,16 @@ const SuperadminAdminInvoicePage = () => {
             <div className="superadmin-admin-invoice-detail">
               <dl className="superadmin-admin-invoice-detail-list">
                 <div>
+                  <dt>Passenger</dt>
+                  <dd>{getPassengerLabel(selectedBill)}</dd>
+                </div>
+                <div>
                   <dt>Project</dt>
                   <dd>{selectedBill.project.title}</dd>
+                </div>
+                <div>
+                  <dt>Route</dt>
+                  <dd>{getRouteLabel(selectedBill)}</dd>
                 </div>
                 <div>
                   <dt>Admin</dt>
@@ -444,7 +464,7 @@ const SuperadminAdminInvoicePage = () => {
                   <dd>{selectedBill.invoiceNumber}</dd>
                 </div>
                 <div>
-                  <dt>Tickets subtotal</dt>
+                  <dt>Ticket price</dt>
                   <dd>{formatGbp(selectedBill.ticketsSubtotalGbp)}</dd>
                 </div>
                 <div>
@@ -457,7 +477,7 @@ const SuperadminAdminInvoicePage = () => {
                 </div>
               </dl>
 
-              <h3>Line items</h3>
+              <h3>Line item</h3>
               <ul className="superadmin-admin-invoice-line-items">
                 {selectedBill.lineItems.map((item, index) => (
                   <li key={`${item.passengerName}-${index}`}>

@@ -81,6 +81,7 @@ export interface AdminAnalytics {
   totalTickets: number;
   adminsByActivity?: SuperadminAdminActivityRow[];
   markup?: number | null;
+  markupPercentage?: number | null;
   cashback?: number | null;
   cancellationCharges?: number | null;
   baseCurrency?: 'GBP' | 'USD' | 'INR';
@@ -309,6 +310,7 @@ export interface MarkupResponse {
     email: string;
     phone?: string;
     markup: number;
+    markupPercentage?: number | null;
     cashback?: number;
     cancellationCharges?: number;
     baseCurrency?: 'GBP' | 'USD' | 'INR';
@@ -365,6 +367,38 @@ export async function updateSuperadminMarkup(markup: number): Promise<MarkupResp
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ markup }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let msg = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const err = JSON.parse(text);
+        msg = err?.message || err?.error || msg;
+      } catch {
+        msg = text;
+      }
+    }
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
+/** Update markup percentage - PUT /superadmin/markup_percentage */
+export async function updateSuperadminMarkupPercentage(
+  markupPercentage: number | null
+): Promise<{ message?: string; superAdmin?: MarkupResponse['superAdmin'] }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/markup_percentage`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ markup_percentage: markupPercentage }),
     signal: controller.signal,
   });
   clearTimeout(timeoutId);

@@ -1,8 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FolderKanban, Ship, Ticket, TrendingUp, Plus, BadgeDollarSign, CircleX } from 'lucide-react';
+import { Users, FolderKanban, Ship, Ticket, TrendingUp, Plus, BadgeDollarSign, CircleX, Percent } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSuperadminAnalytics, updateSuperadminSettings } from '../api/superadmin';
+import {
+  getSuperadminAnalytics,
+  updateSuperadminSettings,
+  updateSuperadminMarkupPercentage,
+} from '../api/superadmin';
 import { fetchRates, convert, formatGbpInDisplayCurrency, type CurrencyCode } from '../lib/currency';
 import {
   ADMIN_BALANCE_CURRENCY_CHANGE_EVENT,
@@ -55,11 +59,13 @@ const SuperadminDashboard = () => {
   const [settings, setSettings] = useState<{
     baseCurrency: CurrencyCode;
     markupGBP: number | null;
+    markupPercentage: number | null;
     cashbackGBP: number | null;
     cancellationChargesGBP: number | null;
   }>({
     baseCurrency: 'GBP',
     markupGBP: null,
+    markupPercentage: null,
     cashbackGBP: null,
     cancellationChargesGBP: null,
   });
@@ -67,6 +73,9 @@ const SuperadminDashboard = () => {
   const [showMarkupForm, setShowMarkupForm] = useState(false);
   const [markupInput, setMarkupInput] = useState('');
   const [markupSaving, setMarkupSaving] = useState(false);
+  const [showMarkupPercentageForm, setShowMarkupPercentageForm] = useState(false);
+  const [markupPercentageInput, setMarkupPercentageInput] = useState('');
+  const [markupPercentageSaving, setMarkupPercentageSaving] = useState(false);
   const [showCashbackForm, setShowCashbackForm] = useState(false);
   const [cashbackInput, setCashbackInput] = useState('');
   const [cashbackSaving, setCashbackSaving] = useState(false);
@@ -96,6 +105,7 @@ const SuperadminDashboard = () => {
           setSettings({
             baseCurrency: analyticsData.baseCurrency ?? 'GBP',
             markupGBP: analyticsData.markup ?? null,
+            markupPercentage: analyticsData.markupPercentage ?? null,
             cashbackGBP: analyticsData.cashback ?? null,
             cancellationChargesGBP: analyticsData.cancellationCharges ?? null,
           });
@@ -115,6 +125,7 @@ const SuperadminDashboard = () => {
           setSettings({
             baseCurrency: 'GBP',
             markupGBP: null,
+            markupPercentage: null,
             cashbackGBP: null,
             cancellationChargesGBP: null,
           });
@@ -186,6 +197,37 @@ const SuperadminDashboard = () => {
   const displayCancellationCharges = rates && settings.cancellationChargesGBP != null
     ? convert(settings.cancellationChargesGBP, 'GBP', settings.baseCurrency, rates)
     : settings.cancellationChargesGBP;
+
+  const handleSaveMarkupPercentage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(markupPercentageInput.trim());
+    if (isNaN(value) || value < 0) {
+      toast.error('Invalid markup percentage', {
+        description: 'Please enter a valid positive number.',
+      });
+      return;
+    }
+    setMarkupPercentageSaving(true);
+    try {
+      const res = await updateSuperadminMarkupPercentage(value);
+      setSettings((s) => ({
+        ...s,
+        markupPercentage: res?.superAdmin?.markupPercentage ?? value,
+      }));
+      setShowMarkupPercentageForm(false);
+      setMarkupPercentageInput('');
+      toast.success('Markup percentage updated', {
+        description: 'Percentage markup saved successfully.',
+      });
+    } catch (err) {
+      toast.error('Update failed', {
+        description:
+          err instanceof Error ? err.message : 'Failed to update markup percentage.',
+      });
+    } finally {
+      setMarkupPercentageSaving(false);
+    }
+  };
 
   const handleSaveMarkup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,6 +306,15 @@ const SuperadminDashboard = () => {
     } finally {
       setCancellationSaving(false);
     }
+  };
+
+  const openMarkupPercentageForm = () => {
+    if (settings.markupPercentage != null) {
+      setMarkupPercentageInput(String(settings.markupPercentage));
+    } else {
+      setMarkupPercentageInput('');
+    }
+    setShowMarkupPercentageForm(true);
   };
 
   const openMarkupForm = () => {
@@ -384,18 +435,89 @@ const SuperadminDashboard = () => {
                 <span className="superadmin-dash-card-value">
                   {displayMarkup != null ? `${symbol}${displayMarkup.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                 </span>
-                <span className="superadmin-dash-card-label">MARKUP</span>
+                <span className="superadmin-dash-card-label">FLAT MARKUP</span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className="superadmin-markup-add-btn"
                   onClick={openMarkupForm}
-                  title="Add markup"
-                  aria-label="Add markup"
+                  title="Add flat markup"
+                  aria-label="Add flat markup"
                 >
                   <Plus size={14} />
                   Add Markup
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+        <Card className="superadmin-dash-card superadmin-dash-card-markup-percentage">
+          <div className="superadmin-dash-card-icon superadmin-dash-icon--indigo">
+            <Percent size={24} />
+          </div>
+          <div className="superadmin-dash-card-content">
+            {showMarkupPercentageForm ? (
+              <form className="superadmin-markup-form" onSubmit={handleSaveMarkupPercentage}>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={markupPercentageInput}
+                  onChange={(e) => setMarkupPercentageInput(e.target.value)}
+                  placeholder="e.g. 2"
+                  className="superadmin-markup-input superadmin-markup-percentage-input"
+                  autoFocus
+                  disabled={markupPercentageSaving}
+                />
+                <span className="superadmin-input-currency-hint superadmin-input-currency-hint--percentage">
+                  % of Riya fare
+                </span>
+                <div className="superadmin-markup-actions">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="superadmin-markup-percentage-save"
+                    disabled={markupPercentageSaving}
+                  >
+                    {markupPercentageSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowMarkupPercentageForm(false);
+                      setMarkupPercentageInput('');
+                    }}
+                    disabled={markupPercentageSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="superadmin-dash-card-value">
+                  {settings.markupPercentage != null
+                    ? `${settings.markupPercentage}%`
+                    : '—'}
+                </span>
+                <span className="superadmin-dash-card-label">MARKUP PERCENTAGE</span>
+                <span className="superadmin-dash-card-sublabel" title="Applied as a percentage of the Riya fare">
+                  % of Riya fare
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="superadmin-markup-add-btn superadmin-markup-percentage-add-btn"
+                  onClick={openMarkupPercentageForm}
+                  title="Set markup percentage"
+                  aria-label="Set markup percentage"
+                >
+                  <Plus size={14} />
+                  Set Percentage
                 </Button>
               </>
             )}

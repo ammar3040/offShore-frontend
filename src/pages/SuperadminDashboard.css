@@ -347,6 +347,44 @@
   gap: 8px;
 }
 
+/* Markup percentage card */
+.superadmin-dash-card-markup-percentage {
+  position: relative;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.superadmin-dash-card-markup-percentage:hover {
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.06);
+  border-color: hsl(var(--ring) / 0.5);
+}
+
+.superadmin-dash-icon--indigo {
+  background: hsl(239 84% 67% / 0.2);
+  color: hsl(239 84% 55%);
+}
+
+.dark .superadmin-dash-icon--indigo {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.superadmin-dash-card-markup-percentage .superadmin-dash-card-content {
+  position: relative;
+}
+
+.superadmin-dash-card-markup-percentage:hover .superadmin-markup-percentage-add-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.superadmin-input-currency-hint--percentage {
+  color: hsl(239 84% 55%);
+}
+
+.dark .superadmin-input-currency-hint--percentage {
+  color: hsl(239 84% 75%);
+}
+
 /* Cashback card */
 .superadmin-dash-card-cashback {
   position: relative;
@@ -479,6 +517,7 @@
   }
 
   .superadmin-markup-add-btn,
+  .superadmin-markup-percentage-add-btn,
   .superadmin-cashback-add-btn,
   .superadmin-cancellation-add-btn {
     opacity: 1;

@@ -1,10 +1,23 @@
 import type { CrewMemberApi } from '../../api/crew';
 import type { AdminApi } from '../../api/superadmin';
 import type { ProjectApi } from '../../api/project';
-import type { CrewTicketApi, CrewTicketCrewRef } from '../../api/ticket';
+import type { CrewTicketApi } from '../../api/ticket';
 import { getTicketStatus } from '../../api/ticket';
 import { escapeHtml, formatGbp, formatInvoiceDate, formatTripLabel } from './format';
-import type { InvoiceLineItem, InvoiceTemplateData, ProjectInvoiceBill } from './types';
+import type { InvoiceLineItem, InvoiceTemplateData, TicketInvoiceBill } from './types';
+
+/** Static issuer / recipient on every Lynq Travel invoice (see invoice_INV-014.mjml). */
+const INVOICE_FROM = {
+  name: 'Lynq Travel',
+  addressHtml: 'United Kingdom',
+  email: 'hello@lynq.click',
+} as const;
+
+const INVOICE_TO = {
+  name: 'Subseaquence Ltd',
+  addressHtml:
+    'Unit 9A Kent House<br/>19 Bourne Road<br/>Old Bexley Business Park<br/>Bexley, Kent, DA5 1LR<br/>United Kingdom',
+} as const;
 
 function getCrewName(ticket: CrewTicketApi): string {
   const c = ticket.crew_id;
@@ -19,11 +32,27 @@ function getRouteLabel(ticket: CrewTicketApi): string {
   return `Flights booked — ${from} → ${to}`;
 }
 
+function parseFlightDateTime(value?: string): Date | null {
+  if (!value?.trim()) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** First segment departure from the booked flight snapshot. */
+function getFirstDepartureDate(ticket: CrewTicketApi): Date | null {
+  for (const leg of ticket.flightSnapshot?.legs ?? []) {
+    const firstSegment = leg.itinerary?.[0];
+    const fromSegment = parseFlightDateTime(firstSegment?.departureTime);
+    if (fromSegment) return fromSegment;
+    const fromLeg = parseFlightDateTime(leg.departureTime);
+    if (fromLeg) return fromLeg;
+  }
+  return null;
+}
+
 function getDepartureLabel(ticket: CrewTicketApi): string {
-  const created = ticket.createdAt ?? ticket.approvedAt;
-  if (!created) return 'Departure: —';
-  const d = new Date(created);
-  if (Number.isNaN(d.getTime())) return 'Departure: —';
+  const d = getFirstDepartureDate(ticket);
+  if (!d) return 'Departure: —';
   return `Departure: ${formatInvoiceDate(d)}`;
 }
 
@@ -41,8 +70,8 @@ function buildLineItem(projectTitle: string, ticket: CrewTicketApi): InvoiceLine
   };
 }
 
-function buildInvoiceNumber(project: ProjectApi, index: number): string {
-  const suffix = project.id.slice(-4).toUpperCase();
+function buildInvoiceNumber(ticket: CrewTicketApi, index: number): string {
+  const suffix = ticket.id.slice(-4).toUpperCase();
   return `INV-${String(index + 1).padStart(3, '0')}-${suffix}`;
 }
 
@@ -52,48 +81,66 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-export function buildProjectInvoiceBills(
+function getTicketProjectId(ticket: CrewTicketApi): string {
+  return ticket.project_id?._id ?? (ticket.project_id as { id?: string })?.id ?? '';
+}
+
+function resolveProject(ticket: CrewTicketApi, projectById: Map<string, ProjectApi>): ProjectApi {
+  const projectId = getTicketProjectId(ticket);
+  const existing = projectById.get(projectId);
+  if (existing) return existing;
+
+  return {
+    id: projectId,
+    title: ticket.project_id?.title ?? 'Untitled project',
+    description: ticket.project_id?.description ?? '',
+    duration: { startDate: '', endDate: '' },
+    span: '',
+    status: ticket.project_id?.status ?? '',
+    createdBy: '',
+    participants: [],
+  };
+}
+
+/** Builds one invoice bill per approved crew ticket. */
+export function buildTicketInvoiceBills(
   projects: ProjectApi[],
   tickets: CrewTicketApi[],
   admins: AdminApi[],
-  marginsByProject: Record<string, number> = {},
+  marginsByTicket: Record<string, number> = {},
   crewById: Record<string, CrewMemberApi> = {}
-): ProjectInvoiceBill[] {
+): TicketInvoiceBill[] {
+  const projectById = new Map(projects.map((project) => [project.id, project]));
   const adminById = new Map(admins.map((admin) => [admin.id, admin]));
   const approvedTickets = tickets.filter((ticket) => getTicketStatus(ticket) === 'APPROVED');
 
-  return projects
-    .map((project, index) => {
-      const projectTickets = approvedTickets.filter((ticket) => {
-        const pid = ticket.project_id?._id ?? (ticket.project_id as { id?: string })?.id ?? '';
-        return pid === project.id;
-      });
+  return approvedTickets.map((ticket, index) => {
+    const project = resolveProject(ticket, projectById);
+    const lineItem = buildLineItem(project.title, ticket);
+    const marginGbp = Math.max(0, Number(marginsByTicket[ticket.id] ?? 0));
+    const ticketsSubtotalGbp = lineItem.amountGbp;
+    const totalGbp = ticketsSubtotalGbp + marginGbp;
+    const issueDate = new Date();
+    const admin = adminById.get(project.createdBy) ?? null;
 
-      if (projectTickets.length === 0) return null;
-
-      const lineItems = projectTickets.map((ticket) => buildLineItem(project.title, ticket));
-      const ticketsSubtotalGbp = lineItems.reduce((sum, item) => sum + item.amountGbp, 0);
-      const marginGbp = Math.max(0, Number(marginsByProject[project.id] ?? 0));
-      const totalGbp = ticketsSubtotalGbp + marginGbp;
-      const issueDate = new Date();
-      const admin = adminById.get(project.createdBy) ?? null;
-
-      return {
-        project,
-        admin,
-        tickets: projectTickets,
-        lineItems,
-        ticketsSubtotalGbp,
-        marginGbp,
-        totalGbp,
-        invoiceNumber: buildInvoiceNumber(project, index),
-        issueDate,
-        dueDate: addDays(issueDate, 1),
-        crewById,
-      } as ProjectInvoiceBill;
-    })
-    .filter((bill): bill is ProjectInvoiceBill => bill !== null);
+    return {
+      ticket,
+      project,
+      admin,
+      lineItems: [lineItem],
+      ticketsSubtotalGbp,
+      marginGbp,
+      totalGbp,
+      invoiceNumber: buildInvoiceNumber(ticket, index),
+      issueDate,
+      dueDate: addDays(issueDate, 1),
+      crewById,
+    };
+  });
 }
+
+/** @deprecated Use buildTicketInvoiceBills */
+export const buildProjectInvoiceBills = buildTicketInvoiceBills;
 
 function buildLineItemRow(item: InvoiceLineItem, amountGbp: number): string {
   const description = [
@@ -112,70 +159,11 @@ function buildLineItemRow(item: InvoiceLineItem, amountGbp: number): string {
   </tr>`;
 }
 
-function pickStringField(
-  source: Record<string, unknown> | null | undefined,
-  ...keys: string[]
-): string {
-  if (!source) return '';
-  for (const key of keys) {
-    const value = source[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return '';
-}
-
-function getPrimaryTicket(bill: ProjectInvoiceBill): CrewTicketApi | null {
-  return bill.tickets[0] ?? null;
-}
-
-function getPrimaryCrewRef(bill: ProjectInvoiceBill): CrewTicketCrewRef | null {
-  return getPrimaryTicket(bill)?.crew_id ?? null;
-}
-
-function buildAirportCountryLabel(location: CrewTicketApi['from'] | undefined): string {
-  if (!location) return '';
-  return location.COUNTRYNAME?.trim() || location.COUNTRY?.trim() || '';
-}
-
-function buildFromName(bill: ProjectInvoiceBill): string {
-  const ticket = getPrimaryTicket(bill);
-  return escapeHtml(ticket?.from?.Name?.trim() || '—');
-}
-
-function buildToName(bill: ProjectInvoiceBill): string {
-  const ticket = getPrimaryTicket(bill);
-  return escapeHtml(ticket?.to?.Name?.trim() || '—');
-}
-
-function getPrimaryCrewProfile(bill: ProjectInvoiceBill): CrewMemberApi | CrewTicketCrewRef | null {
-  const crewRef = getPrimaryCrewRef(bill);
-  if (!crewRef) return null;
-  return bill.crewById?.[crewRef._id] ?? crewRef;
-}
-
-function buildFromAddressHtml(bill: ProjectInvoiceBill): string {
-  const ticket = getPrimaryTicket(bill);
-  return escapeHtml(buildAirportCountryLabel(ticket?.from) || '—');
-}
-
-function buildFromEmail(bill: ProjectInvoiceBill): string {
-  const crew = getPrimaryCrewProfile(bill);
-  const email = crew?.email?.trim() || pickStringField(crew as Record<string, unknown>, 'email');
-  return escapeHtml(email || '—');
-}
-
-function buildToAddressHtml(bill: ProjectInvoiceBill): string {
-  const ticket = getPrimaryTicket(bill);
-  return escapeHtml(buildAirportCountryLabel(ticket?.to) || '—');
-}
-
-export function buildInvoiceTemplateData(bill: ProjectInvoiceBill): InvoiceTemplateData {
+export function buildInvoiceTemplateData(bill: TicketInvoiceBill): InvoiceTemplateData {
   const adminName = bill.admin
     ? `${bill.admin.firstname} ${bill.admin.lastname}`.trim()
     : 'Account Administrator';
 
-  // Margin is folded into the Amount column: amount = unit price + margin share.
-  // With no margin, amount stays equal to the unit price.
   const lineCount = bill.lineItems.length || 1;
   const marginPerLine = bill.marginGbp / lineCount;
   const rows = bill.lineItems
@@ -189,11 +177,11 @@ export function buildInvoiceTemplateData(bill: ProjectInvoiceBill): InvoiceTempl
     issue_date: formatInvoiceDate(bill.issueDate),
     due_date: formatInvoiceDate(bill.dueDate),
     amount_due: formatGbp(grandTotal),
-    from_name: buildFromName(bill),
-    from_address_html: buildFromAddressHtml(bill),
-    from_email: buildFromEmail(bill),
-    to_name: buildToName(bill),
-    to_address_html: buildToAddressHtml(bill),
+    from_name: escapeHtml(INVOICE_FROM.name),
+    from_address_html: INVOICE_FROM.addressHtml,
+    from_email: escapeHtml(INVOICE_FROM.email),
+    to_name: escapeHtml(INVOICE_TO.name),
+    to_address_html: INVOICE_TO.addressHtml,
     client_fao: adminName,
     line_items_rows: rows,
     subtotal: formatGbp(grandTotal),
@@ -208,4 +196,8 @@ export function fillInvoiceTemplate(template: string, data: InvoiceTemplateData)
     (result, [key, value]) => result.replaceAll(`{{${key}}}`, value),
     template
   );
+}
+
+export function getTicketPassengerName(ticket: CrewTicketApi): string {
+  return getCrewName(ticket);
 }
