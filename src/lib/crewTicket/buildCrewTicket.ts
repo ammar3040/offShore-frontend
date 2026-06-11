@@ -8,7 +8,7 @@ import type { CrewTicketTemplateData } from './types';
 
 const DEFAULT_MEALS = 'MEAL';
 const DEFAULT_BAGGAGE = 'AS PER AIRLINE';
-const DEFAULT_SUPPORT_PHONE = '+91 9619481056';
+const DEFAULT_SUPPORT_PHONE = '+44 1772 283210';
 
 type LayoverInfo = { location?: string; duration?: string } | null | undefined;
 
