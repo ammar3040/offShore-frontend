@@ -142,7 +142,7 @@ export function buildTicketInvoiceBills(
 /** @deprecated Use buildTicketInvoiceBills */
 export const buildProjectInvoiceBills = buildTicketInvoiceBills;
 
-function buildLineItemRow(item: InvoiceLineItem, amountGbp: number): string {
+function buildLineItemRow(item: InvoiceLineItem, lineTotalGbp: number): string {
   const description = [
     `<strong>${escapeHtml(item.projectTitle)}</strong>`,
     `Passenger: ${escapeHtml(item.passengerName)}`,
@@ -154,8 +154,8 @@ function buildLineItemRow(item: InvoiceLineItem, amountGbp: number): string {
   return `<tr>
     <td style="font-size: 13px; color: #333333; line-height: 1.7; padding: 18px 16px 20px 16px; border: 1px solid #e0e0e0; border-top: none; border-right: none; vertical-align: top;">${description}</td>
     <td style="font-size: 13px; color: #333333; padding: 18px 16px; border-bottom: 1px solid #e0e0e0; text-align: center; vertical-align: top;">${item.qty}</td>
-    <td style="font-size: 13px; color: #333333; padding: 18px 16px; border-bottom: 1px solid #e0e0e0; text-align: right; vertical-align: top;">${formatGbp(item.unitPriceGbp)}</td>
-    <td style="font-size: 13px; color: #333333; padding: 18px 16px; border: 1px solid #e0e0e0; border-top: none; border-left: none; text-align: right; vertical-align: top;">${formatGbp(amountGbp)}</td>
+    <td style="font-size: 13px; color: #333333; padding: 18px 16px; border-bottom: 1px solid #e0e0e0; text-align: right; vertical-align: top;">${formatGbp(lineTotalGbp)}</td>
+    <td style="font-size: 13px; color: #333333; padding: 18px 16px; border: 1px solid #e0e0e0; border-top: none; border-left: none; text-align: right; vertical-align: top;">${formatGbp(lineTotalGbp)}</td>
   </tr>`;
 }
 
