@@ -162,7 +162,7 @@ function buildLineItemRow(item: InvoiceLineItem, lineTotalGbp: number): string {
 export function buildInvoiceTemplateData(bill: TicketInvoiceBill): InvoiceTemplateData {
   const adminName = bill.admin
     ? `${bill.admin.firstname} ${bill.admin.lastname}`.trim()
-    : 'Account Administrator';
+    : 'Rex Makin';
 
   const lineCount = bill.lineItems.length || 1;
   const marginPerLine = bill.marginGbp / lineCount;
