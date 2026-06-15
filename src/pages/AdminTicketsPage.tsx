@@ -698,7 +698,7 @@ const AdminTicketsPage = () => {
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [rigs, setRigs] = useState<RigApi[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -989,7 +989,10 @@ const AdminTicketsPage = () => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load data');
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setTicketsLoading(false);
+        }
       });
     return () => { cancelled = true; };
   }, []);
