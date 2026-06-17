@@ -1,12 +1,16 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FileText, FileCheck, Send, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket } from '../api/superadmin';
+import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket, type ApiPagination } from '../api/superadmin';
 import { approveAndUploadTicketPdf, regenerateAndUploadTicketPdf } from '../lib/crewTicket/approveAndUploadTicketPdf';
+import { env } from '../config/env';
 import {
   canUseTicketPdf,
   getTicketStatus,
   getTicketStatusLabel,
+  getTicketDepartureIso,
+  getTicketArrivalIso,
+  formatTicketSchedule,
   openCrewTicketPdf,
   ticketHasStoredPdf,
   type CrewTicketApi,
@@ -30,11 +34,15 @@ import {
 } from '@/components/ui/select';
 import './SuperadminTicketsPage.css';
 
+const PAGE_SIZE = env.defaultPageSize;
+
 const SuperadminTicketsPage = () => {
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<{ id: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<ApiPagination | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
   const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
@@ -57,13 +65,36 @@ const SuperadminTicketsPage = () => {
 
   useEffect(() => {
     let cancelled = false;
+    getSuperadminProjects()
+      .then((projectsRes) => {
+        if (!cancelled) {
+          setProjects(projectsRes.projects ?? []);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load projects');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([getSuperadminCrewTickets(), getSuperadminProjects()])
-      .then(([ticketsRes, projectsRes]) => {
+
+    getSuperadminCrewTickets({
+      page,
+      limit: PAGE_SIZE,
+      ...(projectFilter !== 'all' ? { projectId: projectFilter } : {}),
+    })
+      .then((ticketsRes) => {
         if (!cancelled) {
           setTickets(ticketsRes.crewTickets ?? []);
-          setProjects(projectsRes.projects ?? []);
+          setPagination(ticketsRes.pagination ?? null);
         }
       })
       .catch((err) => {
@@ -74,30 +105,23 @@ const SuperadminTicketsPage = () => {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
-  }, []);
 
-  const filteredTickets = useMemo(() => {
-    if (projectFilter === 'all') return tickets;
-    return tickets.filter((t) => {
-      const pid = t.project_id?._id ?? (t.project_id as { id?: string })?.id;
-      return pid === projectFilter;
-    });
-  }, [tickets, projectFilter]);
+    return () => {
+      cancelled = true;
+    };
+  }, [page, projectFilter]);
 
-  const uniqueProjectsFromTickets = useMemo(() => {
-    const seen = new Set<string>();
-    return tickets
-      .map((t) => {
-        const p = t.project_id;
-        const id = p?._id ?? (p as { id?: string })?.id ?? '';
-        const title = p?.title ?? (p as { title?: string })?.title ?? '';
-        return { id, title };
-      })
-      .filter((p) => p.id && !seen.has(p.id) && (seen.add(p.id), true));
-  }, [tickets]);
+  const handleProjectFilterChange = (value: string) => {
+    setProjectFilter(value);
+    setPage(1);
+  };
 
-  const projectOptions = projects.length > 0 ? projects : uniqueProjectsFromTickets;
+  const totalItems = pagination?.total ?? tickets.length;
+  const totalPages = pagination?.totalPages ?? 1;
+  const rangeStart = totalItems === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = pagination
+    ? Math.min(page * pagination.limit, totalItems)
+    : Math.min(page * PAGE_SIZE, totalItems);
 
   const getCrewName = (t: CrewTicketApi) => {
     const c = t.crew_id;
@@ -116,6 +140,16 @@ const SuperadminTicketsPage = () => {
     const to = t.to?.Name ?? (t.to as { Name?: string })?.Name ?? '—';
     return `${from} → ${to}`;
   };
+
+  const getRouteCodes = (t: CrewTicketApi) => {
+    const fromMatch = t.from?.Name?.match(/\[([A-Z0-9]{3})\]/);
+    const toMatch = t.to?.Name?.match(/\[([A-Z0-9]{3})\]/);
+    const fromCode = fromMatch?.[1] ?? t.from?.Name?.slice(0, 3).toUpperCase() ?? '—';
+    const toCode = toMatch?.[1] ?? t.to?.Name?.slice(0, 3).toUpperCase() ?? '—';
+    return { fromCode, toCode };
+  };
+
+  const formatTripLabel = (trip?: string) => trip?.replace(/_/g, ' ') ?? '—';
 
   const getTicketStatusClass = (ticket: CrewTicketApi) =>
     getTicketStatus(ticket) === 'APPROVED'
@@ -276,8 +310,21 @@ const SuperadminTicketsPage = () => {
     setDeletingTicketId(t.id);
     try {
       await deleteSuperadminCrewTicket(crewId, t.id);
-      setTickets((prev) => prev.filter((x) => x.id !== t.id));
       setSelectedTicket((current) => (current?.id === t.id ? null : current));
+      if (tickets.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      } else {
+        setTickets((prev) => prev.filter((x) => x.id !== t.id));
+        setPagination((prev) =>
+          prev
+            ? {
+                ...prev,
+                total: Math.max(0, prev.total - 1),
+                totalPages: Math.max(1, Math.ceil(Math.max(0, prev.total - 1) / prev.limit)),
+              }
+            : prev
+        );
+      }
       toast.success('Ticket deleted', { description: 'The ticket was deleted successfully.' });
     } catch (err) {
       toast.error('Delete failed', { description: err instanceof Error ? err.message : 'Failed to delete ticket.' });
@@ -297,13 +344,13 @@ const SuperadminTicketsPage = () => {
         </div>
         <div className="superadmin-tickets-filter">
           <label htmlFor="sa-tickets-project">Filter by project</label>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
+          <Select value={projectFilter} onValueChange={handleProjectFilterChange}>
             <SelectTrigger id="sa-tickets-project" className="superadmin-tickets-select w-[240px]">
               <SelectValue placeholder="All projects" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All projects</SelectItem>
-              {projectOptions.map((p) => (
+              {projects.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.title}
                 </SelectItem>
@@ -334,15 +381,16 @@ const SuperadminTicketsPage = () => {
         </div>
       )}
 
-      <Card className="superadmin-tickets-content">
-        <CardContent className="p-0">
+      <Card className="superadmin-tickets-content py-0 gap-0">
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0">
         {loading ? (
           <p className="superadmin-tickets-empty">Loading…</p>
-        ) : filteredTickets.length === 0 ? (
+        ) : totalItems === 0 ? (
           <p className="superadmin-tickets-empty">No crew tickets found.</p>
         ) : (
+          <>
           <div className="superadmin-tickets-list">
-            {filteredTickets.map((t) => (
+            {tickets.map((t) => (
               <div
                 key={t.id}
                 className="superadmin-ticket-card superadmin-ticket-card--clickable"
@@ -362,6 +410,17 @@ const SuperadminTicketsPage = () => {
                 </div>
                 <div className="superadmin-ticket-main">
                   <div className="superadmin-ticket-route">{getRoute(t)}</div>
+                  <div className="superadmin-ticket-schedule">
+                    <span className="superadmin-ticket-schedule-item">
+                      <span className="superadmin-ticket-schedule-label">Dep</span>
+                      {formatTicketSchedule(getTicketDepartureIso(t))}
+                    </span>
+                    <span className="superadmin-ticket-schedule-sep" aria-hidden="true">→</span>
+                    <span className="superadmin-ticket-schedule-item">
+                      <span className="superadmin-ticket-schedule-label">Arr</span>
+                      {formatTicketSchedule(getTicketArrivalIso(t))}
+                    </span>
+                  </div>
                   <div className="superadmin-ticket-meta">
                     <span className="superadmin-ticket-crew">{getCrewName(t)}</span>
                     <span className="superadmin-ticket-sep">·</span>
@@ -487,133 +546,187 @@ const SuperadminTicketsPage = () => {
               </div>
             ))}
           </div>
+
+          {pagination && totalItems > 0 && (
+            <div className="superadmin-tickets-pagination">
+              <span className="superadmin-tickets-pagination-info">
+                Showing {rangeStart}–{rangeEnd} of {totalItems}
+              </span>
+              <div className="superadmin-tickets-pagination-btns">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                >
+                  Previous
+                </Button>
+                <span className="superadmin-tickets-pagination-page">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+          </>
         )}
         </CardContent>
       </Card>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Ticket details</DialogTitle>
-          </DialogHeader>
-        {selectedTicket && (
-          <div className="superadmin-tickets-detail-card">
-            <section className="superadmin-tickets-detail-section">
-              <h3 className="superadmin-tickets-detail-heading">Flight details</h3>
-              <dl className="superadmin-tickets-detail-list">
-                <div className="superadmin-tickets-detail-item">
-                  <dt>From</dt>
-                  <dd>{selectedTicket.from?.Name ?? '—'}</dd>
-                  <dd className="superadmin-tickets-detail-meta">
-                    {selectedTicket.from?.COUNTRYNAME ?? ''} ({selectedTicket.from?.COUNTRY ?? ''})
-                  </dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>To</dt>
-                  <dd>{selectedTicket.to?.Name ?? '—'}</dd>
-                  <dd className="superadmin-tickets-detail-meta">
-                    {selectedTicket.to?.COUNTRYNAME ?? ''} ({selectedTicket.to?.COUNTRY ?? ''})
-                  </dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Class</dt>
-                  <dd>{selectedTicket.class ?? '—'}</dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Trip</dt>
-                  <dd>{selectedTicket.trip?.replace('_', ' ') ?? '—'}</dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Passengers</dt>
-                  <dd>
-                    {[selectedTicket.adult && `${selectedTicket.adult} adult(s)`, selectedTicket.children ? `${selectedTicket.children} child(ren)` : null, selectedTicket.infants ? `${selectedTicket.infants} infant(s)` : null]
-                      .filter(Boolean)
-                      .join(', ') || '—'}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-            <section className="superadmin-tickets-detail-section">
-              <h3 className="superadmin-tickets-detail-heading">Crew</h3>
-              <dl className="superadmin-tickets-detail-list">
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Name</dt>
-                  <dd>{getCrewName(selectedTicket)}</dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Email</dt>
-                  <dd>{(selectedTicket.crew_id as { email?: string })?.email ?? '—'}</dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Project</dt>
-                  <dd>{getProjectTitle(selectedTicket)}</dd>
-                </div>
-              </dl>
-            </section>
-            <section className="superadmin-tickets-detail-section">
-              <h3 className="superadmin-tickets-detail-heading">Approval & PDF</h3>
-              <p className="superadmin-tickets-detail-pdf-status">
-                {getTicketStatus(selectedTicket) !== 'APPROVED' ? (
-                  <span className="superadmin-tickets-detail-pdf-missing">Pending approval</span>
-                ) : ticketHasStoredPdf(selectedTicket) ? (
-                  <span className="superadmin-tickets-detail-pdf-uploaded">
-                    <FileCheck size={16} /> PDF uploaded
-                  </span>
-                ) : (
-                  <span className="superadmin-tickets-detail-pdf-missing">Approved — PDF not uploaded yet</span>
-                )}
-              </p>
-              <dl className="superadmin-tickets-detail-list">
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Status</dt>
-                  <dd>
-                    <span className={`superadmin-ticket-status ${getTicketStatusClass(selectedTicket)}`}>
-                      {getTicketStatusLabel(selectedTicket)}
-                    </span>
-                  </dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Booking reference</dt>
-                  <dd>{selectedTicket.bookingReference || 'Pending approval'}</dd>
-                </div>
-                <div className="superadmin-tickets-detail-item">
-                  <dt>Approved at</dt>
-                  <dd>{selectedTicket.approvedAt ? new Date(selectedTicket.approvedAt).toLocaleString() : '—'}</dd>
-                </div>
-              </dl>
-              {getTicketStatus(selectedTicket) !== 'APPROVED' && (
-                <div className="superadmin-ticket-approve-detail">
-                  <label htmlFor={`approve-ref-${selectedTicket.id}`}>Booking reference</label>
+        <DialogContent className="superadmin-tickets-detail-dialog flex flex-col sm:max-w-2xl gap-0 p-0">
+          {selectedTicket && (
+            <>
+              <DialogHeader className="superadmin-tickets-detail-header">
+                <div className="superadmin-tickets-detail-header-top">
                   <div>
-                    <input
-                      id={`approve-ref-${selectedTicket.id}`}
-                      value={approvalRefs[selectedTicket.id] ?? ''}
-                      onChange={(e) => {
-                        setApprovalRefs((prev) => ({ ...prev, [selectedTicket.id]: e.target.value }));
-                        setApprovalErrors((prev) => ({ ...prev, [selectedTicket.id]: '' }));
-                      }}
-                      placeholder="e.g. 8XT6HB"
-                    />
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={(e) => handleApproveTicket(selectedTicket, e)}
-                      disabled={approvingTicketId === selectedTicket.id}
-                    >
-                      {approvingTicketId === selectedTicket.id ? (
-                        <span className="superadmin-ticket-send-spinner" />
-                      ) : (
-                        <>
-                          <CheckCircle2 size={16} />
-                          Approve & generate PDF
-                        </>
-                      )}
-                    </Button>
+                    <DialogTitle className="superadmin-tickets-detail-title">{getRoute(selectedTicket)}</DialogTitle>
+                    <DialogDescription className="superadmin-tickets-detail-subtitle">
+                      {getCrewName(selectedTicket)} · {getProjectTitle(selectedTicket)}
+                    </DialogDescription>
                   </div>
-                  {approvalErrors[selectedTicket.id] ? <p>{approvalErrors[selectedTicket.id]}</p> : null}
+                  <span className={`superadmin-ticket-status ${getTicketStatusClass(selectedTicket)}`}>
+                    {getTicketStatusLabel(selectedTicket)}
+                  </span>
                 </div>
-              )}
-              <div className="superadmin-tickets-detail-actions">
+                <div className="superadmin-tickets-detail-route-banner">
+                  {(() => {
+                    const { fromCode, toCode } = getRouteCodes(selectedTicket);
+                    return (
+                      <>
+                        <div className="superadmin-tickets-detail-route-end">
+                          <span className="superadmin-tickets-detail-route-code">{fromCode}</span>
+                          <span className="superadmin-tickets-detail-route-label">Departure</span>
+                          <span className="superadmin-tickets-detail-route-time">
+                            {formatTicketSchedule(getTicketDepartureIso(selectedTicket))}
+                          </span>
+                        </div>
+                        <div className="superadmin-tickets-detail-route-line" aria-hidden="true">
+                          <span />
+                          <span className="superadmin-tickets-detail-route-trip">{formatTripLabel(selectedTicket.trip)}</span>
+                          <span />
+                        </div>
+                        <div className="superadmin-tickets-detail-route-end superadmin-tickets-detail-route-end--right">
+                          <span className="superadmin-tickets-detail-route-code">{toCode}</span>
+                          <span className="superadmin-tickets-detail-route-label">Arrival</span>
+                          <span className="superadmin-tickets-detail-route-time">
+                            {formatTicketSchedule(getTicketArrivalIso(selectedTicket))}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </DialogHeader>
+
+              <div className="superadmin-tickets-detail-body">
+                <div className="superadmin-tickets-detail-grid">
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">From</span>
+                    <span className="superadmin-tickets-detail-field-value">{selectedTicket.from?.Name ?? '—'}</span>
+                    <span className="superadmin-tickets-detail-field-meta">
+                      {selectedTicket.from?.COUNTRYNAME ?? ''} ({selectedTicket.from?.COUNTRY ?? ''})
+                    </span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">To</span>
+                    <span className="superadmin-tickets-detail-field-value">{selectedTicket.to?.Name ?? '—'}</span>
+                    <span className="superadmin-tickets-detail-field-meta">
+                      {selectedTicket.to?.COUNTRYNAME ?? ''} ({selectedTicket.to?.COUNTRY ?? ''})
+                    </span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">Class</span>
+                    <span className="superadmin-tickets-detail-field-value">{selectedTicket.class ?? '—'}</span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">Trip</span>
+                    <span className="superadmin-tickets-detail-field-value">{formatTripLabel(selectedTicket.trip)}</span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">Passengers</span>
+                    <span className="superadmin-tickets-detail-field-value">
+                      {[selectedTicket.adult && `${selectedTicket.adult} adult(s)`, selectedTicket.children ? `${selectedTicket.children} child(ren)` : null, selectedTicket.infants ? `${selectedTicket.infants} infant(s)` : null]
+                        .filter(Boolean)
+                        .join(', ') || '—'}
+                    </span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">Crew email</span>
+                    <span className="superadmin-tickets-detail-field-value">
+                      {(selectedTicket.crew_id as { email?: string })?.email ?? '—'}
+                    </span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">Booking reference</span>
+                    <span className="superadmin-tickets-detail-field-value">
+                      {selectedTicket.bookingReference || 'Pending approval'}
+                    </span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field">
+                    <span className="superadmin-tickets-detail-field-label">Approved at</span>
+                    <span className="superadmin-tickets-detail-field-value">
+                      {selectedTicket.approvedAt ? new Date(selectedTicket.approvedAt).toLocaleString() : '—'}
+                    </span>
+                  </div>
+                  <div className="superadmin-tickets-detail-field superadmin-tickets-detail-field--full">
+                    <span className="superadmin-tickets-detail-field-label">PDF status</span>
+                    <span className="superadmin-tickets-detail-field-value">
+                      {getTicketStatus(selectedTicket) !== 'APPROVED' ? (
+                        <span className="superadmin-tickets-detail-pdf-missing">Pending approval</span>
+                      ) : ticketHasStoredPdf(selectedTicket) ? (
+                        <span className="superadmin-tickets-detail-pdf-uploaded">
+                          <FileCheck size={16} /> PDF uploaded
+                        </span>
+                      ) : (
+                        <span className="superadmin-tickets-detail-pdf-missing">Approved — PDF not uploaded yet</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {getTicketStatus(selectedTicket) !== 'APPROVED' && (
+                  <div className="superadmin-ticket-approve-detail">
+                    <label htmlFor={`approve-ref-${selectedTicket.id}`}>Booking reference</label>
+                    <div>
+                      <input
+                        id={`approve-ref-${selectedTicket.id}`}
+                        value={approvalRefs[selectedTicket.id] ?? ''}
+                        onChange={(e) => {
+                          setApprovalRefs((prev) => ({ ...prev, [selectedTicket.id]: e.target.value }));
+                          setApprovalErrors((prev) => ({ ...prev, [selectedTicket.id]: '' }));
+                        }}
+                        placeholder="e.g. 8XT6HB"
+                      />
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={(e) => handleApproveTicket(selectedTicket, e)}
+                        disabled={approvingTicketId === selectedTicket.id}
+                      >
+                        {approvingTicketId === selectedTicket.id ? (
+                          <span className="superadmin-ticket-send-spinner" />
+                        ) : (
+                          <>
+                            <CheckCircle2 size={16} />
+                            Approve & generate PDF
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    {approvalErrors[selectedTicket.id] ? <p>{approvalErrors[selectedTicket.id]}</p> : null}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="superadmin-tickets-detail-footer">
                 <Button
                   variant="outline"
                   size="sm"
@@ -639,7 +752,7 @@ const SuperadminTicketsPage = () => {
                     ) : (
                       <>
                         <FileText size={16} />
-                        Regenerate PDF
+                        Regenerate
                       </>
                     )}
                   </Button>
@@ -648,7 +761,7 @@ const SuperadminTicketsPage = () => {
                   variant="outline"
                   size="sm"
                   className={ticketHasStoredPdf(selectedTicket) ? 'superadmin-ticket-pdf-btn--uploaded' : ''}
-                  onClick={(e) => { e.stopPropagation(); handleUploadClick(selectedTicket.id); }}
+                  onClick={() => handleUploadClick(selectedTicket.id)}
                   disabled={uploadingTicketId === selectedTicket.id || getTicketStatus(selectedTicket) !== 'APPROVED'}
                   title={getTicketStatus(selectedTicket) !== 'APPROVED' ? 'Approve ticket first' : ticketHasStoredPdf(selectedTicket) ? 'Upload a PDF file to replace the stored ticket' : 'Upload ticket PDF file'}
                 >
@@ -656,24 +769,20 @@ const SuperadminTicketsPage = () => {
                     <span className="superadmin-ticket-upload-spinner" />
                   ) : ticketHasStoredPdf(selectedTicket) ? (
                     <>
-                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
-                        <FileCheck size={16} />
-                      </span>
-                      PDF uploaded
+                      <FileCheck size={16} />
+                      Replace PDF
                     </>
                   ) : (
                     <>
-                      <span className="superadmin-ticket-pdf-icon" title="Crew ticket">
-                        <FileText size={16} />
-                      </span>
+                      <FileText size={16} />
                       Upload PDF
                     </>
-                    )}
+                  )}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={(e) => { e.stopPropagation(); handleSendTicketClick(selectedTicket.id); }}
+                  onClick={() => handleSendTicketClick(selectedTicket.id)}
                   disabled={sendingTicketId === selectedTicket.id || !canUseTicketPdf(selectedTicket) || !ticketHasStoredPdf(selectedTicket)}
                   title={ticketHasStoredPdf(selectedTicket) ? 'Send ticket to crew email' : 'Approve and upload PDF before sending email'}
                 >
@@ -682,14 +791,14 @@ const SuperadminTicketsPage = () => {
                   ) : (
                     <>
                       <Send size={16} />
-                      Send ticket
+                      Send
                     </>
                   )}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteTicketClick(selectedTicket, e); }}
+                  onClick={(e) => handleDeleteTicketClick(selectedTicket, e)}
                   disabled={deletingTicketId === selectedTicket.id}
                   title="Delete ticket"
                   className="text-destructive hover:text-destructive"
@@ -703,10 +812,9 @@ const SuperadminTicketsPage = () => {
                     </>
                   )}
                 </Button>
-              </div>
-            </section>
-          </div>
-        )}
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

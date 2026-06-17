@@ -1481,6 +1481,30 @@
   max-width: 96px;
 }
 
+.subsea-airport--end {
+  text-align: right;
+}
+
+.subsea-airport--end .subsea-airport-city,
+.subsea-airport--end .subsea-airport-date {
+  margin-left: auto;
+}
+
+.subsea-airport-date {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subsea-airport--end .subsea-airport-date {
+  margin-left: auto;
+}
+
 .subsea-flight-line {
   flex: 1;
   min-width: 110px;

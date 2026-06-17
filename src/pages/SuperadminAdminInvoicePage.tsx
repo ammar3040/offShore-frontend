@@ -9,22 +9,31 @@ import {
   type AdminInvoiceApi,
 } from '../api/adminInvoice';
 import {
+  getTicketDepartureIso,
+  getTicketArrivalIso,
+  formatTicketSchedule,
+} from '../api/ticket';
+import {
   getSuperadminAdmins,
   getSuperadminCrewById,
   getSuperadminCrewTickets,
   getSuperadminProjects,
+  type ApiPagination,
 } from '../api/superadmin';
 import type { CrewMemberApi } from '../api/crew';
 import { buildTicketInvoiceBills, getTicketPassengerName } from '../lib/invoice/buildInvoice';
 import { formatGbp } from '../lib/invoice/format';
 import { generateInvoicePdfFile } from '../lib/invoice/generateInvoicePdf';
 import type { TicketInvoiceBill } from '../lib/invoice/types';
+import { env } from '../config/env';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -32,12 +41,23 @@ import './SuperadminAdminInvoicePage.css';
 
 type GeneratedPdfState = Record<string, File>;
 
+const PAGE_SIZE = env.defaultPageSize;
+
 const SuperadminAdminInvoicePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<ApiPagination | null>(null);
   const [bills, setBills] = useState<TicketInvoiceBill[]>([]);
   const [invoiceRecords, setInvoiceRecords] = useState<Record<string, AdminInvoiceApi>>({});
   const [margins, setMargins] = useState<Record<string, string>>({});
+  const [draftMargins, setDraftMargins] = useState<Record<string, string>>({});
+  const [marginConfirm, setMarginConfirm] = useState<{
+    ticketId: string;
+    bill: TicketInvoiceBill;
+    newValue: string;
+    oldValue: string;
+  } | null>(null);
   const [generatingTicketId, setGeneratingTicketId] = useState<string | null>(null);
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
   const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
@@ -55,7 +75,7 @@ const SuperadminAdminInvoicePage = () => {
       try {
         const [projectsRes, ticketsRes, adminsRes, invoicesRes] = await Promise.all([
           getSuperadminProjects(),
-          getSuperadminCrewTickets(),
+          getSuperadminCrewTickets({ status: 'APPROVED', page, limit: PAGE_SIZE }),
           getSuperadminAdmins(),
           getSuperadminAdminInvoices().catch(() => ({ adminInvoices: [] as AdminInvoiceApi[] })),
         ]);
@@ -67,7 +87,7 @@ const SuperadminAdminInvoicePage = () => {
             .filter((invoice) => Boolean(getAdminInvoiceKey(invoice)))
             .map((invoice) => [getAdminInvoiceKey(invoice), invoice])
         );
-        setInvoiceRecords(invoiceMap);
+        setInvoiceRecords((prev) => ({ ...prev, ...invoiceMap }));
 
         const marginDefaults = Object.fromEntries(
           (invoicesRes.adminInvoices ?? [])
@@ -92,6 +112,10 @@ const SuperadminAdminInvoicePage = () => {
           crewProfiles.filter((entry): entry is readonly [string, CrewMemberApi] => entry != null)
         ) as Record<string, CrewMemberApi>;
 
+        const indexOffset = ticketsRes.pagination
+          ? (ticketsRes.pagination.page - 1) * ticketsRes.pagination.limit
+          : (page - 1) * PAGE_SIZE;
+
         const computedBills = buildTicketInvoiceBills(
           projectsRes.projects ?? [],
           ticketsRes.crewTickets ?? [],
@@ -99,11 +123,14 @@ const SuperadminAdminInvoicePage = () => {
           Object.fromEntries(
             Object.entries(marginDefaults).map(([ticketId, value]) => [ticketId, Number(value)])
           ),
-          crewById
+          crewById,
+          indexOffset
         );
 
         setBills(computedBills);
+        setPagination(ticketsRes.pagination ?? null);
         setMargins((prev) => ({ ...marginDefaults, ...prev }));
+        setDraftMargins((prev) => ({ ...marginDefaults, ...prev }));
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load admin invoices');
@@ -117,7 +144,7 @@ const SuperadminAdminInvoicePage = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [page]);
 
   const billsWithMargins = useMemo(() => {
     const marginNumbers = Object.fromEntries(
@@ -147,13 +174,42 @@ const SuperadminAdminInvoicePage = () => {
     return `${from} → ${to}`;
   };
 
-  const handleMarginChange = (ticketId: string, value: string) => {
-    setMargins((prev) => ({ ...prev, [ticketId]: value }));
+  const handleMarginDraftChange = (ticketId: string, value: string) => {
+    setDraftMargins((prev) => ({ ...prev, [ticketId]: value }));
+  };
+
+  const requestMarginUpdate = (ticketId: string, bill: TicketInvoiceBill) => {
+    const draft = (draftMargins[ticketId] ?? '').trim();
+    const applied = (margins[ticketId] ?? '').trim();
+    if (draft === applied) return;
+    setMarginConfirm({ ticketId, bill, newValue: draft, oldValue: applied });
+  };
+
+  const confirmMarginUpdate = () => {
+    if (!marginConfirm) return;
+    const { ticketId, newValue } = marginConfirm;
+    setMargins((prev) => ({ ...prev, [ticketId]: newValue }));
+    setDraftMargins((prev) => ({ ...prev, [ticketId]: newValue }));
     setGeneratedPdfs((prev) => {
       const next = { ...prev };
       delete next[ticketId];
       return next;
     });
+    setMarginConfirm(null);
+    toast.success('Margin updated', {
+      description: 'Totals refreshed. Regenerate the PDF if one was already created.',
+    });
+  };
+
+  const cancelMarginUpdate = () => {
+    if (!marginConfirm) return;
+    setDraftMargins((prev) => ({ ...prev, [marginConfirm.ticketId]: marginConfirm.oldValue }));
+    setMarginConfirm(null);
+  };
+
+  const parseMarginDisplay = (value: string) => {
+    const parsed = parseFloat(value.trim());
+    return Number.isFinite(parsed) && parsed > 0 ? formatGbp(parsed) : formatGbp(0);
   };
 
   const handleDownloadGeneratedPdf = (ticketId: string) => {
@@ -266,6 +322,13 @@ const SuperadminAdminInvoicePage = () => {
     return 'Draft';
   };
 
+  const totalItems = pagination?.total ?? billsWithMargins.length;
+  const totalPages = pagination?.totalPages ?? 1;
+  const rangeStart = totalItems === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = pagination
+    ? Math.min(page * pagination.limit, totalItems)
+    : Math.min(page * PAGE_SIZE, totalItems);
+
   return (
     <div className="superadmin-admin-invoice-page">
       <header className="superadmin-admin-invoice-header">
@@ -292,8 +355,8 @@ const SuperadminAdminInvoicePage = () => {
         aria-hidden
       />
 
-      <Card className="superadmin-admin-invoice-content">
-        <CardContent className="p-0">
+      <Card className="superadmin-admin-invoice-content py-0 gap-0">
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0">
           {loading ? (
             <p className="superadmin-admin-invoice-empty">Loading ticket invoices…</p>
           ) : billsWithMargins.length === 0 ? (
@@ -301,6 +364,7 @@ const SuperadminAdminInvoicePage = () => {
               No billable tickets yet. Approved crew tickets are required before an admin invoice can be created.
             </p>
           ) : (
+            <>
             <div className="superadmin-admin-invoice-list">
               {billsWithMargins.map((bill) => {
                 const ticketId = bill.ticket.id;
@@ -315,6 +379,17 @@ const SuperadminAdminInvoicePage = () => {
 
                     <div className="superadmin-admin-invoice-main">
                       <div className="superadmin-admin-invoice-project">{getPassengerLabel(bill)}</div>
+                      <div className="superadmin-admin-invoice-schedule">
+                        <span className="superadmin-admin-invoice-schedule-item">
+                          <span className="superadmin-admin-invoice-schedule-label">Dep</span>
+                          {formatTicketSchedule(getTicketDepartureIso(bill.ticket))}
+                        </span>
+                        <span className="superadmin-admin-invoice-schedule-sep" aria-hidden="true">→</span>
+                        <span className="superadmin-admin-invoice-schedule-item">
+                          <span className="superadmin-admin-invoice-schedule-label">Arr</span>
+                          {formatTicketSchedule(getTicketArrivalIso(bill.ticket))}
+                        </span>
+                      </div>
                       <div className="superadmin-admin-invoice-meta">
                         <span>{bill.project.title}</span>
                         <span className="superadmin-admin-invoice-sep">·</span>
@@ -339,101 +414,180 @@ const SuperadminAdminInvoicePage = () => {
                     </div>
 
                     <div className="superadmin-admin-invoice-actions">
-                      <label className="superadmin-admin-invoice-margin">
-                        <span>Margin (£)</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={margins[ticketId] ?? ''}
-                          onChange={(e) => handleMarginChange(ticketId, e.target.value)}
-                        />
-                      </label>
+                      <div className="superadmin-admin-invoice-actions-group">
+                        <label className="superadmin-admin-invoice-margin">
+                          <span>Margin (£)</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={draftMargins[ticketId] ?? ''}
+                            onChange={(e) => handleMarginDraftChange(ticketId, e.target.value)}
+                            onBlur={() => requestMarginUpdate(ticketId, bill)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleGeneratePdf(bill)}
-                        disabled={generatingTicketId === ticketId}
-                        title="Generate invoice PDF from Lynq Travel template"
-                      >
-                        {generatingTicketId === ticketId ? (
-                          <span className="superadmin-admin-invoice-spinner" />
-                        ) : (
-                          <>
-                            <Sparkles size={16} />
-                            Generate PDF
-                          </>
-                        )}
-                      </Button>
+                      <div className="superadmin-admin-invoice-actions-group superadmin-admin-invoice-actions-group--pdf">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGeneratePdf(bill)}
+                          disabled={generatingTicketId === ticketId}
+                          title="Generate invoice PDF from Lynq Travel template"
+                        >
+                          {generatingTicketId === ticketId ? (
+                            <span className="superadmin-admin-invoice-spinner" />
+                          ) : (
+                            <>
+                              <Sparkles size={16} />
+                              Generate PDF
+                            </>
+                          )}
+                        </Button>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadGeneratedPdf(ticketId)}
-                        disabled={!generatedPdfs[ticketId]}
-                        title={generatedPdfs[ticketId] ? 'Preview generated PDF' : 'Generate PDF first'}
-                      >
-                        <FileCheck size={16} />
-                        View PDF
-                      </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadGeneratedPdf(ticketId)}
+                          disabled={!generatedPdfs[ticketId]}
+                          title={generatedPdfs[ticketId] ? 'Preview generated PDF' : 'Generate PDF first'}
+                        >
+                          <FileCheck size={16} />
+                          View PDF
+                        </Button>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={hasGeneratedPdf ? 'superadmin-admin-invoice-pdf-btn--ready' : ''}
-                        onClick={() => handleUploadClick(ticketId)}
-                        disabled={uploadingTicketId === ticketId}
-                        title={hasGeneratedPdf ? 'Replace attached PDF' : 'Attach invoice PDF'}
-                      >
-                        {uploadingTicketId === ticketId ? (
-                          <span className="superadmin-admin-invoice-spinner" />
-                        ) : hasGeneratedPdf ? (
-                          <>
-                            <FileCheck size={16} />
-                            PDF attached
-                          </>
-                        ) : (
-                          <>
-                            <FileText size={16} />
-                            Attach PDF
-                          </>
-                        )}
-                      </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={hasGeneratedPdf ? 'superadmin-admin-invoice-pdf-btn--ready' : ''}
+                          onClick={() => handleUploadClick(ticketId)}
+                          disabled={uploadingTicketId === ticketId}
+                          title={hasGeneratedPdf ? 'Replace attached PDF' : 'Attach invoice PDF'}
+                        >
+                          {uploadingTicketId === ticketId ? (
+                            <span className="superadmin-admin-invoice-spinner" />
+                          ) : hasGeneratedPdf ? (
+                            <>
+                              <FileCheck size={16} />
+                              PDF attached
+                            </>
+                          ) : (
+                            <>
+                              <FileText size={16} />
+                              Attach PDF
+                            </>
+                          )}
+                        </Button>
+                      </div>
 
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleSendInvoice(bill)}
-                        disabled={sendingTicketId === ticketId || !hasGeneratedPdf}
-                        title={hasGeneratedPdf ? 'Send invoice to admin' : 'Generate or attach PDF first'}
-                      >
-                        {sendingTicketId === ticketId ? (
-                          <span className="superadmin-admin-invoice-spinner" />
-                        ) : (
-                          <>
-                            <Send size={16} />
-                            Send to admin
-                          </>
-                        )}
-                      </Button>
+                      <div className="superadmin-admin-invoice-actions-group superadmin-admin-invoice-actions-group--send">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSendInvoice(bill)}
+                          disabled={sendingTicketId === ticketId || !hasGeneratedPdf}
+                          title={hasGeneratedPdf ? 'Send invoice to admin' : 'Generate or attach PDF first'}
+                        >
+                          {sendingTicketId === ticketId ? (
+                            <span className="superadmin-admin-invoice-spinner" />
+                          ) : (
+                            <>
+                              <Send size={16} />
+                              Send to admin
+                            </>
+                          )}
+                        </Button>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedBill(bill)}
-                      >
-                        View bill
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedBill(bill)}
+                        >
+                          View bill
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {pagination && totalItems > 0 && (
+              <div className="superadmin-admin-invoice-pagination">
+                <span className="superadmin-admin-invoice-pagination-info">
+                  Showing {rangeStart}–{rangeEnd} of {totalItems}
+                </span>
+                <div className="superadmin-admin-invoice-pagination-btns">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="superadmin-admin-invoice-pagination-page">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!marginConfirm} onOpenChange={(open) => !open && cancelMarginUpdate()}>
+        <DialogContent className="max-w-md" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Update margin?</DialogTitle>
+            <DialogDescription>
+              {marginConfirm
+                ? `Confirm the margin change for ${getPassengerLabel(marginConfirm.bill)} (${getRouteLabel(marginConfirm.bill)}).`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {marginConfirm && (
+            <div className="superadmin-admin-invoice-margin-confirm">
+              <div className="superadmin-admin-invoice-margin-confirm-row">
+                <span>Current margin</span>
+                <strong>{parseMarginDisplay(marginConfirm.oldValue)}</strong>
+              </div>
+              <div className="superadmin-admin-invoice-margin-confirm-row">
+                <span>New margin</span>
+                <strong>{parseMarginDisplay(marginConfirm.newValue)}</strong>
+              </div>
+              <p className="superadmin-admin-invoice-margin-confirm-note">
+                Updating the margin will recalculate the invoice total. Any generated PDF for this ticket will need to be regenerated.
+              </p>
+            </div>
+          )}
+          <DialogFooter showCloseButton={false}>
+            <Button variant="outline" onClick={cancelMarginUpdate}>
+              Cancel
+            </Button>
+            <Button onClick={confirmMarginUpdate}>
+              Update margin
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!selectedBill} onOpenChange={(open) => !open && setSelectedBill(null)}>
         <DialogContent className="max-w-lg">

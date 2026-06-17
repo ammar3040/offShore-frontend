@@ -1,6 +1,7 @@
 .superadmin-dashboard {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   container-type: inline-size;
   container-name: superadmin-dashboard;
 }
@@ -71,9 +72,8 @@
 
 .superadmin-dashboard-cards {
   display: grid;
-  /* Same as original: wrap when not enough width */
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+  gap: 16px;
   margin-bottom: 32px;
 }
 
@@ -81,11 +81,10 @@
   min-width: 0;
 }
 
-/* Wide content area: four columns so eight cards sit in two rows */
-@container superadmin-dashboard (min-width: 900px) {
+/* Eight cards: four columns in two even rows on wide layouts */
+@container superadmin-dashboard (min-width: 720px) {
   .superadmin-dashboard-cards {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
   }
 
   .superadmin-dashboard-cards .superadmin-dash-card {
@@ -260,13 +259,12 @@
 
 .superadmin-admin-stats {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
   justify-content: flex-end;
   font-size: 12px;
   color: hsl(var(--muted-foreground));
   flex-shrink: 0;
-  max-width: min(100%, 420px);
 }
 
 .superadmin-quick-actions {
@@ -415,44 +413,6 @@
   transform: translateY(0);
 }
 
-.superadmin-input-currency-hint--cancellation {
-  color: hsl(346 77% 40%);
-}
-
-.dark .superadmin-input-currency-hint--cancellation {
-  color: hsl(346 65% 65%);
-}
-
-/* Cancellation charges card */
-.superadmin-dash-card-cancellation {
-  position: relative;
-  transition: box-shadow 0.2s, border-color 0.2s;
-}
-
-.superadmin-dash-card-cancellation:hover {
-  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.06);
-  border-color: hsl(var(--ring) / 0.5);
-}
-
-.superadmin-dash-icon--rose {
-  background: hsl(346 77% 50% / 0.18);
-  color: hsl(346 77% 40%);
-}
-
-.dark .superadmin-dash-icon--rose {
-  background: hsl(var(--accent));
-  color: hsl(var(--foreground));
-}
-
-.superadmin-dash-card-cancellation .superadmin-dash-card-content {
-  position: relative;
-}
-
-.superadmin-dash-card-cancellation:hover .superadmin-cancellation-add-btn {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 /* ===== Tablet ===== */
 @media (max-width: 1024px) {
   .superadmin-dashboard-cards {
@@ -518,8 +478,7 @@
 
   .superadmin-markup-add-btn,
   .superadmin-markup-percentage-add-btn,
-  .superadmin-cashback-add-btn,
-  .superadmin-cancellation-add-btn {
+  .superadmin-cashback-add-btn {
     opacity: 1;
     transform: none;
   }

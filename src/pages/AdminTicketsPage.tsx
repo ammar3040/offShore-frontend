@@ -60,6 +60,9 @@ import {
   type CrewTicketApi,
   getTicketStatus,
   getTicketStatusLabel,
+  getTicketDepartureIso,
+  getTicketArrivalIso,
+  formatTicketSchedule,
   isCrewTicketCreatedInLocalCalendarMonth,
   parseCrewTicketCreatedAt,
 } from '../api/ticket';
@@ -493,6 +496,23 @@ function AirportCombobox({
   );
 }
 
+function isMarineFare(fare: Fare): boolean {
+  const ind = typeof fare.indicator === 'string' ? fare.indicator.trim().toUpperCase() : '';
+  if (ind === 'M') return true;
+  const label = `${fare.name ?? ''} ${fare.type ?? ''}`;
+  return /\bmarine\b/i.test(label);
+}
+
+function getMarineFares(fares: Fare[] | undefined): Fare[] {
+  return (fares ?? []).filter(isMarineFare);
+}
+
+function withMarineFaresOnly(flight: Flight): Flight | null {
+  const marineFares = getMarineFares(flight.fares);
+  if (marineFares.length === 0) return null;
+  return { ...flight, fares: marineFares };
+}
+
 function FlightResultCard({
   flight,
   currency,
@@ -504,16 +524,9 @@ function FlightResultCard({
   onBook: (flight: Flight) => void;
   isBooking: boolean;
 }) {
-  const [selectedFare, setSelectedFare] = useState<Fare | null>(flight.fares?.[0] ?? null);
+  const [selectedFare, setSelectedFare] = useState<Fare | null>(() => getMarineFares(flight.fares)[0] ?? null);
   const [expanded, setExpanded] = useState(false);
-  const fares = flight.fares ?? [];
-
-  const hasMarineFare = fares.some((f) => {
-    const ind = typeof f.indicator === 'string' ? f.indicator.trim().toUpperCase() : '';
-    if (ind === 'M') return true;
-    const label = `${f.name ?? ''} ${f.type ?? ''}`;
-    return /\bmarine\b/i.test(label);
-  });
+  const fares = getMarineFares(flight.fares);
 
   const firstLeg = flight.legs?.[0];
   const lastLeg = flight.legs?.[flight.legs.length - 1];
@@ -534,7 +547,7 @@ function FlightResultCard({
   const segments = flight.legs?.flatMap((leg) => leg.itinerary ?? []) ?? [];
 
   return (
-    <div className={'atfc-card' + (hasMarineFare ? ' atfc-card--marine' : '')}>
+    <div className="atfc-card atfc-card--marine">
       {/* ── Main row ── */}
       <div className="atfc-main">
         {/* Airline */}
@@ -1295,12 +1308,18 @@ const AdminTicketsPage = () => {
         searchTripTypeUI === 'multi-city' ? `${activeMultiLegIndex}::${flight.id}` : flight.id;
       setBookingFlightKey(bookKey);
       try {
-        const firstFare = flight.fares?.[0];
-        const priceAmount = firstFare?.totalFare ?? 0;
+        const marineFares = getMarineFares(flight.fares);
+        const firstFare = marineFares[0];
+        if (!firstFare) {
+          toast.error('Booking failed', { description: 'No marine fare available for this flight.' });
+          return;
+        }
+        const flightForBook: Flight = { ...flight, fares: marineFares };
+        const priceAmount = firstFare.totalFare ?? 0;
         const data = await bookFlight({
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-          flight,
+          flight: flightForBook,
           cashback: flight.cashback ?? 0,
           price: priceAmount,
           currency,
@@ -1382,10 +1401,13 @@ const AdminTicketsPage = () => {
 
   const displayedSearchFlights = useMemo(() => {
     if (!searchResults) return null;
+    const marineOnly = searchResults
+      .map(withMarineFaresOnly)
+      .filter((flight): flight is Flight => flight != null);
     if (searchTripTypeUI === 'multi-city' && preferNonStopPerLeg) {
-      return searchResults.filter(isFlightNonStop);
+      return marineOnly.filter(isFlightNonStop);
     }
-    return searchResults;
+    return marineOnly;
   }, [searchResults, searchTripTypeUI, preferNonStopPerLeg]);
 
   const handleSubmitTickets = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -2242,7 +2264,8 @@ const AdminTicketsPage = () => {
                   {isSearching ? <span className="admin-tickets-spinner admin-tickets-spinner-inline" /> : null}
                 </div>
                 <p className="admin-tickets-results-count">
-                  {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
+                  {(displayedSearchFlights ?? searchResults).length} marine fare flight
+                  {(displayedSearchFlights ?? searchResults).length !== 1 ? 's' : ''} shown
                   {searchTripTypeUI === 'multi-city' &&
                     preferNonStopPerLeg &&
                     displayedSearchFlights &&
@@ -2250,7 +2273,7 @@ const AdminTicketsPage = () => {
                     displayedSearchFlights.length !== searchResults.length && (
                       <span className="admin-tickets-results-count-note">
                         {' '}
-                        · {displayedSearchFlights.length} non-stop shown from {searchResults.length} loaded
+                        · non-stop filter applied
                       </span>
                     )}
                 </p>
@@ -2260,7 +2283,9 @@ const AdminTicketsPage = () => {
                   <p className="admin-tickets-results-empty">No flights match your criteria.</p>
                 ) : (displayedSearchFlights?.length ?? 0) === 0 ? (
                   <p className="admin-tickets-results-empty">
-                    No non-stop flights in the loaded results. Clear the non-stop filter or try Load more.
+                    {searchTripTypeUI === 'multi-city' && preferNonStopPerLeg
+                      ? 'No non-stop flights with marine fares in the loaded results. Clear the non-stop filter or try Load more.'
+                      : 'No marine fares in the loaded results. Try Load more or adjust your search.'}
                   </p>
                 ) : (
                   <>
@@ -2447,14 +2472,20 @@ const AdminTicketsPage = () => {
                           <div className="subsea-airport">
                             <div className="subsea-airport-code">{routeCode(ticket.from)}</div>
                             <div className="subsea-airport-city">{routeCity(ticket.from)}</div>
+                            <div className="subsea-airport-date" title="Departure">
+                              {formatTicketSchedule(getTicketDepartureIso(ticket))}
+                            </div>
                           </div>
                           <div className="subsea-flight-line">
                             <div className="subsea-flight-line-bar" />
                             <div className="subsea-flight-dur">{ticket.trip?.replace('_', ' ') ?? 'One way'} · {ticket.class ?? 'Economy'}</div>
                           </div>
-                          <div className="subsea-airport">
+                          <div className="subsea-airport subsea-airport--end">
                             <div className="subsea-airport-code">{routeCode(ticket.to)}</div>
                             <div className="subsea-airport-city">{routeCity(ticket.to)}</div>
+                            <div className="subsea-airport-date" title="Arrival">
+                              {formatTicketSchedule(getTicketArrivalIso(ticket))}
+                            </div>
                           </div>
                           <div className="subsea-flight-status">
                             <span className={`subsea-badge ${getTicketStatusBadgeClass(ticket)}`}>

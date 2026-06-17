@@ -243,12 +243,13 @@ function buildLayoverBanner(layover: LayoverInfo): string {
 
   const content = `<span class="layover-text">■&nbsp; LAYOVER: ${escapeHtml(locationLabel)}${durationPart} &nbsp;■</span>`;
 
-  return mjSection(
+  const banner = mjSection(
     '#FFF8E8',
     '10px 30px',
     mjColumn(100, 'center', content),
     'border:1px solid #C9A84C;'
   );
+  return `<div class="crew-ticket-layover">${banner}</div>`;
 }
 
 function buildFlightBlock(
@@ -352,10 +353,7 @@ function buildFlightBlock(
     mjColumn(100, 'center', detailContent, { tdClass: 'detail-strip' })
   );
 
-  return `${header}
-    ${route}
-    ${times}
-    ${details}`;
+  return `<div class="crew-ticket-flight-block">${header}${route}${times}${details}</div>`;
 }
 
 function buildFlightSections(ticket: CrewTicketApi): string {

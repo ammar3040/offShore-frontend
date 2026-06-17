@@ -22,6 +22,8 @@
 
   <mj-body background-color="#EAEEF4">
 
+    <mj-wrapper css-class="crew-ticket-header-group">
+
     <mj-section background-color="#0A1F44" padding="24px 30px 20px">
       <mj-column width="60%">
         <mj-text padding="0">
@@ -80,13 +82,15 @@
       </mj-column>
     </mj-section>
 
+    </mj-wrapper>
+
     <mj-section padding="8px 0" background-color="#EAEEF4"><mj-column><mj-text> </mj-text></mj-column></mj-section>
 
     <mj-raw>{{flightSections}}</mj-raw>
 
     <mj-section padding="8px 0" background-color="#EAEEF4"><mj-column><mj-text> </mj-text></mj-column></mj-section>
 
-    <mj-section background-color="#DDE6F2" padding="18px 30px 16px">
+    <mj-section css-class="crew-ticket-footer-block" background-color="#DDE6F2" padding="18px 30px 16px">
       <mj-column>
         <mj-text padding="0" align="center">
           <span style="font-size:12px;font-weight:bold;color:#1A3A6B;">

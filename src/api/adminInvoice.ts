@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import type { ApiPagination } from './superadmin';
 
 export type AdminInvoiceStatus = 'DRAFT' | 'GENERATED' | 'SENT';
 
@@ -131,12 +132,48 @@ function getErrorMessage(data: Record<string, unknown>, fallback: string): strin
   return msg ?? fallback;
 }
 
+export type SuperadminAdminInvoicesParams = {
+  page?: number;
+  limit?: number;
+};
+
+function normalizeAdminInvoicesPagination(raw: unknown): ApiPagination | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const value = raw as Record<string, unknown>;
+  if (
+    typeof value.page === 'number' &&
+    typeof value.limit === 'number' &&
+    typeof value.total === 'number' &&
+    typeof value.totalPages === 'number'
+  ) {
+    return {
+      page: value.page,
+      limit: value.limit,
+      total: value.total,
+      totalPages: value.totalPages,
+    };
+  }
+  return undefined;
+}
+
 /** List admin invoices - GET /superadmin/admin-invoices */
-export async function getSuperadminAdminInvoices(): Promise<{ adminInvoices: AdminInvoiceApi[] }> {
+export async function getSuperadminAdminInvoices(
+  params?: SuperadminAdminInvoicesParams
+): Promise<{ adminInvoices: AdminInvoiceApi[]; pagination?: ApiPagination }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/superadmin/admin-invoices`, {
+  const search = new URLSearchParams();
+  if (params?.limit != null) {
+    search.set('limit', String(params.limit));
+    search.set('page', String(params.page ?? 1));
+  } else if (params?.page != null) {
+    search.set('page', String(params.page));
+  }
+  const query = search.toString();
+  const url = `${env.apiBaseUrl}/superadmin/admin-invoices${query ? `?${query}` : ''}`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,
@@ -161,6 +198,7 @@ export async function getSuperadminAdminInvoices(): Promise<{ adminInvoices: Adm
   const list = Array.isArray(data?.adminInvoices) ? data.adminInvoices : [];
   return {
     adminInvoices: (list as Record<string, unknown>[]).map(normalizeAdminInvoice),
+    pagination: normalizeAdminInvoicesPagination(data?.pagination),
   };
 }
 
