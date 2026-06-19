@@ -24,6 +24,12 @@ export const env = {
 
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 
+  // Encryption Settings
+  enableEncryption: import.meta.env.VITE_ENABLE_ENCRYPTION === 'true',
+  aesSecret: import.meta.env.VITE_AES_SECRET || '0kob1_(6#hooH$-vt<fbQr6|CZD4gS_aes',
+  hmacSecret: import.meta.env.VITE_HMAC_SECRET || '0kob1_(6#hooH$-vt<fbQr6|CZD4gS',
+  rsaPublicKey: (import.meta.env.VITE_RSA_PUBLIC_KEY ?? '').replace(/\\n/g, '\n'),
+
   // Authentication
   authTokenKey: import.meta.env.VITE_AUTH_TOKEN_KEY || 'offshore_crm_auth_token',
   refreshTokenKey: import.meta.env.VITE_REFRESH_TOKEN_KEY || 'offshore_crm_refresh_token',
