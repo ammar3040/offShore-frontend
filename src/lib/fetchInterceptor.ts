@@ -11,7 +11,9 @@ window.fetch = async function (input, init) {
 
   // Intercept requests directed to our API base URL
   const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
-  if (!url.startsWith(env.apiBaseUrl)) {
+  const isApiRequest = url.startsWith(env.apiBaseUrl) || 
+                       (env.apiBaseUrl.startsWith('/') && (url.startsWith(window.location.origin + env.apiBaseUrl) || url.startsWith(env.apiBaseUrl)));
+  if (!isApiRequest) {
     return originalFetch(input, init);
   }
 
