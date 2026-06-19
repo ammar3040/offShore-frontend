@@ -1,0 +1,142 @@
+.subsea-shell .admin-bills-alert {
+  margin-bottom: 14px;
+}
+
+.subsea-shell .admin-bills-empty {
+  padding: 32px 18px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.subsea-shell .admin-bills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.subsea-shell .admin-bills-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.subsea-shell .admin-bills-card:hover {
+  border-color: var(--border2);
+  box-shadow: 0 1px 3px rgba(15, 32, 64, 0.06);
+}
+
+.subsea-shell .admin-bills-card-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.subsea-shell .admin-bills-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.subsea-shell .admin-bills-card-project {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subsea-shell .admin-bills-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.subsea-shell .admin-bills-sep {
+  color: var(--border2);
+}
+
+.subsea-shell .admin-bills-card-amounts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.subsea-shell .admin-bills-card-amounts strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.subsea-shell .admin-bills-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.subsea-shell .admin-bills-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.subsea-shell .admin-bills-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.subsea-shell .admin-bills-status--sent {
+  background: var(--green-light);
+  color: var(--green);
+  border-color: var(--green-border);
+}
+
+.subsea-shell .admin-bills-status--generated {
+  background: var(--blue-light);
+  color: var(--blue);
+  border-color: var(--blue-border);
+}
+
+.subsea-shell .admin-bills-status--draft {
+  background: var(--surface3);
+  color: var(--text-tertiary);
+  border-color: var(--border);
+}
+
+@media (max-width: 720px) {
+  .subsea-shell .admin-bills-card {
+    flex-wrap: wrap;
+  }
+
+  .subsea-shell .admin-bills-card-side {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

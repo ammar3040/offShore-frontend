@@ -1,0 +1,85 @@
+/* Matches subsea / admin light UI — not global .dark AMOLED tokens */
+.command-palette-overlay {
+  background: rgba(15, 23, 42, 0.22) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.command-palette-dialog {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  border: 1px solid rgba(148, 163, 184, 0.38) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.14),
+    0 8px 16px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  color: #0f172a !important;
+  max-width: 560px !important;
+}
+
+.command-palette-command {
+  background: transparent !important;
+  color: #0f172a !important;
+}
+
+.command-palette-dialog [data-slot="command-input-wrapper"] {
+  border-bottom-color: rgba(148, 163, 184, 0.28);
+}
+
+.command-palette-dialog [data-slot="command-input-wrapper"] svg {
+  color: #64748b;
+  opacity: 1;
+}
+
+.command-palette-dialog [data-slot="command-input"] {
+  color: #0f172a;
+}
+
+.command-palette-dialog [data-slot="command-input"]::placeholder {
+  color: #94a3b8;
+}
+
+.command-palette-dialog [data-slot="command-group-heading"] {
+  color: #64748b !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.command-palette-dialog [data-slot="command-item"] {
+  color: #334155;
+  border-radius: 8px;
+}
+
+.command-palette-dialog [data-slot="command-item"] svg {
+  color: #64748b !important;
+}
+
+.command-palette-dialog [data-slot="command-item"][data-selected="true"] {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.command-palette-dialog [data-slot="command-item"][data-selected="true"] svg {
+  color: #2563eb !important;
+}
+
+.command-palette-dialog [data-slot="command-separator"] {
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.command-palette-dialog [data-slot="command-empty"],
+.command-palette-loading {
+  color: #64748b;
+}
+
+.command-palette-dialog [data-slot="dialog-close"] {
+  color: #64748b;
+  opacity: 1;
+}
+
+.command-palette-dialog [data-slot="dialog-close"]:hover {
+  color: #0f172a;
+  background: rgba(148, 163, 184, 0.15);
+}

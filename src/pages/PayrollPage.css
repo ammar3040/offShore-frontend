@@ -1,0 +1,106 @@
+.payroll-rate-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--blue-light);
+  color: var(--blue);
+  border: 1px solid var(--blue-border);
+}
+
+.payroll-rate-badge.per-project {
+  background: var(--teal-light);
+  color: var(--teal);
+  border-color: var(--teal-border);
+}
+
+.payroll-rate-badge.per-day {
+  background: var(--amber-light);
+  color: var(--amber);
+  border-color: var(--amber-border);
+}
+
+.payroll-amount {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.payroll-amount.strong {
+  display: inline-block;
+}
+
+.payroll-empty-pay {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.payroll-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.payroll-form-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.payroll-form-field select,
+.payroll-form-field input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.payroll-form-field select:focus,
+.payroll-form-field input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--blue-light);
+}
+
+.payroll-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.payroll-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.subsea-link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--blue);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.subsea-link-btn:hover {
+  text-decoration: underline;
+}
+
+.subsea-table-empty {
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: 24px 12px !important;
+}
+
+.subsea-alert-error {
+  background: var(--red-light);
+  border: 1px solid var(--red-border);
+  color: var(--red);
+}

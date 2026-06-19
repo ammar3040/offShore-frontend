@@ -1,0 +1,728 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { Users, FolderKanban, Ship, Ticket, TrendingUp, Plus, BadgeDollarSign, CircleX, Percent } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  getSuperadminAnalytics,
+  updateSuperadminSettings,
+  updateSuperadminMarkupPercentage,
+} from '../api/superadmin';
+import { fetchRates, convert, formatGbpInDisplayCurrency, type CurrencyCode } from '../lib/currency';
+import {
+  ADMIN_BALANCE_CURRENCY_CHANGE_EVENT,
+  getStoredAdminBalanceCurrency,
+} from '../lib/adminBalanceCurrency';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import './SuperadminDashboard.css';
+
+const CURRENCY_LABELS: { value: CurrencyCode; label: string; symbol: string }[] = [
+  { value: 'GBP', label: 'GBP', symbol: '£' },
+  { value: 'USD', label: 'USD', symbol: '$' },
+  { value: 'INR', label: 'INR', symbol: '₹' },
+];
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function formatDate(d: Date): string {
+  return d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function getCurrencySymbol(code: CurrencyCode): string {
+  return CURRENCY_LABELS.find((c) => c.value === code)?.symbol ?? code;
+}
+
+function formatCancellationSlotsShort(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(Number(n)) || !Number.isFinite(Number(n))) return '—';
+  return String(Math.trunc(Number(n)));
+}
+
+const SuperadminDashboard = () => {
+  const [settings, setSettings] = useState<{
+    baseCurrency: CurrencyCode;
+    markupGBP: number | null;
+    markupPercentage: number | null;
+    cashbackGBP: number | null;
+    cancellationChargesGBP: number | null;
+  }>({
+    baseCurrency: 'GBP',
+    markupGBP: null,
+    markupPercentage: null,
+    cashbackGBP: null,
+    cancellationChargesGBP: null,
+  });
+  const [rates, setRates] = useState<Record<CurrencyCode, number> | null>(null);
+  const [showMarkupForm, setShowMarkupForm] = useState(false);
+  const [markupInput, setMarkupInput] = useState('');
+  const [markupSaving, setMarkupSaving] = useState(false);
+  const [showMarkupPercentageForm, setShowMarkupPercentageForm] = useState(false);
+  const [markupPercentageInput, setMarkupPercentageInput] = useState('');
+  const [markupPercentageSaving, setMarkupPercentageSaving] = useState(false);
+  const [showCashbackForm, setShowCashbackForm] = useState(false);
+  const [cashbackInput, setCashbackInput] = useState('');
+  const [cashbackSaving, setCashbackSaving] = useState(false);
+  const [showCancellationForm, setShowCancellationForm] = useState(false);
+  const [cancellationInput, setCancellationInput] = useState('');
+  const [cancellationSaving, setCancellationSaving] = useState(false);
+  const [analytics, setAnalytics] = useState<import('../api/superadmin').AdminAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [cancellationDisplayCurrency, setCancellationDisplayCurrency] = useState<CurrencyCode>(() =>
+    getStoredAdminBalanceCurrency()
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const fallbackRates: Record<CurrencyCode, number> = { GBP: 1, USD: 1.27, INR: 105 };
+    Promise.all([
+      getSuperadminAnalytics(),
+      fetchRates().catch(() => fallbackRates),
+    ])
+      .then(([analyticsData, ratesData]) => {
+        if (!cancelled) {
+          setAnalytics(analyticsData);
+          setRates(ratesData);
+          setSettings({
+            baseCurrency: analyticsData.baseCurrency ?? 'GBP',
+            markupGBP: analyticsData.markup ?? null,
+            markupPercentage: analyticsData.markupPercentage ?? null,
+            cashbackGBP: analyticsData.cashback ?? null,
+            cancellationChargesGBP: analyticsData.cancellationCharges ?? null,
+          });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load');
+          setAnalytics({
+            totalAdmins: 0,
+            activeAdmins: 0,
+            totalProjects: 0,
+            totalCrew: 0,
+            totalTickets: 0,
+          });
+          setRates(fallbackRates);
+          setSettings({
+            baseCurrency: 'GBP',
+            markupGBP: null,
+            markupPercentage: null,
+            cashbackGBP: null,
+            cancellationChargesGBP: null,
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const onCurrency = (e: Event) => {
+      const c = (e as CustomEvent<{ currency: CurrencyCode }>).detail?.currency;
+      if (c === 'GBP' || c === 'USD' || c === 'INR') setCancellationDisplayCurrency(c);
+    };
+    window.addEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrency);
+    return () => window.removeEventListener(ADMIN_BALANCE_CURRENCY_CHANGE_EVENT, onCurrency);
+  }, []);
+
+  const handleCurrencyChange = useCallback((newCurrency: CurrencyCode) => {
+    if (!settings) return;
+    if (settings.baseCurrency === newCurrency) return;
+    setSettings((s) => ({ ...s, baseCurrency: newCurrency }));
+  }, [settings]);
+
+  const stats = [
+    {
+      icon: Users,
+      label: 'TOTAL ADMINS',
+      value: loading ? '…' : (analytics?.totalAdmins ?? 0),
+      iconClass: 'superadmin-dash-icon--amber',
+    },
+    {
+      icon: Users,
+      label: 'ACTIVE ADMINS',
+      value: loading ? '…' : (analytics?.activeAdmins ?? 0),
+      iconClass: 'superadmin-dash-icon--green',
+    },
+    {
+      icon: FolderKanban,
+      label: 'TOTAL PROJECTS',
+      value: loading ? '…' : (analytics?.totalProjects ?? 0),
+      iconClass: 'superadmin-dash-icon--blue',
+    },
+    {
+      icon: Ship,
+      label: 'TOTAL CREW',
+      value: loading ? '…' : (analytics?.totalCrew ?? 0),
+      iconClass: 'superadmin-dash-icon--purple',
+    },
+    {
+      icon: Ticket,
+      label: 'TOTAL TICKETS',
+      value: loading ? '…' : (analytics?.totalTickets ?? 0),
+      iconClass: 'superadmin-dash-icon--orange',
+    },
+  ];
+
+  const adminsByActivity = analytics?.adminsByActivity ?? [];
+  const symbol = getCurrencySymbol(settings.baseCurrency);
+
+  const displayMarkup = rates && settings.markupGBP != null
+    ? convert(settings.markupGBP, 'GBP', settings.baseCurrency, rates)
+    : settings.markupGBP;
+  const displayCashback = rates && settings.cashbackGBP != null
+    ? convert(settings.cashbackGBP, 'GBP', settings.baseCurrency, rates)
+    : settings.cashbackGBP;
+  const displayCancellationCharges = rates && settings.cancellationChargesGBP != null
+    ? convert(settings.cancellationChargesGBP, 'GBP', settings.baseCurrency, rates)
+    : settings.cancellationChargesGBP;
+
+  const handleSaveMarkupPercentage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(markupPercentageInput.trim());
+    if (isNaN(value) || value < 0) {
+      toast.error('Invalid markup percentage', {
+        description: 'Please enter a valid positive number.',
+      });
+      return;
+    }
+    setMarkupPercentageSaving(true);
+    try {
+      const res = await updateSuperadminMarkupPercentage(value);
+      setSettings((s) => ({
+        ...s,
+        markupPercentage: res?.superAdmin?.markupPercentage ?? value,
+      }));
+      setShowMarkupPercentageForm(false);
+      setMarkupPercentageInput('');
+      toast.success('Markup percentage updated', {
+        description: 'Percentage markup saved successfully.',
+      });
+    } catch (err) {
+      toast.error('Update failed', {
+        description:
+          err instanceof Error ? err.message : 'Failed to update markup percentage.',
+      });
+    } finally {
+      setMarkupPercentageSaving(false);
+    }
+  };
+
+  const handleSaveMarkup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(markupInput.trim());
+    if (isNaN(value) || value < 0) {
+      toast.error('Invalid markup', { description: 'Please enter a valid positive number.' });
+      return;
+    }
+    if (!rates) return;
+    const gbpValue = convert(value, settings.baseCurrency, 'GBP', rates);
+    setMarkupSaving(true);
+    try {
+      const res = await updateSuperadminSettings({ markup: gbpValue });
+      setSettings((s) => ({ ...s, markupGBP: res?.superAdmin?.markup ?? gbpValue }));
+      setShowMarkupForm(false);
+      setMarkupInput('');
+      toast.success('Markup updated', { description: 'Markup saved successfully.' });
+    } catch (err) {
+      toast.error('Update failed', { description: err instanceof Error ? err.message : 'Failed to update markup.' });
+    } finally {
+      setMarkupSaving(false);
+    }
+  };
+
+  const handleSaveCashback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(cashbackInput.trim());
+    if (isNaN(value) || value < 0) {
+      toast.error('Invalid cashback', { description: 'Please enter a valid positive number.' });
+      return;
+    }
+    if (!rates) return;
+    const gbpValue = convert(value, settings.baseCurrency, 'GBP', rates);
+    setCashbackSaving(true);
+    try {
+      const res = await updateSuperadminSettings({ cashback: gbpValue });
+      setSettings((s) => ({ ...s, cashbackGBP: res?.superAdmin?.cashback ?? gbpValue }));
+      setShowCashbackForm(false);
+      setCashbackInput('');
+      toast.success('Cashback updated', { description: 'Cashback saved successfully.' });
+    } catch (err) {
+      toast.error('Update failed', { description: err instanceof Error ? err.message : 'Failed to update cashback.' });
+    } finally {
+      setCashbackSaving(false);
+    }
+  };
+
+  const handleSaveCancellationCharges = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseFloat(cancellationInput.trim());
+    if (isNaN(value) || value < 0) {
+      toast.error('Invalid cancellation charge', {
+        description: 'Please enter a valid positive number.',
+      });
+      return;
+    }
+    if (!rates) return;
+    const gbpValue = convert(value, settings.baseCurrency, 'GBP', rates);
+    setCancellationSaving(true);
+    try {
+      const res = await updateSuperadminSettings({ cancellationCharges: gbpValue });
+      setSettings((s) => ({
+        ...s,
+        cancellationChargesGBP: res?.superAdmin?.cancellationCharges ?? gbpValue,
+      }));
+      setShowCancellationForm(false);
+      setCancellationInput('');
+      toast.success('Cancellation charges updated', {
+        description: 'Per-cancellation fee saved successfully.',
+      });
+    } catch (err) {
+      toast.error('Update failed', {
+        description:
+          err instanceof Error ? err.message : 'Failed to update cancellation charges.',
+      });
+    } finally {
+      setCancellationSaving(false);
+    }
+  };
+
+  const openMarkupPercentageForm = () => {
+    if (settings.markupPercentage != null) {
+      setMarkupPercentageInput(String(settings.markupPercentage));
+    } else {
+      setMarkupPercentageInput('');
+    }
+    setShowMarkupPercentageForm(true);
+  };
+
+  const openMarkupForm = () => {
+    if (rates && settings.markupGBP != null) {
+      setMarkupInput(String(convert(settings.markupGBP, 'GBP', settings.baseCurrency, rates)));
+    } else {
+      setMarkupInput('');
+    }
+    setShowMarkupForm(true);
+  };
+
+  const openCashbackForm = () => {
+    if (rates && settings.cashbackGBP != null) {
+      setCashbackInput(String(convert(settings.cashbackGBP, 'GBP', settings.baseCurrency, rates)));
+    } else {
+      setCashbackInput('');
+    }
+    setShowCashbackForm(true);
+  };
+
+  const openCancellationForm = () => {
+    if (rates && settings.cancellationChargesGBP != null) {
+      setCancellationInput(
+        String(convert(settings.cancellationChargesGBP, 'GBP', settings.baseCurrency, rates))
+      );
+    } else {
+      setCancellationInput('');
+    }
+    setShowCancellationForm(true);
+  };
+
+  return (
+    <div className="superadmin-dashboard">
+      <header className="superadmin-dashboard-header">
+        <div>
+          <h1 className="superadmin-dashboard-greeting">{getGreeting()}, Superadmin</h1>
+          <p className="superadmin-dashboard-date">Today is {formatDate(new Date())}.</p>
+        </div>
+        {rates && (
+          <div className="superadmin-base-currency">
+            <label htmlFor="base-currency" className="superadmin-base-currency-label">
+              Base currency
+            </label>
+            <Select value={settings.baseCurrency} onValueChange={(v) => handleCurrencyChange(v as CurrencyCode)}>
+              <SelectTrigger id="base-currency" className="w-[180px]">
+                <SelectValue placeholder="Base currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCY_LABELS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label} ({c.symbol})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="superadmin-base-currency-hint">All values in this currency</span>
+          </div>
+        )}
+      </header>
+
+      {error && (
+        <div className="superadmin-dashboard-error" role="alert">
+          {error}
+        </div>
+      )}
+
+      <div className="superadmin-dashboard-cards">
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <Card key={s.label} className="superadmin-dash-card">
+              <div className={`superadmin-dash-card-icon ${s.iconClass}`}>
+                <Icon size={24} />
+              </div>
+              <div className="superadmin-dash-card-content">
+                <span className="superadmin-dash-card-value">{s.value}</span>
+                <span className="superadmin-dash-card-label">{s.label}</span>
+              </div>
+            </Card>
+          );
+        })}
+        <Card className="superadmin-dash-card superadmin-dash-card-markup">
+          <div className="superadmin-dash-card-icon superadmin-dash-icon--teal">
+            <TrendingUp size={24} />
+          </div>
+          <div className="superadmin-dash-card-content">
+            {showMarkupForm ? (
+              <form className="superadmin-markup-form" onSubmit={handleSaveMarkup}>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={markupInput}
+                  onChange={(e) => setMarkupInput(e.target.value)}
+                  placeholder={`e.g. 15.50 in ${settings.baseCurrency}`}
+                  className="superadmin-markup-input"
+                  autoFocus
+                  disabled={markupSaving}
+                />
+                <span className="superadmin-input-currency-hint">{symbol} {settings.baseCurrency}</span>
+                <div className="superadmin-markup-actions">
+                  <Button type="submit" size="sm" disabled={markupSaving}>
+                    {markupSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setShowMarkupForm(false); setMarkupInput(''); }}
+                    disabled={markupSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="superadmin-dash-card-value">
+                  {displayMarkup != null ? `${symbol}${displayMarkup.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+                <span className="superadmin-dash-card-label">FLAT MARKUP</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="superadmin-markup-add-btn"
+                  onClick={openMarkupForm}
+                  title="Add flat markup"
+                  aria-label="Add flat markup"
+                >
+                  <Plus size={14} />
+                  Add Markup
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+        <Card className="superadmin-dash-card superadmin-dash-card-markup-percentage">
+          <div className="superadmin-dash-card-icon superadmin-dash-icon--indigo">
+            <Percent size={24} />
+          </div>
+          <div className="superadmin-dash-card-content">
+            {showMarkupPercentageForm ? (
+              <form className="superadmin-markup-form" onSubmit={handleSaveMarkupPercentage}>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={markupPercentageInput}
+                  onChange={(e) => setMarkupPercentageInput(e.target.value)}
+                  placeholder="e.g. 2"
+                  className="superadmin-markup-input superadmin-markup-percentage-input"
+                  autoFocus
+                  disabled={markupPercentageSaving}
+                />
+                <span className="superadmin-input-currency-hint superadmin-input-currency-hint--percentage">
+                  % of Riya fare
+                </span>
+                <div className="superadmin-markup-actions">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="superadmin-markup-percentage-save"
+                    disabled={markupPercentageSaving}
+                  >
+                    {markupPercentageSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowMarkupPercentageForm(false);
+                      setMarkupPercentageInput('');
+                    }}
+                    disabled={markupPercentageSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="superadmin-dash-card-value">
+                  {settings.markupPercentage != null
+                    ? `${settings.markupPercentage}%`
+                    : '—'}
+                </span>
+                <span className="superadmin-dash-card-label">MARKUP PERCENTAGE</span>
+                <span className="superadmin-dash-card-sublabel" title="Applied as a percentage of the Riya fare">
+                  % of Riya fare
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="superadmin-markup-add-btn superadmin-markup-percentage-add-btn"
+                  onClick={openMarkupPercentageForm}
+                  title="Set markup percentage"
+                  aria-label="Set markup percentage"
+                >
+                  <Plus size={14} />
+                  Set Percentage
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+        <Card className="superadmin-dash-card superadmin-dash-card-cashback">
+          <div className="superadmin-dash-card-icon superadmin-dash-icon--emerald">
+            <BadgeDollarSign size={24} />
+          </div>
+          <div className="superadmin-dash-card-content">
+            {showCashbackForm ? (
+              <form className="superadmin-markup-form" onSubmit={handleSaveCashback}>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={cashbackInput}
+                  onChange={(e) => setCashbackInput(e.target.value)}
+                  placeholder={`e.g. 5.00 in ${settings.baseCurrency}`}
+                  className="superadmin-markup-input superadmin-cashback-input"
+                  autoFocus
+                  disabled={cashbackSaving}
+                />
+                <span className="superadmin-input-currency-hint superadmin-input-currency-hint--cashback">{symbol} {settings.baseCurrency}</span>
+                <div className="superadmin-markup-actions">
+                  <Button type="submit" size="sm" className="superadmin-cashback-save" disabled={cashbackSaving}>
+                    {cashbackSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setShowCashbackForm(false); setCashbackInput(''); }}
+                    disabled={cashbackSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="superadmin-dash-card-value">
+                  {displayCashback != null ? `${symbol}${displayCashback.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+                <span className="superadmin-dash-card-label">CASHBACK</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="superadmin-markup-add-btn superadmin-cashback-add-btn"
+                  onClick={openCashbackForm}
+                  title="Add cashback"
+                  aria-label="Add cashback"
+                >
+                  <Plus size={14} />
+                  Add Cashback
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+        <Card className="superadmin-dash-card superadmin-dash-card-cancellation">
+          <div className="superadmin-dash-card-icon superadmin-dash-icon--rose">
+            <CircleX size={24} />
+          </div>
+          <div className="superadmin-dash-card-content">
+            {showCancellationForm ? (
+              <form className="superadmin-markup-form" onSubmit={handleSaveCancellationCharges}>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={cancellationInput}
+                  onChange={(e) => setCancellationInput(e.target.value)}
+                  placeholder={`e.g. 25.00 in ${settings.baseCurrency}`}
+                  className="superadmin-markup-input superadmin-cancellation-input"
+                  autoFocus
+                  disabled={cancellationSaving}
+                />
+                <span className="superadmin-input-currency-hint superadmin-input-currency-hint--cancellation">
+                  {symbol} {settings.baseCurrency}
+                </span>
+                <div className="superadmin-markup-actions">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="superadmin-cancellation-save"
+                    disabled={cancellationSaving}
+                  >
+                    {cancellationSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowCancellationForm(false);
+                      setCancellationInput('');
+                    }}
+                    disabled={cancellationSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="superadmin-dash-card-value">
+                  {displayCancellationCharges != null
+                    ? `${symbol}${displayCancellationCharges.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : '—'}
+                </span>
+                <span className="superadmin-dash-card-label">CANCELLATION CHARGE</span>
+                <span className="superadmin-dash-card-sublabel" title="Per cancelled ticket accrued to admin">
+                  Per cancelled booking
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="superadmin-markup-add-btn superadmin-cancellation-add-btn"
+                  onClick={openCancellationForm}
+                  title="Set cancellation charge"
+                  aria-label="Set cancellation charge"
+                >
+                  <Plus size={14} />
+                  Set Charge
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="superadmin-dashboard-panels">
+        <Card className="superadmin-dashboard-panel">
+          <div className="superadmin-panel-header">
+            <h2 className="superadmin-panel-title">Admins by Activity</h2>
+            <Link to="/panel/superadmin/admins" className="superadmin-panel-view-all">
+              View All Admins
+            </Link>
+          </div>
+          <div className="superadmin-panel-body">
+            {loading ? (
+              <p className="superadmin-panel-empty">Loading…</p>
+            ) : adminsByActivity.length === 0 ? (
+              <p className="superadmin-panel-empty">
+                No admin activity data yet. Admins will appear here as they manage projects and crew.
+              </p>
+            ) : (
+              <ul className="superadmin-admins-list">
+                {adminsByActivity.slice(0, 8).map((a) => (
+                  <li key={a.adminId} className="superadmin-admin-item">
+                    <span className="superadmin-admin-email">{a.email}</span>
+                    <div className="superadmin-admin-stats">
+                      <span className="superadmin-admin-stat">{a.projectsCount} projects</span>
+                      <span className="superadmin-admin-stat">{a.crewCount} crew</span>
+                      <span
+                        className="superadmin-admin-stat"
+                        title="Cancellation outstanding (GBP)"
+                      >
+                        {typeof a.cancellationOutstanding === 'number' &&
+                        !Number.isNaN(a.cancellationOutstanding)
+                          ? `${formatGbpInDisplayCurrency(
+                              a.cancellationOutstanding,
+                              cancellationDisplayCurrency,
+                              rates
+                            )} out.`
+                          : '—'}
+                      </span>
+                      <span className="superadmin-admin-stat" title="Cancellation slots remaining">
+                        {typeof a.cancellationSlotsRemaining === 'number' &&
+                        !Number.isNaN(a.cancellationSlotsRemaining) &&
+                        Number.isFinite(a.cancellationSlotsRemaining)
+                          ? `${formatCancellationSlotsShort(a.cancellationSlotsRemaining)} slots`
+                          : '—'}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+
+        <Card className="superadmin-dashboard-panel">
+          <div className="superadmin-panel-header">
+            <h2 className="superadmin-panel-title">Quick Actions</h2>
+          </div>
+          <div className="superadmin-panel-body">
+            <nav className="superadmin-quick-actions">
+              <Link to="/panel/superadmin/admins" className="superadmin-quick-link">
+                <Users size={20} />
+                Create Admin
+              </Link>
+              <Link to="/panel/superadmin/tickets" className="superadmin-quick-link">
+                <Ticket size={20} />
+                View Crew Tickets
+              </Link>
+            </nav>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default SuperadminDashboard;

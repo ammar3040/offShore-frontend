@@ -1,0 +1,123 @@
+/* ~2% larger base; layout wider to fit screen */
+.crew-profile-page {
+  font-size: 102%;
+  max-width: min(1400px, 96vw);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 2vw, 24px);
+  box-sizing: border-box;
+}
+
+.crew-profile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  gap: 18px;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.crew-profile-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: crew-profile-spin 0.8s linear infinite;
+}
+
+@keyframes crew-profile-spin {
+  to { transform: rotate(360deg); }
+}
+
+.crew-profile-header { margin-bottom: 28px; }
+
+.crew-profile-title {
+  font-size: 1.53rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.crew-profile-subtitle {
+  font-size: 1.02rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.crew-profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.crew-profile-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.crew-profile-card--span-2 { grid-column: span 2; }
+
+.crew-profile-card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.04rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.crew-profile-card-title svg { color: #3b82f6; }
+
+.crew-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 18px 28px;
+}
+
+.crew-profile-list { display: flex; flex-direction: column; gap: 14px; }
+
+.crew-profile-field { display: flex; flex-direction: column; gap: 6px; }
+
+.crew-profile-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.crew-profile-value {
+  font-size: 1.02rem;
+  color: #1f2937;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .crew-profile-grid { grid-template-columns: 1fr; }
+  .crew-profile-card--span-2 { grid-column: span 1; }
+}
+
+/* Dark mode (AMOLED, uses index.css theme) */
+.crew-panel-layout--dark .crew-profile-title { color: hsl(var(--foreground)); }
+.crew-panel-layout--dark .crew-profile-subtitle,
+.crew-panel-layout--dark .crew-profile-loading { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-profile-spinner { border-color: hsl(var(--accent)); border-top-color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-profile-card {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+.crew-panel-layout--dark .crew-profile-card-title { color: hsl(var(--foreground)); border-bottom-color: hsl(var(--border)); }
+.crew-panel-layout--dark .crew-profile-card-title svg { color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-profile-label { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-profile-value { color: hsl(var(--foreground)); }

@@ -1,0 +1,212 @@
+.docs-cert-alert {
+  margin-bottom: 12px;
+}
+
+.docs-cert-toolbar {
+  margin-bottom: 12px;
+}
+
+.docs-cert-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.docs-cert-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.docs-cert-chip:hover {
+  background: var(--surface2);
+  color: var(--text-primary);
+}
+
+.docs-cert-chip.active {
+  background: var(--blue-light);
+  border-color: var(--blue-border);
+  color: var(--blue);
+}
+
+.docs-cert-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface3);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.docs-cert-chip.active .docs-cert-chip-count {
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.docs-cert-kpi-clickable {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.docs-cert-kpi-clickable:hover {
+  border-color: var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.docs-cert-kpi-clickable.active {
+  border-color: var(--blue-border);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
+}
+
+.docs-cert-doc-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docs-cert-doc-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.docs-cert-doc-icon.identity { background: var(--blue-light); color: var(--blue); border-color: var(--blue-border); }
+.docs-cert-doc-icon.stcw { background: var(--teal-light); color: var(--teal); border-color: var(--teal-border); }
+.docs-cert-doc-icon.travel { background: var(--amber-light); color: var(--amber); border-color: var(--amber-border); }
+
+.docs-cert-expiry-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.docs-cert-expiry-date {
+  font-variant-numeric: tabular-nums;
+}
+
+.docs-cert-expiry-relative {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
+
+.docs-cert-expiry-relative.urgent {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.docs-cert-expiry-bar {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--surface3);
+  overflow: hidden;
+}
+
+.docs-cert-expiry-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.2s;
+}
+
+.docs-cert-expiry-fill.green { background: var(--green); }
+.docs-cert-expiry-fill.amber { background: var(--amber); }
+.docs-cert-expiry-fill.red { background: var(--red); }
+
+.docs-cert-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.docs-cert-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.docs-cert-watchlist {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.docs-cert-watch-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.docs-cert-watch-row:last-child {
+  border-bottom: none;
+}
+
+.docs-cert-watch-row:hover {
+  background: var(--surface2);
+}
+
+.docs-cert-watch-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.docs-cert-watch-doc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.docs-cert-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.docs-cert-table tbody tr:hover {
+  background: var(--surface2);
+}
+
+@media (max-width: 1100px) {
+  .docs-cert-layout {
+    grid-template-columns: 1fr !important;
+  }
+}

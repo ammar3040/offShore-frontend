@@ -1,0 +1,135 @@
+<mjml>
+  <mj-head>
+    <mj-title>Lynq Travel Invoice {{invoice_number}}</mj-title>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="1.6" />
+      <mj-body width="794px" />
+    </mj-attributes>
+  </mj-head>
+
+  <!-- A4: 794px x ~1123px at 96dpi -->
+  <mj-body background-color="#ffffff" width="794px">
+
+    <!-- Top navy bar -->
+    <mj-section background-color="#1a3a5c" padding="0">
+      <mj-column>
+        <mj-spacer height="12px" />
+      </mj-column>
+    </mj-section>
+
+    <!-- Header: logo left, INVOICE right -->
+    <mj-section background-color="#ffffff" padding="36px 64px 0 64px">
+      <mj-column width="40%" padding="0" vertical-align="middle">
+        <mj-image src="{{logo_src}}" alt="Lynq Travel" width="150px" align="left" padding="0" />
+      </mj-column>
+      <mj-column width="60%" padding="0" vertical-align="middle">
+        <mj-text align="right" padding="0" font-size="40px" font-weight="700" color="#111111" letter-spacing="1px">
+          INVOICE
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Navy divider under header -->
+    <mj-section background-color="#ffffff" padding="20px 64px 0 64px">
+      <mj-column>
+        <mj-divider border-color="#1a3a5c" border-width="3px" padding="0" />
+      </mj-column>
+    </mj-section>
+
+    <!-- Invoice meta: gray label row + value row -->
+    <mj-section background-color="#ffffff" padding="24px 64px 0 64px">
+      <mj-column padding="0">
+        <mj-table padding="0" cellpadding="0" cellspacing="0">
+          <tr style="background-color: #f4f4f4;">
+            <td style="font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #999999; padding: 10px 14px; border: 1px solid #e0e0e0; border-right: none; width: 25%;">Invoice No.</td>
+            <td style="font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #999999; padding: 10px 14px; border: 1px solid #e0e0e0; border-right: none; width: 25%;">Date of Issue</td>
+            <td style="font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #999999; padding: 10px 14px; border: 1px solid #e0e0e0; border-right: none; width: 25%;">Due Date</td>
+            <td style="font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #999999; padding: 10px 14px; border: 1px solid #e0e0e0; width: 25%;">Amount Due</td>
+          </tr>
+          <tr style="background-color: #ffffff;">
+            <td style="font-size: 14px; font-weight: 700; color: #111111; padding: 12px 14px; border: 1px solid #e0e0e0; border-top: none; border-right: none; width: 25%;">{{invoice_number}}</td>
+            <td style="font-size: 14px; font-weight: 700; color: #111111; padding: 12px 14px; border: 1px solid #e0e0e0; border-top: none; border-right: none; width: 25%;">{{issue_date}}</td>
+            <td style="font-size: 14px; font-weight: 700; color: #111111; padding: 12px 14px; border: 1px solid #e0e0e0; border-top: none; border-right: none; width: 25%;">{{due_date}}</td>
+            <td style="font-size: 17px; font-weight: 700; color: #1a3a5c; padding: 12px 14px; border: 1px solid #e0e0e0; border-top: none; width: 25%;">{{amount_due}}</td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- From / To with vertical rule and email/FAO row -->
+    <mj-section background-color="#ffffff" padding="28px 64px 24px 64px">
+      <mj-column padding="0">
+        <mj-table padding="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #999999; padding: 0 14px 6px 0; border-right: 1px solid #e0e0e0; width: 50%; vertical-align: top;">From</td>
+            <td style="font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #999999; padding: 0 0 6px 20px; width: 50%; vertical-align: top;">To</td>
+          </tr>
+          <tr>
+            <td style="font-size: 14px; font-weight: 700; color: #111111; padding: 0 14px 8px 0; border-right: 1px solid #e0e0e0; vertical-align: top;">{{from_name}}</td>
+            <td style="font-size: 14px; font-weight: 700; color: #111111; padding: 0 0 8px 20px; vertical-align: top;">{{to_name}}</td>
+          </tr>
+          <tr>
+            <td style="font-size: 13px; color: #333333; line-height: 1.7; padding: 0 14px 14px 0; border-right: 1px solid #e0e0e0; vertical-align: top;">
+              {{from_address_html}}
+            </td>
+            <td style="font-size: 13px; color: #333333; line-height: 1.7; padding: 0 0 14px 20px; vertical-align: top;">
+              {{to_address_html}}
+            </td>
+          </tr>
+          <tr>
+            <td style="font-size: 13px; color: #333333; line-height: 1.6; min-height: 44px; padding: 12px 14px 20px 0; border-top: 1px solid #e8e8e8; border-right: 1px solid #e0e0e0; vertical-align: top;">{{from_email}}</td>
+            <td style="font-size: 13px; color: #333333; line-height: 1.6; min-height: 44px; padding: 12px 0 20px 20px; border-top: 1px solid #e8e8e8; vertical-align: top;">FAO: {{client_fao}}</td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Line items table -->
+    <mj-section background-color="#ffffff" padding="8px 64px 0 64px">
+      <mj-column padding="0">
+        <mj-table padding="0" cellpadding="0" cellspacing="0">
+          <tr style="background-color: #1a3a5c;">
+            <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #ffffff; padding: 12px 16px; width: 52%;">Description</td>
+            <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #ffffff; padding: 12px 16px; width: 12%; text-align: center;">QTY</td>
+            <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #ffffff; padding: 12px 16px; width: 18%; text-align: right;">Unit Price</td>
+            <td style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #ffffff; padding: 12px 16px; width: 18%; text-align: right;">Amount</td>
+          </tr>
+          {{line_items_rows}}
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Totals -->
+    <mj-section background-color="#ffffff" padding="20px 64px 0 64px">
+      <mj-column padding="0">
+        <mj-table padding="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="font-size: 12px; color: #999999; padding: 8px 16px; border-bottom: 1px solid #ededed;">Subtotal</td>
+            <td style="font-size: 13px; font-weight: 700; color: #111111; padding: 8px 16px; border-bottom: 1px solid #ededed; text-align: right;">{{subtotal}}</td>
+          </tr>
+          <tr>
+            <td style="font-size: 12px; color: #999999; padding: 8px 16px;">VAT (0%)</td>
+            <td style="font-size: 13px; font-weight: 700; color: #111111; padding: 8px 16px; text-align: right;">{{vat_amount}}</td>
+          </tr>
+          <tr style="background-color: #eef1f4;">
+            <td style="font-size: 15px; font-weight: 700; color: #111111; letter-spacing: 0.03em; padding: 16px;">TOTAL DUE</td>
+            <td style="font-size: 20px; font-weight: 700; color: #1a3a5c; padding: 16px; text-align: right;">{{total_due}}</td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer note -->
+    <mj-section background-color="#ffffff" padding="28px 64px 48px 64px">
+      <mj-column>
+        <mj-divider border-color="#e8e8e8" border-width="1px" padding="0 0 16px 0" />
+        <mj-text align="center" font-size="11px" color="#999999" padding="0">
+          {{footer_note}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

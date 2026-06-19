@@ -1,0 +1,311 @@
+/* ~2% larger base: 1.02 scale. Layout fits screen with comfortable width. */
+.crew-timesheet-page {
+  font-size: 102%;
+  max-width: min(1400px, 96vw);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 2vw, 24px);
+  box-sizing: border-box;
+}
+
+.crew-timesheet-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  gap: 18px;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.crew-timesheet-spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: crew-timesheet-spin 0.8s linear infinite;
+}
+
+@keyframes crew-timesheet-spin { to { transform: rotate(360deg); } }
+
+.crew-timesheet-header { margin-bottom: 28px; }
+
+.crew-timesheet-title {
+  font-size: 1.53rem;   /* ~24px * 1.02 */
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.crew-timesheet-subtitle {
+  font-size: 1.02rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.crew-timesheet-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 28px;
+  background: #f9fafb;
+  border-radius: 14px;
+  border: 1px dashed #e5e7eb;
+  color: #6b7280;
+  font-size: 1.02rem;
+}
+
+.crew-timesheet-empty svg { color: #d1d5db; margin-bottom: 18px; }
+
+.crew-timesheet-link {
+  margin-top: 14px;
+  font-size: 1.02rem;
+  font-weight: 500;
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.crew-timesheet-link:hover { text-decoration: underline; }
+
+.crew-timesheet-select-wrap {
+  margin-bottom: 24px;
+}
+
+.crew-timesheet-select-wrap label {
+  display: block;
+  font-size: 1.02rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 10px;
+}
+
+.crew-timesheet-select-wrap select {
+  padding: 12px 16px;
+  font-size: 1.02rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  min-width: 280px;
+  max-width: 100%;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.crew-timesheet-select-wrap select:hover {
+  border-color: #d1d5db;
+}
+
+.crew-timesheet-select-wrap select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.crew-timesheet-select-loading {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.98rem;
+  color: #6b7280;
+}
+
+.crew-timesheet-error {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #dc2626;
+  font-size: 1.02rem;
+}
+
+.crew-timesheet-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.crew-timesheet-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.crew-timesheet-pagination-info {
+  font-size: 1.02rem;
+  color: #6b7280;
+}
+
+.crew-timesheet-pagination-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.crew-timesheet-pagination-btn {
+  padding: 10px 16px;
+  font-size: 1.02rem;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.crew-timesheet-pagination-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.crew-timesheet-pagination-btn.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.crew-timesheet-pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.crew-timesheet-pagination-ellipsis {
+  padding: 10px 8px;
+  font-size: 1.02rem;
+  color: #6b7280;
+  user-select: none;
+}
+
+.crew-timesheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.02rem;
+}
+
+.crew-timesheet-table th,
+.crew-timesheet-table td {
+  padding: 14px 20px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.crew-timesheet-table th {
+  font-weight: 600;
+  color: #374151;
+  background: #f9fafb;
+  font-size: 1.02rem;
+}
+
+.crew-timesheet-table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.crew-timesheet-attendance {
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 0.96rem;   /* ~12px * 1.02 */
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  min-width: 96px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.crew-timesheet-attendance:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.crew-timesheet-attendance--placeholder { background: #f3f4f6; color: #9ca3af; }
+.crew-timesheet-attendance--present { background: #d1fae5; color: #065f46; }
+.crew-timesheet-attendance--absent { background: #fee2e2; color: #991b1b; }
+.crew-timesheet-attendance--leave { background: #fef3c7; color: #92400e; }
+
+.crew-timesheet-no-dates {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 28px;
+  background: #f9fafb;
+  border-radius: 14px;
+  border: 1px dashed #e5e7eb;
+  color: #6b7280;
+  font-size: 1.02rem;
+}
+
+.crew-timesheet-no-dates svg { color: #d1d5db; margin-bottom: 18px; }
+
+/* Dark mode (AMOLED, uses index.css theme) */
+.crew-panel-layout--dark .crew-timesheet-title { color: hsl(var(--foreground)); }
+.crew-panel-layout--dark .crew-timesheet-subtitle,
+.crew-panel-layout--dark .crew-timesheet-loading,
+.crew-panel-layout--dark .crew-timesheet-pagination-info,
+.crew-panel-layout--dark .crew-timesheet-pagination-ellipsis { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-timesheet-spinner { border-color: hsl(var(--accent)); border-top-color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-timesheet-empty,
+.crew-panel-layout--dark .crew-timesheet-no-dates {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+.crew-panel-layout--dark .crew-timesheet-empty svg,
+.crew-panel-layout--dark .crew-timesheet-no-dates svg { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-timesheet-link { color: hsl(var(--primary)); }
+.crew-panel-layout--dark .crew-timesheet-select-wrap label { color: hsl(var(--foreground)); }
+.crew-panel-layout--dark .crew-timesheet-select-wrap select {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.crew-panel-layout--dark .crew-timesheet-select-wrap select:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+}
+.crew-panel-layout--dark .crew-timesheet-select-loading { color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-timesheet-error {
+  background: rgba(220, 38, 38, 0.15);
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+.crew-panel-layout--dark .crew-timesheet-table-wrap {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+.crew-panel-layout--dark .crew-timesheet-table th,
+.crew-panel-layout--dark .crew-timesheet-table td { border-bottom-color: hsl(var(--border)); }
+.crew-panel-layout--dark .crew-timesheet-table th {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+.crew-panel-layout--dark .crew-timesheet-table td {
+  color: hsl(var(--foreground));
+}
+.crew-panel-layout--dark .crew-timesheet-table tbody tr:hover { background: hsl(var(--accent)); }
+.crew-panel-layout--dark .crew-timesheet-pagination-btn {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.crew-panel-layout--dark .crew-timesheet-pagination-btn:hover:not(:disabled) {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+.crew-panel-layout--dark .crew-timesheet-pagination-btn.active {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.crew-panel-layout--dark .crew-timesheet-attendance--placeholder { background: hsl(var(--accent)); color: hsl(var(--muted-foreground)); }
+.crew-panel-layout--dark .crew-timesheet-attendance--present { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+.crew-panel-layout--dark .crew-timesheet-attendance--absent { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+.crew-panel-layout--dark .crew-timesheet-attendance--leave { background: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+.crew-panel-layout--dark .crew-timesheet-empty-hint { color: hsl(var(--muted-foreground)); }

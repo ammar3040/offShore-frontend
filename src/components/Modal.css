@@ -1,0 +1,200 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background-color: hsl(var(--card));
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-small {
+  width: 100%;
+  max-width: 400px;
+}
+
+.modal-medium {
+  width: 100%;
+  max-width: 600px;
+}
+
+.modal-large {
+  width: 100%;
+  max-width: 900px;
+}
+
+.modal-xlarge {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: hsl(var(--card-foreground));
+  margin: 0;
+}
+
+.modal-close-button {
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close-button:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 100%;
+    max-height: 95vh;
+    margin: 10px;
+  }
+  
+  .modal-header {
+    padding: 20px;
+  }
+  
+  .modal-title {
+    font-size: 20px;
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 0;
+  }
+  
+  .modal-content {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  .modal-header {
+    padding: 16px;
+  }
+  
+  .modal-title {
+    font-size: 18px;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+}
+
+/* ----- Dark mode (uses index.css theme) ----- */
+.layout--dark .modal-overlay,
+.superadmin-panel-layout--dark .modal-overlay,
+.crew-panel-layout--dark .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+.layout--dark .modal-content,
+.superadmin-panel-layout--dark .modal-content,
+.crew-panel-layout--dark .modal-content {
+  background-color: hsl(var(--card));
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.layout--dark .modal-header,
+.superadmin-panel-layout--dark .modal-header,
+.crew-panel-layout--dark .modal-header {
+  border-bottom-color: hsl(var(--border));
+}
+
+.layout--dark .modal-title,
+.superadmin-panel-layout--dark .modal-title,
+.crew-panel-layout--dark .modal-title {
+  color: hsl(var(--card-foreground));
+}
+
+.layout--dark .modal-close-button,
+.superadmin-panel-layout--dark .modal-close-button,
+.crew-panel-layout--dark .modal-close-button {
+  color: hsl(var(--muted-foreground));
+}
+
+.layout--dark .modal-close-button:hover,
+.superadmin-panel-layout--dark .modal-close-button:hover,
+.crew-panel-layout--dark .modal-close-button:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+/* Ensure native form controls (select dropdowns, etc.) use dark styling in modals */
+.layout--dark .modal-body,
+.superadmin-panel-layout--dark .modal-body,
+.crew-panel-layout--dark .modal-body {
+  color-scheme: dark;
+}
+
+.layout--dark .modal-content.subsea-form-light,
+.layout--dark .modal-content.subsea-form-light .modal-body {
+  color-scheme: light !important;
+}

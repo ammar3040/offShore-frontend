@@ -1,0 +1,40 @@
+/* Route lazy-load fallback */
+.route-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  width: 100%;
+}
+
+.route-loader__spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid color-mix(in srgb, var(--foreground, #111) 15%, transparent);
+  border-top-color: var(--foreground, #111);
+  border-radius: 50%;
+  animation: route-loader-spin 0.75s linear infinite;
+}
+
+.layout--dark .route-loader__spinner {
+  border-color: color-mix(in srgb, var(--foreground, #fff) 15%, transparent);
+  border-top-color: var(--foreground, #fff);
+}
+
+@keyframes route-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* App-specific styles */
+.page-placeholder {
+  padding: 48px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.layout--dark .page-placeholder {
+  color: #9ca3af;
+}
