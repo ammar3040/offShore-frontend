@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   AlertTriangle,
+  ArrowLeft,
   ChevronDown,
   ChevronLeft,
   Download,
@@ -1714,6 +1715,13 @@ const AdminTicketsPage = () => {
 
       <div className="subsea-main">
         <div className="subsea-topbar">
+          <button
+            type="button"
+            className="subsea-btn subsea-btn-default subsea-btn-sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={12} className="mr-1.5" /> Back
+          </button>
           <div className="subsea-crumb">
             <span>Subseacore</span>
             <span className="subsea-crumb-sep">/</span>
@@ -2667,7 +2675,7 @@ const AdminTicketsPage = () => {
       </div>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg`}>
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>Ticket details</DialogTitle>
           </DialogHeader>
@@ -2850,7 +2858,7 @@ const AdminTicketsPage = () => {
           if (!open && !cancelTicketSubmitting) setTicketToConfirmCancel(null);
         }}
       >
-        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
+        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>Cancel this ticket?</DialogTitle>
             <DialogDescription className="text-left pt-1">
@@ -2900,7 +2908,7 @@ const AdminTicketsPage = () => {
       </Dialog>
 
       <Dialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
-        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg`}>
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>
               {modalStep === 'project'
@@ -3223,7 +3231,7 @@ const AdminTicketsPage = () => {
           if (!open && !bookingFlightKey) setFlightToBook(null);
         }}
       >
-        <DialogContent showCloseButton={!bookingFlightKey} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
+        <DialogContent showCloseButton={!bookingFlightKey} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>Book flight tickets?</DialogTitle>
             <DialogDescription className="text-left pt-2 text-muted-foreground">
@@ -3324,7 +3332,7 @@ const AdminTicketsPage = () => {
           if (!open && !submitLoading) setShowManualConfirm(false);
         }}
       >
-        <DialogContent showCloseButton={!submitLoading} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
+        <DialogContent showCloseButton={!submitLoading} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>Confirm ticket creation?</DialogTitle>
             <DialogDescription className="text-left pt-2 text-muted-foreground">

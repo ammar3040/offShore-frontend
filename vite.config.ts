@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
 // https://vite.dev/config/
-const DEFAULT_API_TARGET = 'https://marine-flight-backend.vercel.app'
+const DEFAULT_API_TARGET = 'https://offshore-backend-x8wo.onrender.com'
 const BACKEND_ROUTE_PREFIXES = [
   '/admin',
   '/airports',

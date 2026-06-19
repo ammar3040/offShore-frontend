@@ -3,7 +3,7 @@
  * All environment variables must be prefixed with VITE_ to be accessible in the client
  */
 
-const DEFAULT_PRODUCTION_API = 'https://marine-flight-backend.vercel.app';
+const DEFAULT_PRODUCTION_API = 'https://offshore-backend-x8wo.onrender.com';
 
 function normalizeApiBaseUrl(raw: string | undefined): string {
   const value = (raw ?? '').trim().replace(/\/+$/, '');
