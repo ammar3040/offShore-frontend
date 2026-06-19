@@ -21,13 +21,14 @@ const BACKEND_ROUTE_PREFIXES = [
 ]
 
 function resolveProxyTarget(env: Record<string, string>): string {
-  const explicit = env.VITE_API_BASE_URL?.trim()
-  if (explicit) return explicit.replace(/\/+$/, '')
-
-  // VITE_API_BASE_URL is the client path in dev (/api), not the upstream host — never use it as proxy target.
   const baseUrl = env.VITE_API_BASE_URL?.trim() ?? ''
   if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
     return baseUrl.replace(/\/+$/, '')
+  }
+
+  const proxyTarget = env.VITE_API_PROXY_TARGET?.trim()
+  if (proxyTarget && (proxyTarget.startsWith('http://') || proxyTarget.startsWith('https://'))) {
+    return proxyTarget.replace(/\/+$/, '')
   }
 
   return DEFAULT_API_TARGET
@@ -48,16 +49,24 @@ export default defineConfig(({ mode }) => {
       include: ['html2pdf.js'],
     },
     server: {
-      proxy: Object.fromEntries(
-        BACKEND_ROUTE_PREFIXES.map((prefix) => [
-          prefix,
-          {
-            target: apiTarget,
-            changeOrigin: true,
-            secure: true,
-          },
-        ])
-      ),
+      proxy: {
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+        ...Object.fromEntries(
+          BACKEND_ROUTE_PREFIXES.map((prefix) => [
+            prefix,
+            {
+              target: apiTarget,
+              changeOrigin: true,
+              secure: true,
+            },
+          ])
+        ),
+      },
     },
   }
 })
