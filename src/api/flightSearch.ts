@@ -93,7 +93,7 @@ const API_BASE = env.apiBaseUrl || '';
  */
 export async function searchFlights(payload: SearchPayload): Promise<SearchFlightsResult> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(() => controller.abort(), env.flightSearchTimeout);
 
   const response = await fetch(`${API_BASE}/crew-ticket/search-flights`, {
     method: 'POST',
@@ -159,7 +159,7 @@ export async function bookFlight(params: {
   [key: string]: unknown;
 }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(() => controller.abort(), env.flightSearchTimeout);
 
   const body: BookFlightPayload = {
     ...(params.project_id ? { project_id: params.project_id } : {}),

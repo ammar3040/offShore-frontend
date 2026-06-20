@@ -23,6 +23,7 @@ export const env = {
   apiBaseUrl: normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
 
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
+  flightSearchTimeout: Number(import.meta.env.VITE_FLIGHT_SEARCH_TIMEOUT) || 90000,
 
   // Encryption Settings
   enableEncryption: import.meta.env.VITE_ENABLE_ENCRYPTION === 'true',
