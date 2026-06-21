@@ -68,6 +68,14 @@ import {
 } from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
+import {
+  getDirectionDisplay,
+  getFlightSegmentGroups,
+  getOneWayDisplay,
+  isFlightNonStop,
+  isRoundTripFlight,
+  type FlightDirectionDisplay,
+} from '../lib/flightUtils';
 import { searchAirportsApi } from '../api/airports';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type {
@@ -81,6 +89,7 @@ import type {
   FlightSortOrder,
 } from '../types/flight';
 import { DatePickerTime } from '@/components/ui/date-picker-time';
+import type { TimeFilterMode } from '@/components/ui/time-wheel-picker';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -116,12 +125,6 @@ type MultiFlightSegment = {
 
 function newSegmentId(): string {
   return `seg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function isFlightNonStop(flight: Flight): boolean {
-  const firstLeg = flight.legs?.[0];
-  const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
-  return stops === 0;
 }
 
 const TRIP_OPTIONS: Array<{ value: CreateFlightTicketPayload['trip']; label: string }> = [
@@ -513,6 +516,121 @@ function withMarineFaresOnly(flight: Flight): Flight | null {
   return { ...flight, fares: marineFares };
 }
 
+function FlightRouteRow({
+  label,
+  display,
+}: {
+  label?: string;
+  display: FlightDirectionDisplay;
+}) {
+  const overnightCount = countFlightOvernights(display.departureTime, display.arrivalTime);
+
+  return (
+    <div className="atfc-route-block">
+      {label ? <span className="atfc-route-label">{label}</span> : null}
+      <div className="atfc-route">
+        <div className="atfc-route-endpoint">
+          <span className="atfc-time">{display.departureTime ? fmtTime(display.departureTime) : '—'}</span>
+          <span className="atfc-date">{display.departureTime ? fmtDate(display.departureTime) : ''}</span>
+          <span className="atfc-airport" title={display.fromAirport}>{display.fromAirport}</span>
+        </div>
+        <div className="atfc-route-mid">
+          <span className="atfc-duration">{display.duration}</span>
+          <div className="atfc-route-line">
+            <span className="atfc-route-dot" />
+            <span className="atfc-route-bar" />
+            <Plane size={14} className="atfc-route-plane" />
+            <span className="atfc-route-bar" />
+            <span className="atfc-route-dot" />
+          </div>
+          <span className="atfc-stops">
+            {display.stops === 0
+              ? 'Non-stop'
+              : `${display.stops} stop${display.stops > 1 ? 's' : ''}${display.via ? ` via ${display.via}` : ''}`}
+          </span>
+          {overnightCount > 0 ? (
+            <span
+              className="atfc-overnight-badge"
+              title={`${overnightCount} overnight${overnightCount !== 1 ? 's' : ''} in transit`}
+            >
+              {overnightCount} overnight{overnightCount !== 1 ? 's' : ''}
+            </span>
+          ) : null}
+        </div>
+        <div className="atfc-route-endpoint atfc-route-endpoint-right">
+          <span className="atfc-time">{display.arrivalTime ? fmtTime(display.arrivalTime) : '—'}</span>
+          <span className="atfc-date">{display.arrivalTime ? fmtDate(display.arrivalTime) : ''}</span>
+          <span className="atfc-airport" title={display.toAirport}>{display.toAirport}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlightSegmentDetails({ groups }: { groups: ReturnType<typeof getFlightSegmentGroups> }) {
+  return (
+    <div className="atfc-segments">
+      {groups.map((group) => (
+        <div key={group.label || 'segments'} className="atfc-seg-group">
+          {group.label ? <div className="atfc-seg-group-label">{group.label}</div> : null}
+          {group.segments.map((seg, i) => {
+            const nextSeg = group.segments[i + 1];
+            const layoverArrival = seg.arrivalTime;
+            const layoverDeparture = nextSeg?.departureTime;
+
+            return (
+              <div key={`${group.label}-${i}`} className="atfc-seg">
+                <div className="atfc-seg-header">
+                  <span className="atfc-seg-airline">
+                    {seg.airlineName} {seg.airlineCode} {seg.flightNumber}
+                  </span>
+                  <span className="atfc-seg-cabin">{seg.cabin}</span>
+                </div>
+                <div className="atfc-seg-route">
+                  <div className="atfc-seg-point">
+                    <span className="atfc-seg-time">{seg.departureTime ? fmtTime(seg.departureTime) : '—'}</span>
+                    {hasParseableDate(seg.departureTime) && (
+                      <span className="atfc-seg-date">{fmtDate(seg.departureTime)}</span>
+                    )}
+                    <span className="atfc-seg-airport">{seg.fromAirport ?? seg.from}</span>
+                    {seg.fromTerminal && <span className="atfc-seg-terminal">Terminal {seg.fromTerminal}</span>}
+                  </div>
+                  <div className="atfc-seg-arrow">→</div>
+                  <div className="atfc-seg-point">
+                    <span className="atfc-seg-time">{seg.arrivalTime ? fmtTime(seg.arrivalTime) : '—'}</span>
+                    {hasParseableDate(seg.arrivalTime) && (
+                      <span className="atfc-seg-date">{fmtDate(seg.arrivalTime)}</span>
+                    )}
+                    <span className="atfc-seg-airport">{seg.toAirport ?? seg.to}</span>
+                    {seg.toTerminal && <span className="atfc-seg-terminal">Terminal {seg.toTerminal}</span>}
+                  </div>
+                </div>
+                <div className="atfc-seg-meta">
+                  <span>Baggage: {seg.baggage}</span>
+                  <span>Cabin bag: {seg.cabinBaggage}</span>
+                </div>
+                {seg.layover && (
+                  <div className="atfc-seg-layover">
+                    <span>
+                      Layover at {seg.layover.location}: {seg.layover.duration}
+                      {hasParseableDate(layoverArrival) && (
+                        <> · Arrive {fmtDate(layoverArrival)} {fmtTime(layoverArrival)}</>
+                      )}
+                      {layoverDeparture && hasParseableDate(layoverDeparture) && (
+                        <> · Next departs {fmtDate(layoverDeparture)} {fmtTime(layoverDeparture)}</>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function FlightResultCard({
   flight,
   currency,
@@ -527,65 +645,39 @@ function FlightResultCard({
   const [selectedFare, setSelectedFare] = useState<Fare | null>(() => getMarineFares(flight.fares)[0] ?? null);
   const [expanded, setExpanded] = useState(false);
   const fares = getMarineFares(flight.fares);
-
-  const firstLeg = flight.legs?.[0];
-  const lastLeg = flight.legs?.[flight.legs.length - 1];
-  const firstSeg = firstLeg?.itinerary?.[0];
-  const lastSeg = lastLeg?.itinerary?.[lastLeg.itinerary.length - 1];
-
-  const fromAirport = firstSeg?.fromAirport ?? firstLeg?.from ?? '—';
-  const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
-  const departureTime = firstLeg?.departureTime ?? '';
-  const arrivalTime = lastLeg?.arrivalTime ?? '';
-  const duration = firstLeg?.duration ?? '—';
-  const overnightCount = countFlightOvernights(departureTime, arrivalTime);
-  const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
-  const via = firstLeg?.via;
-  const airlineName = (flight as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
-  const airlineCode = (flight as { airlineCode?: string }).airlineCode ?? '';
+  const roundTrip = isRoundTripFlight(flight);
+  const outboundDisplay = roundTrip
+    ? getDirectionDisplay(flight.outbound, flight.legs?.[0])
+    : getOneWayDisplay(flight);
+  const inboundDisplay = roundTrip ? getDirectionDisplay(flight.inbound, flight.legs?.[1]) : null;
+  const segmentGroups = getFlightSegmentGroups(flight);
+  const firstSeg = segmentGroups[0]?.segments[0];
   const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
-  const segments = flight.legs?.flatMap((leg) => leg.itinerary ?? []) ?? [];
 
   return (
-    <div className="atfc-card atfc-card--marine">
+    <div className={'atfc-card atfc-card--marine' + (roundTrip ? ' atfc-card--round-trip' : '')}>
       {/* ── Main row ── */}
-      <div className="atfc-main">
+      <div className={'atfc-main' + (roundTrip ? ' atfc-main--round-trip' : '')}>
         {/* Airline */}
-        <div className="atfc-airline">
-          <span className="atfc-airline-name">{airlineName}</span>
-          <span className="atfc-airline-code">{airlineCode}</span>
+        <div className={'atfc-airline' + (roundTrip ? ' atfc-airline-stack' : '')}>
+          <div className="atfc-airline-entry">
+            <span className="atfc-airline-name">{outboundDisplay.airlineName}</span>
+            <span className="atfc-airline-code">{outboundDisplay.airlineCode}</span>
+          </div>
+          {inboundDisplay &&
+          (inboundDisplay.airlineName !== outboundDisplay.airlineName ||
+            inboundDisplay.airlineCode !== outboundDisplay.airlineCode) ? (
+            <div className="atfc-airline-entry">
+              <span className="atfc-airline-name">{inboundDisplay.airlineName}</span>
+              <span className="atfc-airline-code">{inboundDisplay.airlineCode}</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Route */}
-        <div className="atfc-route">
-          <div className="atfc-route-endpoint">
-            <span className="atfc-time">{departureTime ? fmtTime(departureTime) : '—'}</span>
-            <span className="atfc-date">{departureTime ? fmtDate(departureTime) : ''}</span>
-            <span className="atfc-airport" title={fromAirport}>{fromAirport}</span>
-          </div>
-          <div className="atfc-route-mid">
-            <span className="atfc-duration">{duration}</span>
-            <div className="atfc-route-line">
-              <span className="atfc-route-dot" />
-              <span className="atfc-route-bar" />
-              <Plane size={14} className="atfc-route-plane" />
-              <span className="atfc-route-bar" />
-              <span className="atfc-route-dot" />
-            </div>
-            <span className="atfc-stops">
-              {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}${via ? ` via ${via}` : ''}`}
-            </span>
-            {overnightCount > 0 ? (
-              <span className="atfc-overnight-badge" title={`${overnightCount} overnight${overnightCount !== 1 ? 's' : ''} in transit`}>
-                {overnightCount} overnight{overnightCount !== 1 ? 's' : ''}
-              </span>
-            ) : null}
-          </div>
-          <div className="atfc-route-endpoint atfc-route-endpoint-right">
-            <span className="atfc-time">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
-            <span className="atfc-date">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
-            <span className="atfc-airport" title={toAirport}>{toAirport}</span>
-          </div>
+        <div className={roundTrip ? 'atfc-routes-stack' : undefined}>
+          <FlightRouteRow label={roundTrip ? 'Outbound' : undefined} display={outboundDisplay} />
+          {inboundDisplay ? <FlightRouteRow label="Return" display={inboundDisplay} /> : null}
         </div>
 
         {/* Cabin badge */}
@@ -647,60 +739,7 @@ function FlightResultCard({
         {expanded ? 'Hide' : 'Show'} flight details
       </button>
 
-      {expanded && (
-        <div className="atfc-segments">
-          {segments.map((seg, i) => {
-            const nextSeg = segments[i + 1];
-            const layoverArrival = seg.arrivalTime;
-            const layoverDeparture = nextSeg?.departureTime;
-
-            return (
-              <div key={i} className="atfc-seg">
-                <div className="atfc-seg-header">
-                  <span className="atfc-seg-airline">{seg.airlineName} {seg.airlineCode} {seg.flightNumber}</span>
-                  <span className="atfc-seg-cabin">{seg.cabin}</span>
-                </div>
-                <div className="atfc-seg-route">
-                  <div className="atfc-seg-point">
-                    <span className="atfc-seg-time">{seg.departureTime ? fmtTime(seg.departureTime) : '—'}</span>
-                    {hasParseableDate(seg.departureTime) && (
-                      <span className="atfc-seg-date">{fmtDate(seg.departureTime)}</span>
-                    )}
-                    <span className="atfc-seg-airport">{seg.fromAirport ?? seg.from}</span>
-                    {seg.fromTerminal && <span className="atfc-seg-terminal">Terminal {seg.fromTerminal}</span>}
-                  </div>
-                  <div className="atfc-seg-arrow">→</div>
-                  <div className="atfc-seg-point">
-                    <span className="atfc-seg-time">{seg.arrivalTime ? fmtTime(seg.arrivalTime) : '—'}</span>
-                    {hasParseableDate(seg.arrivalTime) && (
-                      <span className="atfc-seg-date">{fmtDate(seg.arrivalTime)}</span>
-                    )}
-                    <span className="atfc-seg-airport">{seg.toAirport ?? seg.to}</span>
-                    {seg.toTerminal && <span className="atfc-seg-terminal">Terminal {seg.toTerminal}</span>}
-                  </div>
-                </div>
-                <div className="atfc-seg-meta">
-                  <span>Baggage: {seg.baggage}</span>
-                  <span>Cabin bag: {seg.cabinBaggage}</span>
-                </div>
-                {seg.layover && (
-                  <div className="atfc-seg-layover">
-                    <span>
-                      Layover at {seg.layover.location}: {seg.layover.duration}
-                      {hasParseableDate(layoverArrival) && (
-                        <> · Arrive {fmtDate(layoverArrival)} {fmtTime(layoverArrival)}</>
-                      )}
-                      {layoverDeparture && hasParseableDate(layoverDeparture) && (
-                        <> · Next departs {fmtDate(layoverDeparture)} {fmtTime(layoverDeparture)}</>
-                      )}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {expanded && <FlightSegmentDetails groups={segmentGroups} />}
     </div>
   );
 }
@@ -764,8 +803,11 @@ const AdminTicketsPage = () => {
   });
   const [returnTime, setReturnTime] = useState('');
   const [departureTime, setDepartureTime] = useState('');
+  const [departureTimeMode, setDepartureTimeMode] = useState<TimeFilterMode>('after');
   const [arrivalDate, setArrivalDate] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
+  const [arrivalTimeMode, setArrivalTimeMode] = useState<TimeFilterMode>('before');
+  const [returnTimeMode, setReturnTimeMode] = useState<TimeFilterMode>('after');
   const [adults, setAdults] = useState(1);
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
   const [currency, setCurrency] = useState<CurrencyCode>('GBP');
@@ -1157,9 +1199,9 @@ const AdminTicketsPage = () => {
           sortOrder: flightSortOrder,
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-          ...(dTime.trim() ? { departureTime: dTime.trim() } : {}),
+          ...(dTime.trim() ? { departureTime: dTime.trim(), departureTimeMode } : {}),
           ...(aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
-          ...(aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
+          ...(aTime.trim() ? { arrivalTime: aTime.trim(), arrivalTimeMode } : {}),
           ...(preferNonStopPerLeg ? { stops: ['0'] } : {}),
         };
       } else {
@@ -1179,7 +1221,9 @@ const AdminTicketsPage = () => {
           to: searchTo,
           departureDate: dDate,
           returnDate: searchTripTypeUI === 'round-trip' ? rDate : undefined,
-          ...(searchTripTypeUI === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
+          ...(searchTripTypeUI === 'round-trip' && rTime.trim()
+            ? { returnTime: rTime.trim(), returnTimeMode }
+            : {}),
           adults: searchAdultCount,
           children: 0,
           infants: 0,
@@ -1190,9 +1234,9 @@ const AdminTicketsPage = () => {
           sortOrder: flightSortOrder,
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-          ...(searchTripTypeUI === 'one-way' && dTime.trim() ? { departureTime: dTime.trim() } : {}),
-          ...(searchTripTypeUI === 'one-way' && aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
-          ...(searchTripTypeUI === 'one-way' && aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
+          ...(dTime.trim() ? { departureTime: dTime.trim(), departureTimeMode } : {}),
+          ...(aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
+          ...(aTime.trim() ? { arrivalTime: aTime.trim(), arrivalTimeMode } : {}),
         };
       }
 
@@ -1224,8 +1268,11 @@ const AdminTicketsPage = () => {
       returnDate,
       returnTime,
       departureTime,
+      departureTimeMode,
       arrivalDate,
       arrivalTime,
+      arrivalTimeMode,
+      returnTimeMode,
       searchAdultCount,
       cabinClass,
       currency,
@@ -2019,9 +2066,13 @@ const AdminTicketsPage = () => {
                                 onDateChange={(d) => updateMultiSegment(i, { departureDate: d })}
                                 onTimeChange={(t) => updateMultiSegment(i, { departureTime: t })}
                                 dateLabel="Departure date"
-                                timeLabel="Min. departure time"
+                                timeLabel="Departure time"
                                 datePlaceholder="Select date"
                                 showTime={true}
+                                showTimeMode={true}
+                                timeMode={departureTimeMode}
+                                onTimeModeChange={setDepartureTimeMode}
+                                timeModeKind="departure"
                                 idPrefix={`multi-dep-${seg.id}`}
                                 onClear={() => updateMultiSegment(i, { departureDate: '', departureTime: '' })}
                                 hasValue={!!seg.departureDate?.trim() || !!seg.departureTime?.trim()}
@@ -2036,9 +2087,13 @@ const AdminTicketsPage = () => {
                                 onDateChange={(d) => updateMultiSegment(i, { arrivalDate: d })}
                                 onTimeChange={(t) => updateMultiSegment(i, { arrivalTime: t })}
                                 dateLabel="Arrival date (optional)"
-                                timeLabel="Max. arrival time"
+                                timeLabel="Arrival time"
                                 datePlaceholder="Select date"
                                 showTime={true}
+                                showTimeMode={true}
+                                timeMode={arrivalTimeMode}
+                                onTimeModeChange={setArrivalTimeMode}
+                                timeModeKind="arrival"
                                 idPrefix={`multi-arr-${seg.id}`}
                                 onClear={() => updateMultiSegment(i, { arrivalDate: '', arrivalTime: '' })}
                                 hasValue={!!seg.arrivalDate?.trim() || !!seg.arrivalTime?.trim()}
@@ -2083,9 +2138,13 @@ const AdminTicketsPage = () => {
                           onDateChange={setDepartureDate}
                           onTimeChange={setDepartureTime}
                           dateLabel="Departure date"
-                          timeLabel="Min. departure time"
+                          timeLabel="Departure time"
                           datePlaceholder="Select date"
-                          showTime={searchTripTypeUI === 'one-way'}
+                          showTime={true}
+                          showTimeMode={true}
+                          timeMode={departureTimeMode}
+                          onTimeModeChange={setDepartureTimeMode}
+                          timeModeKind="departure"
                           idPrefix="search-departure"
                           onClear={() => {
                             setDepartureDate('');
@@ -2096,27 +2155,29 @@ const AdminTicketsPage = () => {
                           popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                         />
                       </div>
-                      {searchTripTypeUI === 'one-way' ? (
-                        <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
-                          <DatePickerTime
-                            date={arrivalDate}
-                            time={arrivalTime}
-                            onDateChange={setArrivalDate}
-                            onTimeChange={setArrivalTime}
-                            dateLabel="Arrival date"
-                            timeLabel="Max. arrival time"
-                            datePlaceholder="Select date"
-                            showTime={true}
-                            idPrefix="search-arrival"
-                            onClear={() => {
-                              setArrivalDate('');
-                              setArrivalTime('');
-                            }}
-                            hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
-                            popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
-                          />
-                        </div>
-                      ) : null}
+                      <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
+                        <DatePickerTime
+                          date={arrivalDate}
+                          time={arrivalTime}
+                          onDateChange={setArrivalDate}
+                          onTimeChange={setArrivalTime}
+                          dateLabel={searchTripTypeUI === 'round-trip' ? 'Arrival date (optional)' : 'Arrival date'}
+                          timeLabel="Arrival time"
+                          datePlaceholder="Select date"
+                          showTime={true}
+                          showTimeMode={true}
+                          timeMode={arrivalTimeMode}
+                          onTimeModeChange={setArrivalTimeMode}
+                          timeModeKind="arrival"
+                          idPrefix="search-arrival"
+                          onClear={() => {
+                            setArrivalDate('');
+                            setArrivalTime('');
+                          }}
+                          hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
+                          popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
+                        />
+                      </div>
                       {searchTripTypeUI === 'round-trip' ? (
                         <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
                           <DatePickerTime
@@ -2125,9 +2186,13 @@ const AdminTicketsPage = () => {
                             onDateChange={setReturnDate}
                             onTimeChange={setReturnTime}
                             dateLabel="Return date"
-                            timeLabel="Return time"
+                            timeLabel="Return departure time"
                             datePlaceholder="Select date"
                             showTime={true}
+                            showTimeMode={true}
+                            timeMode={returnTimeMode}
+                            onTimeModeChange={setReturnTimeMode}
+                            timeModeKind="departure"
                             idPrefix="search-return"
                             onClear={() => {
                               setReturnDate('');

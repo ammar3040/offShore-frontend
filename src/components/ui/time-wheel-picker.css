@@ -1,0 +1,156 @@
+.time-wheel-picker {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 8px 0 4px;
+}
+
+.time-wheel-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.time-wheel-column {
+  position: relative;
+  height: calc(40px * 5);
+  overflow: hidden;
+}
+
+.time-wheel-column::before,
+.time-wheel-column::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.time-wheel-column::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 1) 10%, rgba(255, 255, 255, 0));
+}
+
+.time-wheel-column::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(255, 255, 255, 1) 10%, rgba(255, 255, 255, 0));
+}
+
+.time-wheel-scroll {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.time-wheel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.time-wheel-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font-size: 1.25rem;
+  font-weight: 500;
+  scroll-snap-align: center;
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.time-wheel-item-selected {
+  color: #111827;
+  font-weight: 600;
+}
+
+.time-wheel-highlight {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(243, 244, 246, 0.95);
+  border: 1px solid #e5e7eb;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.time-filter-mode-toggle {
+  display: inline-flex;
+  gap: 0;
+  padding: 3px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+.time-filter-mode-btn {
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.time-filter-mode-btn-active {
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.time-picker-trigger {
+  width: 100%;
+  min-height: 44px;
+  justify-content: space-between;
+  font-weight: 500;
+}
+
+.time-picker-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.time-picker-field-header [data-slot="field-label"] {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .time-picker-field-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .time-filter-mode-toggle {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .time-filter-mode-btn {
+    flex: 1;
+    text-align: center;
+    padding-inline: 6px;
+  }
+}

@@ -1720,6 +1720,45 @@
   width: fit-content;
 }
 
+.atfc-airline-stack {
+  gap: 12px;
+}
+
+.atfc-airline-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.atfc-routes-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.atfc-route-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.atfc-route-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.atfc-main--round-trip {
+  align-items: flex-start;
+}
+
+.atfc-main--round-trip .atfc-cabin,
+.atfc-main--round-trip .atfc-fare-action {
+  align-self: center;
+}
+
 /* Route */
 .atfc-route {
   display: flex;
@@ -1940,6 +1979,26 @@
   gap: 16px;
   background: #fafafa;
 }
+
+.atfc-seg-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.atfc-seg-group + .atfc-seg-group {
+  padding-top: 16px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.atfc-seg-group-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+}
+
 .atfc-seg {
   display: flex;
   flex-direction: column;

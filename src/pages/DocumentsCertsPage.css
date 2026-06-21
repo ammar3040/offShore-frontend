@@ -61,7 +61,7 @@
   text-align: left;
   cursor: pointer;
   border: 1px solid transparent;
-  background: inherit;
+  background: var(--surface);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -170,7 +170,7 @@
   padding: 10px 14px;
   border: none;
   border-bottom: 1px solid var(--border);
-  background: transparent;
+  background: var(--surface);
   text-align: left;
   cursor: pointer;
   transition: background 0.15s;
@@ -196,7 +196,12 @@
   margin-top: 2px;
 }
 
+.docs-cert-layout .subsea-pane {
+  background: var(--surface);
+}
+
 .docs-cert-table tbody tr {
+  background: var(--surface);
   cursor: pointer;
   transition: background 0.12s;
 }

@@ -66,6 +66,7 @@ export interface CrewMemberFormData {
   norwegianDNumber: string;
   dawinciNumber: string;
   vantageNumber: string;
+  rank: string;
   organization: string;
   linkedin: string;
   visa: string;
@@ -113,6 +114,7 @@ const defaultFormData: CrewMemberFormData = {
   norwegianDNumber: '',
   dawinciNumber: '',
   vantageNumber: '',
+  rank: '',
   organization: '',
   linkedin: '',
   visa: '',
@@ -1108,6 +1110,18 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="vantageNumber"
                 value={formData.vantageNumber}
                 onChange={handleInputChange}
+                className={inputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="rank" className="text-sm font-semibold text-foreground">Rank</label>
+              <input
+                type="text"
+                id="rank"
+                name="rank"
+                value={formData.rank}
+                onChange={handleInputChange}
+                placeholder="e.g. Chief Officer"
                 className={inputClass}
               />
             </div>

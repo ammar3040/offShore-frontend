@@ -165,7 +165,7 @@ const CrewManagementDashboard = () => {
           id: member.id,
           name: crewName(member),
           kind,
-          rank: member.organization || 'Crew',
+          rank: member.rank?.trim() || '—',
           rig: project?.title || 'Unassigned',
           status,
           statusClass,
@@ -185,7 +185,7 @@ const CrewManagementDashboard = () => {
       return {
         name: crewName(member),
         kind,
-        rank: member.organization || 'Crew',
+        rank: member.rank?.trim() || '—',
         rig: project?.title || 'Unassigned',
         type,
         date: formatDate(project?.duration?.endDate),

@@ -24,7 +24,7 @@ import {
   UserMinus,
   UserPlus,
 } from 'lucide-react';
-import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
+import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, getCrewRankLabel, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
@@ -47,7 +47,6 @@ function field(value: string | undefined): string {
   return value?.trim() || '—';
 }
 
-const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
 const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer', 'MV Gulf Endeavour'];
 
 type RosterTab = 'available' | 'inProject';
@@ -135,7 +134,8 @@ const CrewListPage = () => {
       list = list.filter(
         (c) =>
           (c.firstname + ' ' + c.lastname).toLowerCase().includes(q) ||
-          (c.email || '').toLowerCase().includes(q)
+          (c.email || '').toLowerCase().includes(q) ||
+          (c.rank || '').toLowerCase().includes(q)
       );
     }
     return list;
@@ -548,7 +548,7 @@ const CrewListPage = () => {
                                 <span>{member.firstname} {member.lastname}</span>
                               </div>
                             </td>
-                            <td>{member.organization || SAMPLE_RANKS[index % SAMPLE_RANKS.length]}</td>
+                            <td>{getCrewRankLabel(member)}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
                             <td>{project?.title || SAMPLE_RIGS[index % SAMPLE_RIGS.length]}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
@@ -975,6 +975,10 @@ const CrewListPage = () => {
                         <section className="crew-detail-card crew-detail-card--span-2">
                           <h3 className="crew-detail-card-title"><Briefcase size={20} /> Professional &amp; Numbers</h3>
                           <div className="crew-detail-fields">
+                            <div className="crew-detail-field crew-detail-field--wide">
+                              <span className="crew-detail-label">Rank</span>
+                              <span className="crew-detail-value">{field(c.rank ?? (raw.rank as string))}</span>
+                            </div>
                             <div className="crew-detail-field crew-detail-field--wide">
                               <span className="crew-detail-label">Organization</span>
                               <span className="crew-detail-value">{field(c.organization ?? (raw.organization as string))}</span>

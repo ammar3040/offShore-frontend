@@ -102,6 +102,7 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
     norwegianDNumber: pickString(raw, 'norwegian_d_number', 'norwegianDNumber'),
     dawinciNumber: pickString(raw, 'dawinci_number', 'dawinciNumber'),
     vantageNumber: pickString(raw, 'vantage_number', 'vantageNumber'),
+    rank: pickString(raw, 'rank'),
     organization: pickString(raw, 'organization'),
     linkedin: pickString(raw, 'linkedin'),
     visa: pickString(raw, 'visa'),
@@ -149,6 +150,7 @@ export interface CrewMemberApi {
   norwegian_d_number?: string;
   dawinci_number?: string;
   vantage_number?: string;
+  rank?: string;
   organization?: string;
   linkedin?: string;
   visa?: string;
@@ -162,6 +164,10 @@ export interface CrewMemberApi {
   signal?: string;
   /** Active project assignments when returned on the crew list payload. */
   activeProjects?: CrewAssignedProject[];
+}
+
+export function getCrewRankLabel(member: Pick<CrewMemberApi, 'rank'>): string {
+  return member.rank?.trim() || '—';
 }
 
 export interface GetCrewResponse {
@@ -361,6 +367,9 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   }
   if (data.vantageNumber?.trim()) {
     formData.append('vantage_number', data.vantageNumber.trim());
+  }
+  if (data.rank?.trim()) {
+    formData.append('rank', data.rank.trim());
   }
   if (data.organization?.trim()) {
     formData.append('organization', data.organization.trim());

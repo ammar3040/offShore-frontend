@@ -282,14 +282,20 @@
   margin-left: auto;
 }
 
-.superadmin-admin-invoice-margin {
+.superadmin-admin-invoice-margin,
+.superadmin-admin-invoice-invoice-number {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 120px;
 }
 
-.superadmin-admin-invoice-margin span {
+.superadmin-admin-invoice-invoice-number {
+  min-width: 160px;
+}
+
+.superadmin-admin-invoice-margin span,
+.superadmin-admin-invoice-invoice-number span {
   font-size: 12px;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
@@ -446,7 +452,8 @@
     justify-content: center;
   }
 
-  .superadmin-admin-invoice-margin {
+  .superadmin-admin-invoice-margin,
+  .superadmin-admin-invoice-invoice-number {
     width: 100%;
   }
 }

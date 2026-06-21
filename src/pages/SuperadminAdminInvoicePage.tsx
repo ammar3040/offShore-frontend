@@ -52,6 +52,8 @@ const SuperadminAdminInvoicePage = () => {
   const [invoiceRecords, setInvoiceRecords] = useState<Record<string, AdminInvoiceApi>>({});
   const [margins, setMargins] = useState<Record<string, string>>({});
   const [draftMargins, setDraftMargins] = useState<Record<string, string>>({});
+  const [invoiceNumbers, setInvoiceNumbers] = useState<Record<string, string>>({});
+  const [draftInvoiceNumbers, setDraftInvoiceNumbers] = useState<Record<string, string>>({});
   const [marginConfirm, setMarginConfirm] = useState<{
     ticketId: string;
     bill: TicketInvoiceBill;
@@ -95,6 +97,12 @@ const SuperadminAdminInvoicePage = () => {
             .map((invoice) => [getAdminInvoiceKey(invoice), String(invoice.margin)])
         );
 
+        const invoiceNumberDefaults = Object.fromEntries(
+          (invoicesRes.adminInvoices ?? [])
+            .filter((invoice) => invoice.invoiceNumber && getAdminInvoiceKey(invoice))
+            .map((invoice) => [getAdminInvoiceKey(invoice), invoice.invoiceNumber!])
+        );
+
         const crewIds = [
           ...new Set(
             (ticketsRes.crewTickets ?? [])
@@ -131,6 +139,8 @@ const SuperadminAdminInvoicePage = () => {
         setPagination(ticketsRes.pagination ?? null);
         setMargins((prev) => ({ ...marginDefaults, ...prev }));
         setDraftMargins((prev) => ({ ...marginDefaults, ...prev }));
+        setInvoiceNumbers((prev) => ({ ...invoiceNumberDefaults, ...prev }));
+        setDraftInvoiceNumbers((prev) => ({ ...invoiceNumberDefaults, ...prev }));
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load admin invoices');
@@ -146,6 +156,11 @@ const SuperadminAdminInvoicePage = () => {
     };
   }, [page]);
 
+  const autoInvoiceNumbers = useMemo(
+    () => Object.fromEntries(bills.map((bill) => [bill.ticket.id, bill.invoiceNumber])),
+    [bills]
+  );
+
   const billsWithMargins = useMemo(() => {
     const marginNumbers = Object.fromEntries(
       Object.entries(margins).map(([ticketId, value]) => {
@@ -157,9 +172,11 @@ const SuperadminAdminInvoicePage = () => {
     return bills.map((bill) => {
       const marginGbp = marginNumbers[bill.ticket.id] ?? 0;
       const totalGbp = bill.ticketsSubtotalGbp + marginGbp;
-      return { ...bill, marginGbp, totalGbp };
+      const customInvoiceNumber = invoiceNumbers[bill.ticket.id]?.trim();
+      const invoiceNumber = customInvoiceNumber || bill.invoiceNumber;
+      return { ...bill, marginGbp, totalGbp, invoiceNumber };
     });
-  }, [bills, margins]);
+  }, [bills, margins, invoiceNumbers]);
 
   const getAdminLabel = (bill: TicketInvoiceBill) => {
     if (!bill.admin) return 'Unknown admin';
@@ -176,6 +193,29 @@ const SuperadminAdminInvoicePage = () => {
 
   const handleMarginDraftChange = (ticketId: string, value: string) => {
     setDraftMargins((prev) => ({ ...prev, [ticketId]: value }));
+  };
+
+  const handleInvoiceNumberDraftChange = (ticketId: string, value: string) => {
+    setDraftInvoiceNumbers((prev) => ({ ...prev, [ticketId]: value }));
+  };
+
+  const applyInvoiceNumberUpdate = (ticketId: string) => {
+    const draft = (draftInvoiceNumbers[ticketId] ?? '').trim();
+    const applied = (invoiceNumbers[ticketId] ?? '').trim();
+    if (draft === applied) return;
+
+    setInvoiceNumbers((prev) => ({ ...prev, [ticketId]: draft }));
+    setDraftInvoiceNumbers((prev) => ({ ...prev, [ticketId]: draft }));
+    setGeneratedPdfs((prev) => {
+      const next = { ...prev };
+      delete next[ticketId];
+      return next;
+    });
+    toast.success('Invoice number updated', {
+      description: draft
+        ? `Using ${draft}. Regenerate the PDF if one was already created.`
+        : `Using auto-generated ${autoInvoiceNumbers[ticketId] ?? 'number'}. Regenerate the PDF if one was already created.`,
+    });
   };
 
   const requestMarginUpdate = (ticketId: string, bill: TicketInvoiceBill) => {
@@ -250,12 +290,14 @@ const SuperadminAdminInvoicePage = () => {
     if (!file || !ticketId) return;
 
     const margin = parseFloat(margins[ticketId]?.trim() ?? '');
+    const invoiceNumber = (invoiceNumbers[ticketId]?.trim() || autoInvoiceNumbers[ticketId]) ?? undefined;
     setUploadingTicketId(ticketId);
     try {
       const res = await uploadSuperadminAdminInvoicePdf(
         ticketId,
         file,
-        Number.isFinite(margin) ? margin : undefined
+        Number.isFinite(margin) ? margin : undefined,
+        invoiceNumber
       );
       if (res.adminInvoice) {
         setInvoiceRecords((prev) => ({ ...prev, [ticketId]: res.adminInvoice! }));
@@ -288,7 +330,12 @@ const SuperadminAdminInvoicePage = () => {
     setSendingTicketId(ticketId);
     try {
       if (generatedPdf) {
-        const uploadRes = await uploadSuperadminAdminInvoicePdf(ticketId, generatedPdf, marginValue);
+        const uploadRes = await uploadSuperadminAdminInvoicePdf(
+          ticketId,
+          generatedPdf,
+          marginValue,
+          bill.invoiceNumber
+        );
         if (uploadRes.adminInvoice) {
           setInvoiceRecords((prev) => ({ ...prev, [ticketId]: uploadRes.adminInvoice! }));
         }
@@ -335,7 +382,7 @@ const SuperadminAdminInvoicePage = () => {
         <div>
           <h1 className="superadmin-admin-invoice-title">Admin Invoices</h1>
           <p className="superadmin-admin-invoice-subtitle">
-            One invoice per approved ticket. Add an optional margin, generate the Lynq Travel invoice PDF, and send it to the admin.
+            One invoice per approved ticket. Add an optional margin or invoice number, generate the Lynq Travel invoice PDF, and send it to the admin.
           </p>
         </div>
       </header>
@@ -425,6 +472,22 @@ const SuperadminAdminInvoicePage = () => {
                             value={draftMargins[ticketId] ?? ''}
                             onChange={(e) => handleMarginDraftChange(ticketId, e.target.value)}
                             onBlur={() => requestMarginUpdate(ticketId, bill)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                          />
+                        </label>
+                        <label className="superadmin-admin-invoice-invoice-number">
+                          <span>Invoice # (optional)</span>
+                          <Input
+                            type="text"
+                            placeholder={autoInvoiceNumbers[ticketId] ?? 'Auto-generated'}
+                            value={draftInvoiceNumbers[ticketId] ?? ''}
+                            onChange={(e) => handleInvoiceNumberDraftChange(ticketId, e.target.value)}
+                            onBlur={() => applyInvoiceNumberUpdate(ticketId)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();

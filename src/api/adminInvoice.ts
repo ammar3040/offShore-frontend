@@ -101,7 +101,12 @@ function normalizeAdminInvoice(raw: Record<string, unknown>): AdminInvoiceApi {
       typeof raw.passengerName === 'string'
         ? raw.passengerName
         : passengerFromCrew || undefined,
-    invoiceNumber: typeof raw.invoiceNumber === 'string' ? raw.invoiceNumber : undefined,
+    invoiceNumber:
+      typeof raw.invoiceNumber === 'string'
+        ? raw.invoiceNumber
+        : typeof raw.invoice_number === 'string'
+          ? raw.invoice_number
+          : undefined,
     margin: typeof raw.margin === 'number' ? raw.margin : raw.margin != null ? Number(raw.margin) : null,
     total: typeof raw.total === 'number' ? raw.total : raw.total != null ? Number(raw.total) : null,
     pdf: typeof raw.pdf === 'string' ? raw.pdf : null,
@@ -206,7 +211,8 @@ export async function getSuperadminAdminInvoices(
 export async function uploadSuperadminAdminInvoicePdf(
   ticketId: string,
   file: File,
-  margin?: number
+  margin?: number,
+  invoiceNumber?: string
 ): Promise<{ adminInvoice?: AdminInvoiceApi; message?: string }> {
   if (!file.type.includes('pdf')) {
     throw new Error('Only PDF files are allowed');
@@ -216,6 +222,10 @@ export async function uploadSuperadminAdminInvoicePdf(
   formData.append('pdf', file);
   if (margin != null && !Number.isNaN(margin)) {
     formData.append('margin', String(margin));
+  }
+  const trimmedInvoiceNumber = invoiceNumber?.trim();
+  if (trimmedInvoiceNumber) {
+    formData.append('invoiceNumber', trimmedInvoiceNumber);
   }
 
   const token = localStorage.getItem(getStoredTokenKey());
