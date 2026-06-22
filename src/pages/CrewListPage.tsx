@@ -48,8 +48,7 @@ function field(value: string | undefined): string {
   return value?.trim() || '—';
 }
 
-const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
-const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer', 'MV Gulf Endeavour'];
+
 
 type RosterTab = 'available' | 'inProject';
 
@@ -556,9 +555,9 @@ const CrewListPage = () => {
                                 <span>{member.firstname} {member.lastname}</span>
                               </div>
                             </td>
-                            <td>{member.organization || SAMPLE_RANKS[index % SAMPLE_RANKS.length]}</td>
+                            <td>{member.organization || '—'}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
-                            <td>{project?.title || SAMPLE_RIGS[index % SAMPLE_RIGS.length]}</td>
+                            <td>{project?.title || '—'}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
                             <td>
                               <span className={`subsea-badge ${certExpiring ? 'subsea-b-amber' : 'subsea-b-green'}`}>

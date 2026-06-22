@@ -3288,39 +3288,39 @@ const AdminTicketsPage = () => {
                 const priceAmount = firstFare?.totalFare ?? 0;
 
                 return (
-                  <div className="mt-2 space-y-4">
-                    <div className="border border-border rounded-lg p-4 bg-muted/40 text-sm">
-                      <div className="flex justify-between items-start font-semibold border-b border-border/50 pb-2 mb-3">
-                        <div>
-                          <span className="text-base text-foreground font-semibold">{airlineName}</span>
+                  <div className="mt-2">
+                    <div className="booking-confirm-card">
+                      <div className="booking-confirm-header">
+                        <div className="booking-confirm-airline">
+                          <span>{airlineName}</span>
                         </div>
-                        <span className="text-base text-primary font-bold">
+                        <span className="booking-confirm-price">
                           {currency} {priceAmount.toLocaleString()}
                         </span>
                       </div>
 
-                      <div className="flex justify-between items-center text-sm relative py-2">
-                        <div className="flex flex-col">
-                          <span className="text-lg font-bold text-foreground">{departureTime ? fmtTime(departureTime) : '—'}</span>
-                          <span className="text-xs text-muted-foreground">{departureTime ? fmtDate(departureTime) : ''}</span>
-                          <span className="text-xs font-semibold text-foreground mt-1" title={fromAirport}>{fromAirport}</span>
+                      <div className="booking-confirm-details">
+                        <div className="booking-confirm-node departure">
+                          <span className="booking-confirm-time">{departureTime ? fmtTime(departureTime) : '—'}</span>
+                          <span className="booking-confirm-date">{departureTime ? fmtDate(departureTime) : ''}</span>
+                          <span className="booking-confirm-airport" title={fromAirport}>{fromAirport}</span>
                         </div>
 
-                        <div className="flex flex-col items-center flex-1 px-4">
-                          <span className="text-[10px] text-muted-foreground font-mono">{duration}</span>
-                          <div className="w-full flex items-center justify-center my-1 relative">
-                            <div className="w-full h-[2px] bg-border absolute top-1/2 -translate-y-1/2" />
-                            <Plane size={14} className="text-muted-foreground bg-background px-1 z-10" />
+                        <div className="booking-confirm-path">
+                          <span className="booking-confirm-duration">{duration}</span>
+                          <div className="booking-confirm-line-wrap">
+                            <div className="booking-confirm-line" />
+                            <Plane size={14} className="booking-confirm-plane" />
                           </div>
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className={`booking-confirm-stops ${stops === 0 ? 'nonstop' : ''}`}>
                             {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}`}
                           </span>
                         </div>
 
-                        <div className="flex flex-col items-end">
-                          <span className="text-lg font-bold text-foreground">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
-                          <span className="text-xs text-muted-foreground">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
-                          <span className="text-xs font-semibold text-foreground mt-1" title={toAirport}>{toAirport}</span>
+                        <div className="booking-confirm-node arrival">
+                          <span className="booking-confirm-time">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
+                          <span className="booking-confirm-date">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
+                          <span className="booking-confirm-airport" title={toAirport}>{toAirport}</span>
                         </div>
                       </div>
                     </div>
@@ -3375,37 +3375,37 @@ const AdminTicketsPage = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-2 space-y-4">
-            <div className="border border-border rounded-lg p-4 bg-muted/40 text-sm">
-              <div className="space-y-2">
-                <div className="flex justify-between border-b border-border/50 pb-2 mb-2 font-semibold">
-                  <span className="text-muted-foreground">Project</span>
-                  <span className="text-foreground">{selectedProject?.title ?? '—'}</span>
+          <div className="mt-2">
+            <div className="booking-summary-card">
+              <div className="space-y-2.5">
+                <div className="booking-summary-row header">
+                  <span className="label">Project</span>
+                  <span className="value project-title">{selectedProject?.title ?? '—'}</span>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Crew Selected</span>
-                  <span className="text-foreground font-semibold">
+                <div className="booking-summary-row">
+                  <span className="label">Crew Selected</span>
+                  <span className="value">
                     {selectedCrewIds.length} crew member{selectedCrewIds.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Route</span>
-                  <span className="text-foreground font-semibold">
+                <div className="booking-summary-row">
+                  <span className="label">Route</span>
+                  <span className="value">
                     {formData.fromName.trim()} → {formData.toName.trim()}
                   </span>
                 </div>
                 {formData.trip && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Trip Type</span>
-                    <span className="text-foreground font-semibold">
+                  <div className="booking-summary-row">
+                    <span className="label">Trip Type</span>
+                    <span className="value font-semibold">
                       {formData.trip === 'ROUND_TRIP' ? 'Round Trip' : 'One Way'}
                     </span>
                   </div>
                 )}
                 {formData.class && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Cabin Class</span>
-                    <span className="text-foreground font-semibold">
+                  <div className="booking-summary-row">
+                    <span className="label">Cabin Class</span>
+                    <span className="value font-semibold">
                       {formData.class}
                     </span>
                   </div>

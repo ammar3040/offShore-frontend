@@ -34,8 +34,7 @@ const CrewMemberForm = lazy(() => import('../components/forms/CrewMemberForm'));
 
 type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay';
 
-const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
-const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer'];
+
 
 function formatDate(value?: string): string {
   if (!value) return '-';
@@ -75,7 +74,7 @@ function statusMeta(crew?: CrewMemberApi | null): { label: string; className: st
 function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi | null) {
   const project = projects[0] ?? crew?.activeProjects?.[0];
   return {
-    rig: project?.title || SAMPLE_RIGS[0],
+    rig: project?.title || '—',
     signOn: project?.duration?.startDate,
     signOff: project?.duration?.endDate,
     status: project?.status || 'Active',
@@ -178,7 +177,7 @@ const CrewDetailsPage = () => {
   const status = statusMeta(crew);
   const pageError = !crewId ? 'Missing crew id' : error;
   const assignment = useMemo(() => currentAssignment(projects, crew), [projects, crew]);
-  const rank = crew?.organization || SAMPLE_RANKS[0];
+  const rank = crew?.organization || '—';
   const certExpiry = crew?.certificate_expiry_date || crew?.crew_certificate?.expiry_date;
   const passport = crew?.passport;
   const identity = crew?.identity;
