@@ -290,6 +290,37 @@ export interface GetCrewTicketsResponse {
   crewTickets: CrewTicketApi[];
 }
 
+export interface CrewTicketReportSpends {
+  scope: {
+    projectId: string;
+    bookingsInScope: number;
+    currency: 'GBP';
+    timezone: string;
+  };
+  mtd: {
+    month: string;
+    totalSpend: number;
+    pricedBookings: number;
+    averageTicketCost: number;
+    topCabinClass: string | null;
+  };
+  comparison: {
+    previousMonth: string;
+    previousMonthTotalSpend: number;
+    percentChange: number;
+    direction: 'up' | 'down' | 'flat';
+  };
+  spendByDestination: Array<{ label: string; amount: number; bookingCount: number }>;
+  bookingsByClass: Array<{ label: string; count: number; percent: number }>;
+  summary: {
+    destinationCount: number;
+  };
+}
+
+export interface GetCrewTicketReportSpendsResponse {
+  reportSpends: CrewTicketReportSpends;
+}
+
 export interface CreateFlightTicketPayload {
   crew_id: string;
   project_id: string;
@@ -542,6 +573,45 @@ export async function getCrewTickets(): Promise<GetCrewTicketsResponse> {
   const raw = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
   const crewTickets = raw.map((t: CrewTicketApiRaw) => normalizeCrewTicket(t));
   return { crewTickets };
+}
+
+/**
+ * Pre-aggregated spend analytics for the Report Spends tab.
+ * GET /crew-ticket/spends?project_id={optional}
+ */
+export async function getCrewTicketReportSpends(
+  projectId?: string
+): Promise<GetCrewTicketReportSpendsResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  const query = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/spends${query}`, {
+    method: 'GET',
+    headers: getHeaders(),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    if (text) {
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData?.message || errorData?.error || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  if (!data?.reportSpends) {
+    throw new Error('Invalid report spends response.');
+  }
+  return data as GetCrewTicketReportSpendsResponse;
 }
 
 /**

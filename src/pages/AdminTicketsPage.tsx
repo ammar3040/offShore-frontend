@@ -51,6 +51,7 @@ import {
 } from '../utils/crewAvailability';
 import {
   getCrewTickets,
+  getCrewTicketReportSpends,
   createFlightTicket,
   cancelCrewTicket,
   canUseTicketPdf,
@@ -58,14 +59,18 @@ import {
   type CreateFlightTicketPayload,
   type AirportLocation,
   type CrewTicketApi,
+  type CrewTicketReportSpends,
   getTicketStatus,
   getTicketStatusLabel,
   getTicketDepartureIso,
   getTicketArrivalIso,
   formatTicketSchedule,
-  isCrewTicketCreatedInLocalCalendarMonth,
   parseCrewTicketCreatedAt,
 } from '../api/ticket';
+import {
+  buildSpendDashboardStats,
+  EMPTY_SPEND_DASHBOARD_STATS,
+} from '../lib/crewTicket/reportSpends';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
 import {
@@ -178,33 +183,6 @@ function getCurrencySymbol(code: CurrencyCode): string {
 function toYYYYMMDD(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
-
-function isCrewTicketCreatedInPreviousLocalCalendarMonth(t: CrewTicketApi, now = new Date()): boolean {
-  const d = parseCrewTicketCreatedAt(t);
-  if (!d) return false;
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return d.getFullYear() === prev.getFullYear() && d.getMonth() === prev.getMonth();
-}
-
-function formatTicketClass(cls?: string): string {
-  if (!cls?.trim()) return 'Unspecified';
-  return cls
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function sumPricedTickets(tickets: CrewTicketApi[]): { total: number; count: number; average: number } {
-  const priced = tickets.filter((ticket) => typeof ticket.price === 'number');
-  const total = priced.reduce((sum, ticket) => sum + (ticket.price ?? 0), 0);
-  return {
-    total,
-    count: priced.length,
-    average: priced.length ? total / priced.length : 0,
-  };
-}
-
-const METRIC_BAR_COLORS = ['blue', 'teal', 'amber', 'green', 'blue'] as const;
 
 function initialMultiSegments(): MultiFlightSegment[] {
   const a0 = AIRPORTS[0] ?? null;
@@ -751,6 +729,9 @@ const AdminTicketsPage = () => {
   const [rigs, setRigs] = useState<RigApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [reportSpends, setReportSpends] = useState<CrewTicketReportSpends | null>(null);
+  const [reportSpendsLoading, setReportSpendsLoading] = useState(false);
+  const [reportSpendsError, setReportSpendsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -966,6 +947,21 @@ const AdminTicketsPage = () => {
       .finally(() => setTicketsLoading(false));
   }, []);
 
+  const fetchReportSpends = useCallback(() => {
+    setReportSpendsLoading(true);
+    setReportSpendsError(null);
+    const projectId = projectFilter === 'all' ? undefined : projectFilter;
+    getCrewTicketReportSpends(projectId)
+      .then((res) => setReportSpends(res.reportSpends))
+      .catch((err) => {
+        setReportSpends(null);
+        setReportSpendsError(
+          err instanceof Error ? err.message : 'Failed to load spend analytics.'
+        );
+      })
+      .finally(() => setReportSpendsLoading(false));
+  }, [projectFilter]);
+
   const requestCancelTicketFlow = useCallback((ticket: CrewTicketApi) => {
     setSelectedTicket(null);
     setTicketToConfirmCancel(ticket);
@@ -980,6 +976,7 @@ const AdminTicketsPage = () => {
       setTickets((prev) => prev.filter((t) => t.id !== id));
       setSelectedTicket((prev) => (prev?.id === id ? null : prev));
       setTicketToConfirmCancel(null);
+      fetchReportSpends();
       toast.success('Ticket cancelled', {
         description: 'The booking was removed from your crew tickets list.',
       });
@@ -992,7 +989,7 @@ const AdminTicketsPage = () => {
     } finally {
       setCancelTicketSubmitting(false);
     }
-  }, [ticketToConfirmCancel]);
+  }, [ticketToConfirmCancel, fetchReportSpends]);
 
   const handlePreviewTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
     if (!canUseTicketPdf(ticket)) {
@@ -1051,6 +1048,10 @@ const AdminTicketsPage = () => {
       });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    fetchReportSpends();
+  }, [fetchReportSpends]);
 
   const projectFilteredTickets = useMemo(() => {
     if (projectFilter === 'all') return tickets;
@@ -1388,6 +1389,7 @@ const AdminTicketsPage = () => {
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
             fetchTickets();
+            fetchReportSpends();
             setActiveMultiLegIndex((i) => i + 1);
             setSearchResults(null);
             setSearchTotalCount(0);
@@ -1399,6 +1401,7 @@ const AdminTicketsPage = () => {
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
             fetchTickets();
+            fetchReportSpends();
             setSearchResults(null);
             setSearchTotalCount(0);
             setSearchPage(1);
@@ -1410,6 +1413,7 @@ const AdminTicketsPage = () => {
           toast.success('Ticket booked and sent for approval.', { description: baseDesc });
           window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
           fetchTickets();
+          fetchReportSpends();
           setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
           setSearchTotalCount((prev) => Math.max(0, prev - 1));
         }
@@ -1435,6 +1439,7 @@ const AdminTicketsPage = () => {
       activeMultiLegIndex,
       multiSegments.length,
       fetchTickets,
+      fetchReportSpends,
     ]
   );
 
@@ -1498,6 +1503,7 @@ const AdminTicketsPage = () => {
       }
       setSubmitSuccess(true);
       fetchTickets();
+      fetchReportSpends();
       setTimeout(closeCreateModal, 1500);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to create tickets');
@@ -1539,109 +1545,29 @@ const AdminTicketsPage = () => {
     }
   };
 
-  const ticketDashboardStats = useMemo(() => {
+  const bookingsDashboardStats = useMemo(() => {
     const totalBookings = projectFilteredTickets.length;
-    const mtdTickets = projectFilteredTickets.filter((ticket) =>
-      isCrewTicketCreatedInLocalCalendarMonth(ticket)
-    );
-    const lastMonthTickets = projectFilteredTickets.filter((ticket) =>
-      isCrewTicketCreatedInPreviousLocalCalendarMonth(ticket)
-    );
-    const mtdSpend = sumPricedTickets(mtdTickets);
-    const lastMonthSpend = sumPricedTickets(lastMonthTickets);
     const approvedCount = projectFilteredTickets.filter(
       (ticket) => getTicketStatus(ticket) === 'APPROVED'
     ).length;
     const pendingCount = totalBookings - approvedCount;
 
-    let spendChangeMeta = 'No priced bookings this month';
-    let spendChangeTone: 'up' | 'down' | 'flat' = 'flat';
-    if (mtdSpend.count > 0) {
-      if (lastMonthSpend.total > 0) {
-        const pctChange = ((mtdSpend.total - lastMonthSpend.total) / lastMonthSpend.total) * 100;
-        const rounded = Math.round(Math.abs(pctChange));
-        if (pctChange > 0) {
-          spendChangeMeta = `+${rounded}% vs last month`;
-          spendChangeTone = 'down';
-        } else if (pctChange < 0) {
-          spendChangeMeta = `-${rounded}% vs last month`;
-          spendChangeTone = 'up';
-        } else {
-          spendChangeMeta = 'Flat vs last month';
-        }
-      } else {
-        spendChangeMeta = 'No spend last month';
-        spendChangeTone = 'flat';
-      }
-    }
-
-    const classCounts = new Map<string, number>();
-    for (const ticket of mtdTickets) {
-      const label = formatTicketClass(ticket.class);
-      classCounts.set(label, (classCounts.get(label) ?? 0) + 1);
-    }
-    const topClassEntry = [...classCounts.entries()].sort((a, b) => b[1] - a[1])[0];
-    const avgCostMeta = mtdSpend.count
-      ? `${mtdSpend.count} priced booking${mtdSpend.count !== 1 ? 's' : ''}${topClassEntry ? ` · ${topClassEntry[0]}` : ''}`
-      : 'No priced bookings this month';
-
-    const spendByDestinationMap = new Map<string, number>();
-    for (const ticket of projectFilteredTickets) {
-      if (typeof ticket.price !== 'number') continue;
-      const dest = ticket.to?.COUNTRYNAME?.trim() || ticket.to?.COUNTRY?.trim() || 'Unknown destination';
-      spendByDestinationMap.set(dest, (spendByDestinationMap.get(dest) ?? 0) + ticket.price);
-    }
-    const spendByDestinationEntries = [...spendByDestinationMap.entries()].sort((a, b) => b[1] - a[1]);
-    const topDestinationSpend = spendByDestinationEntries[0]?.[1] ?? 0;
-    const spendByDestination = spendByDestinationEntries.slice(0, 5).map(([label, amount], index) => ({
-      label,
-      amount,
-      barPct: topDestinationSpend ? Math.round((amount / topDestinationSpend) * 100) : 0,
-      color: METRIC_BAR_COLORS[index % METRIC_BAR_COLORS.length],
-    }));
-
-    const classBookingMap = new Map<string, number>();
-    for (const ticket of projectFilteredTickets) {
-      const label = formatTicketClass(ticket.class);
-      classBookingMap.set(label, (classBookingMap.get(label) ?? 0) + 1);
-    }
-    const bookingsByClass = [...classBookingMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([label, count]) => ({
-        label,
-        count,
-        pct: totalBookings ? Math.round((count / totalBookings) * 100) : 0,
-      }));
-
-    const combinedSpend = mtdSpend.total + lastMonthSpend.total;
-    const spendMtdBarPct = combinedSpend
-      ? Math.round((mtdSpend.total / combinedSpend) * 100)
-      : mtdTickets.length
-        ? Math.min(100, mtdTickets.length * 10)
-        : 0;
-
     return {
       totalBookings,
       approvedCount,
-      pendingCount,
-      mtdSpend,
-      spendChangeMeta,
-      spendChangeTone,
-      avgCostMeta,
-      spendByDestination,
-      bookingsByClass,
       activeBookingsBarPct: totalBookings ? Math.round((approvedCount / totalBookings) * 100) : 0,
       pendingBarPct: totalBookings ? Math.round((pendingCount / totalBookings) * 100) : 0,
-      spendMtdBarPct,
-      avgCostBarPct: mtdTickets.length
-        ? Math.round((mtdSpend.count / mtdTickets.length) * 100)
-        : 0,
       pendingMeta:
         pendingCount > 0
           ? `${pendingCount} awaiting superadmin`
           : 'None awaiting approval',
     };
   }, [projectFilteredTickets]);
+
+  const spendDashboardStats = useMemo(
+    () => (reportSpends ? buildSpendDashboardStats(reportSpends) : EMPTY_SPEND_DASHBOARD_STATS),
+    [reportSpends]
+  );
 
   const sortedRecentBookings = useMemo(
     () =>
@@ -2410,20 +2336,20 @@ const AdminTicketsPage = () => {
             <div className="subsea-kpi-strip subsea-kpi-strip-2">
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Active Bookings</div>
-                <div className="subsea-kpi-value">{ticketDashboardStats.totalBookings}</div>
-                <div className="subsea-kpi-meta flat">{ticketDashboardStats.approvedCount} approved</div>
+                <div className="subsea-kpi-value">{bookingsDashboardStats.totalBookings}</div>
+                <div className="subsea-kpi-meta flat">{bookingsDashboardStats.approvedCount} approved</div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill blue" style={{ width: `${ticketDashboardStats.activeBookingsBarPct}%` }} />
+                  <div className="subsea-kpi-fill blue" style={{ width: `${bookingsDashboardStats.activeBookingsBarPct}%` }} />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Pending Approval</div>
                 <div className="subsea-kpi-value">{pendingApprovalCount}</div>
                 <div className={`subsea-kpi-meta ${pendingApprovalCount ? 'down' : 'flat'}`}>
-                  {ticketDashboardStats.pendingMeta}
+                  {bookingsDashboardStats.pendingMeta}
                 </div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill amber" style={{ width: `${ticketDashboardStats.pendingBarPct}%` }} />
+                  <div className="subsea-kpi-fill amber" style={{ width: `${bookingsDashboardStats.pendingBarPct}%` }} />
                 </div>
               </div>
             </div>
@@ -2597,44 +2523,42 @@ const AdminTicketsPage = () => {
                         </div>
                       </div>
                     ))}
-                  </div>
-                  {sortedRecentBookings.length > RECENT_BOOKINGS_PAGE_SIZE && (
-                    <div className="subsea-pagination">
-                      <span>
-                        Showing {(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-
-                        {Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of{' '}
-                        {sortedRecentBookings.length} bookings
-                      </span>
-                      <div>
-                        <button
-                          type="button"
-                          className="subsea-btn subsea-btn-default subsea-btn-sm"
-                          disabled={recentBookingsPage <= 1}
-                          onClick={() => setRecentBookingsPage((p) => Math.max(1, p - 1))}
-                        >
-                          Previous
-                        </button>
-                        {Array.from({ length: recentBookingsTotalPages }, (_, i) => i + 1).map((p) => (
+                    {sortedRecentBookings.length > RECENT_BOOKINGS_PAGE_SIZE && (
+                      <div className="subsea-pagination admin-tickets-bookings-pagination">
+                        <span className="subsea-pagination-info">
+                          {`Showing ${(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-${Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of ${sortedRecentBookings.length} bookings`}
+                        </span>
+                        <div className="subsea-pagination-btns">
                           <button
-                            key={p}
                             type="button"
-                            className={`subsea-btn subsea-btn-sm ${p === recentBookingsPage ? 'subsea-btn-primary' : 'subsea-btn-default'}`}
-                            onClick={() => setRecentBookingsPage(p)}
+                            className="subsea-btn subsea-btn-default subsea-btn-sm"
+                            disabled={recentBookingsPage <= 1}
+                            onClick={() => setRecentBookingsPage((p) => Math.max(1, p - 1))}
                           >
-                            {p}
+                            Previous
                           </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="subsea-btn subsea-btn-default subsea-btn-sm"
-                          disabled={recentBookingsPage >= recentBookingsTotalPages}
-                          onClick={() => setRecentBookingsPage((p) => Math.min(recentBookingsTotalPages, p + 1))}
-                        >
-                          Next
-                        </button>
+                          {Array.from({ length: recentBookingsTotalPages }, (_, i) => i + 1).map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              className={`subsea-pagination-btn${p === recentBookingsPage ? ' active' : ''}`}
+                              onClick={() => setRecentBookingsPage(p)}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className="subsea-btn subsea-btn-default subsea-btn-sm"
+                            disabled={recentBookingsPage >= recentBookingsTotalPages}
+                            onClick={() => setRecentBookingsPage((p) => Math.min(recentBookingsTotalPages, p + 1))}
+                          >
+                            Next
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -2643,47 +2567,70 @@ const AdminTicketsPage = () => {
             <div className="subsea-page-head">
               <div>
                 <h1>Report Spends</h1>
-                <p>Flight spend analytics · {projectFilteredTickets.length} bookings in scope</p>
+                <p>
+                  Flight spend analytics · {spendDashboardStats.bookingsInScope} bookings in scope
+                  {reportSpends?.scope.timezone ? ` · ${reportSpends.scope.timezone}` : ''}
+                </p>
               </div>
             </div>
+
+            {reportSpendsError && (
+              <div className="subsea-state subsea-state-error" role="alert">{reportSpendsError}</div>
+            )}
 
             <div className="subsea-kpi-strip subsea-kpi-strip-4">
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Total Spend MTD</div>
-                <div className="subsea-kpi-value">{displayMoney(ticketDashboardStats.mtdSpend.total)}</div>
-                <div className={`subsea-kpi-meta ${ticketDashboardStats.spendChangeTone}`}>
-                  {ticketDashboardStats.spendChangeMeta}
+                <div className="subsea-kpi-value">
+                  {reportSpendsLoading ? '…' : displayMoney(spendDashboardStats.mtdSpend.total)}
+                </div>
+                <div className={`subsea-kpi-meta ${spendDashboardStats.spendChangeTone}`}>
+                  {reportSpendsLoading ? 'Loading…' : spendDashboardStats.spendChangeMeta}
                 </div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill teal" style={{ width: `${ticketDashboardStats.spendMtdBarPct}%` }} />
+                  <div className="subsea-kpi-fill teal" style={{ width: `${spendDashboardStats.spendMtdBarPct}%` }} />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Avg Ticket Cost</div>
                 <div className="subsea-kpi-value">
-                  {ticketDashboardStats.mtdSpend.count
-                    ? displayMoney(ticketDashboardStats.mtdSpend.average)
-                    : '—'}
+                  {reportSpendsLoading
+                    ? '…'
+                    : spendDashboardStats.mtdSpend.count
+                      ? displayMoney(spendDashboardStats.mtdSpend.average)
+                      : '—'}
                 </div>
-                <div className="subsea-kpi-meta flat">{ticketDashboardStats.avgCostMeta}</div>
+                <div className="subsea-kpi-meta flat">
+                  {reportSpendsLoading ? 'Loading…' : spendDashboardStats.avgCostMeta}
+                </div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill green" style={{ width: `${ticketDashboardStats.avgCostBarPct}%` }} />
+                  <div className="subsea-kpi-fill green" style={{ width: `${spendDashboardStats.avgCostBarPct}%` }} />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Priced Bookings</div>
-                <div className="subsea-kpi-value">{ticketDashboardStats.mtdSpend.count}</div>
+                <div className="subsea-kpi-value">
+                  {reportSpendsLoading ? '…' : spendDashboardStats.mtdSpend.count}
+                </div>
                 <div className="subsea-kpi-meta flat">This month</div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill blue" style={{ width: `${Math.min(100, ticketDashboardStats.mtdSpend.count * 10)}%` }} />
+                  <div
+                    className="subsea-kpi-fill blue"
+                    style={{ width: `${Math.min(100, spendDashboardStats.mtdSpend.count * 10)}%` }}
+                  />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Destinations</div>
-                <div className="subsea-kpi-value">{ticketDashboardStats.spendByDestination.length}</div>
+                <div className="subsea-kpi-value">
+                  {reportSpendsLoading ? '…' : spendDashboardStats.destinationCount}
+                </div>
                 <div className="subsea-kpi-meta flat">With recorded spend</div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill amber" style={{ width: `${Math.min(100, ticketDashboardStats.spendByDestination.length * 20)}%` }} />
+                  <div
+                    className="subsea-kpi-fill amber"
+                    style={{ width: `${Math.min(100, spendDashboardStats.destinationCount * 20)}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -2692,10 +2639,12 @@ const AdminTicketsPage = () => {
               <div className="subsea-pane">
                 <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Destination</div></div>
                 <div className="subsea-pane-body subsea-pane-body-compact">
-                  {ticketDashboardStats.spendByDestination.length === 0 ? (
+                  {reportSpendsLoading ? (
+                    <div className="subsea-state">Loading spend analytics…</div>
+                  ) : spendDashboardStats.spendByDestination.length === 0 ? (
                     <div className="subsea-state">No priced bookings yet</div>
                   ) : (
-                    ticketDashboardStats.spendByDestination.map((row) => (
+                    spendDashboardStats.spendByDestination.map((row) => (
                       <div className="subsea-metric-row" key={row.label}>
                         <div className="subsea-metric-grow">
                           <div className="subsea-metric-label">{row.label}</div>
@@ -2712,10 +2661,12 @@ const AdminTicketsPage = () => {
               <div className="subsea-pane">
                 <div className="subsea-pane-head"><div className="subsea-pane-title">Bookings by Cabin Class</div></div>
                 <div className="subsea-pane-body subsea-pane-body-compact">
-                  {ticketDashboardStats.bookingsByClass.length === 0 ? (
+                  {reportSpendsLoading ? (
+                    <div className="subsea-state">Loading spend analytics…</div>
+                  ) : spendDashboardStats.bookingsByClass.length === 0 ? (
                     <div className="subsea-state">No bookings yet</div>
                   ) : (
-                    ticketDashboardStats.bookingsByClass.map((row) => (
+                    spendDashboardStats.bookingsByClass.map((row) => (
                       <div className="subsea-metric-row" key={row.label}>
                         <span className="subsea-metric-label">{row.label}</span>
                         <span className="subsea-metric-val">{row.count} ({row.pct}%)</span>

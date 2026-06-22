@@ -3433,3 +3433,32 @@
   color: #1a56db !important;
   border-color: #dde1e8 !important;
 }
+
+.admin-tickets-bookings-pagination {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  gap: 16px;
+}
+
+.admin-tickets-bookings-pagination .subsea-pagination-info {
+  flex-shrink: 0;
+  white-space: nowrap;
+  line-height: 28px;
+}
+
+.admin-tickets-bookings-pagination .subsea-pagination-btns {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .admin-tickets-bookings-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-tickets-bookings-pagination .subsea-pagination-btns {
+    justify-content: flex-start;
+  }
+}
