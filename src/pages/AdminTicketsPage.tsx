@@ -597,6 +597,7 @@ function FlightResultCard({
           <Button
             type="button"
             size="sm"
+            className="atfc-book-btn"
             onClick={() => onBook(flight)}
             disabled={isBooking || fares.length === 0}
           >
@@ -769,6 +770,8 @@ const AdminTicketsPage = () => {
   const [bookingFlightKey, setBookingFlightKey] = useState<string | null>(null);
   const [flightToBook, setFlightToBook] = useState<Flight | null>(null);
   const [showManualConfirm, setShowManualConfirm] = useState(false);
+  const [searchBookingSuccess, setSearchBookingSuccess] = useState(false);
+  const [searchSuccessMessage, setSearchSuccessMessage] = useState('');
 
   /* Project & crew for search form */
   const [searchProjectId, setSearchProjectId] = useState<string>('');
@@ -1312,9 +1315,12 @@ const AdminTicketsPage = () => {
           infants: 0,
         });
         const returnedTickets = Array.isArray(data.crewTickets) ? data.crewTickets : Array.isArray(data.tickets) ? data.tickets : [];
-        const ticketCount = returnedTickets.length || searchCrewIds.length || searchAdultCount;
+        const ticketCount = returnedTickets.length;
         const refNote = data.bookingReference ? ` Ref: ${data.bookingReference}` : '';
         const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked and sent for approval.${refNote}`;
+
+        setSearchSuccessMessage(baseDesc);
+        setSearchBookingSuccess(true);
 
         if (searchTripTypeUI === 'multi-city') {
           const n = multiSegments.length;
@@ -1325,32 +1331,43 @@ const AdminTicketsPage = () => {
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
             fetchTickets();
-            setActiveMultiLegIndex((i) => i + 1);
-            setSearchResults(null);
-            setSearchTotalCount(0);
-            setSearchPage(1);
-            setSearchCriteria(null);
+            setTimeout(() => {
+              setActiveMultiLegIndex((i) => i + 1);
+              setSearchResults(null);
+              setSearchTotalCount(0);
+              setSearchPage(1);
+              setSearchCriteria(null);
+              setFlightToBook(null);
+              setSearchBookingSuccess(false);
+            }, 2500);
           } else {
             toast.success(`All ${n} flight${n !== 1 ? 's' : ''} sent for approval.`, {
               description: baseDesc,
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
             fetchTickets();
-            setSearchResults(null);
-            setSearchTotalCount(0);
-            setSearchPage(1);
-            setSearchCriteria(null);
-            setActiveMultiLegIndex(0);
-            setMultiSegments(initialMultiSegments());
+            setTimeout(() => {
+              setSearchResults(null);
+              setSearchTotalCount(0);
+              setSearchPage(1);
+              setSearchCriteria(null);
+              setActiveMultiLegIndex(0);
+              setMultiSegments(initialMultiSegments());
+              setFlightToBook(null);
+              setSearchBookingSuccess(false);
+            }, 2500);
           }
         } else {
           toast.success('Ticket booked and sent for approval.', { description: baseDesc });
           window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
           fetchTickets();
-          setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
-          setSearchTotalCount((prev) => Math.max(0, prev - 1));
+          setTimeout(() => {
+            setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
+            setSearchTotalCount((prev) => Math.max(0, prev - 1));
+            setFlightToBook(null);
+            setSearchBookingSuccess(false);
+          }, 2500);
         }
-        setFlightToBook(null);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unable to complete booking. Please try again.';
         if (searchTripTypeUI === 'multi-city') {
@@ -3228,100 +3245,118 @@ const AdminTicketsPage = () => {
       <Dialog
         open={!!flightToBook}
         onOpenChange={(open) => {
-          if (!open && !bookingFlightKey) setFlightToBook(null);
+          if (!open && !bookingFlightKey && !searchBookingSuccess) {
+            setFlightToBook(null);
+          }
         }}
       >
-        <DialogContent showCloseButton={!bookingFlightKey} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
-          <DialogHeader>
-            <DialogTitle>Book flight tickets?</DialogTitle>
-            <DialogDescription className="text-left pt-2 text-muted-foreground">
-              Are you sure you want to book this flight for the selected crew?
-            </DialogDescription>
-          </DialogHeader>
-
-          {flightToBook && (() => {
-            const firstLeg = flightToBook.legs?.[0];
-            const lastLeg = flightToBook.legs?.[flightToBook.legs.length - 1];
-            const firstSeg = firstLeg?.itinerary?.[0];
-            const lastSeg = lastLeg?.itinerary?.[lastLeg.itinerary.length - 1];
-            const fromAirport = firstSeg?.fromAirport ?? firstLeg?.from ?? '—';
-            const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
-            const departureTime = firstLeg?.departureTime ?? '';
-            const arrivalTime = lastLeg?.arrivalTime ?? '';
-            const duration = firstLeg?.duration ?? '—';
-            const stops = (flightToBook as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
-            const airlineName = (flightToBook as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
-            const firstFare = flightToBook.fares?.[0];
-            const priceAmount = firstFare?.totalFare ?? 0;
-
-            return (
-              <div className="mt-2 space-y-4">
-                <div className="border border-border rounded-lg p-4 bg-muted/40 text-sm">
-                  <div className="flex justify-between items-start font-semibold border-b border-border/50 pb-2 mb-3">
-                    <div>
-                      <span className="text-base text-foreground font-semibold">{airlineName}</span>
-                    </div>
-                    <span className="text-base text-primary font-bold">
-                      {currency} {priceAmount.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm relative py-2">
-                    <div className="flex flex-col">
-                      <span className="text-lg font-bold text-foreground">{departureTime ? fmtTime(departureTime) : '—'}</span>
-                      <span className="text-xs text-muted-foreground">{departureTime ? fmtDate(departureTime) : ''}</span>
-                      <span className="text-xs font-semibold text-foreground mt-1" title={fromAirport}>{fromAirport}</span>
-                    </div>
-
-                    <div className="flex flex-col items-center flex-1 px-4">
-                      <span className="text-[10px] text-muted-foreground font-mono">{duration}</span>
-                      <div className="w-full flex items-center justify-center my-1 relative">
-                        <div className="w-full h-[2px] bg-border absolute top-1/2 -translate-y-1/2" />
-                        <Plane size={14} className="text-muted-foreground bg-background px-1 z-10" />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}`}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-end">
-                      <span className="text-lg font-bold text-foreground">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
-                      <span className="text-xs text-muted-foreground">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
-                      <span className="text-xs font-semibold text-foreground mt-1" title={toAirport}>{toAirport}</span>
-                    </div>
-                  </div>
-                </div>
+        <DialogContent showCloseButton={!bookingFlightKey && !searchBookingSuccess} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
+          {searchBookingSuccess ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 animate-bounce">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-            );
-          })()}
+              <h3 className="text-xl font-bold text-foreground">Booking Successful!</h3>
+              <p className="text-sm text-muted-foreground px-4">
+                {searchSuccessMessage || 'Ticket has been booked and sent for approval.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Book flight tickets?</DialogTitle>
+                <DialogDescription className="text-left pt-2 text-muted-foreground">
+                  Are you sure you want to book this flight for the selected crew?
+                </DialogDescription>
+              </DialogHeader>
 
-          <DialogFooter className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setFlightToBook(null)}
-              disabled={!!bookingFlightKey}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => flightToBook && executeSearchBooking(flightToBook)}
-              disabled={!!bookingFlightKey || !flightToBook}
-            >
-              {bookingFlightKey ? (
-                <>
-                  <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
-                  Booking…
-                </>
-              ) : (
-                <>
-                  <Plane size={16} className="mr-2" />
-                  Confirm Booking
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+              {flightToBook && (() => {
+                const firstLeg = flightToBook.legs?.[0];
+                const lastLeg = flightToBook.legs?.[flightToBook.legs.length - 1];
+                const firstSeg = firstLeg?.itinerary?.[0];
+                const lastSeg = lastLeg?.itinerary?.[lastLeg.itinerary.length - 1];
+                const fromAirport = firstSeg?.fromAirport ?? firstLeg?.from ?? '—';
+                const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
+                const departureTime = firstLeg?.departureTime ?? '';
+                const arrivalTime = lastLeg?.arrivalTime ?? '';
+                const duration = firstLeg?.duration ?? '—';
+                const stops = (flightToBook as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
+                const airlineName = (flightToBook as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
+                const firstFare = flightToBook.fares?.[0];
+                const priceAmount = firstFare?.totalFare ?? 0;
+
+                return (
+                  <div className="mt-2 space-y-4">
+                    <div className="border border-border rounded-lg p-4 bg-muted/40 text-sm">
+                      <div className="flex justify-between items-start font-semibold border-b border-border/50 pb-2 mb-3">
+                        <div>
+                          <span className="text-base text-foreground font-semibold">{airlineName}</span>
+                        </div>
+                        <span className="text-base text-primary font-bold">
+                          {currency} {priceAmount.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm relative py-2">
+                        <div className="flex flex-col">
+                          <span className="text-lg font-bold text-foreground">{departureTime ? fmtTime(departureTime) : '—'}</span>
+                          <span className="text-xs text-muted-foreground">{departureTime ? fmtDate(departureTime) : ''}</span>
+                          <span className="text-xs font-semibold text-foreground mt-1" title={fromAirport}>{fromAirport}</span>
+                        </div>
+
+                        <div className="flex flex-col items-center flex-1 px-4">
+                          <span className="text-[10px] text-muted-foreground font-mono">{duration}</span>
+                          <div className="w-full flex items-center justify-center my-1 relative">
+                            <div className="w-full h-[2px] bg-border absolute top-1/2 -translate-y-1/2" />
+                            <Plane size={14} className="text-muted-foreground bg-background px-1 z-10" />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}`}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col items-end">
+                          <span className="text-lg font-bold text-foreground">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
+                          <span className="text-xs text-muted-foreground">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
+                          <span className="text-xs font-semibold text-foreground mt-1" title={toAirport}>{toAirport}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <DialogFooter className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setFlightToBook(null)}
+                  disabled={!!bookingFlightKey}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => flightToBook && executeSearchBooking(flightToBook)}
+                  disabled={!!bookingFlightKey || !flightToBook}
+                >
+                  {bookingFlightKey ? (
+                    <>
+                      <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
+                      Booking…
+                    </>
+                  ) : (
+                    <>
+                      <Plane size={16} className="mr-2" />
+                      Confirm Booking
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

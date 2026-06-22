@@ -3351,3 +3351,35 @@
   color: #1a56db !important;
   border-color: #dde1e8 !important;
 }
+
+/* Custom styling and hover overrides for Book Now button inside subsea-shell */
+.subsea-shell .atfc-book-btn {
+  background: var(--blue) !important;
+  color: #fff !important;
+  border: 1px solid var(--blue) !important;
+  border-radius: 5px !important;
+  min-height: 32px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  padding: 6px 14px !important;
+}
+
+.subsea-shell .atfc-book-btn:hover:not(:disabled) {
+  background: var(--blue-h) !important;
+  border-color: var(--blue-h) !important;
+  color: #fff !important;
+}
+
+/* Custom hover overrides for Fare Tabs inside subsea-shell to prevent going black */
+.subsea-shell .atfc-fare-tab:hover {
+  background: var(--surface3) !important;
+  border-color: var(--border2) !important;
+}
+
+.subsea-shell .atfc-fare-tab-active:hover {
+  background: var(--blue-light) !important;
+  border-color: var(--blue-border) !important;
+  color: var(--blue) !important;
+}
+
