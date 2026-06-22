@@ -21,7 +21,6 @@ import { toast } from 'sonner';
 import { SubseaNavRail } from '@/components/SubseaNavRail';
 import { SubseaProfileMenu } from '@/components/SubseaProfileMenu';
 import { SUBSEA_FORM_LIGHT_CLASS } from '@/lib/subseaTheme';
-import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -723,7 +722,6 @@ function FlightResultCard({
 }
 
 const AdminTicketsPage = () => {
-  const navigate = useNavigate();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [rigs, setRigs] = useState<RigApi[]>([]);
