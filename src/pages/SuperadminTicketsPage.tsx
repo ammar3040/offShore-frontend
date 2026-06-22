@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { FileText, FileCheck, Send, Trash2, CheckCircle2 } from 'lucide-react';
+import { FileText, FileCheck, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, sendSuperadminCrewTicketEmail, deleteSuperadminCrewTicket, type ApiPagination } from '../api/superadmin';
+import { getSuperadminCrewTickets, getSuperadminProjects, uploadSuperadminCrewTicketPdf, deleteSuperadminCrewTicket, type ApiPagination } from '../api/superadmin';
 import { approveAndUploadTicketPdf, regenerateAndUploadTicketPdf } from '../lib/crewTicket/approveAndUploadTicketPdf';
 import { env } from '../config/env';
 import {
@@ -45,7 +45,7 @@ const SuperadminTicketsPage = () => {
   const [pagination, setPagination] = useState<ApiPagination | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
-  const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
+  // const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
   const [approvingTicketId, setApprovingTicketId] = useState<string | null>(null);
   const [regeneratingTicketId, setRegeneratingTicketId] = useState<string | null>(null);
   const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
@@ -194,22 +194,23 @@ const SuperadminTicketsPage = () => {
     }
   };
 
-  const handleSendTicketClick = async (ticketId: string) => {
-    const ticket = tickets.find((item) => item.id === ticketId);
-    if (ticket && (!canUseTicketPdf(ticket) || !ticketHasStoredPdf(ticket))) {
-      toast.error('Ticket not ready', { description: 'Approve the ticket and upload its PDF before sending email.' });
-      return;
-    }
-    setSendingTicketId(ticketId);
-    try {
-      await sendSuperadminCrewTicketEmail(ticketId);
-      toast.success('Ticket sent', { description: 'Ticket email sent to crew member successfully.' });
-    } catch (err) {
-      toast.error('Send failed', { description: err instanceof Error ? err.message : 'Failed to send ticket email.' });
-    } finally {
-      setSendingTicketId(null);
-    }
-  };
+  // Send ticket temporarily disabled — backend POST /crew-ticket/:id/send-ticket-email is unavailable.
+  // const handleSendTicketClick = async (ticketId: string) => {
+  //   const ticket = tickets.find((item) => item.id === ticketId);
+  //   if (ticket && (!canUseTicketPdf(ticket) || !ticketHasStoredPdf(ticket))) {
+  //     toast.error('Ticket not ready', { description: 'Approve the ticket and upload its PDF before sending email.' });
+  //     return;
+  //   }
+  //   setSendingTicketId(ticketId);
+  //   try {
+  //     await sendSuperadminCrewTicketEmail(ticketId);
+  //     toast.success('Ticket sent', { description: 'Ticket email sent to crew member successfully.' });
+  //   } catch (err) {
+  //     toast.error('Send failed', { description: err instanceof Error ? err.message : 'Failed to send ticket email.' });
+  //   } finally {
+  //     setSendingTicketId(null);
+  //   }
+  // };
 
   const handleOpenTicketPdf = async (ticket: CrewTicketApi) => {
     if (!canUseTicketPdf(ticket)) return;
@@ -509,6 +510,7 @@ const SuperadminTicketsPage = () => {
                       </>
                     )}
                   </Button>
+                  {/* Send ticket temporarily disabled — backend endpoint unavailable.
                   <Button
                     variant="outline"
                     size="sm"
@@ -525,6 +527,7 @@ const SuperadminTicketsPage = () => {
                       </>
                     )}
                   </Button>
+                  */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -779,6 +782,7 @@ const SuperadminTicketsPage = () => {
                     </>
                   )}
                 </Button>
+                {/* Send ticket temporarily disabled — backend endpoint unavailable.
                 <Button
                   variant="outline"
                   size="sm"
@@ -795,6 +799,7 @@ const SuperadminTicketsPage = () => {
                     </>
                   )}
                 </Button>
+                */}
                 <Button
                   variant="outline"
                   size="sm"

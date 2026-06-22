@@ -493,6 +493,26 @@ function withMarineFaresOnly(flight: Flight): Flight | null {
   return { ...flight, fares: marineFares };
 }
 
+function getFlightBookSummary(flight: Flight, currency: CurrencyCode) {
+  const marineFares = getMarineFares(flight.fares);
+  const firstFare = marineFares[0];
+  const roundTrip = isRoundTripFlight(flight);
+  const outbound = roundTrip
+    ? getDirectionDisplay(flight.outbound, flight.legs?.[0])
+    : getOneWayDisplay(flight);
+  const inbound = roundTrip ? getDirectionDisplay(flight.inbound, flight.legs?.[1]) : null;
+  const route = inbound
+    ? `${outbound.fromAirport} → ${outbound.toAirport}, return ${inbound.fromAirport} → ${inbound.toAirport}`
+    : `${outbound.fromAirport} → ${outbound.toAirport}`;
+  return {
+    route,
+    price: firstFare
+      ? `${getCurrencySymbol(currency)}${firstFare.totalFare?.toLocaleString() ?? '—'}`
+      : '—',
+    fareLabel: firstFare?.name ?? firstFare?.type ?? 'Marine fare',
+  };
+}
+
 function FlightRouteRow({
   label,
   display,
@@ -737,6 +757,8 @@ const AdminTicketsPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
   const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
+  const [flightToConfirmBook, setFlightToConfirmBook] = useState<Flight | null>(null);
+  const [showCreateTicketConfirm, setShowCreateTicketConfirm] = useState(false);
   const [previewingTicketId, setPreviewingTicketId] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -1120,6 +1142,7 @@ const AdminTicketsPage = () => {
       setModalStep('project');
       setSubmitError(null);
       setSubmitSuccess(false);
+      setShowCreateTicketConfirm(false);
     }
   }, [submitLoading]);
 
@@ -1348,8 +1371,14 @@ const AdminTicketsPage = () => {
     activeMultiLegIndex,
   ]);
 
-  const handleBookNow = useCallback(
-    async (flight: Flight) => {
+  const requestBookFlightFlow = useCallback((flight: Flight) => {
+    setFlightToConfirmBook(flight);
+  }, []);
+
+  const handleConfirmBookFlight = useCallback(
+    async () => {
+      if (!flightToConfirmBook) return;
+      const flight = flightToConfirmBook;
       const bookKey =
         searchTripTypeUI === 'multi-city' ? `${activeMultiLegIndex}::${flight.id}` : flight.id;
       setBookingFlightKey(bookKey);
@@ -1415,6 +1444,7 @@ const AdminTicketsPage = () => {
           setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
           setSearchTotalCount((prev) => Math.max(0, prev - 1));
         }
+        setFlightToConfirmBook(null);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unable to complete booking. Please try again.';
         if (searchTripTypeUI === 'multi-city') {
@@ -1429,6 +1459,7 @@ const AdminTicketsPage = () => {
       }
     },
     [
+      flightToConfirmBook,
       searchProjectId,
       searchCrewIds,
       searchAdultCount,
@@ -1460,8 +1491,20 @@ const AdminTicketsPage = () => {
     return marineOnly;
   }, [searchResults, searchTripTypeUI, preferNonStopPerLeg]);
 
-  const handleSubmitTickets = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitTickets = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!selectedProject || selectedCrewIds.length === 0) return;
+
+    if (!formData.fromName.trim() || !formData.toName.trim()) {
+      setSubmitError('From and To airport names are required');
+      return;
+    }
+
+    setSubmitError(null);
+    setShowCreateTicketConfirm(true);
+  };
+
+  const handleConfirmCreateTickets = useCallback(async () => {
     if (!selectedProject || selectedCrewIds.length === 0) return;
 
     const from: AirportLocation = {
@@ -1477,6 +1520,7 @@ const AdminTicketsPage = () => {
 
     if (!from.Name || !to.Name) {
       setSubmitError('From and To airport names are required');
+      setShowCreateTicketConfirm(false);
       return;
     }
 
@@ -1499,16 +1543,26 @@ const AdminTicketsPage = () => {
         };
         await createFlightTicket(payload);
       }
+      setShowCreateTicketConfirm(false);
       setSubmitSuccess(true);
       fetchTickets();
       fetchReportSpends();
       setTimeout(closeCreateModal, 1500);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to create tickets');
+      setShowCreateTicketConfirm(false);
     } finally {
       setSubmitLoading(false);
     }
-  };
+  }, [
+    selectedProject,
+    selectedCrewIds,
+    formData,
+    createRigId,
+    fetchTickets,
+    fetchReportSpends,
+    closeCreateModal,
+  ]);
 
   const getCrewName = (t: CrewTicketApi) => {
     const c = t.crew_id;
@@ -1575,6 +1629,11 @@ const AdminTicketsPage = () => {
         return bTime - aTime;
       }),
     [filteredTickets]
+  );
+
+  const flightBookConfirmSummary = useMemo(
+    () => (flightToConfirmBook ? getFlightBookSummary(flightToConfirmBook, currency) : null),
+    [flightToConfirmBook, currency]
   );
 
   const recentBookingsTotalPages = Math.max(
@@ -2279,7 +2338,7 @@ const AdminTicketsPage = () => {
                         key={flight.id}
                         flight={flight}
                         currency={currency}
-                        onBook={handleBookNow}
+                        onBook={requestBookFlightFlow}
                         isBooking={
                           bookingFlightKey ===
                           (searchTripTypeUI === 'multi-city'
@@ -2908,6 +2967,124 @@ const AdminTicketsPage = () => {
                   <Ban size={16} className="mr-2" />
                   Cancel ticket
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!flightToConfirmBook}
+        onOpenChange={(open) => {
+          if (!open && !bookingFlightKey) setFlightToConfirmBook(null);
+        }}
+      >
+        <DialogContent showCloseButton={!bookingFlightKey} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
+          <DialogHeader>
+            <DialogTitle>Confirm flight booking</DialogTitle>
+            <DialogDescription asChild>
+              <div className="text-left pt-1 space-y-2 text-sm text-muted-foreground">
+                {flightToConfirmBook && flightBookConfirmSummary ? (
+                  <>
+                    <p>
+                      Book{' '}
+                      <span className="font-medium text-foreground">{flightBookConfirmSummary.route}</span>{' '}
+                      at{' '}
+                      <span className="font-medium text-foreground">
+                        {flightBookConfirmSummary.price}
+                      </span>{' '}
+                      ({flightBookConfirmSummary.fareLabel})?
+                    </p>
+                    {searchTripTypeUI === 'multi-city' ? (
+                      <p>
+                        Multi-city leg {activeMultiLegIndex + 1} of {multiSegments.length}.
+                      </p>
+                    ) : null}
+                    {searchProjectId ? (
+                      <p>
+                        Project:{' '}
+                        <span className="font-medium text-foreground">
+                          {projects.find((p) => p.id === searchProjectId)?.title ?? 'Selected project'}
+                        </span>
+                      </p>
+                    ) : null}
+                    <p>
+                      {searchAdultCount} ticket{searchAdultCount !== 1 ? 's' : ''} will be submitted for
+                      superadmin approval.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFlightToConfirmBook(null)}
+              disabled={!!bookingFlightKey}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleConfirmBookFlight()}
+              disabled={!!bookingFlightKey || !flightToConfirmBook}
+            >
+              {bookingFlightKey ? (
+                <>
+                  <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
+                  Booking…
+                </>
+              ) : (
+                <>
+                  <Plane size={16} className="mr-2" />
+                  Confirm booking
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showCreateTicketConfirm}
+        onOpenChange={(open) => {
+          if (!open && !submitLoading) setShowCreateTicketConfirm(false);
+        }}
+      >
+        <DialogContent showCloseButton={!submitLoading} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
+          <DialogHeader>
+            <DialogTitle>Create ticket requests?</DialogTitle>
+            <DialogDescription className="text-left pt-1">
+              Create {selectedCrewIds.length} ticket request{selectedCrewIds.length !== 1 ? 's' : ''} for{' '}
+              <span className="font-medium text-foreground">{selectedProject?.title ?? 'this project'}</span>{' '}
+              ({formData.fromName.trim() || '—'} → {formData.toName.trim() || '—'},{' '}
+              {TRIP_OPTIONS.find((o) => o.value === formData.trip)?.label ?? formData.trip},{' '}
+              {formData.class.replace('_', ' ').toLowerCase()})? Each request will await superadmin approval.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateTicketConfirm(false)}
+              disabled={submitLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleConfirmCreateTickets()}
+              disabled={submitLoading}
+            >
+              {submitLoading ? (
+                <>
+                  <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
+                  Creating…
+                </>
+              ) : (
+                `Create ${selectedCrewIds.length} ticket${selectedCrewIds.length !== 1 ? 's' : ''}`
               )}
             </Button>
           </DialogFooter>
