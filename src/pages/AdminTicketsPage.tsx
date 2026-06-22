@@ -1746,10 +1746,6 @@ const AdminTicketsPage = () => {
           >
             <AlertTriangle size={13} /> Pending Approval <span className="subsea-sb-count subsea-sb-count-red">{pendingApprovalCount}</span>
           </button>
-          <div className="subsea-sb-group">Operations</div>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <Plane size={13} /> Upcoming Departures
-          </button>
         </div>
       </aside>
 
@@ -2735,11 +2731,12 @@ const AdminTicketsPage = () => {
       </div>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg`}>
-          <DialogHeader>
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} admin-tickets-detail-dialog flex flex-col max-w-lg gap-0 p-0`}>
+          <DialogHeader className="admin-tickets-detail-dialog-header">
             <DialogTitle>Ticket details</DialogTitle>
           </DialogHeader>
         {selectedTicket && (
+          <div className="admin-tickets-detail-dialog-body">
           <div className="admin-tickets-detail-card">
             <section className="admin-tickets-detail-section">
               <h3 className="admin-tickets-detail-heading">Flight details</h3>
@@ -2907,6 +2904,7 @@ const AdminTicketsPage = () => {
                 Cancel ticket
               </Button>
             </div>
+          </div>
           </div>
         )}
         </DialogContent>

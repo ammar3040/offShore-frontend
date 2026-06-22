@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, getCrewRankLabel, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
-import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, type CrewAvailability } from '../utils/crewAvailability';
+import { getRigs } from '../api/rig';
+import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, getCrewPrimaryAssignment, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
@@ -47,8 +48,6 @@ function field(value: string | undefined): string {
   return value?.trim() || '—';
 }
 
-const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer', 'MV Gulf Endeavour'];
-
 type RosterTab = 'available' | 'inProject';
 
 function crewStatus(kind: CrewAvailability): { label: string; className: string } {
@@ -60,6 +59,9 @@ function crewStatus(kind: CrewAvailability): { label: string; className: string 
 const CrewListPage = () => {
   const navigate = useNavigate();
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
+  const [projects, setProjects] = useState<ProjectApi[]>([]);
+  const [crewAssignments, setCrewAssignments] = useState<Record<string, CrewAssignedProject>>({});
+  const [rigCount, setRigCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -74,7 +76,6 @@ const CrewListPage = () => {
   const [crewDetailLoading] = useState(false);
   const [crewDetailError, setCrewDetailError] = useState<string | null>(null);
   const [inviteCrewMember, setInviteCrewMember] = useState<CrewMemberApi | null>(null);
-  const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -105,8 +106,32 @@ const CrewListPage = () => {
       setError(null);
     }
     try {
-      const crewRes = await getCrewList();
-      setCrew(crewRes.crew ?? []);
+      const [crewRes, rigsRes, projectsRes] = await Promise.all([
+        getCrewList(),
+        getRigs(),
+        getProjects().catch(() => ({ projects: [] as ProjectApi[] })),
+      ]);
+      const crewList = crewRes.crew ?? [];
+      const projectsList = projectsRes.projects ?? [];
+      setCrew(crewList);
+      setProjects(projectsList);
+      setRigCount(rigsRes.rigs?.length ?? 0);
+
+      const assignmentEntries = await Promise.all(
+        crewList.map(async (member) => {
+          let assignment = getCrewPrimaryAssignment(member.id, member.activeProjects, projectsList);
+          if (!assignment) {
+            try {
+              const detail = await getCrewById(member.id);
+              assignment = detail.projects?.[0];
+            } catch {
+              assignment = undefined;
+            }
+          }
+          return assignment ? ([member.id, assignment] as const) : null;
+        }),
+      );
+      setCrewAssignments(Object.fromEntries(assignmentEntries.filter(Boolean) as Array<[string, CrewAssignedProject]>));
     } catch (err) {
       if (withListLoading) {
         setError(err instanceof Error ? err.message : 'Failed to load crew');
@@ -396,7 +421,7 @@ const CrewListPage = () => {
           </button>
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
-            <Ship size={13} /> Rig Assignments <span className="subsea-sb-count">11</span>
+            <Ship size={13} /> Rig Assignments <span className="subsea-sb-count">{loading ? '...' : rigCount}</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
             <Plane size={13} /> Crew Flights <span className="subsea-sb-count">31</span>
@@ -428,7 +453,7 @@ const CrewListPage = () => {
           <div className="subsea-page-head">
             <div>
               <h1>Crew Management</h1>
-              <p>{loading ? 'Loading crew roster...' : `${crew.length} crew members · 11 rigs · ${Math.max(nationalityCount, 1)} nationalities`}</p>
+              <p>{loading ? 'Loading crew roster...' : `${crew.length} crew members · ${rigCount} rigs · ${Math.max(nationalityCount, 1)} nationalities`}</p>
             </div>
             <div className="subsea-ph-right">
               <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
@@ -531,7 +556,7 @@ const CrewListPage = () => {
                       paginatedCrew.map((member, index) => {
                         const kind = availabilityFromCrewSignal(member.signal);
                         const status = crewStatus(kind);
-                        const project = member.activeProjects?.[0];
+                        const assignment = crewAssignments[member.id] ?? getCrewPrimaryAssignment(member.id, member.activeProjects, projects);
                         const certExpiring = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
                         return (
                           <tr key={member.id} onClick={() => openCrewDetail(member)}>
@@ -550,7 +575,7 @@ const CrewListPage = () => {
                             </td>
                             <td>{getCrewRankLabel(member)}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
-                            <td>{project?.title || SAMPLE_RIGS[index % SAMPLE_RIGS.length]}</td>
+                            <td>{assignment?.title || 'Unassigned'}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
                             <td>
                               <span className={`subsea-badge ${certExpiring ? 'subsea-b-amber' : 'subsea-b-green'}`}>

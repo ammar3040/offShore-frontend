@@ -183,6 +183,25 @@
   border-color: #3b82f6;
 }
 
+/* Ticket detail dialog */
+.admin-tickets-detail-dialog {
+  max-height: min(90dvh, 760px);
+  overflow: hidden;
+}
+
+.admin-tickets-detail-dialog-header {
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-tickets-detail-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 24px 24px;
+}
+
 /* Ticket detail card */
 .admin-tickets-detail-card {
   display: flex;
@@ -2412,6 +2431,10 @@
 .layout--dark .admin-tickets-project-status {
   background: hsl(var(--accent));
   color: hsl(var(--foreground));
+}
+
+.layout--dark .admin-tickets-detail-dialog-header {
+  border-bottom-color: hsl(var(--border));
 }
 
 .layout--dark .admin-tickets-detail-section {

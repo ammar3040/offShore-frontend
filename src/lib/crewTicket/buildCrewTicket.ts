@@ -3,6 +3,7 @@ import type {
   CrewTicketFlightItinerarySegment,
   CrewTicketFlightLeg,
 } from '../../api/ticket';
+import { formatFlightDurationFromTimes } from '../flightUtils';
 import { escapeHtml } from '../invoice/format';
 import type { CrewTicketTemplateData } from './types';
 
@@ -113,6 +114,34 @@ function getFlightCodeDisplay(segment: CrewTicketFlightItinerarySegment): string
 
 function getAirlineName(segment: CrewTicketFlightItinerarySegment, leg: CrewTicketFlightLeg): string {
   return segment.airlineName?.trim() || leg.airlineName?.trim() || '—';
+}
+
+function getSegmentDuration(
+  segment: CrewTicketFlightItinerarySegment,
+  leg: CrewTicketFlightLeg,
+  fromItinerary?: boolean,
+): string | undefined {
+  const segmentDuration = segment.duration?.trim();
+  const legDuration = leg.duration?.trim();
+  const itineraryLen = leg.itinerary?.length ?? 0;
+  const legDurationCopiedToSegment =
+    fromItinerary &&
+    itineraryLen > 1 &&
+    !!segmentDuration &&
+    !!legDuration &&
+    segmentDuration === legDuration;
+
+  if (segmentDuration && !legDurationCopiedToSegment) return segmentDuration;
+
+  const depTime = segment.departureTime ?? (!fromItinerary ? leg.departureTime : undefined);
+  const arrTime = segment.arrivalTime ?? (!fromItinerary ? leg.arrivalTime : undefined);
+  const fromTimes = formatFlightDurationFromTimes(depTime, arrTime);
+  if (fromTimes) return fromTimes;
+
+  if (segmentDuration) return segmentDuration;
+
+  if (!fromItinerary) return legDuration;
+  return undefined;
 }
 
 function getStopLabel(leg: CrewTicketFlightLeg): string {
@@ -269,7 +298,7 @@ function buildFlightBlock(
   const arrTime = formatTime(segment.arrivalTime ?? leg.arrivalTime);
   const depDate = formatTicketDateUpper(segment.departureTime ?? leg.departureTime);
   const arrDate = formatTicketDateUpper(segment.arrivalTime ?? leg.arrivalTime);
-  const duration = (segment.duration ?? leg.duration)?.trim();
+  const duration = getSegmentDuration(segment, leg, row.fromItinerary);
   const baggage = getSegmentBaggage(segment, defaultBaggage);
   const stopLabel = row.fromItinerary ? 'NON-STOP' : getStopLabel(leg);
 

@@ -29,6 +29,23 @@ export function getDirectionItinerary(
   return (dirLegs as Journey[]).flatMap((leg) => leg.itinerary ?? []);
 }
 
+/** Format elapsed time between two ISO timestamps as e.g. "07h 25m". */
+export function formatFlightDurationFromTimes(
+  departureTime?: string,
+  arrivalTime?: string,
+): string | undefined {
+  if (!departureTime?.trim() || !arrivalTime?.trim()) return undefined;
+  const dep = new Date(departureTime);
+  const arr = new Date(arrivalTime);
+  if (Number.isNaN(dep.getTime()) || Number.isNaN(arr.getTime())) return undefined;
+  const diffMs = arr.getTime() - dep.getTime();
+  if (diffMs <= 0) return undefined;
+  const totalMinutes = Math.round(diffMs / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`;
+}
+
 export interface FlightDirectionDisplay {
   fromAirport: string;
   toAirport: string;

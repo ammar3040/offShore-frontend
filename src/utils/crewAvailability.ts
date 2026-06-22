@@ -1,6 +1,34 @@
+import type { CrewAssignedProject } from '../api/crew';
 import type { ProjectApi } from '../api/project';
 
 export type CrewAvailability = 'available' | 'onProject' | 'endingSoon';
+
+function toAssignedProject(project: ProjectApi): CrewAssignedProject {
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    duration: project.duration,
+    span: project.span,
+    status: project.status,
+  };
+}
+
+/** Primary project assignment for list views when GET /crew omits activeProjects. */
+export function getCrewPrimaryAssignment(
+  crewId: string,
+  activeProjects: CrewAssignedProject[] | undefined,
+  allProjects: ProjectApi[],
+): CrewAssignedProject | undefined {
+  if (activeProjects?.[0]) return activeProjects[0];
+
+  const today = stripToLocalDate(new Date());
+  const assigned = allProjects.filter((project) => isParticipant(project, crewId));
+  if (assigned.length === 0) return undefined;
+
+  const ongoing = assigned.filter((project) => isOngoingProject(project, today));
+  return toAssignedProject(ongoing[0] ?? assigned[0]);
+}
 
 function stripToLocalDate(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
