@@ -1202,6 +1202,10 @@
   background-color: #f97316;
 }
 
+.user-mgmt-availability-dot--unavailable {
+  background-color: #9ca3af;
+}
+
 .subsea-row-actions {
   display: flex;
   align-items: center;

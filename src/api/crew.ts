@@ -162,6 +162,7 @@ export interface CrewMemberApi {
   signal?: string;
   /** Active project assignments when returned on the crew list payload. */
   activeProjects?: CrewAssignedProject[];
+  isAvailable?: boolean;
 }
 
 export interface GetCrewResponse {
@@ -1304,5 +1305,35 @@ export async function removeCrewFromProject(projectId: string, crewId: string): 
       }
     }
     throw new Error(message);
+  }
+}
+
+/**
+ * Updates a crew member's availability status.
+ * PATCH /crew/:id/availability
+ */
+export async function updateCrewAvailabilityStatus(id: string, isAvailable: boolean): Promise<Response> {
+  const token = getAuthToken();
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(id)}/availability`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ isAvailable }),
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

@@ -52,7 +52,8 @@ function field(value: string | undefined): string {
 
 type RosterTab = 'available' | 'inProject';
 
-function crewStatus(kind: CrewAvailability): { label: string; className: string } {
+function crewStatus(kind: CrewAvailability | 'unavailable'): { label: string; className: string } {
+  if (kind === 'unavailable') return { label: 'Unavailable', className: 'subsea-b-red' };
   if (kind === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (kind === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
   return { label: 'In Project', className: 'subsea-b-blue' };
@@ -127,8 +128,9 @@ const CrewListPage = () => {
 
   const filteredCrew = useMemo(() => {
     let list = crew.filter((member) => {
-      const kind = availabilityFromCrewSignal(member.signal);
-      return rosterTab === 'available' ? kind === 'available' : kind !== 'available';
+      const kind = member.isAvailable !== false ? availabilityFromCrewSignal(member.signal) : 'unavailable';
+      if (rosterTab === 'available') return kind === 'available' || kind === 'unavailable';
+      return kind === 'onProject' || kind === 'endingSoon';
     });
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -337,8 +339,14 @@ const CrewListPage = () => {
     }
   };
 
-  const onProjectCount = crew.filter((member) => availabilityFromCrewSignal(member.signal) !== 'available').length;
-  const availableCount = crew.filter((member) => availabilityFromCrewSignal(member.signal) === 'available').length;
+  const onProjectCount = crew.filter((member) => {
+    const kind = member.isAvailable !== false ? availabilityFromCrewSignal(member.signal) : 'unavailable';
+    return kind === 'onProject' || kind === 'endingSoon';
+  }).length;
+  const availableCount = crew.filter((member) => {
+    const kind = member.isAvailable !== false ? availabilityFromCrewSignal(member.signal) : 'unavailable';
+    return kind === 'available' || kind === 'unavailable';
+  }).length;
   const nationalityCount = new Set(
     crew
       .map((member) => (member.nationality || member.country || '').trim())
@@ -500,6 +508,10 @@ const CrewListPage = () => {
               <span className="user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon" aria-hidden />
               <span>In project, ends in ≤7 days</span>
             </span>
+            <span className="user-mgmt-availability-legend-item" role="listitem">
+              <span className="user-mgmt-availability-dot user-mgmt-availability-dot--unavailable" aria-hidden />
+              <span>Unavailable</span>
+            </span>
           </div>
 
           <div className="subsea-pane">
@@ -536,7 +548,7 @@ const CrewListPage = () => {
                       </tr>
                     ) : (
                       paginatedCrew.map((member, index) => {
-                        const kind = availabilityFromCrewSignal(member.signal);
+                        const kind = member.isAvailable !== false ? availabilityFromCrewSignal(member.signal) : 'unavailable';
                         const status = crewStatus(kind);
                         const project = member.activeProjects?.[0];
                         const certExpiring = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
