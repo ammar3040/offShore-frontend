@@ -63,6 +63,11 @@ export default defineConfig(({ mode }) => {
               target: apiTarget,
               changeOrigin: true,
               secure: true,
+              bypass: (req) => {
+                if (req.headers.accept?.includes('html')) {
+                  return '/index.html'
+                }
+              },
             },
           ])
         ),

@@ -21,7 +21,7 @@ import {
   Ship,
   User,
 } from 'lucide-react';
-import { crewApiToFormData, getCrewById, updateCrewMember, type CrewAssignedProject, type CrewMemberApi } from '../api/crew';
+import { crewApiToFormData, getCrewById, updateCrewMember, updateCrewAvailabilityStatus, type CrewAssignedProject, type CrewMemberApi } from '../api/crew';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
@@ -34,8 +34,7 @@ const CrewMemberForm = lazy(() => import('../components/forms/CrewMemberForm'));
 
 type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay';
 
-const SAMPLE_RANKS = ['Master', 'Chief Officer', '2nd Engineer', 'DP Operator', 'Chief Engineer', 'Radio Officer'];
-const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer'];
+
 
 function formatDate(value?: string): string {
   if (!value) return '-';
@@ -66,6 +65,7 @@ function field(value?: string | null): string {
 }
 
 function statusMeta(crew?: CrewMemberApi | null): { label: string; className: string } {
+  if (crew?.isAvailable === false) return { label: 'Unavailable', className: 'subsea-b-red' };
   const availability = availabilityFromCrewSignal(crew?.signal);
   if (availability === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (availability === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
@@ -75,7 +75,7 @@ function statusMeta(crew?: CrewMemberApi | null): { label: string; className: st
 function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi | null) {
   const project = projects[0] ?? crew?.activeProjects?.[0];
   return {
-    rig: project?.title || SAMPLE_RIGS[0],
+    rig: project?.title || '—',
     signOn: project?.duration?.startDate,
     signOff: project?.duration?.endDate,
     status: project?.status || 'Active',
@@ -95,11 +95,49 @@ const CrewDetailsPage = () => {
   const [editPrefillLoading, setEditPrefillLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState(false);
 
-  const loadCrewDetails = useCallback(async () => {
+  const handleToggleAvailability = async () => {
+    if (!crew || !crewId) return;
+
+    const originalIsAvailable = crew.isAvailable;
+    const nextState = originalIsAvailable === false;
+
+    // 1. Optimistic Update (Immediate UI response)
+    setCrew(prev => prev ? { ...prev, isAvailable: nextState } : null);
+
+    setToggling(true);
+    setError(null);
+    try {
+      const res = await updateCrewAvailabilityStatus(crewId, nextState);
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = `Failed to update availability (${res.status})`;
+        if (text) {
+          try {
+            const j = JSON.parse(text);
+            msg = j?.message || j?.error || msg;
+          } catch {
+            msg = text;
+          }
+        }
+        throw new Error(msg);
+      }
+      // 2. Silent background reload to sync other computed properties (like signal)
+      await loadCrewDetails(false);
+    } catch (err) {
+      // 3. Rollback on failure
+      setCrew(prev => prev ? { ...prev, isAvailable: originalIsAvailable } : null);
+      setError(err instanceof Error ? err.message : 'Failed to update availability');
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const loadCrewDetails = useCallback(async (showSpinner = true) => {
     if (!crewId) return;
 
-    setLoading(true);
+    if (showSpinner) setLoading(true);
     setError(null);
     try {
       const res = await getCrewById(crewId);
@@ -108,7 +146,7 @@ const CrewDetailsPage = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load crew details');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, [crewId]);
 
@@ -178,7 +216,7 @@ const CrewDetailsPage = () => {
   const status = statusMeta(crew);
   const pageError = !crewId ? 'Missing crew id' : error;
   const assignment = useMemo(() => currentAssignment(projects, crew), [projects, crew]);
-  const rank = crew?.organization || SAMPLE_RANKS[0];
+  const rank = crew?.organization || '—';
   const certExpiry = crew?.certificate_expiry_date || crew?.crew_certificate?.expiry_date;
   const passport = crew?.passport;
   const identity = crew?.identity;
@@ -300,7 +338,42 @@ const CrewDetailsPage = () => {
                         <div className="subsea-prof-meta-item"><Mail size={13} /><span>{field(crew.email)}</span></div>
                       </div>
                     </div>
-                    <span className={`subsea-badge ${status.className}`}>{status.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className={`subsea-badge ${status.className}`}>{status.label}</span>
+                      <button
+                        type="button"
+                        onClick={handleToggleAvailability}
+                        disabled={toggling || loading}
+                        style={{
+                          position: 'relative',
+                          width: '40px',
+                          height: '20px',
+                          borderRadius: '10px',
+                          backgroundColor: crew.isAvailable !== false ? '#22c55e' : '#d1d5db',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                          transition: 'background-color 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          outline: 'none',
+                        }}
+                        title={crew.isAvailable !== false ? "Click to make Unavailable" : "Click to make Available"}
+                      >
+                        <span
+                          style={{
+                            display: 'block',
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: '#fff',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                            transform: crew.isAvailable !== false ? 'translateX(22px)' : 'translateX(2px)',
+                            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                        />
+                      </button>
+                    </div>
                   </div>
                   <div className="subsea-prof-actions">
                     <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Sign Off</button>

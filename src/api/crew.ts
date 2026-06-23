@@ -50,18 +50,18 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
 
   const certificates = certs.length > 0
     ? certs.map((c) => ({
-        certificateName: String(c.certificate_name ?? 'Certificate').trim(),
-        issueDate: toDateInputValue(String(c.issue_date ?? '')),
-        expiryDate: toDateInputValue(String(c.expiry_date ?? '')),
-        document: null as File | null,
-      }))
+      certificateName: String(c.certificate_name ?? 'Certificate').trim(),
+      issueDate: toDateInputValue(String(c.issue_date ?? '')),
+      expiryDate: toDateInputValue(String(c.expiry_date ?? '')),
+      document: null as File | null,
+    }))
     : legacyCertIssue || legacyCertExpiry
       ? [{
-          certificateName: pickString(raw, 'certificate_name', 'certificateName') || 'Certificate',
-          issueDate: toDateInputValue(legacyCertIssue),
-          expiryDate: toDateInputValue(legacyCertExpiry),
-          document: null as File | null,
-        }]
+        certificateName: pickString(raw, 'certificate_name', 'certificateName') || 'Certificate',
+        issueDate: toDateInputValue(legacyCertIssue),
+        expiryDate: toDateInputValue(legacyCertExpiry),
+        document: null as File | null,
+      }]
       : [{ certificateName: '', issueDate: '', expiryDate: '', document: null }];
 
   return {
@@ -162,6 +162,7 @@ export interface CrewMemberApi {
   signal?: string;
   /** Active project assignments when returned on the crew list payload. */
   activeProjects?: CrewAssignedProject[];
+  isAvailable?: boolean;
 }
 
 export interface GetCrewResponse {
@@ -1304,5 +1305,35 @@ export async function removeCrewFromProject(projectId: string, crewId: string): 
       }
     }
     throw new Error(message);
+  }
+}
+
+/**
+ * Updates a crew member's availability status.
+ * PATCH /crew/:id/availability
+ */
+export async function updateCrewAvailabilityStatus(id: string, isAvailable: boolean): Promise<Response> {
+  const token = getAuthToken();
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(id)}/availability`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ isAvailable }),
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

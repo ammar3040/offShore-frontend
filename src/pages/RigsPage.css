@@ -492,9 +492,15 @@
 }
 
 @keyframes subsea-blink {
+
   0%,
-  100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .subsea-top-actions {
@@ -817,9 +823,17 @@
   font-weight: 500;
 }
 
-.subsea-kpi-meta.up { color: var(--green); }
-.subsea-kpi-meta.down { color: var(--red); }
-.subsea-kpi-meta.flat { color: var(--text-tertiary); }
+.subsea-kpi-meta.up {
+  color: var(--green);
+}
+
+.subsea-kpi-meta.down {
+  color: var(--red);
+}
+
+.subsea-kpi-meta.flat {
+  color: var(--text-tertiary);
+}
 
 .subsea-kpi-bar {
   position: absolute;
@@ -835,11 +849,25 @@
   height: 100%;
 }
 
-.subsea-kpi-fill.blue { background: var(--blue); }
-.subsea-kpi-fill.teal { background: var(--teal); }
-.subsea-kpi-fill.green { background: var(--green); }
-.subsea-kpi-fill.amber { background: var(--amber); }
-.subsea-kpi-fill.red { background: var(--red); }
+.subsea-kpi-fill.blue {
+  background: var(--blue);
+}
+
+.subsea-kpi-fill.teal {
+  background: var(--teal);
+}
+
+.subsea-kpi-fill.green {
+  background: var(--green);
+}
+
+.subsea-kpi-fill.amber {
+  background: var(--amber);
+}
+
+.subsea-kpi-fill.red {
+  background: var(--red);
+}
 
 .subsea-grid-main {
   display: grid;
@@ -1043,11 +1071,13 @@
 }
 
 @keyframes subsea-flight-status-blink {
+
   0%,
   100% {
     opacity: 1;
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
   }
+
   50% {
     opacity: 0.75;
     box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
@@ -1145,10 +1175,21 @@
   vertical-align: -2px;
 }
 
-.subsea-tone-0 { color: var(--blue); }
-.subsea-tone-1 { color: var(--teal); }
-.subsea-tone-2 { color: var(--blue); }
-.subsea-tone-3 { color: var(--amber); }
+.subsea-tone-0 {
+  color: var(--blue);
+}
+
+.subsea-tone-1 {
+  color: var(--teal);
+}
+
+.subsea-tone-2 {
+  color: var(--blue);
+}
+
+.subsea-tone-3 {
+  color: var(--amber);
+}
 
 .subsea-text-red {
   color: var(--red);
@@ -1175,9 +1216,12 @@
 }
 
 @keyframes crew-availability-available-blink {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.35;
   }
@@ -1200,6 +1244,10 @@
 
 .user-mgmt-availability-dot--ending-soon {
   background-color: #f97316;
+}
+
+.user-mgmt-availability-dot--unavailable {
+  background-color: #9ca3af;
 }
 
 .subsea-row-actions {
@@ -1253,12 +1301,35 @@
   flex-shrink: 0;
 }
 
-.subsea-c-av-0 { background: #dbeafe; color: #1d4ed8; }
-.subsea-c-av-1 { background: #d1fae5; color: #065f46; }
-.subsea-c-av-2 { background: #fee2e2; color: #b91c1c; }
-.subsea-c-av-3 { background: #fef3c7; color: #92400e; }
-.subsea-c-av-4 { background: #ede9fe; color: #6d28d9; }
-.subsea-c-av-5 { background: #ecfeff; color: #0e7490; }
+.subsea-c-av-0 {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.subsea-c-av-1 {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.subsea-c-av-2 {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.subsea-c-av-3 {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.subsea-c-av-4 {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.subsea-c-av-5 {
+  background: #ecfeff;
+  color: #0e7490;
+}
 
 .subsea-state,
 .subsea-empty-cell {
@@ -1437,7 +1508,7 @@
   transition: border-color 0.15s, background 0.15s;
 }
 
-.subsea-flight-card + .subsea-flight-card {
+.subsea-flight-card+.subsea-flight-card {
   margin-top: 10px;
 }
 
@@ -1563,7 +1634,7 @@
   padding: 8px 0;
 }
 
-.subsea-metric-row + .subsea-metric-row {
+.subsea-metric-row+.subsea-metric-row {
   border-top: 1px solid var(--border);
 }
 
@@ -1705,12 +1776,35 @@
   margin-bottom: 10px;
 }
 
-.subsea-proj-card-icon.teal { background: var(--teal-light); color: var(--teal); }
-.subsea-proj-card-icon.red { background: var(--red-light); color: var(--red); }
-.subsea-proj-card-icon.amber { background: var(--amber-light); color: var(--amber); }
-.subsea-proj-card-icon.blue { background: var(--blue-light); color: var(--blue); }
-.subsea-proj-card-icon.green { background: var(--green-light); color: var(--green); }
-.subsea-proj-card-icon.orange { background: var(--orange-light); color: var(--orange); }
+.subsea-proj-card-icon.teal {
+  background: var(--teal-light);
+  color: var(--teal);
+}
+
+.subsea-proj-card-icon.red {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.subsea-proj-card-icon.amber {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+
+.subsea-proj-card-icon.blue {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.subsea-proj-card-icon.green {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.subsea-proj-card-icon.orange {
+  background: var(--orange-light);
+  color: var(--orange);
+}
 
 .subsea-proj-card-name {
   font-size: 13px;
@@ -1806,10 +1900,21 @@
   margin-left: 0;
 }
 
-.subsea-proj-av-1 { background: #1d4ed8; }
-.subsea-proj-av-2 { background: #0e7490; }
-.subsea-proj-av-3 { background: #16a34a; }
-.subsea-proj-av-4 { background: #b45309; }
+.subsea-proj-av-1 {
+  background: #1d4ed8;
+}
+
+.subsea-proj-av-2 {
+  background: #0e7490;
+}
+
+.subsea-proj-av-3 {
+  background: #16a34a;
+}
+
+.subsea-proj-av-4 {
+  background: #b45309;
+}
 
 .subsea-g-main {
   display: grid;
@@ -2154,11 +2259,30 @@
   margin-top: 1px;
 }
 
-.subsea-feed-icon.green { background: var(--green-light); color: var(--green); }
-.subsea-feed-icon.red { background: var(--red-light); color: var(--red); }
-.subsea-feed-icon.amber { background: var(--amber-light); color: var(--amber); }
-.subsea-feed-icon.blue { background: var(--blue-light); color: var(--blue); }
-.subsea-feed-icon.teal { background: var(--teal-light); color: var(--teal); }
+.subsea-feed-icon.green {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.subsea-feed-icon.red {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.subsea-feed-icon.amber {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+
+.subsea-feed-icon.blue {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.subsea-feed-icon.teal {
+  background: var(--teal-light);
+  color: var(--teal);
+}
 
 .subsea-feed-text {
   font-size: 12px;
@@ -2226,7 +2350,7 @@
   font-size: 11px;
 }
 
-.subsea-pagination > div {
+.subsea-pagination>div {
   display: flex;
   align-items: center;
   gap: 4px;

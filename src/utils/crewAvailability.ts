@@ -1,6 +1,6 @@
 import type { ProjectApi } from '../api/project';
 
-export type CrewAvailability = 'available' | 'onProject' | 'endingSoon';
+export type CrewAvailability = 'available' | 'onProject' | 'endingSoon' | 'unavailable';
 
 function stripToLocalDate(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -99,12 +99,14 @@ export function availabilityFromCrewSignal(signal: string | undefined | null): C
 }
 
 export function getCrewAvailabilityLabel(kind: CrewAvailability): string {
+  if (kind === 'unavailable') return 'Unavailable (manually set)';
   if (kind === 'available') return 'Available (not on a current project)';
   if (kind === 'endingSoon') return 'On a project; ends within 7 days';
   return 'On a project';
 }
 
 export function crewAvailabilityDotClass(kind: CrewAvailability): string {
+  if (kind === 'unavailable') return 'user-mgmt-availability-dot user-mgmt-availability-dot--unavailable';
   if (kind === 'available') return 'user-mgmt-availability-dot user-mgmt-availability-dot--available';
   if (kind === 'onProject') return 'user-mgmt-availability-dot user-mgmt-availability-dot--on-project';
   return 'user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon';
