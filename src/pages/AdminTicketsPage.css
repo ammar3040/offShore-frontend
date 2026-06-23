@@ -3134,8 +3134,18 @@
   margin-top: 2px;
 }
 
+.subsea-shell .admin-tickets-results-wrap .admin-tickets-search-error {
+  margin-bottom: 12px;
+}
+
+.subsea-shell .atfc-fare-action .atfc-book-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .subsea-shell .admin-tickets-search-actions [data-slot="button"],
 .subsea-shell .atfc-book-btn,
+.subsea-shell .atfc-fare-action .atfc-book-btn,
 .subsea-shell .admin-tickets-load-more-btn {
   background: var(--blue);
   color: #fff;

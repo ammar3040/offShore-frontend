@@ -478,9 +478,18 @@ function AirportCombobox({
 
 function isMarineFare(fare: Fare): boolean {
   const ind = typeof fare.indicator === 'string' ? fare.indicator.trim().toUpperCase() : '';
-  if (ind === 'M') return true;
+  if (ind === 'M' || ind === 'SM') return true;
   const label = `${fare.name ?? ''} ${fare.type ?? ''}`;
   return /\bmarine\b/i.test(label);
+}
+
+type FlightBookTarget = { flight: Flight; fare: Fare };
+
+function validateSearchAssignment(projectId: string, crewIds: string[]): string | null {
+  if (!projectId.trim() || crewIds.length === 0) {
+    return 'Please select project and crew';
+  }
+  return null;
 }
 
 function getMarineFares(fares: Fare[] | undefined): Fare[] {
@@ -493,9 +502,8 @@ function withMarineFaresOnly(flight: Flight): Flight | null {
   return { ...flight, fares: marineFares };
 }
 
-function getFlightBookSummary(flight: Flight, currency: CurrencyCode) {
-  const marineFares = getMarineFares(flight.fares);
-  const firstFare = marineFares[0];
+function getFlightBookSummary(flight: Flight, currency: CurrencyCode, selectedFare?: Fare | null) {
+  const firstFare = selectedFare ?? getMarineFares(flight.fares)[0];
   const roundTrip = isRoundTripFlight(flight);
   const outbound = roundTrip
     ? getDirectionDisplay(flight.outbound, flight.legs?.[0])
@@ -636,12 +644,20 @@ function FlightResultCard({
 }: {
   flight: Flight;
   currency: CurrencyCode;
-  onBook: (flight: Flight) => void;
+  onBook: (flight: Flight, fare: Fare) => void;
   isBooking: boolean;
 }) {
-  const [selectedFare, setSelectedFare] = useState<Fare | null>(() => getMarineFares(flight.fares)[0] ?? null);
-  const [expanded, setExpanded] = useState(false);
   const fares = getMarineFares(flight.fares);
+  const [selectedFare, setSelectedFare] = useState<Fare | null>(() => fares[0] ?? null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const marineFares = getMarineFares(flight.fares);
+    setSelectedFare((current) => {
+      if (current && marineFares.some((fare) => fare.type === current.type)) return current;
+      return marineFares[0] ?? null;
+    });
+  }, [flight.id, flight.fares]);
   const roundTrip = isRoundTripFlight(flight);
   const outboundDisplay = roundTrip
     ? getDirectionDisplay(flight.outbound, flight.legs?.[0])
@@ -698,8 +714,11 @@ function FlightResultCard({
           <Button
             type="button"
             size="sm"
-            onClick={() => onBook(flight)}
-            disabled={isBooking || fares.length === 0}
+            className="atfc-book-btn"
+            onClick={() => {
+              if (selectedFare) onBook(flight, selectedFare);
+            }}
+            disabled={isBooking || !selectedFare}
           >
             {isBooking ? (
               <><span className="admin-tickets-spinner admin-tickets-spinner-inline" />Booking…</>
@@ -757,7 +776,7 @@ const AdminTicketsPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
   const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
-  const [flightToConfirmBook, setFlightToConfirmBook] = useState<Flight | null>(null);
+  const [flightToConfirmBook, setFlightToConfirmBook] = useState<FlightBookTarget | null>(null);
   const [showCreateTicketConfirm, setShowCreateTicketConfirm] = useState(false);
   const [previewingTicketId, setPreviewingTicketId] = useState<string | null>(null);
 
@@ -1194,6 +1213,12 @@ const AdminTicketsPage = () => {
       returnDate?: string;
       returnTime?: string;
     }) => {
+      const assignmentError = validateSearchAssignment(searchProjectId, searchCrewIds);
+      if (assignmentError) {
+        setSearchError(assignmentError);
+        return;
+      }
+
       let criteria: SearchPayload;
 
       if (searchTripTypeUI === 'multi-city') {
@@ -1371,26 +1396,37 @@ const AdminTicketsPage = () => {
     activeMultiLegIndex,
   ]);
 
-  const requestBookFlightFlow = useCallback((flight: Flight) => {
-    setFlightToConfirmBook(flight);
-  }, []);
+  const requestBookFlightFlow = useCallback(
+    (flight: Flight, fare: Fare) => {
+      const assignmentError = validateSearchAssignment(searchProjectId, searchCrewIds);
+      if (assignmentError) {
+        setSearchError(assignmentError);
+        toast.error(assignmentError);
+        return;
+      }
+      setSearchError(null);
+      setFlightToConfirmBook({ flight, fare });
+    },
+    [searchProjectId, searchCrewIds]
+  );
 
   const handleConfirmBookFlight = useCallback(
     async () => {
       if (!flightToConfirmBook) return;
-      const flight = flightToConfirmBook;
+      const { flight, fare: selectedFare } = flightToConfirmBook;
       const bookKey =
         searchTripTypeUI === 'multi-city' ? `${activeMultiLegIndex}::${flight.id}` : flight.id;
       setBookingFlightKey(bookKey);
       try {
         const marineFares = getMarineFares(flight.fares);
-        const firstFare = marineFares[0];
-        if (!firstFare) {
+        const fareToBook =
+          marineFares.find((fare) => fare.type === selectedFare.type) ?? selectedFare;
+        if (!fareToBook) {
           toast.error('Booking failed', { description: 'No marine fare available for this flight.' });
           return;
         }
         const flightForBook: Flight = { ...flight, fares: marineFares };
-        const priceAmount = firstFare.totalFare ?? 0;
+        const priceAmount = fareToBook.totalFare ?? 0;
         const data = await bookFlight({
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
@@ -1632,7 +1668,10 @@ const AdminTicketsPage = () => {
   );
 
   const flightBookConfirmSummary = useMemo(
-    () => (flightToConfirmBook ? getFlightBookSummary(flightToConfirmBook, currency) : null),
+    () =>
+      flightToConfirmBook
+        ? getFlightBookSummary(flightToConfirmBook.flight, currency, flightToConfirmBook.fare)
+        : null,
     [flightToConfirmBook, currency]
   );
 
@@ -1828,7 +1867,7 @@ const AdminTicketsPage = () => {
                     <h3 className="admin-tickets-search-section-title">Assignment</h3>
                     <div className="admin-tickets-search-section-grid">
                       <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
-                        <label htmlFor="search-project">Project (optional)</label>
+                        <label htmlFor="search-project">Project</label>
                         <div className="admin-tickets-search-field-with-clear">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -2264,6 +2303,11 @@ const AdminTicketsPage = () => {
             </>
           ) : (
             <div className="admin-tickets-results-wrap">
+              {searchError && (
+                <div className="admin-tickets-search-error" role="alert">
+                  {searchError}
+                </div>
+              )}
               <div className="admin-tickets-results-header">
                 <Button variant="outline" type="button" onClick={handleSearchBack}>
                   <ChevronLeft size={18} />
@@ -3005,6 +3049,14 @@ const AdminTicketsPage = () => {
                         Project:{' '}
                         <span className="font-medium text-foreground">
                           {projects.find((p) => p.id === searchProjectId)?.title ?? 'Selected project'}
+                        </span>
+                      </p>
+                    ) : null}
+                    {searchCrewIds.length > 0 ? (
+                      <p>
+                        Crew:{' '}
+                        <span className="font-medium text-foreground">
+                          {searchCrewIds.length} member{searchCrewIds.length !== 1 ? 's' : ''} selected
                         </span>
                       </p>
                     ) : null}
