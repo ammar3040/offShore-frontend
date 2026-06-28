@@ -620,6 +620,41 @@
   margin-top: 14px;
 }
 
+/* Style for unavailable crew calendar days */
+.timeline-cal-day.unavailable {
+  background-color: var(--surface2);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(148, 163, 184, 0.04) 10px,
+    rgba(148, 163, 184, 0.04) 20px
+  );
+  opacity: 0.85;
+}
+
+.timeline-cal-day.unavailable .timeline-cal-day-num {
+  color: var(--text-tertiary);
+  font-weight: normal;
+}
+
+/* Scrollable Crew List Container in Sidebar */
+.timeline-crew-list-container {
+  max-height: 220px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.timeline-crew-list-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.timeline-crew-list-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
 @media (max-width: 1200px) {
   .timeline-kpi-strip {
     grid-template-columns: repeat(3, 1fr);

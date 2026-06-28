@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Award,
@@ -22,21 +22,19 @@ import {
   User,
   UserCheck,
   UserMinus,
+  ArrowLeft,
   UserPlus,
 } from 'lucide-react';
-import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, getCrewRankLabel, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
+import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
-import { getRigs } from '../api/rig';
-import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, getCrewPrimaryAssignment, type CrewAvailability } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, getCrewSignal, type CrewAvailability } from '../utils/crewAvailability';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
-import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
+import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import './CrewListPage.css';
 import './RigsPage.css';
-
-const CrewMemberForm = lazy(() => import('../components/forms/CrewMemberForm'));
 
 function getInitials(firstname: string, lastname: string): string {
   const f = (firstname || '').trim().charAt(0) || '';
@@ -48,9 +46,12 @@ function field(value: string | undefined): string {
   return value?.trim() || '—';
 }
 
+
+
 type RosterTab = 'available' | 'inProject';
 
-function crewStatus(kind: CrewAvailability): { label: string; className: string } {
+function crewStatus(kind: CrewAvailability | 'unavailable'): { label: string; className: string } {
+  if (kind === 'unavailable') return { label: 'Unavailable', className: 'subsea-b-red' };
   if (kind === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (kind === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
   return { label: 'In Project', className: 'subsea-b-blue' };
@@ -59,9 +60,6 @@ function crewStatus(kind: CrewAvailability): { label: string; className: string 
 const CrewListPage = () => {
   const navigate = useNavigate();
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
-  const [projects, setProjects] = useState<ProjectApi[]>([]);
-  const [crewAssignments, setCrewAssignments] = useState<Record<string, CrewAssignedProject>>({});
-  const [rigCount, setRigCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -76,6 +74,7 @@ const CrewListPage = () => {
   const [crewDetailLoading] = useState(false);
   const [crewDetailError, setCrewDetailError] = useState<string | null>(null);
   const [inviteCrewMember, setInviteCrewMember] = useState<CrewMemberApi | null>(null);
+  const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -106,32 +105,8 @@ const CrewListPage = () => {
       setError(null);
     }
     try {
-      const [crewRes, rigsRes, projectsRes] = await Promise.all([
-        getCrewList(),
-        getRigs(),
-        getProjects().catch(() => ({ projects: [] as ProjectApi[] })),
-      ]);
-      const crewList = crewRes.crew ?? [];
-      const projectsList = projectsRes.projects ?? [];
-      setCrew(crewList);
-      setProjects(projectsList);
-      setRigCount(rigsRes.rigs?.length ?? 0);
-
-      const assignmentEntries = await Promise.all(
-        crewList.map(async (member) => {
-          let assignment = getCrewPrimaryAssignment(member.id, member.activeProjects, projectsList);
-          if (!assignment) {
-            try {
-              const detail = await getCrewById(member.id);
-              assignment = detail.projects?.[0];
-            } catch {
-              assignment = undefined;
-            }
-          }
-          return assignment ? ([member.id, assignment] as const) : null;
-        }),
-      );
-      setCrewAssignments(Object.fromEntries(assignmentEntries.filter(Boolean) as Array<[string, CrewAssignedProject]>));
+      const crewRes = await getCrewList();
+      setCrew(crewRes.crew ?? []);
     } catch (err) {
       if (withListLoading) {
         setError(err instanceof Error ? err.message : 'Failed to load crew');
@@ -151,16 +126,16 @@ const CrewListPage = () => {
 
   const filteredCrew = useMemo(() => {
     let list = crew.filter((member) => {
-      const kind = availabilityFromCrewSignal(member.signal);
-      return rosterTab === 'available' ? kind === 'available' : kind !== 'available';
+      const kind = availabilityFromCrewSignal(getCrewSignal(member));
+      if (rosterTab === 'available') return kind === 'available' || kind === 'unavailable';
+      return kind === 'onProject' || kind === 'endingSoon';
     });
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (c) =>
           (c.firstname + ' ' + c.lastname).toLowerCase().includes(q) ||
-          (c.email || '').toLowerCase().includes(q) ||
-          (c.rank || '').toLowerCase().includes(q)
+          (c.email || '').toLowerCase().includes(q)
       );
     }
     return list;
@@ -362,8 +337,14 @@ const CrewListPage = () => {
     }
   };
 
-  const onProjectCount = crew.filter((member) => availabilityFromCrewSignal(member.signal) !== 'available').length;
-  const availableCount = crew.filter((member) => availabilityFromCrewSignal(member.signal) === 'available').length;
+  const onProjectCount = crew.filter((member) => {
+    const kind = availabilityFromCrewSignal(getCrewSignal(member));
+    return kind === 'onProject' || kind === 'endingSoon';
+  }).length;
+  const availableCount = crew.filter((member) => {
+    const kind = availabilityFromCrewSignal(getCrewSignal(member));
+    return kind === 'available' || kind === 'unavailable';
+  }).length;
   const nationalityCount = new Set(
     crew
       .map((member) => (member.nationality || member.country || '').trim())
@@ -421,7 +402,7 @@ const CrewListPage = () => {
           </button>
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
-            <Ship size={13} /> Rig Assignments <span className="subsea-sb-count">{loading ? '...' : rigCount}</span>
+            <Ship size={13} /> Rig Assignments <span className="subsea-sb-count">11</span>
           </button>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
             <Plane size={13} /> Crew Flights <span className="subsea-sb-count">31</span>
@@ -431,6 +412,13 @@ const CrewListPage = () => {
 
       <div className="subsea-main">
         <div className="subsea-topbar">
+          <button
+            type="button"
+            className="subsea-btn subsea-btn-default subsea-btn-sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={12} className="mr-1.5" /> Back
+          </button>
           <div className="subsea-crumb">
             <span>Subseacore</span>
             <span className="subsea-crumb-sep">/</span>
@@ -453,7 +441,7 @@ const CrewListPage = () => {
           <div className="subsea-page-head">
             <div>
               <h1>Crew Management</h1>
-              <p>{loading ? 'Loading crew roster...' : `${crew.length} crew members · ${rigCount} rigs · ${Math.max(nationalityCount, 1)} nationalities`}</p>
+              <p>{loading ? 'Loading crew roster...' : `${crew.length} crew members · 11 rigs · ${Math.max(nationalityCount, 1)} nationalities`}</p>
             </div>
             <div className="subsea-ph-right">
               <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
@@ -518,6 +506,10 @@ const CrewListPage = () => {
               <span className="user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon" aria-hidden />
               <span>In project, ends in ≤7 days</span>
             </span>
+            <span className="user-mgmt-availability-legend-item" role="listitem">
+              <span className="user-mgmt-availability-dot user-mgmt-availability-dot--unavailable" aria-hidden />
+              <span>Unavailable</span>
+            </span>
           </div>
 
           <div className="subsea-pane">
@@ -553,10 +545,10 @@ const CrewListPage = () => {
                         </td>
                       </tr>
                     ) : (
-                      paginatedCrew.map((member, index) => {
-                        const kind = availabilityFromCrewSignal(member.signal);
+                      paginatedCrew.map((member) => {
+                        const kind = availabilityFromCrewSignal(getCrewSignal(member));
                         const status = crewStatus(kind);
-                        const assignment = crewAssignments[member.id] ?? getCrewPrimaryAssignment(member.id, member.activeProjects, projects);
+                        const project = member.activeProjects?.[0];
                         const certExpiring = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
                         return (
                           <tr key={member.id} onClick={() => openCrewDetail(member)}>
@@ -567,15 +559,19 @@ const CrewListPage = () => {
                                   title={getCrewAvailabilityLabel(kind)}
                                   aria-label={getCrewAvailabilityLabel(kind)}
                                 />
-                                <div className={`subsea-c-av subsea-c-av-${index % 6}`}>
+                                <div className={`subsea-c-av ${kind === 'available' ? 'subsea-c-av-1' :
+                                  kind === 'onProject' ? 'subsea-c-av-2' :
+                                    kind === 'endingSoon' ? 'subsea-c-av-3' :
+                                      'subsea-c-av-unavailable'
+                                  }`}>
                                   {getInitials(member.firstname, member.lastname)}
                                 </div>
                                 <span>{member.firstname} {member.lastname}</span>
                               </div>
                             </td>
-                            <td>{getCrewRankLabel(member)}</td>
+                            <td>{member.organization || '—'}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
-                            <td>{assignment?.title || 'Unassigned'}</td>
+                            <td>{project?.title || '—'}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
                             <td>
                               <span className={`subsea-badge ${certExpiring ? 'subsea-b-amber' : 'subsea-b-green'}`}>
@@ -632,21 +628,12 @@ const CrewListPage = () => {
         {addError && (
           <ErrorAlertPopup message={addError} onDismiss={() => setAddError(null)} />
         )}
-        <Suspense
-          fallback={
-            <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading form">
-              <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
-              <p>Loading form…</p>
-            </div>
-          }
-        >
-          <CrewMemberForm
-            onSubmit={handleSubmitCrewMember}
-            onCancel={handleCloseAddModal}
-            isLoading={addLoading}
-            theme="subsea"
-          />
-        </Suspense>
+        <CrewMemberForm
+          onSubmit={handleSubmitCrewMember}
+          onCancel={handleCloseAddModal}
+          isLoading={addLoading}
+          theme="subsea"
+        />
       </Modal>
 
       <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea">
@@ -655,25 +642,16 @@ const CrewListPage = () => {
             {editError && (
               <ErrorAlertPopup message={editError} onDismiss={() => setEditError(null)} />
             )}
-            <Suspense
-              fallback={
-                <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading form">
-                  <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
-                  <p>Loading form…</p>
-                </div>
-              }
-            >
-              <CrewMemberForm
-                key={editingCrew.id}
-                mode="edit"
-                onSubmit={handleSubmitEdit}
-                onCancel={closeEditModal}
-                isLoading={editLoading}
-                initialData={crewApiToFormData(editingCrew)}
-                submitLabel="Save Changes"
-                theme="subsea"
-              />
-            </Suspense>
+            <CrewMemberForm
+              key={editingCrew.id}
+              mode="edit"
+              onSubmit={handleSubmitEdit}
+              onCancel={closeEditModal}
+              isLoading={editLoading}
+              initialData={crewApiToFormData(editingCrew)}
+              submitLabel="Save Changes"
+              theme="subsea"
+            />
           </>
         )}
       </Modal>
@@ -1000,10 +978,6 @@ const CrewListPage = () => {
                         <section className="crew-detail-card crew-detail-card--span-2">
                           <h3 className="crew-detail-card-title"><Briefcase size={20} /> Professional &amp; Numbers</h3>
                           <div className="crew-detail-fields">
-                            <div className="crew-detail-field crew-detail-field--wide">
-                              <span className="crew-detail-label">Rank</span>
-                              <span className="crew-detail-value">{field(c.rank ?? (raw.rank as string))}</span>
-                            </div>
                             <div className="crew-detail-field crew-detail-field--wide">
                               <span className="crew-detail-label">Organization</span>
                               <span className="crew-detail-value">{field(c.organization ?? (raw.organization as string))}</span>

@@ -184,63 +184,6 @@ export function getCrewTicketPdfFilename(
   return `crew-ticket-${ticket.bookingReference ?? ticket.id}.pdf`;
 }
 
-function hasParseableFlightDateTime(value: string): boolean {
-  if (!value?.trim()) return false;
-  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value.trim())) return false;
-  const d = new Date(value);
-  return !Number.isNaN(d.getTime());
-}
-
-function formatTicketDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  } catch {
-    return iso;
-  }
-}
-
-function formatTicketTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-  } catch {
-    return iso;
-  }
-}
-
-/** First segment departure from the booked flight snapshot. */
-export function getTicketDepartureIso(ticket: CrewTicketApi): string {
-  for (const leg of ticket.flightSnapshot?.legs ?? []) {
-    const fromSegment = leg.itinerary?.[0]?.departureTime?.trim();
-    if (fromSegment) return fromSegment;
-    const fromLeg = leg.departureTime?.trim();
-    if (fromLeg) return fromLeg;
-  }
-  return '';
-}
-
-/** Last segment arrival from the booked flight snapshot. */
-export function getTicketArrivalIso(ticket: CrewTicketApi): string {
-  const legs = ticket.flightSnapshot?.legs ?? [];
-  for (let i = legs.length - 1; i >= 0; i--) {
-    const leg = legs[i]!;
-    const itinerary = leg.itinerary ?? [];
-    if (itinerary.length > 0) {
-      const fromSegment = itinerary[itinerary.length - 1]?.arrivalTime?.trim();
-      if (fromSegment) return fromSegment;
-    }
-    const fromLeg = leg.arrivalTime?.trim();
-    if (fromLeg) return fromLeg;
-  }
-  return '';
-}
-
-/** Human-readable departure/arrival label for ticket lists. */
-export function formatTicketSchedule(iso: string): string {
-  if (!iso?.trim()) return '—';
-  if (hasParseableFlightDateTime(iso)) return `${formatTicketDate(iso)}, ${formatTicketTime(iso)}`;
-  return iso.trim();
-}
-
 export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
   const raw = row as CrewTicketApiRaw & { _id?: string; booking_reference?: string };
   const id = String(row.id ?? raw._id ?? '').trim();
@@ -288,37 +231,6 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
 
 export interface GetCrewTicketsResponse {
   crewTickets: CrewTicketApi[];
-}
-
-export interface CrewTicketReportSpends {
-  scope: {
-    projectId: string;
-    bookingsInScope: number;
-    currency: 'GBP';
-    timezone: string;
-  };
-  mtd: {
-    month: string;
-    totalSpend: number;
-    pricedBookings: number;
-    averageTicketCost: number;
-    topCabinClass: string | null;
-  };
-  comparison: {
-    previousMonth: string;
-    previousMonthTotalSpend: number;
-    percentChange: number;
-    direction: 'up' | 'down' | 'flat';
-  };
-  spendByDestination: Array<{ label: string; amount: number; bookingCount: number }>;
-  bookingsByClass: Array<{ label: string; count: number; percent: number }>;
-  summary: {
-    destinationCount: number;
-  };
-}
-
-export interface GetCrewTicketReportSpendsResponse {
-  reportSpends: CrewTicketReportSpends;
 }
 
 export interface CreateFlightTicketPayload {
@@ -573,45 +485,6 @@ export async function getCrewTickets(): Promise<GetCrewTicketsResponse> {
   const raw = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
   const crewTickets = raw.map((t: CrewTicketApiRaw) => normalizeCrewTicket(t));
   return { crewTickets };
-}
-
-/**
- * Pre-aggregated spend analytics for the Report Spends tab.
- * GET /crew-ticket/spends?project_id={optional}
- */
-export async function getCrewTicketReportSpends(
-  projectId?: string
-): Promise<GetCrewTicketReportSpendsResponse> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
-
-  const query = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
-  const response = await fetch(`${env.apiBaseUrl}/crew-ticket/spends${query}`, {
-    method: 'GET',
-    headers: getHeaders(),
-    signal: controller.signal,
-  });
-  clearTimeout(timeoutId);
-
-  if (!response.ok) {
-    const text = await response.text();
-    let message = `Request failed (${response.status})`;
-    if (text) {
-      try {
-        const errorData = JSON.parse(text);
-        message = errorData?.message || errorData?.error || message;
-      } catch {
-        message = text;
-      }
-    }
-    throw new Error(message);
-  }
-
-  const data = await response.json();
-  if (!data?.reportSpends) {
-    throw new Error('Invalid report spends response.');
-  }
-  return data as GetCrewTicketReportSpendsResponse;
 }
 
 /**

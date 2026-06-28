@@ -1,14 +1,9 @@
 .superadmin-admin-invoice-page {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .superadmin-admin-invoice-header {
-  flex-shrink: 0;
   margin-bottom: 24px;
 }
 
@@ -41,10 +36,6 @@
 }
 
 .superadmin-admin-invoice-content {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 
@@ -57,54 +48,24 @@
 }
 
 .superadmin-admin-invoice-list {
-  flex: 1;
-  min-height: 0;
-  max-height: calc(100dvh - 280px);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.superadmin-admin-invoice-pagination {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
-  border-top: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-}
-
-.superadmin-admin-invoice-pagination-info,
-.superadmin-admin-invoice-pagination-page {
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
-
-.superadmin-admin-invoice-pagination-btns {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .superadmin-admin-invoice-card {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(240px, 1fr) auto;
   grid-template-areas:
     'icon main badges'
-    'actions actions actions';
+    'icon actions actions';
   align-items: start;
-  gap: 12px 16px;
+  gap: 16px;
   padding: 16px;
   background: hsl(var(--accent));
   border-radius: 8px;
   border: 1px solid hsl(var(--border));
-  min-width: 0;
 }
 
 .superadmin-admin-invoice-icon {
@@ -128,72 +89,7 @@
   font-size: 16px;
   font-weight: 600;
   color: hsl(var(--foreground));
-  margin-bottom: 6px;
-}
-
-.superadmin-admin-invoice-schedule {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: hsl(var(--foreground));
-}
-
-.superadmin-admin-invoice-schedule-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.superadmin-admin-invoice-schedule-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-}
-
-.superadmin-admin-invoice-schedule-sep {
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
-}
-
-.superadmin-admin-invoice-margin-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--accent) / 0.35);
-}
-
-.superadmin-admin-invoice-margin-confirm-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
-}
-
-.superadmin-admin-invoice-margin-confirm-row strong {
-  color: hsl(var(--foreground));
-  font-weight: 600;
-}
-
-.superadmin-admin-invoice-margin-confirm-note {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: hsl(var(--muted-foreground));
+  margin-bottom: 4px;
 }
 
 .superadmin-admin-invoice-meta,
@@ -203,15 +99,6 @@
   gap: 6px;
   font-size: 13px;
   color: hsl(var(--muted-foreground));
-  min-width: 0;
-}
-
-.superadmin-admin-invoice-meta > span:not(.superadmin-admin-invoice-sep) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
 
 .superadmin-admin-invoice-amounts {
@@ -229,8 +116,6 @@
 
 .superadmin-admin-invoice-badges {
   grid-area: badges;
-  justify-self: end;
-  flex-shrink: 0;
 }
 
 .superadmin-admin-invoice-status {
@@ -258,44 +143,18 @@
   grid-area: actions;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-  padding-top: 4px;
-  border-top: 1px solid hsl(var(--border) / 0.6);
+  align-items: end;
+  gap: 10px;
 }
 
-.superadmin-admin-invoice-actions-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.superadmin-admin-invoice-actions-group--pdf {
-  flex: 1 1 auto;
-}
-
-.superadmin-admin-invoice-actions-group--send {
-  margin-left: auto;
-}
-
-.superadmin-admin-invoice-margin,
-.superadmin-admin-invoice-invoice-number {
+.superadmin-admin-invoice-margin {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 120px;
 }
 
-.superadmin-admin-invoice-invoice-number {
-  min-width: 160px;
-}
-
-.superadmin-admin-invoice-margin span,
-.superadmin-admin-invoice-invoice-number span {
+.superadmin-admin-invoice-margin span {
   font-size: 12px;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
@@ -370,90 +229,12 @@
   color: hsl(var(--foreground));
 }
 
-@media (max-width: 1024px) {
-  .superadmin-admin-invoice-actions-group--send {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .superadmin-admin-invoice-actions-group--send button {
-    flex: 1;
-  }
-}
-
-@media (max-width: 768px) {
-  .superadmin-admin-invoice-header {
-    margin-bottom: 16px;
-  }
-
-  .superadmin-admin-invoice-title {
-    font-size: 20px;
-  }
-
-  .superadmin-admin-invoice-schedule {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .superadmin-admin-invoice-schedule-sep {
-    display: none;
-  }
-
-  .superadmin-admin-invoice-list {
-    padding: 12px;
-    gap: 10px;
-    max-height: calc(100dvh - 240px);
-  }
-
-  .superadmin-admin-invoice-pagination {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .superadmin-admin-invoice-pagination-btns {
-    justify-content: space-between;
-  }
-
+@media (max-width: 900px) {
   .superadmin-admin-invoice-card {
-    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-columns: 40px 1fr;
     grid-template-areas:
       'icon main'
       'badges badges'
       'actions actions';
-    gap: 10px 12px;
-    padding: 14px;
-  }
-
-  .superadmin-admin-invoice-icon {
-    width: 36px;
-    height: 36px;
-  }
-
-  .superadmin-admin-invoice-badges {
-    justify-self: start;
-  }
-
-  .superadmin-admin-invoice-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .superadmin-admin-invoice-actions-group,
-  .superadmin-admin-invoice-actions-group--pdf,
-  .superadmin-admin-invoice-actions-group--send {
-    width: 100%;
-  }
-
-  .superadmin-admin-invoice-actions-group button,
-  .superadmin-admin-invoice-actions-group--send button {
-    flex: 1;
-    min-width: 0;
-    justify-content: center;
-  }
-
-  .superadmin-admin-invoice-margin,
-  .superadmin-admin-invoice-invoice-number {
-    width: 100%;
   }
 }

@@ -4,30 +4,11 @@ import type { CrewTicketApi } from '../../api/ticket';
 import { getCrewTicketPdfFilename } from '../../api/ticket';
 import { buildCrewTicketTemplateData, fillCrewTicketTemplate } from './buildCrewTicket';
 
-interface CrewTicketPdfOptions {
-  margin?: number;
-  filename?: string;
-  image?: { type?: 'jpeg' | 'png' | 'webp'; quality?: number };
-  html2canvas?: object;
-  jsPDF?: { unit?: string; format?: string; orientation?: 'portrait' | 'landscape' };
-  pagebreak?: {
-    mode?: Array<'avoid-all' | 'css' | 'legacy'>;
-    before?: string | string[];
-    after?: string | string[];
-    avoid?: string | string[];
-  };
-}
-
 function prepareCrewTicketHtmlForPdf(html: string): string {
-  const withTableFix = html
-    .replaceAll(
-      'font-size:0px;padding:0;word-break:break-word;',
-      'font-size:13px;line-height:1.6;padding:0;word-break:break-word;'
-    )
-    .replace(
-      /font-size:0px;(padding:[^;]+;word-break:break-word;)/g,
-      'font-size:13px;line-height:1.6;$1'
-    );
+  const withTableFix = html.replaceAll(
+    'font-size:0px;padding:0;word-break:break-word;',
+    'font-size:13px;line-height:1.6;padding:0;word-break:break-word;'
+  );
 
   // html2pdf clones only the <body> element into its own frame, so any CSS
   // living in <head> (the mj-style classes and the responsive column media
@@ -42,23 +23,14 @@ function prepareCrewTicketHtmlForPdf(html: string): string {
     columnWidths.add(match[1]);
   }
   const columnCss = Array.from(columnWidths)
-    .map((width) => `.mj-column-per-${width} { width: ${width}% !important; max-width: ${width}%; }`)
+    .map((width) => `.mj-column-per-${width} { width: ${width}% !important; }`)
     .join('\n');
 
   const pdfCss = `<style>
-    html, body { overflow: visible !important; background: #EAEEF4 !important; margin: 0; padding: 0; }
+    html, body { overflow: visible !important; background: #EAEEF4 !important; }
     table { border-collapse: collapse; }
-    [role="article"] { max-width: 600px; margin: 0 auto; }
-    .mj-outlook-group-fix { display: inline-block !important; vertical-align: top !important; }
-    .crew-ticket-flight-block,
-    .crew-ticket-layover,
-    .crew-ticket-footer-block,
-    .crew-ticket-header-group {
-      page-break-inside: avoid;
-      break-inside: avoid-page;
-    }
-    ${columnCss}
     ${headStyles}
+    ${columnCss}
   </style>`;
 
   return withTableFix.replace(/<body([^>]*)>/i, (bodyTag) => `${bodyTag}${pdfCss}`);
@@ -136,16 +108,7 @@ export async function generateCrewTicketPdfBlob(ticket: CrewTicketApi): Promise<
           scrollY: 0,
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: {
-          mode: ['css', 'legacy'],
-          avoid: [
-            '.crew-ticket-flight-block',
-            '.crew-ticket-layover',
-            '.crew-ticket-footer-block',
-            '.crew-ticket-header-group',
-          ],
-        },
-      } as CrewTicketPdfOptions)
+      })
       .from(body)
       .outputPdf('blob');
 

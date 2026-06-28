@@ -556,74 +556,21 @@ export async function deleteSuperadminCrewTicket(crewId: string, ticketId: strin
   }
 }
 
-export interface ApiPagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-export type SuperadminCrewTicketStatus = 'APPROVED' | 'UNAPPROVED';
-
-export type SuperadminCrewTicketsParams = {
-  projectId?: string;
-  page?: number;
-  limit?: number;
-  status?: SuperadminCrewTicketStatus;
-};
-
-function normalizeApiPagination(raw: unknown): ApiPagination | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const value = raw as Record<string, unknown>;
-  if (
-    typeof value.page === 'number' &&
-    typeof value.limit === 'number' &&
-    typeof value.total === 'number' &&
-    typeof value.totalPages === 'number'
-  ) {
-    return {
-      page: value.page,
-      limit: value.limit,
-      total: value.total,
-      totalPages: value.totalPages,
-    };
-  }
-  return undefined;
-}
-
-function buildSuperadminCrewTicketsQuery(params?: string | SuperadminCrewTicketsParams): string {
-  const options: SuperadminCrewTicketsParams =
-    typeof params === 'string' ? { projectId: params } : (params ?? {});
-
-  const search = new URLSearchParams();
-  if (options.projectId) search.set('project_id', options.projectId);
-  if (options.status) search.set('status', options.status);
-  if (options.limit != null) {
-    search.set('limit', String(options.limit));
-    search.set('page', String(options.page ?? 1));
-  } else if (options.page != null) {
-    search.set('page', String(options.page));
-  }
-
-  const query = search.toString();
-  return query ? `?${query}` : '';
-}
-
 /** Crew tickets for superadmin - GET /crew-ticket (uses superadmin token; project filter applied client-side if backend omits it) */
-export async function getSuperadminCrewTickets(
-  params?: string | SuperadminCrewTicketsParams
-): Promise<{ crewTickets: CrewTicketApi[]; pagination?: ApiPagination }> {
+export async function getSuperadminCrewTickets(projectId?: string): Promise<{ crewTickets: CrewTicketApi[] }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(
-    `${env.apiBaseUrl}/crew-ticket${buildSuperadminCrewTicketsQuery(params)}`,
-    {
-      method: 'GET',
-      headers: getHeaders(),
-      signal: controller.signal,
-    }
-  );
+  let url = `${env.apiBaseUrl}/crew-ticket`;
+  if (projectId) {
+    url += `?project_id=${encodeURIComponent(projectId)}`;
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getHeaders(),
+    signal: controller.signal,
+  });
   clearTimeout(timeoutId);
 
   if (!response.ok) {
@@ -642,10 +589,7 @@ export async function getSuperadminCrewTickets(
 
   const data = await response.json();
   const raw = Array.isArray(data?.crewTickets) ? data.crewTickets : [];
-  return {
-    crewTickets: raw.map((ticket: import('./ticket').CrewTicketApiRaw) => normalizeCrewTicket(ticket)),
-    pagination: normalizeApiPagination(data?.pagination),
-  };
+  return { crewTickets: raw.map((ticket: import('./ticket').CrewTicketApiRaw) => normalizeCrewTicket(ticket)) };
 }
 
 /** Projects for superadmin - GET /project (uses superadmin token) */

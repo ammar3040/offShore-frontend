@@ -108,8 +108,7 @@ export function buildTicketInvoiceBills(
   tickets: CrewTicketApi[],
   admins: AdminApi[],
   marginsByTicket: Record<string, number> = {},
-  crewById: Record<string, CrewMemberApi> = {},
-  indexOffset = 0
+  crewById: Record<string, CrewMemberApi> = {}
 ): TicketInvoiceBill[] {
   const projectById = new Map(projects.map((project) => [project.id, project]));
   const adminById = new Map(admins.map((admin) => [admin.id, admin]));
@@ -132,7 +131,7 @@ export function buildTicketInvoiceBills(
       ticketsSubtotalGbp,
       marginGbp,
       totalGbp,
-      invoiceNumber: buildInvoiceNumber(ticket, indexOffset + index),
+      invoiceNumber: buildInvoiceNumber(ticket, index),
       issueDate,
       dueDate: addDays(issueDate, 1),
       crewById,

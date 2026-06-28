@@ -1,34 +1,6 @@
-import type { CrewAssignedProject } from '../api/crew';
 import type { ProjectApi } from '../api/project';
 
-export type CrewAvailability = 'available' | 'onProject' | 'endingSoon';
-
-function toAssignedProject(project: ProjectApi): CrewAssignedProject {
-  return {
-    id: project.id,
-    title: project.title,
-    description: project.description,
-    duration: project.duration,
-    span: project.span,
-    status: project.status,
-  };
-}
-
-/** Primary project assignment for list views when GET /crew omits activeProjects. */
-export function getCrewPrimaryAssignment(
-  crewId: string,
-  activeProjects: CrewAssignedProject[] | undefined,
-  allProjects: ProjectApi[],
-): CrewAssignedProject | undefined {
-  if (activeProjects?.[0]) return activeProjects[0];
-
-  const today = stripToLocalDate(new Date());
-  const assigned = allProjects.filter((project) => isParticipant(project, crewId));
-  if (assigned.length === 0) return undefined;
-
-  const ongoing = assigned.filter((project) => isOngoingProject(project, today));
-  return toAssignedProject(ongoing[0] ?? assigned[0]);
-}
+export type CrewAvailability = 'available' | 'onProject' | 'endingSoon' | 'unavailable';
 
 function stripToLocalDate(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -113,6 +85,25 @@ export function getProjectEnrollmentAvailability(project: ProjectApi): CrewAvail
   return 'onProject';
 }
 
+export function getCrewSignal(member: { signal?: string; activeProjects?: any[]; isAvailable?: boolean }): string {
+  if (member.isAvailable === false) return 'UNAVAILABLE';
+  if (member.signal) return member.signal;
+  const activeProjects = member.activeProjects ?? [];
+  if (activeProjects.length === 0) return 'GREEN';
+  const now = Date.now();
+  let minEndMs = Infinity;
+  for (const p of activeProjects) {
+    if (!p.duration?.endDate) continue;
+    const end = new Date(p.duration.endDate).getTime();
+    if (end < minEndMs) minEndMs = end;
+  }
+  if (minEndMs === Infinity) return 'GREEN';
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const daysLeft = (minEndMs - now) / MS_PER_DAY;
+  if (daysLeft <= 7) return 'ORANGE';
+  return 'RED';
+}
+
 /**
  * Maps API `signal` to UI availability. Backend may send YELLOW, RED, GREEN;
  * some payloads use ORANGE for the same meaning as YELLOW.
@@ -120,6 +111,7 @@ export function getProjectEnrollmentAvailability(project: ProjectApi): CrewAvail
 export function availabilityFromCrewSignal(signal: string | undefined | null): CrewAvailability {
   if (signal == null || typeof signal !== 'string') return 'available';
   const s = signal.trim().toUpperCase();
+  if (s === 'UNAVAILABLE') return 'unavailable';
   if (s === 'GREEN') return 'available';
   if (s === 'RED') return 'onProject';
   if (s === 'YELLOW' || s === 'ORANGE') return 'endingSoon';
@@ -127,12 +119,14 @@ export function availabilityFromCrewSignal(signal: string | undefined | null): C
 }
 
 export function getCrewAvailabilityLabel(kind: CrewAvailability): string {
+  if (kind === 'unavailable') return 'Unavailable (manually set)';
   if (kind === 'available') return 'Available (not on a current project)';
   if (kind === 'endingSoon') return 'On a project; ends within 7 days';
   return 'On a project';
 }
 
 export function crewAvailabilityDotClass(kind: CrewAvailability): string {
+  if (kind === 'unavailable') return 'user-mgmt-availability-dot user-mgmt-availability-dot--unavailable';
   if (kind === 'available') return 'user-mgmt-availability-dot user-mgmt-availability-dot--available';
   if (kind === 'onProject') return 'user-mgmt-availability-dot user-mgmt-availability-dot--on-project';
   return 'user-mgmt-availability-dot user-mgmt-availability-dot--ending-soon';

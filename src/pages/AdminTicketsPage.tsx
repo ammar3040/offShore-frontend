@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   AlertTriangle,
+  ArrowLeft,
   ChevronDown,
   ChevronLeft,
   Download,
@@ -21,6 +22,7 @@ import { toast } from 'sonner';
 import { SubseaNavRail } from '@/components/SubseaNavRail';
 import { SubseaProfileMenu } from '@/components/SubseaProfileMenu';
 import { SUBSEA_FORM_LIGHT_CLASS } from '@/lib/subseaTheme';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -50,7 +52,6 @@ import {
 } from '../utils/crewAvailability';
 import {
   getCrewTickets,
-  getCrewTicketReportSpends,
   createFlightTicket,
   cancelCrewTicket,
   canUseTicketPdf,
@@ -58,28 +59,13 @@ import {
   type CreateFlightTicketPayload,
   type AirportLocation,
   type CrewTicketApi,
-  type CrewTicketReportSpends,
   getTicketStatus,
   getTicketStatusLabel,
-  getTicketDepartureIso,
-  getTicketArrivalIso,
-  formatTicketSchedule,
+  isCrewTicketCreatedInLocalCalendarMonth,
   parseCrewTicketCreatedAt,
 } from '../api/ticket';
-import {
-  buildSpendDashboardStats,
-  EMPTY_SPEND_DASHBOARD_STATS,
-} from '../lib/crewTicket/reportSpends';
 import { getAdminProfile } from '../api/admin';
 import { searchFlights, bookFlight } from '../api/flightSearch';
-import {
-  getDirectionDisplay,
-  getFlightSegmentGroups,
-  getOneWayDisplay,
-  isFlightNonStop,
-  isRoundTripFlight,
-  type FlightDirectionDisplay,
-} from '../lib/flightUtils';
 import { searchAirportsApi } from '../api/airports';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type {
@@ -93,7 +79,6 @@ import type {
   FlightSortOrder,
 } from '../types/flight';
 import { DatePickerTime } from '@/components/ui/date-picker-time';
-import type { TimeFilterMode } from '@/components/ui/time-wheel-picker';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -129,6 +114,12 @@ type MultiFlightSegment = {
 
 function newSegmentId(): string {
   return `seg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isFlightNonStop(flight: Flight): boolean {
+  const firstLeg = flight.legs?.[0];
+  const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
+  return stops === 0;
 }
 
 const TRIP_OPTIONS: Array<{ value: CreateFlightTicketPayload['trip']; label: string }> = [
@@ -182,6 +173,33 @@ function getCurrencySymbol(code: CurrencyCode): string {
 function toYYYYMMDD(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
+
+function isCrewTicketCreatedInPreviousLocalCalendarMonth(t: CrewTicketApi, now = new Date()): boolean {
+  const d = parseCrewTicketCreatedAt(t);
+  if (!d) return false;
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return d.getFullYear() === prev.getFullYear() && d.getMonth() === prev.getMonth();
+}
+
+function formatTicketClass(cls?: string): string {
+  if (!cls?.trim()) return 'Unspecified';
+  return cls
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function sumPricedTickets(tickets: CrewTicketApi[]): { total: number; count: number; average: number } {
+  const priced = tickets.filter((ticket) => typeof ticket.price === 'number');
+  const total = priced.reduce((sum, ticket) => sum + (ticket.price ?? 0), 0);
+  return {
+    total,
+    count: priced.length,
+    average: priced.length ? total / priced.length : 0,
+  };
+}
+
+const METRIC_BAR_COLORS = ['blue', 'teal', 'amber', 'green', 'blue'] as const;
 
 function initialMultiSegments(): MultiFlightSegment[] {
   const a0 = AIRPORTS[0] ?? null;
@@ -476,119 +494,159 @@ function AirportCombobox({
   );
 }
 
-function isMarineFare(fare: Fare): boolean {
-  const ind = typeof fare.indicator === 'string' ? fare.indicator.trim().toUpperCase() : '';
-  if (ind === 'M' || ind === 'SM') return true;
-  const label = `${fare.name ?? ''} ${fare.type ?? ''}`;
-  return /\bmarine\b/i.test(label);
-}
-
-type FlightBookTarget = { flight: Flight; fare: Fare };
-
-function validateSearchAssignment(projectId: string, crewIds: string[]): string | null {
-  if (!projectId.trim() || crewIds.length === 0) {
-    return 'Please select project and crew';
-  }
-  return null;
-}
-
-function getMarineFares(fares: Fare[] | undefined): Fare[] {
-  return (fares ?? []).filter(isMarineFare);
-}
-
-function withMarineFaresOnly(flight: Flight): Flight | null {
-  const marineFares = getMarineFares(flight.fares);
-  if (marineFares.length === 0) return null;
-  return { ...flight, fares: marineFares };
-}
-
-function getFlightBookSummary(flight: Flight, currency: CurrencyCode, selectedFare?: Fare | null) {
-  const firstFare = selectedFare ?? getMarineFares(flight.fares)[0];
-  const roundTrip = isRoundTripFlight(flight);
-  const outbound = roundTrip
-    ? getDirectionDisplay(flight.outbound, flight.legs?.[0])
-    : getOneWayDisplay(flight);
-  const inbound = roundTrip ? getDirectionDisplay(flight.inbound, flight.legs?.[1]) : null;
-  const route = inbound
-    ? `${outbound.fromAirport} → ${outbound.toAirport}, return ${inbound.fromAirport} → ${inbound.toAirport}`
-    : `${outbound.fromAirport} → ${outbound.toAirport}`;
-  return {
-    route,
-    price: firstFare
-      ? `${getCurrencySymbol(currency)}${firstFare.totalFare?.toLocaleString() ?? '—'}`
-      : '—',
-    fareLabel: firstFare?.name ?? firstFare?.type ?? 'Marine fare',
-  };
-}
-
-function FlightRouteRow({
-  label,
-  display,
+function FlightResultCard({
+  flight,
+  currency,
+  onBook,
+  isBooking,
 }: {
-  label?: string;
-  display: FlightDirectionDisplay;
+  flight: Flight;
+  currency: CurrencyCode;
+  onBook: (flight: Flight) => void;
+  isBooking: boolean;
 }) {
-  const overnightCount = countFlightOvernights(display.departureTime, display.arrivalTime);
+  const [selectedFare, setSelectedFare] = useState<Fare | null>(flight.fares?.[0] ?? null);
+  const [expanded, setExpanded] = useState(false);
+  const fares = flight.fares ?? [];
+
+  const hasMarineFare = fares.some((f) => {
+    const ind = typeof f.indicator === 'string' ? f.indicator.trim().toUpperCase() : '';
+    if (ind === 'M') return true;
+    const label = `${f.name ?? ''} ${f.type ?? ''}`;
+    return /\bmarine\b/i.test(label);
+  });
+
+  const firstLeg = flight.legs?.[0];
+  const lastLeg = flight.legs?.[flight.legs.length - 1];
+  const firstSeg = firstLeg?.itinerary?.[0];
+  const lastSeg = lastLeg?.itinerary?.[lastLeg.itinerary.length - 1];
+
+  const fromAirport = firstSeg?.fromAirport ?? firstLeg?.from ?? '—';
+  const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
+  const departureTime = firstLeg?.departureTime ?? '';
+  const arrivalTime = lastLeg?.arrivalTime ?? '';
+  const duration = firstLeg?.duration ?? '—';
+  const overnightCount = countFlightOvernights(departureTime, arrivalTime);
+  const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
+  const via = firstLeg?.via;
+  const airlineName = (flight as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
+  const airlineCode = (flight as { airlineCode?: string }).airlineCode ?? '';
+  const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
+  const segments = flight.legs?.flatMap((leg) => leg.itinerary ?? []) ?? [];
 
   return (
-    <div className="atfc-route-block">
-      {label ? <span className="atfc-route-label">{label}</span> : null}
-      <div className="atfc-route">
-        <div className="atfc-route-endpoint">
-          <span className="atfc-time">{display.departureTime ? fmtTime(display.departureTime) : '—'}</span>
-          <span className="atfc-date">{display.departureTime ? fmtDate(display.departureTime) : ''}</span>
-          <span className="atfc-airport" title={display.fromAirport}>{display.fromAirport}</span>
+    <div className={'atfc-card' + (hasMarineFare ? ' atfc-card--marine' : '')}>
+      {/* ── Main row ── */}
+      <div className="atfc-main">
+        {/* Airline */}
+        <div className="atfc-airline">
+          <span className="atfc-airline-name">{airlineName}</span>
+          <span className="atfc-airline-code">{airlineCode}</span>
         </div>
-        <div className="atfc-route-mid">
-          <span className="atfc-duration">{display.duration}</span>
-          <div className="atfc-route-line">
-            <span className="atfc-route-dot" />
-            <span className="atfc-route-bar" />
-            <Plane size={14} className="atfc-route-plane" />
-            <span className="atfc-route-bar" />
-            <span className="atfc-route-dot" />
+
+        {/* Route */}
+        <div className="atfc-route">
+          <div className="atfc-route-endpoint">
+            <span className="atfc-time">{departureTime ? fmtTime(departureTime) : '—'}</span>
+            <span className="atfc-date">{departureTime ? fmtDate(departureTime) : ''}</span>
+            <span className="atfc-airport" title={fromAirport}>{fromAirport}</span>
           </div>
-          <span className="atfc-stops">
-            {display.stops === 0
-              ? 'Non-stop'
-              : `${display.stops} stop${display.stops > 1 ? 's' : ''}${display.via ? ` via ${display.via}` : ''}`}
-          </span>
-          {overnightCount > 0 ? (
-            <span
-              className="atfc-overnight-badge"
-              title={`${overnightCount} overnight${overnightCount !== 1 ? 's' : ''} in transit`}
-            >
-              {overnightCount} overnight{overnightCount !== 1 ? 's' : ''}
+          <div className="atfc-route-mid">
+            <span className="atfc-duration">{duration}</span>
+            <div className="atfc-route-line">
+              <span className="atfc-route-dot" />
+              <span className="atfc-route-bar" />
+              <Plane size={14} className="atfc-route-plane" />
+              <span className="atfc-route-bar" />
+              <span className="atfc-route-dot" />
+            </div>
+            <span className="atfc-stops">
+              {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}${via ? ` via ${via}` : ''}`}
             </span>
-          ) : null}
+            {overnightCount > 0 ? (
+              <span className="atfc-overnight-badge" title={`${overnightCount} overnight${overnightCount !== 1 ? 's' : ''} in transit`}>
+                {overnightCount} overnight{overnightCount !== 1 ? 's' : ''}
+              </span>
+            ) : null}
+          </div>
+          <div className="atfc-route-endpoint atfc-route-endpoint-right">
+            <span className="atfc-time">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
+            <span className="atfc-date">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
+            <span className="atfc-airport" title={toAirport}>{toAirport}</span>
+          </div>
         </div>
-        <div className="atfc-route-endpoint atfc-route-endpoint-right">
-          <span className="atfc-time">{display.arrivalTime ? fmtTime(display.arrivalTime) : '—'}</span>
-          <span className="atfc-date">{display.arrivalTime ? fmtDate(display.arrivalTime) : ''}</span>
-          <span className="atfc-airport" title={display.toAirport}>{display.toAirport}</span>
+
+        {/* Cabin badge */}
+        <div className="atfc-cabin">
+          <span className="atfc-cabin-badge">{cabin}</span>
+        </div>
+
+        {/* Fare & action */}
+        <div className="atfc-fare-action">
+          {selectedFare ? (
+            <div className="atfc-fare-price">
+              <span className="atfc-fare-total">{getCurrencySymbol(currency)}{selectedFare.totalFare?.toLocaleString() ?? '—'}</span>
+              <span className="atfc-fare-label">{selectedFare.name ?? selectedFare.type}</span>
+              {flight.cashback != null && flight.cashback > 0 && (
+                <span className="atfc-cashback">{getCurrencySymbol(currency)}{flight.cashback.toLocaleString()} cashback</span>
+              )}
+            </div>
+          ) : (
+            <span className="atfc-fare-empty">No fare</span>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            className="atfc-book-btn"
+            onClick={() => onBook(flight)}
+            disabled={isBooking || fares.length === 0}
+          >
+            {isBooking ? (
+              <><span className="admin-tickets-spinner admin-tickets-spinner-inline" />Booking…</>
+            ) : 'Book Now'}
+          </Button>
         </div>
       </div>
-    </div>
-  );
-}
 
-function FlightSegmentDetails({ groups }: { groups: ReturnType<typeof getFlightSegmentGroups> }) {
-  return (
-    <div className="atfc-segments">
-      {groups.map((group) => (
-        <div key={group.label || 'segments'} className="atfc-seg-group">
-          {group.label ? <div className="atfc-seg-group-label">{group.label}</div> : null}
-          {group.segments.map((seg, i) => {
-            const nextSeg = group.segments[i + 1];
+      {/* Fare tabs (multiple fares) */}
+      {fares.length > 1 && (
+        <div className="atfc-fare-tabs">
+          {fares.map((f) => (
+            <button
+              key={f.type}
+              type="button"
+              className={'atfc-fare-tab' + (selectedFare?.type === f.type ? ' atfc-fare-tab-active' : '')}
+              onClick={() => setSelectedFare(f)}
+            >
+              <span className="atfc-fare-tab-name">{f.name ?? f.type}</span>
+              <span className="atfc-fare-tab-price">{getCurrencySymbol(currency)}{f.totalFare?.toLocaleString() ?? '—'}</span>
+              <span className="atfc-fare-tab-seats">{f.seats} seats</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Segment details toggle */}
+      <button
+        type="button"
+        className="atfc-toggle"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <ChevronDown size={16} className={'atfc-toggle-icon' + (expanded ? ' atfc-toggle-icon-open' : '')} />
+        {expanded ? 'Hide' : 'Show'} flight details
+      </button>
+
+      {expanded && (
+        <div className="atfc-segments">
+          {segments.map((seg, i) => {
+            const nextSeg = segments[i + 1];
             const layoverArrival = seg.arrivalTime;
             const layoverDeparture = nextSeg?.departureTime;
 
             return (
-              <div key={`${group.label}-${i}`} className="atfc-seg">
+              <div key={i} className="atfc-seg">
                 <div className="atfc-seg-header">
-                  <span className="atfc-seg-airline">
-                    {seg.airlineName} {seg.airlineCode} {seg.flightNumber}
-                  </span>
+                  <span className="atfc-seg-airline">{seg.airlineName} {seg.airlineCode} {seg.flightNumber}</span>
                   <span className="atfc-seg-cabin">{seg.cabin}</span>
                 </div>
                 <div className="atfc-seg-route">
@@ -631,144 +689,18 @@ function FlightSegmentDetails({ groups }: { groups: ReturnType<typeof getFlightS
             );
           })}
         </div>
-      ))}
-    </div>
-  );
-}
-
-function FlightResultCard({
-  flight,
-  currency,
-  onBook,
-  isBooking,
-}: {
-  flight: Flight;
-  currency: CurrencyCode;
-  onBook: (flight: Flight, fare: Fare) => void;
-  isBooking: boolean;
-}) {
-  const fares = getMarineFares(flight.fares);
-  const [selectedFare, setSelectedFare] = useState<Fare | null>(() => fares[0] ?? null);
-  const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    const marineFares = getMarineFares(flight.fares);
-    setSelectedFare((current) => {
-      if (current && marineFares.some((fare) => fare.type === current.type)) return current;
-      return marineFares[0] ?? null;
-    });
-  }, [flight.id, flight.fares]);
-  const roundTrip = isRoundTripFlight(flight);
-  const outboundDisplay = roundTrip
-    ? getDirectionDisplay(flight.outbound, flight.legs?.[0])
-    : getOneWayDisplay(flight);
-  const inboundDisplay = roundTrip ? getDirectionDisplay(flight.inbound, flight.legs?.[1]) : null;
-  const segmentGroups = getFlightSegmentGroups(flight);
-  const firstSeg = segmentGroups[0]?.segments[0];
-  const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
-
-  return (
-    <div className={'atfc-card atfc-card--marine' + (roundTrip ? ' atfc-card--round-trip' : '')}>
-      {/* ── Main row ── */}
-      <div className={'atfc-main' + (roundTrip ? ' atfc-main--round-trip' : '')}>
-        {/* Airline */}
-        <div className={'atfc-airline' + (roundTrip ? ' atfc-airline-stack' : '')}>
-          <div className="atfc-airline-entry">
-            <span className="atfc-airline-name">{outboundDisplay.airlineName}</span>
-            <span className="atfc-airline-code">{outboundDisplay.airlineCode}</span>
-          </div>
-          {inboundDisplay &&
-          (inboundDisplay.airlineName !== outboundDisplay.airlineName ||
-            inboundDisplay.airlineCode !== outboundDisplay.airlineCode) ? (
-            <div className="atfc-airline-entry">
-              <span className="atfc-airline-name">{inboundDisplay.airlineName}</span>
-              <span className="atfc-airline-code">{inboundDisplay.airlineCode}</span>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Route */}
-        <div className={roundTrip ? 'atfc-routes-stack' : undefined}>
-          <FlightRouteRow label={roundTrip ? 'Outbound' : undefined} display={outboundDisplay} />
-          {inboundDisplay ? <FlightRouteRow label="Return" display={inboundDisplay} /> : null}
-        </div>
-
-        {/* Cabin badge */}
-        <div className="atfc-cabin">
-          <span className="atfc-cabin-badge">{cabin}</span>
-        </div>
-
-        {/* Fare & action */}
-        <div className="atfc-fare-action">
-          {selectedFare ? (
-            <div className="atfc-fare-price">
-              <span className="atfc-fare-total">{getCurrencySymbol(currency)}{selectedFare.totalFare?.toLocaleString() ?? '—'}</span>
-              <span className="atfc-fare-label">{selectedFare.name ?? selectedFare.type}</span>
-              {flight.cashback != null && flight.cashback > 0 && (
-                <span className="atfc-cashback">{getCurrencySymbol(currency)}{flight.cashback.toLocaleString()} cashback</span>
-              )}
-            </div>
-          ) : (
-            <span className="atfc-fare-empty">No fare</span>
-          )}
-          <Button
-            type="button"
-            size="sm"
-            className="atfc-book-btn"
-            onClick={() => {
-              if (selectedFare) onBook(flight, selectedFare);
-            }}
-            disabled={isBooking || !selectedFare}
-          >
-            {isBooking ? (
-              <><span className="admin-tickets-spinner admin-tickets-spinner-inline" />Booking…</>
-            ) : 'Book Now'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Fare tabs (multiple fares) */}
-      {fares.length > 1 && (
-        <div className="atfc-fare-tabs">
-          {fares.map((f) => (
-            <button
-              key={f.type}
-              type="button"
-              className={'atfc-fare-tab' + (selectedFare?.type === f.type ? ' atfc-fare-tab-active' : '')}
-              onClick={() => setSelectedFare(f)}
-            >
-              <span className="atfc-fare-tab-name">{f.name ?? f.type}</span>
-              <span className="atfc-fare-tab-price">{getCurrencySymbol(currency)}{f.totalFare?.toLocaleString() ?? '—'}</span>
-              <span className="atfc-fare-tab-seats">{f.seats} seats</span>
-            </button>
-          ))}
-        </div>
       )}
-
-      {/* Segment details toggle */}
-      <button
-        type="button"
-        className="atfc-toggle"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <ChevronDown size={16} className={'atfc-toggle-icon' + (expanded ? ' atfc-toggle-icon-open' : '')} />
-        {expanded ? 'Hide' : 'Show'} flight details
-      </button>
-
-      {expanded && <FlightSegmentDetails groups={segmentGroups} />}
     </div>
   );
 }
 
 const AdminTicketsPage = () => {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [rigs, setRigs] = useState<RigApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [ticketsLoading, setTicketsLoading] = useState(false);
-  const [reportSpends, setReportSpends] = useState<CrewTicketReportSpends | null>(null);
-  const [reportSpendsLoading, setReportSpendsLoading] = useState(false);
-  const [reportSpendsError, setReportSpendsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -776,8 +708,6 @@ const AdminTicketsPage = () => {
   const [selectedTicket, setSelectedTicket] = useState<CrewTicketApi | null>(null);
   const [ticketToConfirmCancel, setTicketToConfirmCancel] = useState<CrewTicketApi | null>(null);
   const [cancelTicketSubmitting, setCancelTicketSubmitting] = useState(false);
-  const [flightToConfirmBook, setFlightToConfirmBook] = useState<FlightBookTarget | null>(null);
-  const [showCreateTicketConfirm, setShowCreateTicketConfirm] = useState(false);
   const [previewingTicketId, setPreviewingTicketId] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -823,11 +753,8 @@ const AdminTicketsPage = () => {
   });
   const [returnTime, setReturnTime] = useState('');
   const [departureTime, setDepartureTime] = useState('');
-  const [departureTimeMode, setDepartureTimeMode] = useState<TimeFilterMode>('after');
   const [arrivalDate, setArrivalDate] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
-  const [arrivalTimeMode, setArrivalTimeMode] = useState<TimeFilterMode>('before');
-  const [returnTimeMode, setReturnTimeMode] = useState<TimeFilterMode>('after');
   const [adults, setAdults] = useState(1);
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
   const [currency, setCurrency] = useState<CurrencyCode>('GBP');
@@ -841,6 +768,10 @@ const AdminTicketsPage = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [bookingFlightKey, setBookingFlightKey] = useState<string | null>(null);
+  const [flightToBook, setFlightToBook] = useState<Flight | null>(null);
+  const [showManualConfirm, setShowManualConfirm] = useState(false);
+  const [searchBookingSuccess, setSearchBookingSuccess] = useState(false);
+  const [searchSuccessMessage, setSearchSuccessMessage] = useState('');
 
   /* Project & crew for search form */
   const [searchProjectId, setSearchProjectId] = useState<string>('');
@@ -986,21 +917,6 @@ const AdminTicketsPage = () => {
       .finally(() => setTicketsLoading(false));
   }, []);
 
-  const fetchReportSpends = useCallback(() => {
-    setReportSpendsLoading(true);
-    setReportSpendsError(null);
-    const projectId = projectFilter === 'all' ? undefined : projectFilter;
-    getCrewTicketReportSpends(projectId)
-      .then((res) => setReportSpends(res.reportSpends))
-      .catch((err) => {
-        setReportSpends(null);
-        setReportSpendsError(
-          err instanceof Error ? err.message : 'Failed to load spend analytics.'
-        );
-      })
-      .finally(() => setReportSpendsLoading(false));
-  }, [projectFilter]);
-
   const requestCancelTicketFlow = useCallback((ticket: CrewTicketApi) => {
     setSelectedTicket(null);
     setTicketToConfirmCancel(ticket);
@@ -1015,7 +931,6 @@ const AdminTicketsPage = () => {
       setTickets((prev) => prev.filter((t) => t.id !== id));
       setSelectedTicket((prev) => (prev?.id === id ? null : prev));
       setTicketToConfirmCancel(null);
-      fetchReportSpends();
       toast.success('Ticket cancelled', {
         description: 'The booking was removed from your crew tickets list.',
       });
@@ -1028,7 +943,7 @@ const AdminTicketsPage = () => {
     } finally {
       setCancelTicketSubmitting(false);
     }
-  }, [ticketToConfirmCancel, fetchReportSpends]);
+  }, [ticketToConfirmCancel]);
 
   const handlePreviewTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
     if (!canUseTicketPdf(ticket)) {
@@ -1087,10 +1002,6 @@ const AdminTicketsPage = () => {
       });
     return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    fetchReportSpends();
-  }, [fetchReportSpends]);
 
   const projectFilteredTickets = useMemo(() => {
     if (projectFilter === 'all') return tickets;
@@ -1161,7 +1072,6 @@ const AdminTicketsPage = () => {
       setModalStep('project');
       setSubmitError(null);
       setSubmitSuccess(false);
-      setShowCreateTicketConfirm(false);
     }
   }, [submitLoading]);
 
@@ -1213,12 +1123,6 @@ const AdminTicketsPage = () => {
       returnDate?: string;
       returnTime?: string;
     }) => {
-      const assignmentError = validateSearchAssignment(searchProjectId, searchCrewIds);
-      if (assignmentError) {
-        setSearchError(assignmentError);
-        return;
-      }
-
       let criteria: SearchPayload;
 
       if (searchTripTypeUI === 'multi-city') {
@@ -1246,9 +1150,9 @@ const AdminTicketsPage = () => {
           sortOrder: flightSortOrder,
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-          ...(dTime.trim() ? { departureTime: dTime.trim(), departureTimeMode } : {}),
+          ...(dTime.trim() ? { departureTime: dTime.trim() } : {}),
           ...(aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
-          ...(aTime.trim() ? { arrivalTime: aTime.trim(), arrivalTimeMode } : {}),
+          ...(aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
           ...(preferNonStopPerLeg ? { stops: ['0'] } : {}),
         };
       } else {
@@ -1268,9 +1172,7 @@ const AdminTicketsPage = () => {
           to: searchTo,
           departureDate: dDate,
           returnDate: searchTripTypeUI === 'round-trip' ? rDate : undefined,
-          ...(searchTripTypeUI === 'round-trip' && rTime.trim()
-            ? { returnTime: rTime.trim(), returnTimeMode }
-            : {}),
+          ...(searchTripTypeUI === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
           adults: searchAdultCount,
           children: 0,
           infants: 0,
@@ -1281,9 +1183,9 @@ const AdminTicketsPage = () => {
           sortOrder: flightSortOrder,
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-          ...(dTime.trim() ? { departureTime: dTime.trim(), departureTimeMode } : {}),
-          ...(aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
-          ...(aTime.trim() ? { arrivalTime: aTime.trim(), arrivalTimeMode } : {}),
+          ...(searchTripTypeUI === 'one-way' && dTime.trim() ? { departureTime: dTime.trim() } : {}),
+          ...(searchTripTypeUI === 'one-way' && aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
+          ...(searchTripTypeUI === 'one-way' && aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
         };
       }
 
@@ -1315,11 +1217,8 @@ const AdminTicketsPage = () => {
       returnDate,
       returnTime,
       departureTime,
-      departureTimeMode,
       arrivalDate,
       arrivalTime,
-      arrivalTimeMode,
-      returnTimeMode,
       searchAdultCount,
       cabinClass,
       currency,
@@ -1396,41 +1295,18 @@ const AdminTicketsPage = () => {
     activeMultiLegIndex,
   ]);
 
-  const requestBookFlightFlow = useCallback(
-    (flight: Flight, fare: Fare) => {
-      const assignmentError = validateSearchAssignment(searchProjectId, searchCrewIds);
-      if (assignmentError) {
-        setSearchError(assignmentError);
-        toast.error(assignmentError);
-        return;
-      }
-      setSearchError(null);
-      setFlightToConfirmBook({ flight, fare });
-    },
-    [searchProjectId, searchCrewIds]
-  );
-
-  const handleConfirmBookFlight = useCallback(
-    async () => {
-      if (!flightToConfirmBook) return;
-      const { flight, fare: selectedFare } = flightToConfirmBook;
+  const executeSearchBooking = useCallback(
+    async (flight: Flight) => {
       const bookKey =
         searchTripTypeUI === 'multi-city' ? `${activeMultiLegIndex}::${flight.id}` : flight.id;
       setBookingFlightKey(bookKey);
       try {
-        const marineFares = getMarineFares(flight.fares);
-        const fareToBook =
-          marineFares.find((fare) => fare.type === selectedFare.type) ?? selectedFare;
-        if (!fareToBook) {
-          toast.error('Booking failed', { description: 'No marine fare available for this flight.' });
-          return;
-        }
-        const flightForBook: Flight = { ...flight, fares: marineFares };
-        const priceAmount = fareToBook.totalFare ?? 0;
+        const firstFare = flight.fares?.[0];
+        const priceAmount = firstFare?.totalFare ?? 0;
         const data = await bookFlight({
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
-          flight: flightForBook,
+          flight,
           cashback: flight.cashback ?? 0,
           price: priceAmount,
           currency,
@@ -1439,9 +1315,12 @@ const AdminTicketsPage = () => {
           infants: 0,
         });
         const returnedTickets = Array.isArray(data.crewTickets) ? data.crewTickets : Array.isArray(data.tickets) ? data.tickets : [];
-        const ticketCount = returnedTickets.length || searchCrewIds.length || searchAdultCount;
+        const ticketCount = returnedTickets.length;
         const refNote = data.bookingReference ? ` Ref: ${data.bookingReference}` : '';
         const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked and sent for approval.${refNote}`;
+
+        setSearchSuccessMessage(baseDesc);
+        setSearchBookingSuccess(true);
 
         if (searchTripTypeUI === 'multi-city') {
           const n = multiSegments.length;
@@ -1452,35 +1331,43 @@ const AdminTicketsPage = () => {
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
             fetchTickets();
-            fetchReportSpends();
-            setActiveMultiLegIndex((i) => i + 1);
-            setSearchResults(null);
-            setSearchTotalCount(0);
-            setSearchPage(1);
-            setSearchCriteria(null);
+            setTimeout(() => {
+              setActiveMultiLegIndex((i) => i + 1);
+              setSearchResults(null);
+              setSearchTotalCount(0);
+              setSearchPage(1);
+              setSearchCriteria(null);
+              setFlightToBook(null);
+              setSearchBookingSuccess(false);
+            }, 2500);
           } else {
             toast.success(`All ${n} flight${n !== 1 ? 's' : ''} sent for approval.`, {
               description: baseDesc,
             });
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
             fetchTickets();
-            fetchReportSpends();
-            setSearchResults(null);
-            setSearchTotalCount(0);
-            setSearchPage(1);
-            setSearchCriteria(null);
-            setActiveMultiLegIndex(0);
-            setMultiSegments(initialMultiSegments());
+            setTimeout(() => {
+              setSearchResults(null);
+              setSearchTotalCount(0);
+              setSearchPage(1);
+              setSearchCriteria(null);
+              setActiveMultiLegIndex(0);
+              setMultiSegments(initialMultiSegments());
+              setFlightToBook(null);
+              setSearchBookingSuccess(false);
+            }, 2500);
           }
         } else {
           toast.success('Ticket booked and sent for approval.', { description: baseDesc });
           window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
           fetchTickets();
-          fetchReportSpends();
-          setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
-          setSearchTotalCount((prev) => Math.max(0, prev - 1));
+          setTimeout(() => {
+            setSearchResults((prev) => (prev ? prev.filter((f) => f.id !== flight.id) : null));
+            setSearchTotalCount((prev) => Math.max(0, prev - 1));
+            setFlightToBook(null);
+            setSearchBookingSuccess(false);
+          }, 2500);
         }
-        setFlightToConfirmBook(null);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unable to complete booking. Please try again.';
         if (searchTripTypeUI === 'multi-city') {
@@ -1495,7 +1382,6 @@ const AdminTicketsPage = () => {
       }
     },
     [
-      flightToConfirmBook,
       searchProjectId,
       searchCrewIds,
       searchAdultCount,
@@ -1504,8 +1390,14 @@ const AdminTicketsPage = () => {
       activeMultiLegIndex,
       multiSegments.length,
       fetchTickets,
-      fetchReportSpends,
     ]
+  );
+
+  const handleBookNow = useCallback(
+    (flight: Flight) => {
+      setFlightToBook(flight);
+    },
+    []
   );
 
   const handleSearchBack = useCallback(() => {
@@ -1518,29 +1410,29 @@ const AdminTicketsPage = () => {
 
   const displayedSearchFlights = useMemo(() => {
     if (!searchResults) return null;
-    const marineOnly = searchResults
-      .map(withMarineFaresOnly)
-      .filter((flight): flight is Flight => flight != null);
     if (searchTripTypeUI === 'multi-city' && preferNonStopPerLeg) {
-      return marineOnly.filter(isFlightNonStop);
+      return searchResults.filter(isFlightNonStop);
     }
-    return marineOnly;
+    return searchResults;
   }, [searchResults, searchTripTypeUI, preferNonStopPerLeg]);
 
   const handleSubmitTickets = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedProject || selectedCrewIds.length === 0) return;
 
-    if (!formData.fromName.trim() || !formData.toName.trim()) {
+    const fromName = formData.fromName.trim();
+    const toName = formData.toName.trim();
+
+    if (!fromName || !toName) {
       setSubmitError('From and To airport names are required');
       return;
     }
 
     setSubmitError(null);
-    setShowCreateTicketConfirm(true);
+    setShowManualConfirm(true);
   };
 
-  const handleConfirmCreateTickets = useCallback(async () => {
+  const executeManualBooking = async () => {
     if (!selectedProject || selectedCrewIds.length === 0) return;
 
     const from: AirportLocation = {
@@ -1556,7 +1448,7 @@ const AdminTicketsPage = () => {
 
     if (!from.Name || !to.Name) {
       setSubmitError('From and To airport names are required');
-      setShowCreateTicketConfirm(false);
+      setShowManualConfirm(false);
       return;
     }
 
@@ -1579,26 +1471,17 @@ const AdminTicketsPage = () => {
         };
         await createFlightTicket(payload);
       }
-      setShowCreateTicketConfirm(false);
       setSubmitSuccess(true);
       fetchTickets();
-      fetchReportSpends();
+      setShowManualConfirm(false);
       setTimeout(closeCreateModal, 1500);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to create tickets');
-      setShowCreateTicketConfirm(false);
+      setShowManualConfirm(false);
     } finally {
       setSubmitLoading(false);
     }
-  }, [
-    selectedProject,
-    selectedCrewIds,
-    formData,
-    createRigId,
-    fetchTickets,
-    fetchReportSpends,
-    closeCreateModal,
-  ]);
+  };
 
   const getCrewName = (t: CrewTicketApi) => {
     const c = t.crew_id;
@@ -1633,29 +1516,109 @@ const AdminTicketsPage = () => {
     }
   };
 
-  const bookingsDashboardStats = useMemo(() => {
+  const ticketDashboardStats = useMemo(() => {
     const totalBookings = projectFilteredTickets.length;
+    const mtdTickets = projectFilteredTickets.filter((ticket) =>
+      isCrewTicketCreatedInLocalCalendarMonth(ticket)
+    );
+    const lastMonthTickets = projectFilteredTickets.filter((ticket) =>
+      isCrewTicketCreatedInPreviousLocalCalendarMonth(ticket)
+    );
+    const mtdSpend = sumPricedTickets(mtdTickets);
+    const lastMonthSpend = sumPricedTickets(lastMonthTickets);
     const approvedCount = projectFilteredTickets.filter(
       (ticket) => getTicketStatus(ticket) === 'APPROVED'
     ).length;
     const pendingCount = totalBookings - approvedCount;
 
+    let spendChangeMeta = 'No priced bookings this month';
+    let spendChangeTone: 'up' | 'down' | 'flat' = 'flat';
+    if (mtdSpend.count > 0) {
+      if (lastMonthSpend.total > 0) {
+        const pctChange = ((mtdSpend.total - lastMonthSpend.total) / lastMonthSpend.total) * 100;
+        const rounded = Math.round(Math.abs(pctChange));
+        if (pctChange > 0) {
+          spendChangeMeta = `+${rounded}% vs last month`;
+          spendChangeTone = 'down';
+        } else if (pctChange < 0) {
+          spendChangeMeta = `-${rounded}% vs last month`;
+          spendChangeTone = 'up';
+        } else {
+          spendChangeMeta = 'Flat vs last month';
+        }
+      } else {
+        spendChangeMeta = 'No spend last month';
+        spendChangeTone = 'flat';
+      }
+    }
+
+    const classCounts = new Map<string, number>();
+    for (const ticket of mtdTickets) {
+      const label = formatTicketClass(ticket.class);
+      classCounts.set(label, (classCounts.get(label) ?? 0) + 1);
+    }
+    const topClassEntry = [...classCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const avgCostMeta = mtdSpend.count
+      ? `${mtdSpend.count} priced booking${mtdSpend.count !== 1 ? 's' : ''}${topClassEntry ? ` · ${topClassEntry[0]}` : ''}`
+      : 'No priced bookings this month';
+
+    const spendByDestinationMap = new Map<string, number>();
+    for (const ticket of projectFilteredTickets) {
+      if (typeof ticket.price !== 'number') continue;
+      const dest = ticket.to?.COUNTRYNAME?.trim() || ticket.to?.COUNTRY?.trim() || 'Unknown destination';
+      spendByDestinationMap.set(dest, (spendByDestinationMap.get(dest) ?? 0) + ticket.price);
+    }
+    const spendByDestinationEntries = [...spendByDestinationMap.entries()].sort((a, b) => b[1] - a[1]);
+    const topDestinationSpend = spendByDestinationEntries[0]?.[1] ?? 0;
+    const spendByDestination = spendByDestinationEntries.slice(0, 5).map(([label, amount], index) => ({
+      label,
+      amount,
+      barPct: topDestinationSpend ? Math.round((amount / topDestinationSpend) * 100) : 0,
+      color: METRIC_BAR_COLORS[index % METRIC_BAR_COLORS.length],
+    }));
+
+    const classBookingMap = new Map<string, number>();
+    for (const ticket of projectFilteredTickets) {
+      const label = formatTicketClass(ticket.class);
+      classBookingMap.set(label, (classBookingMap.get(label) ?? 0) + 1);
+    }
+    const bookingsByClass = [...classBookingMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({
+        label,
+        count,
+        pct: totalBookings ? Math.round((count / totalBookings) * 100) : 0,
+      }));
+
+    const combinedSpend = mtdSpend.total + lastMonthSpend.total;
+    const spendMtdBarPct = combinedSpend
+      ? Math.round((mtdSpend.total / combinedSpend) * 100)
+      : mtdTickets.length
+        ? Math.min(100, mtdTickets.length * 10)
+        : 0;
+
     return {
       totalBookings,
       approvedCount,
+      pendingCount,
+      mtdSpend,
+      spendChangeMeta,
+      spendChangeTone,
+      avgCostMeta,
+      spendByDestination,
+      bookingsByClass,
       activeBookingsBarPct: totalBookings ? Math.round((approvedCount / totalBookings) * 100) : 0,
       pendingBarPct: totalBookings ? Math.round((pendingCount / totalBookings) * 100) : 0,
+      spendMtdBarPct,
+      avgCostBarPct: mtdTickets.length
+        ? Math.round((mtdSpend.count / mtdTickets.length) * 100)
+        : 0,
       pendingMeta:
         pendingCount > 0
           ? `${pendingCount} awaiting superadmin`
           : 'None awaiting approval',
     };
   }, [projectFilteredTickets]);
-
-  const spendDashboardStats = useMemo(
-    () => (reportSpends ? buildSpendDashboardStats(reportSpends) : EMPTY_SPEND_DASHBOARD_STATS),
-    [reportSpends]
-  );
 
   const sortedRecentBookings = useMemo(
     () =>
@@ -1665,14 +1628,6 @@ const AdminTicketsPage = () => {
         return bTime - aTime;
       }),
     [filteredTickets]
-  );
-
-  const flightBookConfirmSummary = useMemo(
-    () =>
-      flightToConfirmBook
-        ? getFlightBookSummary(flightToConfirmBook.flight, currency, flightToConfirmBook.fare)
-        : null,
-    [flightToConfirmBook, currency]
   );
 
   const recentBookingsTotalPages = Math.max(
@@ -1768,11 +1723,22 @@ const AdminTicketsPage = () => {
           >
             <AlertTriangle size={13} /> Pending Approval <span className="subsea-sb-count subsea-sb-count-red">{pendingApprovalCount}</span>
           </button>
+          <div className="subsea-sb-group">Operations</div>
+          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
+            <Plane size={13} /> Upcoming Departures
+          </button>
         </div>
       </aside>
 
       <div className="subsea-main">
         <div className="subsea-topbar">
+          <button
+            type="button"
+            className="subsea-btn subsea-btn-default subsea-btn-sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={12} className="mr-1.5" /> Back
+          </button>
           <div className="subsea-crumb">
             <span>Subseacore</span>
             <span className="subsea-crumb-sep">/</span>
@@ -1867,7 +1833,7 @@ const AdminTicketsPage = () => {
                     <h3 className="admin-tickets-search-section-title">Assignment</h3>
                     <div className="admin-tickets-search-section-grid">
                       <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
-                        <label htmlFor="search-project">Project</label>
+                        <label htmlFor="search-project">Project (optional)</label>
                         <div className="admin-tickets-search-field-with-clear">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -2084,13 +2050,9 @@ const AdminTicketsPage = () => {
                                 onDateChange={(d) => updateMultiSegment(i, { departureDate: d })}
                                 onTimeChange={(t) => updateMultiSegment(i, { departureTime: t })}
                                 dateLabel="Departure date"
-                                timeLabel="Departure time"
+                                timeLabel="Min. departure time"
                                 datePlaceholder="Select date"
                                 showTime={true}
-                                showTimeMode={true}
-                                timeMode={departureTimeMode}
-                                onTimeModeChange={setDepartureTimeMode}
-                                timeModeKind="departure"
                                 idPrefix={`multi-dep-${seg.id}`}
                                 onClear={() => updateMultiSegment(i, { departureDate: '', departureTime: '' })}
                                 hasValue={!!seg.departureDate?.trim() || !!seg.departureTime?.trim()}
@@ -2105,13 +2067,9 @@ const AdminTicketsPage = () => {
                                 onDateChange={(d) => updateMultiSegment(i, { arrivalDate: d })}
                                 onTimeChange={(t) => updateMultiSegment(i, { arrivalTime: t })}
                                 dateLabel="Arrival date (optional)"
-                                timeLabel="Arrival time"
+                                timeLabel="Max. arrival time"
                                 datePlaceholder="Select date"
                                 showTime={true}
-                                showTimeMode={true}
-                                timeMode={arrivalTimeMode}
-                                onTimeModeChange={setArrivalTimeMode}
-                                timeModeKind="arrival"
                                 idPrefix={`multi-arr-${seg.id}`}
                                 onClear={() => updateMultiSegment(i, { arrivalDate: '', arrivalTime: '' })}
                                 hasValue={!!seg.arrivalDate?.trim() || !!seg.arrivalTime?.trim()}
@@ -2156,13 +2114,9 @@ const AdminTicketsPage = () => {
                           onDateChange={setDepartureDate}
                           onTimeChange={setDepartureTime}
                           dateLabel="Departure date"
-                          timeLabel="Departure time"
+                          timeLabel="Min. departure time"
                           datePlaceholder="Select date"
-                          showTime={true}
-                          showTimeMode={true}
-                          timeMode={departureTimeMode}
-                          onTimeModeChange={setDepartureTimeMode}
-                          timeModeKind="departure"
+                          showTime={searchTripTypeUI === 'one-way'}
                           idPrefix="search-departure"
                           onClear={() => {
                             setDepartureDate('');
@@ -2173,29 +2127,27 @@ const AdminTicketsPage = () => {
                           popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
                         />
                       </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
-                        <DatePickerTime
-                          date={arrivalDate}
-                          time={arrivalTime}
-                          onDateChange={setArrivalDate}
-                          onTimeChange={setArrivalTime}
-                          dateLabel={searchTripTypeUI === 'round-trip' ? 'Arrival date (optional)' : 'Arrival date'}
-                          timeLabel="Arrival time"
-                          datePlaceholder="Select date"
-                          showTime={true}
-                          showTimeMode={true}
-                          timeMode={arrivalTimeMode}
-                          onTimeModeChange={setArrivalTimeMode}
-                          timeModeKind="arrival"
-                          idPrefix="search-arrival"
-                          onClear={() => {
-                            setArrivalDate('');
-                            setArrivalTime('');
-                          }}
-                          hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
-                          popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
-                        />
-                      </div>
+                      {searchTripTypeUI === 'one-way' ? (
+                        <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
+                          <DatePickerTime
+                            date={arrivalDate}
+                            time={arrivalTime}
+                            onDateChange={setArrivalDate}
+                            onTimeChange={setArrivalTime}
+                            dateLabel="Arrival date"
+                            timeLabel="Max. arrival time"
+                            datePlaceholder="Select date"
+                            showTime={true}
+                            idPrefix="search-arrival"
+                            onClear={() => {
+                              setArrivalDate('');
+                              setArrivalTime('');
+                            }}
+                            hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
+                            popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
+                          />
+                        </div>
+                      ) : null}
                       {searchTripTypeUI === 'round-trip' ? (
                         <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
                           <DatePickerTime
@@ -2204,13 +2156,9 @@ const AdminTicketsPage = () => {
                             onDateChange={setReturnDate}
                             onTimeChange={setReturnTime}
                             dateLabel="Return date"
-                            timeLabel="Return departure time"
+                            timeLabel="Return time"
                             datePlaceholder="Select date"
                             showTime={true}
-                            showTimeMode={true}
-                            timeMode={returnTimeMode}
-                            onTimeModeChange={setReturnTimeMode}
-                            timeModeKind="departure"
                             idPrefix="search-return"
                             onClear={() => {
                               setReturnDate('');
@@ -2303,11 +2251,6 @@ const AdminTicketsPage = () => {
             </>
           ) : (
             <div className="admin-tickets-results-wrap">
-              {searchError && (
-                <div className="admin-tickets-search-error" role="alert">
-                  {searchError}
-                </div>
-              )}
               <div className="admin-tickets-results-header">
                 <Button variant="outline" type="button" onClick={handleSearchBack}>
                   <ChevronLeft size={18} />
@@ -2352,8 +2295,7 @@ const AdminTicketsPage = () => {
                   {isSearching ? <span className="admin-tickets-spinner admin-tickets-spinner-inline" /> : null}
                 </div>
                 <p className="admin-tickets-results-count">
-                  {(displayedSearchFlights ?? searchResults).length} marine fare flight
-                  {(displayedSearchFlights ?? searchResults).length !== 1 ? 's' : ''} shown
+                  {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
                   {searchTripTypeUI === 'multi-city' &&
                     preferNonStopPerLeg &&
                     displayedSearchFlights &&
@@ -2361,7 +2303,7 @@ const AdminTicketsPage = () => {
                     displayedSearchFlights.length !== searchResults.length && (
                       <span className="admin-tickets-results-count-note">
                         {' '}
-                        · non-stop filter applied
+                        · {displayedSearchFlights.length} non-stop shown from {searchResults.length} loaded
                       </span>
                     )}
                 </p>
@@ -2371,9 +2313,7 @@ const AdminTicketsPage = () => {
                   <p className="admin-tickets-results-empty">No flights match your criteria.</p>
                 ) : (displayedSearchFlights?.length ?? 0) === 0 ? (
                   <p className="admin-tickets-results-empty">
-                    {searchTripTypeUI === 'multi-city' && preferNonStopPerLeg
-                      ? 'No non-stop flights with marine fares in the loaded results. Clear the non-stop filter or try Load more.'
-                      : 'No marine fares in the loaded results. Try Load more or adjust your search.'}
+                    No non-stop flights in the loaded results. Clear the non-stop filter or try Load more.
                   </p>
                 ) : (
                   <>
@@ -2382,7 +2322,7 @@ const AdminTicketsPage = () => {
                         key={flight.id}
                         flight={flight}
                         currency={currency}
-                        onBook={requestBookFlightFlow}
+                        onBook={handleBookNow}
                         isBooking={
                           bookingFlightKey ===
                           (searchTripTypeUI === 'multi-city'
@@ -2437,20 +2377,20 @@ const AdminTicketsPage = () => {
             <div className="subsea-kpi-strip subsea-kpi-strip-2">
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Active Bookings</div>
-                <div className="subsea-kpi-value">{bookingsDashboardStats.totalBookings}</div>
-                <div className="subsea-kpi-meta flat">{bookingsDashboardStats.approvedCount} approved</div>
+                <div className="subsea-kpi-value">{ticketDashboardStats.totalBookings}</div>
+                <div className="subsea-kpi-meta flat">{ticketDashboardStats.approvedCount} approved</div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill blue" style={{ width: `${bookingsDashboardStats.activeBookingsBarPct}%` }} />
+                  <div className="subsea-kpi-fill blue" style={{ width: `${ticketDashboardStats.activeBookingsBarPct}%` }} />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Pending Approval</div>
                 <div className="subsea-kpi-value">{pendingApprovalCount}</div>
                 <div className={`subsea-kpi-meta ${pendingApprovalCount ? 'down' : 'flat'}`}>
-                  {bookingsDashboardStats.pendingMeta}
+                  {ticketDashboardStats.pendingMeta}
                 </div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill amber" style={{ width: `${bookingsDashboardStats.pendingBarPct}%` }} />
+                  <div className="subsea-kpi-fill amber" style={{ width: `${ticketDashboardStats.pendingBarPct}%` }} />
                 </div>
               </div>
             </div>
@@ -2560,20 +2500,14 @@ const AdminTicketsPage = () => {
                           <div className="subsea-airport">
                             <div className="subsea-airport-code">{routeCode(ticket.from)}</div>
                             <div className="subsea-airport-city">{routeCity(ticket.from)}</div>
-                            <div className="subsea-airport-date" title="Departure">
-                              {formatTicketSchedule(getTicketDepartureIso(ticket))}
-                            </div>
                           </div>
                           <div className="subsea-flight-line">
                             <div className="subsea-flight-line-bar" />
                             <div className="subsea-flight-dur">{ticket.trip?.replace('_', ' ') ?? 'One way'} · {ticket.class ?? 'Economy'}</div>
                           </div>
-                          <div className="subsea-airport subsea-airport--end">
+                          <div className="subsea-airport">
                             <div className="subsea-airport-code">{routeCode(ticket.to)}</div>
                             <div className="subsea-airport-city">{routeCity(ticket.to)}</div>
-                            <div className="subsea-airport-date" title="Arrival">
-                              {formatTicketSchedule(getTicketArrivalIso(ticket))}
-                            </div>
                           </div>
                           <div className="subsea-flight-status">
                             <span className={`subsea-badge ${getTicketStatusBadgeClass(ticket)}`}>
@@ -2624,42 +2558,44 @@ const AdminTicketsPage = () => {
                         </div>
                       </div>
                     ))}
-                    {sortedRecentBookings.length > RECENT_BOOKINGS_PAGE_SIZE && (
-                      <div className="subsea-pagination admin-tickets-bookings-pagination">
-                        <span className="subsea-pagination-info">
-                          {`Showing ${(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-${Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of ${sortedRecentBookings.length} bookings`}
-                        </span>
-                        <div className="subsea-pagination-btns">
-                          <button
-                            type="button"
-                            className="subsea-btn subsea-btn-default subsea-btn-sm"
-                            disabled={recentBookingsPage <= 1}
-                            onClick={() => setRecentBookingsPage((p) => Math.max(1, p - 1))}
-                          >
-                            Previous
-                          </button>
-                          {Array.from({ length: recentBookingsTotalPages }, (_, i) => i + 1).map((p) => (
-                            <button
-                              key={p}
-                              type="button"
-                              className={`subsea-pagination-btn${p === recentBookingsPage ? ' active' : ''}`}
-                              onClick={() => setRecentBookingsPage(p)}
-                            >
-                              {p}
-                            </button>
-                          ))}
-                          <button
-                            type="button"
-                            className="subsea-btn subsea-btn-default subsea-btn-sm"
-                            disabled={recentBookingsPage >= recentBookingsTotalPages}
-                            onClick={() => setRecentBookingsPage((p) => Math.min(recentBookingsTotalPages, p + 1))}
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
+                  {sortedRecentBookings.length > RECENT_BOOKINGS_PAGE_SIZE && (
+                    <div className="subsea-pagination">
+                      <span>
+                        Showing {(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-
+                        {Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of{' '}
+                        {sortedRecentBookings.length} bookings
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          className="subsea-btn subsea-btn-default subsea-btn-sm"
+                          disabled={recentBookingsPage <= 1}
+                          onClick={() => setRecentBookingsPage((p) => Math.max(1, p - 1))}
+                        >
+                          Previous
+                        </button>
+                        {Array.from({ length: recentBookingsTotalPages }, (_, i) => i + 1).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            className={`subsea-btn subsea-btn-sm ${p === recentBookingsPage ? 'subsea-btn-primary' : 'subsea-btn-default'}`}
+                            onClick={() => setRecentBookingsPage(p)}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="subsea-btn subsea-btn-default subsea-btn-sm"
+                          disabled={recentBookingsPage >= recentBookingsTotalPages}
+                          onClick={() => setRecentBookingsPage((p) => Math.min(recentBookingsTotalPages, p + 1))}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2668,70 +2604,47 @@ const AdminTicketsPage = () => {
             <div className="subsea-page-head">
               <div>
                 <h1>Report Spends</h1>
-                <p>
-                  Flight spend analytics · {spendDashboardStats.bookingsInScope} bookings in scope
-                  {reportSpends?.scope.timezone ? ` · ${reportSpends.scope.timezone}` : ''}
-                </p>
+                <p>Flight spend analytics · {projectFilteredTickets.length} bookings in scope</p>
               </div>
             </div>
-
-            {reportSpendsError && (
-              <div className="subsea-state subsea-state-error" role="alert">{reportSpendsError}</div>
-            )}
 
             <div className="subsea-kpi-strip subsea-kpi-strip-4">
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Total Spend MTD</div>
-                <div className="subsea-kpi-value">
-                  {reportSpendsLoading ? '…' : displayMoney(spendDashboardStats.mtdSpend.total)}
-                </div>
-                <div className={`subsea-kpi-meta ${spendDashboardStats.spendChangeTone}`}>
-                  {reportSpendsLoading ? 'Loading…' : spendDashboardStats.spendChangeMeta}
+                <div className="subsea-kpi-value">{displayMoney(ticketDashboardStats.mtdSpend.total)}</div>
+                <div className={`subsea-kpi-meta ${ticketDashboardStats.spendChangeTone}`}>
+                  {ticketDashboardStats.spendChangeMeta}
                 </div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill teal" style={{ width: `${spendDashboardStats.spendMtdBarPct}%` }} />
+                  <div className="subsea-kpi-fill teal" style={{ width: `${ticketDashboardStats.spendMtdBarPct}%` }} />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Avg Ticket Cost</div>
                 <div className="subsea-kpi-value">
-                  {reportSpendsLoading
-                    ? '…'
-                    : spendDashboardStats.mtdSpend.count
-                      ? displayMoney(spendDashboardStats.mtdSpend.average)
-                      : '—'}
+                  {ticketDashboardStats.mtdSpend.count
+                    ? displayMoney(ticketDashboardStats.mtdSpend.average)
+                    : '—'}
                 </div>
-                <div className="subsea-kpi-meta flat">
-                  {reportSpendsLoading ? 'Loading…' : spendDashboardStats.avgCostMeta}
-                </div>
+                <div className="subsea-kpi-meta flat">{ticketDashboardStats.avgCostMeta}</div>
                 <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill green" style={{ width: `${spendDashboardStats.avgCostBarPct}%` }} />
+                  <div className="subsea-kpi-fill green" style={{ width: `${ticketDashboardStats.avgCostBarPct}%` }} />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Priced Bookings</div>
-                <div className="subsea-kpi-value">
-                  {reportSpendsLoading ? '…' : spendDashboardStats.mtdSpend.count}
-                </div>
+                <div className="subsea-kpi-value">{ticketDashboardStats.mtdSpend.count}</div>
                 <div className="subsea-kpi-meta flat">This month</div>
                 <div className="subsea-kpi-bar">
-                  <div
-                    className="subsea-kpi-fill blue"
-                    style={{ width: `${Math.min(100, spendDashboardStats.mtdSpend.count * 10)}%` }}
-                  />
+                  <div className="subsea-kpi-fill blue" style={{ width: `${Math.min(100, ticketDashboardStats.mtdSpend.count * 10)}%` }} />
                 </div>
               </div>
               <div className="subsea-kpi">
                 <div className="subsea-kpi-label">Destinations</div>
-                <div className="subsea-kpi-value">
-                  {reportSpendsLoading ? '…' : spendDashboardStats.destinationCount}
-                </div>
+                <div className="subsea-kpi-value">{ticketDashboardStats.spendByDestination.length}</div>
                 <div className="subsea-kpi-meta flat">With recorded spend</div>
                 <div className="subsea-kpi-bar">
-                  <div
-                    className="subsea-kpi-fill amber"
-                    style={{ width: `${Math.min(100, spendDashboardStats.destinationCount * 20)}%` }}
-                  />
+                  <div className="subsea-kpi-fill amber" style={{ width: `${Math.min(100, ticketDashboardStats.spendByDestination.length * 20)}%` }} />
                 </div>
               </div>
             </div>
@@ -2740,12 +2653,10 @@ const AdminTicketsPage = () => {
               <div className="subsea-pane">
                 <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Destination</div></div>
                 <div className="subsea-pane-body subsea-pane-body-compact">
-                  {reportSpendsLoading ? (
-                    <div className="subsea-state">Loading spend analytics…</div>
-                  ) : spendDashboardStats.spendByDestination.length === 0 ? (
+                  {ticketDashboardStats.spendByDestination.length === 0 ? (
                     <div className="subsea-state">No priced bookings yet</div>
                   ) : (
-                    spendDashboardStats.spendByDestination.map((row) => (
+                    ticketDashboardStats.spendByDestination.map((row) => (
                       <div className="subsea-metric-row" key={row.label}>
                         <div className="subsea-metric-grow">
                           <div className="subsea-metric-label">{row.label}</div>
@@ -2762,12 +2673,10 @@ const AdminTicketsPage = () => {
               <div className="subsea-pane">
                 <div className="subsea-pane-head"><div className="subsea-pane-title">Bookings by Cabin Class</div></div>
                 <div className="subsea-pane-body subsea-pane-body-compact">
-                  {reportSpendsLoading ? (
-                    <div className="subsea-state">Loading spend analytics…</div>
-                  ) : spendDashboardStats.bookingsByClass.length === 0 ? (
+                  {ticketDashboardStats.bookingsByClass.length === 0 ? (
                     <div className="subsea-state">No bookings yet</div>
                   ) : (
-                    spendDashboardStats.bookingsByClass.map((row) => (
+                    ticketDashboardStats.bookingsByClass.map((row) => (
                       <div className="subsea-metric-row" key={row.label}>
                         <span className="subsea-metric-label">{row.label}</span>
                         <span className="subsea-metric-val">{row.count} ({row.pct}%)</span>
@@ -2783,12 +2692,11 @@ const AdminTicketsPage = () => {
       </div>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} admin-tickets-detail-dialog flex flex-col max-w-lg gap-0 p-0`}>
-          <DialogHeader className="admin-tickets-detail-dialog-header">
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg max-h-[90vh] overflow-y-auto`}>
+          <DialogHeader>
             <DialogTitle>Ticket details</DialogTitle>
           </DialogHeader>
         {selectedTicket && (
-          <div className="admin-tickets-detail-dialog-body">
           <div className="admin-tickets-detail-card">
             <section className="admin-tickets-detail-section">
               <h3 className="admin-tickets-detail-heading">Flight details</h3>
@@ -2957,7 +2865,6 @@ const AdminTicketsPage = () => {
               </Button>
             </div>
           </div>
-          </div>
         )}
         </DialogContent>
       </Dialog>
@@ -2968,7 +2875,7 @@ const AdminTicketsPage = () => {
           if (!open && !cancelTicketSubmitting) setTicketToConfirmCancel(null);
         }}
       >
-        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
+        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>Cancel this ticket?</DialogTitle>
             <DialogDescription className="text-left pt-1">
@@ -3017,134 +2924,8 @@ const AdminTicketsPage = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!flightToConfirmBook}
-        onOpenChange={(open) => {
-          if (!open && !bookingFlightKey) setFlightToConfirmBook(null);
-        }}
-      >
-        <DialogContent showCloseButton={!bookingFlightKey} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
-          <DialogHeader>
-            <DialogTitle>Confirm flight booking</DialogTitle>
-            <DialogDescription asChild>
-              <div className="text-left pt-1 space-y-2 text-sm text-muted-foreground">
-                {flightToConfirmBook && flightBookConfirmSummary ? (
-                  <>
-                    <p>
-                      Book{' '}
-                      <span className="font-medium text-foreground">{flightBookConfirmSummary.route}</span>{' '}
-                      at{' '}
-                      <span className="font-medium text-foreground">
-                        {flightBookConfirmSummary.price}
-                      </span>{' '}
-                      ({flightBookConfirmSummary.fareLabel})?
-                    </p>
-                    {searchTripTypeUI === 'multi-city' ? (
-                      <p>
-                        Multi-city leg {activeMultiLegIndex + 1} of {multiSegments.length}.
-                      </p>
-                    ) : null}
-                    {searchProjectId ? (
-                      <p>
-                        Project:{' '}
-                        <span className="font-medium text-foreground">
-                          {projects.find((p) => p.id === searchProjectId)?.title ?? 'Selected project'}
-                        </span>
-                      </p>
-                    ) : null}
-                    {searchCrewIds.length > 0 ? (
-                      <p>
-                        Crew:{' '}
-                        <span className="font-medium text-foreground">
-                          {searchCrewIds.length} member{searchCrewIds.length !== 1 ? 's' : ''} selected
-                        </span>
-                      </p>
-                    ) : null}
-                    <p>
-                      {searchAdultCount} ticket{searchAdultCount !== 1 ? 's' : ''} will be submitted for
-                      superadmin approval.
-                    </p>
-                  </>
-                ) : null}
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setFlightToConfirmBook(null)}
-              disabled={!!bookingFlightKey}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void handleConfirmBookFlight()}
-              disabled={!!bookingFlightKey || !flightToConfirmBook}
-            >
-              {bookingFlightKey ? (
-                <>
-                  <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
-                  Booking…
-                </>
-              ) : (
-                <>
-                  <Plane size={16} className="mr-2" />
-                  Confirm booking
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={showCreateTicketConfirm}
-        onOpenChange={(open) => {
-          if (!open && !submitLoading) setShowCreateTicketConfirm(false);
-        }}
-      >
-        <DialogContent showCloseButton={!submitLoading} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md`}>
-          <DialogHeader>
-            <DialogTitle>Create ticket requests?</DialogTitle>
-            <DialogDescription className="text-left pt-1">
-              Create {selectedCrewIds.length} ticket request{selectedCrewIds.length !== 1 ? 's' : ''} for{' '}
-              <span className="font-medium text-foreground">{selectedProject?.title ?? 'this project'}</span>{' '}
-              ({formData.fromName.trim() || '—'} → {formData.toName.trim() || '—'},{' '}
-              {TRIP_OPTIONS.find((o) => o.value === formData.trip)?.label ?? formData.trip},{' '}
-              {formData.class.replace('_', ' ').toLowerCase()})? Each request will await superadmin approval.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowCreateTicketConfirm(false)}
-              disabled={submitLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void handleConfirmCreateTickets()}
-              disabled={submitLoading}
-            >
-              {submitLoading ? (
-                <>
-                  <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
-                  Creating…
-                </>
-              ) : (
-                `Create ${selectedCrewIds.length} ticket${selectedCrewIds.length !== 1 ? 's' : ''}`
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
-        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg`}>
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>
               {modalStep === 'project'
@@ -3457,6 +3238,209 @@ const AdminTicketsPage = () => {
               </>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Flight Search Booking Confirmation Dialog */}
+      <Dialog
+        open={!!flightToBook}
+        onOpenChange={(open) => {
+          if (!open && !bookingFlightKey && !searchBookingSuccess) {
+            setFlightToBook(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={!bookingFlightKey && !searchBookingSuccess} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
+          {searchBookingSuccess ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 animate-bounce">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-foreground">Booking Successful!</h3>
+              <p className="text-sm text-muted-foreground px-4">
+                {searchSuccessMessage || 'Ticket has been booked and sent for approval.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Book flight tickets?</DialogTitle>
+                <DialogDescription className="text-left pt-2 text-muted-foreground">
+                  Are you sure you want to book this flight for the selected crew?
+                </DialogDescription>
+              </DialogHeader>
+
+              {flightToBook && (() => {
+                const firstLeg = flightToBook.legs?.[0];
+                const lastLeg = flightToBook.legs?.[flightToBook.legs.length - 1];
+                const firstSeg = firstLeg?.itinerary?.[0];
+                const lastSeg = lastLeg?.itinerary?.[lastLeg.itinerary.length - 1];
+                const fromAirport = firstSeg?.fromAirport ?? firstLeg?.from ?? '—';
+                const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
+                const departureTime = firstLeg?.departureTime ?? '';
+                const arrivalTime = lastLeg?.arrivalTime ?? '';
+                const duration = firstLeg?.duration ?? '—';
+                const stops = (flightToBook as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
+                const airlineName = (flightToBook as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
+                const firstFare = flightToBook.fares?.[0];
+                const priceAmount = firstFare?.totalFare ?? 0;
+
+                return (
+                  <div className="mt-2">
+                    <div className="booking-confirm-card">
+                      <div className="booking-confirm-header">
+                        <div className="booking-confirm-airline">
+                          <span>{airlineName}</span>
+                        </div>
+                        <span className="booking-confirm-price">
+                          {currency} {priceAmount.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="booking-confirm-details">
+                        <div className="booking-confirm-node departure">
+                          <span className="booking-confirm-time">{departureTime ? fmtTime(departureTime) : '—'}</span>
+                          <span className="booking-confirm-date">{departureTime ? fmtDate(departureTime) : ''}</span>
+                          <span className="booking-confirm-airport" title={fromAirport}>{fromAirport}</span>
+                        </div>
+
+                        <div className="booking-confirm-path">
+                          <span className="booking-confirm-duration">{duration}</span>
+                          <div className="booking-confirm-line-wrap">
+                            <div className="booking-confirm-line" />
+                            <Plane size={14} className="booking-confirm-plane" />
+                          </div>
+                          <span className={`booking-confirm-stops ${stops === 0 ? 'nonstop' : ''}`}>
+                            {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}`}
+                          </span>
+                        </div>
+
+                        <div className="booking-confirm-node arrival">
+                          <span className="booking-confirm-time">{arrivalTime ? fmtTime(arrivalTime) : '—'}</span>
+                          <span className="booking-confirm-date">{arrivalTime ? fmtDate(arrivalTime) : ''}</span>
+                          <span className="booking-confirm-airport" title={toAirport}>{toAirport}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <DialogFooter className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setFlightToBook(null)}
+                  disabled={!!bookingFlightKey}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => flightToBook && executeSearchBooking(flightToBook)}
+                  disabled={!!bookingFlightKey || !flightToBook}
+                >
+                  {bookingFlightKey ? (
+                    <>
+                      <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
+                      Booking…
+                    </>
+                  ) : (
+                    <>
+                      <Plane size={16} className="mr-2" />
+                      Confirm Booking
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Booking Confirmation Dialog */}
+      <Dialog
+        open={showManualConfirm}
+        onOpenChange={(open) => {
+          if (!open && !submitLoading) setShowManualConfirm(false);
+        }}
+      >
+        <DialogContent showCloseButton={!submitLoading} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
+          <DialogHeader>
+            <DialogTitle>Confirm ticket creation?</DialogTitle>
+            <DialogDescription className="text-left pt-2 text-muted-foreground">
+              Are you sure you want to create flight tickets for the selected crew?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2">
+            <div className="booking-summary-card">
+              <div className="space-y-2.5">
+                <div className="booking-summary-row header">
+                  <span className="label">Project</span>
+                  <span className="value project-title">{selectedProject?.title ?? '—'}</span>
+                </div>
+                <div className="booking-summary-row">
+                  <span className="label">Crew Selected</span>
+                  <span className="value">
+                    {selectedCrewIds.length} crew member{selectedCrewIds.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="booking-summary-row">
+                  <span className="label">Route</span>
+                  <span className="value">
+                    {formData.fromName.trim()} → {formData.toName.trim()}
+                  </span>
+                </div>
+                {formData.trip && (
+                  <div className="booking-summary-row">
+                    <span className="label">Trip Type</span>
+                    <span className="value font-semibold">
+                      {formData.trip === 'ROUND_TRIP' ? 'Round Trip' : 'One Way'}
+                    </span>
+                  </div>
+                )}
+                {formData.class && (
+                  <div className="booking-summary-row">
+                    <span className="label">Cabin Class</span>
+                    <span className="value font-semibold">
+                      {formData.class}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowManualConfirm(false)}
+              disabled={submitLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={executeManualBooking}
+              disabled={submitLoading}
+            >
+              {submitLoading ? (
+                <>
+                  <span className="admin-tickets-spinner admin-tickets-spinner-inline mr-2" />
+                  Creating…
+                </>
+              ) : (
+                <>
+                  <Plus size={16} className="mr-2" />
+                  Confirm Create
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

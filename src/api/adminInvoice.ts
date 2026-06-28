@@ -1,5 +1,4 @@
 import { env } from '../config/env';
-import type { ApiPagination } from './superadmin';
 
 export type AdminInvoiceStatus = 'DRAFT' | 'GENERATED' | 'SENT';
 
@@ -101,12 +100,7 @@ function normalizeAdminInvoice(raw: Record<string, unknown>): AdminInvoiceApi {
       typeof raw.passengerName === 'string'
         ? raw.passengerName
         : passengerFromCrew || undefined,
-    invoiceNumber:
-      typeof raw.invoiceNumber === 'string'
-        ? raw.invoiceNumber
-        : typeof raw.invoice_number === 'string'
-          ? raw.invoice_number
-          : undefined,
+    invoiceNumber: typeof raw.invoiceNumber === 'string' ? raw.invoiceNumber : undefined,
     margin: typeof raw.margin === 'number' ? raw.margin : raw.margin != null ? Number(raw.margin) : null,
     total: typeof raw.total === 'number' ? raw.total : raw.total != null ? Number(raw.total) : null,
     pdf: typeof raw.pdf === 'string' ? raw.pdf : null,
@@ -137,48 +131,12 @@ function getErrorMessage(data: Record<string, unknown>, fallback: string): strin
   return msg ?? fallback;
 }
 
-export type SuperadminAdminInvoicesParams = {
-  page?: number;
-  limit?: number;
-};
-
-function normalizeAdminInvoicesPagination(raw: unknown): ApiPagination | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const value = raw as Record<string, unknown>;
-  if (
-    typeof value.page === 'number' &&
-    typeof value.limit === 'number' &&
-    typeof value.total === 'number' &&
-    typeof value.totalPages === 'number'
-  ) {
-    return {
-      page: value.page,
-      limit: value.limit,
-      total: value.total,
-      totalPages: value.totalPages,
-    };
-  }
-  return undefined;
-}
-
 /** List admin invoices - GET /superadmin/admin-invoices */
-export async function getSuperadminAdminInvoices(
-  params?: SuperadminAdminInvoicesParams
-): Promise<{ adminInvoices: AdminInvoiceApi[]; pagination?: ApiPagination }> {
+export async function getSuperadminAdminInvoices(): Promise<{ adminInvoices: AdminInvoiceApi[] }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const search = new URLSearchParams();
-  if (params?.limit != null) {
-    search.set('limit', String(params.limit));
-    search.set('page', String(params.page ?? 1));
-  } else if (params?.page != null) {
-    search.set('page', String(params.page));
-  }
-  const query = search.toString();
-  const url = `${env.apiBaseUrl}/superadmin/admin-invoices${query ? `?${query}` : ''}`;
-
-  const response = await fetch(url, {
+  const response = await fetch(`${env.apiBaseUrl}/superadmin/admin-invoices`, {
     method: 'GET',
     headers: getHeaders(),
     signal: controller.signal,
@@ -203,7 +161,6 @@ export async function getSuperadminAdminInvoices(
   const list = Array.isArray(data?.adminInvoices) ? data.adminInvoices : [];
   return {
     adminInvoices: (list as Record<string, unknown>[]).map(normalizeAdminInvoice),
-    pagination: normalizeAdminInvoicesPagination(data?.pagination),
   };
 }
 
@@ -211,8 +168,7 @@ export async function getSuperadminAdminInvoices(
 export async function uploadSuperadminAdminInvoicePdf(
   ticketId: string,
   file: File,
-  margin?: number,
-  invoiceNumber?: string
+  margin?: number
 ): Promise<{ adminInvoice?: AdminInvoiceApi; message?: string }> {
   if (!file.type.includes('pdf')) {
     throw new Error('Only PDF files are allowed');
@@ -222,10 +178,6 @@ export async function uploadSuperadminAdminInvoicePdf(
   formData.append('pdf', file);
   if (margin != null && !Number.isNaN(margin)) {
     formData.append('margin', String(margin));
-  }
-  const trimmedInvoiceNumber = invoiceNumber?.trim();
-  if (trimmedInvoiceNumber) {
-    formData.append('invoiceNumber', trimmedInvoiceNumber);
   }
 
   const token = localStorage.getItem(getStoredTokenKey());

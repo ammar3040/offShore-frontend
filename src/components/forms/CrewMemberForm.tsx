@@ -66,7 +66,6 @@ export interface CrewMemberFormData {
   norwegianDNumber: string;
   dawinciNumber: string;
   vantageNumber: string;
-  rank: string;
   organization: string;
   linkedin: string;
   visa: string;
@@ -82,7 +81,7 @@ interface CrewMemberFormProps {
   initialData?: CrewMemberFormData;
   submitLabel?: string;
   theme?: 'default' | 'subsea';
-  /** In edit mode, passport document upload is optional when files already exist on the server */
+  /** Relaxes certificate file requirement when editing an existing crew member */
   mode?: 'create' | 'edit';
 }
 
@@ -114,7 +113,6 @@ const defaultFormData: CrewMemberFormData = {
   norwegianDNumber: '',
   dawinciNumber: '',
   vantageNumber: '',
-  rank: '',
   organization: '',
   linkedin: '',
   visa: '',
@@ -438,7 +436,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'create' && formData.passportDocuments.length === 0) return;
+    if (!formData.country?.trim()) return;
+    if (!formData.city?.trim()) return;
+    if (mode === 'create') {
+      const validCerts = formData.certificates.filter(
+        (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document
+      );
+      if (validCerts.length === 0) return;
+    }
     await onSubmit(formData);
   };
 
@@ -474,24 +479,26 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="dateOfBirth" className="text-sm font-semibold text-foreground">Date of Birth</label>
+              <label htmlFor="dateOfBirth" className="text-sm font-semibold text-foreground">Date of Birth *</label>
               <input
                 type="date"
                 id="dateOfBirth"
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="nationality" className="text-sm font-semibold text-foreground">Nationality</label>
+              <label htmlFor="nationality" className="text-sm font-semibold text-foreground">Nationality *</label>
               <input
                 type="text"
                 id="nationality"
                 name="nationality"
                 value={formData.nationality}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
@@ -600,7 +607,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="alternatePhone" className="text-sm font-semibold text-foreground">Alternate Phone</label>
+              <label htmlFor="alternatePhone" className="text-sm font-semibold text-foreground">Alternate Phone *</label>
               <div className="flex gap-2 items-center">
                 <div className="relative shrink-0 w-[98px]" ref={altPhoneCountryWrapRef}>
                   <div
@@ -663,22 +670,24 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   onChange={(e) => setAltPhoneNumber(e.target.value.replace(/\D/g, ''))}
                   placeholder="5551234567"
                   autoComplete="tel-national"
+                  required
                 />
               </div>
             </div>
             <div className={cn("flex flex-col gap-2", "col-span-full")}>
-              <label htmlFor="address" className="text-sm font-semibold text-foreground">Address</label>
+              <label htmlFor="address" className="text-sm font-semibold text-foreground">Address *</label>
               <input
                 type="text"
                 id="address"
                 name="address"
                 value={formData.address}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="country" className="text-sm font-semibold text-foreground">Country</label>
+              <label htmlFor="country" className="text-sm font-semibold text-foreground">Country *</label>
               <div className="relative" ref={countryWrapRef}>
                 <input
                   id="country"
@@ -699,6 +708,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   }}
                   placeholder="Type to search country…"
                   autoComplete="off"
+                  required={!formData.country}
                 />
                 {countryOpen && (
                   <ul className={dropdownListClass}>
@@ -721,7 +731,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="city" className="text-sm font-semibold text-foreground">City</label>
+              <label htmlFor="city" className="text-sm font-semibold text-foreground">City *</label>
               <div className="relative" ref={cityWrapRef}>
                 <input
                   id="city"
@@ -739,6 +749,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   }}
                   placeholder={selectedCountryCode ? 'Type to search city…' : 'Select country first'}
                   autoComplete="off"
+                  required={!formData.city}
                   disabled={!selectedCountryCode}
                 />
                 {cityOpen && selectedCountryCode && (
@@ -762,13 +773,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="postalCode" className="text-sm font-semibold text-foreground">Postal Code</label>
+              <label htmlFor="postalCode" className="text-sm font-semibold text-foreground">Postal Code *</label>
               <input
                 type="text"
                 id="postalCode"
                 name="postalCode"
                 value={formData.postalCode}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
@@ -780,24 +792,26 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
           <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Passport Information</h3>
           <div className="grid grid-cols-2 gap-5">
             <div className="flex flex-col gap-2">
-              <label htmlFor="passportNumber" className="text-sm font-semibold text-foreground">Passport Number</label>
+              <label htmlFor="passportNumber" className="text-sm font-semibold text-foreground">Passport Number *</label>
               <input
                 type="text"
                 id="passportNumber"
                 name="passportNumber"
                 value={formData.passportNumber}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="passportIssueDate" className="text-sm font-semibold text-foreground">Issue Date</label>
+              <label htmlFor="passportIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
               <input
                 type="date"
                 id="passportIssueDate"
                 name="passportIssueDate"
                 value={formData.passportIssueDate}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
@@ -814,13 +828,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="passportIssuingCountry" className="text-sm font-semibold text-foreground">Issuing Country</label>
+              <label htmlFor="passportIssuingCountry" className="text-sm font-semibold text-foreground">Issuing Country *</label>
               <input
                 type="text"
                 id="passportIssuingCountry"
                 name="passportIssuingCountry"
                 value={formData.passportIssuingCountry}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
@@ -871,12 +886,13 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
           <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Identity Information</h3>
           <div className="grid grid-cols-2 gap-5">
             <div className="flex flex-col gap-2">
-              <label htmlFor="identityType" className="text-sm font-semibold text-foreground">Identity Type</label>
+              <label htmlFor="identityType" className="text-sm font-semibold text-foreground">Identity Type *</label>
               <select
                 id="identityType"
                 name="identityType"
                 value={formData.identityType}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               >
                 <option value="">Select</option>
@@ -887,42 +903,45 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </select>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="identityNumber" className="text-sm font-semibold text-foreground">Identity Number</label>
+              <label htmlFor="identityNumber" className="text-sm font-semibold text-foreground">Identity Number *</label>
               <input
                 type="text"
                 id="identityNumber"
                 name="identityNumber"
                 value={formData.identityNumber}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="identityIssueDate" className="text-sm font-semibold text-foreground">Issue Date</label>
+              <label htmlFor="identityIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
               <input
                 type="date"
                 id="identityIssueDate"
                 name="identityIssueDate"
                 value={formData.identityIssueDate}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="identityExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date</label>
+              <label htmlFor="identityExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date *</label>
               <input
                 type="date"
                 id="identityExpiryDate"
                 name="identityExpiryDate"
                 value={formData.identityExpiryDate}
                 onChange={handleInputChange}
+                required
                 className={inputClass}
               />
             </div>
           </div>
           
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-foreground">Identity Document</label>
+            <label className="text-sm font-semibold text-foreground">Identity Document *</label>
             <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-6 hover:border-muted-foreground/50">
               <input
                 ref={identityFileInputRef}
@@ -997,36 +1016,39 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 </div>
                 <div className="grid grid-cols-2 gap-5">
                   <div className="flex flex-col gap-2 col-span-full">
-                    <label className="text-sm font-semibold text-foreground">Certificate Name</label>
+                    <label className="text-sm font-semibold text-foreground">Certificate Name *</label>
                     <input
                       type="text"
                       value={cert.certificateName}
                       onChange={(e) => updateCertificate(certIndex, 'certificateName', e.target.value)}
                       placeholder="e.g. STCW Basic Safety"
+                      required
                       className={inputClass}
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-foreground">Issue Date</label>
+                    <label className="text-sm font-semibold text-foreground">Issue Date *</label>
                     <input
                       type="date"
                       value={cert.issueDate}
                       onChange={(e) => updateCertificate(certIndex, 'issueDate', e.target.value)}
+                      required
                       className={inputClass}
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-foreground">Expiry Date</label>
+                    <label className="text-sm font-semibold text-foreground">Expiry Date *</label>
                     <input
                       type="date"
                       value={cert.expiryDate}
                       onChange={(e) => updateCertificate(certIndex, 'expiryDate', e.target.value)}
+                      required
                       className={inputClass}
                     />
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-foreground">Certificate Document</label>
+                  <label className="text-sm font-semibold text-foreground">Certificate Document *</label>
                   <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-4 hover:border-muted-foreground/50">
                     <input
                       ref={(el) => {
@@ -1110,18 +1132,6 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="vantageNumber"
                 value={formData.vantageNumber}
                 onChange={handleInputChange}
-                className={inputClass}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="rank" className="text-sm font-semibold text-foreground">Rank</label>
-              <input
-                type="text"
-                id="rank"
-                name="rank"
-                value={formData.rank}
-                onChange={handleInputChange}
-                placeholder="e.g. Chief Officer"
                 className={inputClass}
               />
             </div>

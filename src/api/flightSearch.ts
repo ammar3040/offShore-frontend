@@ -86,14 +86,14 @@ const API_BASE = env.apiBaseUrl || '';
  * POST /crew-ticket/search-flights – search flights with given criteria.
  * Returns paginated result: { flights, total, page?, limit? }. On error throws with message.
  *
- * Optional time-based filters:
- * - departureTime + departureTimeMode (after|before, default after)
- * - arrivalDate, arrivalTime + arrivalTimeMode (before|after, default before)
- * - returnTime + returnTimeMode for round-trip return leg (default after)
+ * Optional time-based filters (backend applies to first leg):
+ * - departureTime: HH:mm – minimum departure time
+ * - arrivalDate: YYYY-MM-DD – arrival date at destination
+ * - arrivalTime: HH:mm – maximum arrival time at destination
  */
 export async function searchFlights(payload: SearchPayload): Promise<SearchFlightsResult> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(() => controller.abort(), env.flightSearchTimeout);
 
   const response = await fetch(`${API_BASE}/crew-ticket/search-flights`, {
     method: 'POST',
@@ -159,7 +159,7 @@ export async function bookFlight(params: {
   [key: string]: unknown;
 }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(() => controller.abort(), env.flightSearchTimeout);
 
   const body: BookFlightPayload = {
     ...(params.project_id ? { project_id: params.project_id } : {}),

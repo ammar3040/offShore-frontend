@@ -1,49 +1,6 @@
 .superadmin-tickets-page {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-}
-
-.superadmin-tickets-content {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.superadmin-tickets-list {
-  flex: 1;
-  min-height: 0;
-  max-height: calc(100dvh - 280px);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.superadmin-tickets-pagination {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
-  border-top: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-}
-
-.superadmin-tickets-pagination-info,
-.superadmin-tickets-pagination-page {
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
-
-.superadmin-tickets-pagination-btns {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .superadmin-tickets-header {
@@ -90,12 +47,23 @@
   border: 1px solid hsl(var(--destructive) / 0.3);
 }
 
+.superadmin-tickets-content {
+  overflow: hidden;
+}
+
 .superadmin-tickets-empty {
   padding: 40px 20px;
   text-align: center;
   font-size: 14px;
   color: hsl(var(--muted-foreground));
   margin: 0;
+}
+
+.superadmin-tickets-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .superadmin-ticket-card {
@@ -138,43 +106,9 @@
   font-size: 15px;
   font-weight: 600;
   color: hsl(var(--foreground));
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   overflow-wrap: anywhere;
   line-height: 1.35;
-}
-
-.superadmin-ticket-schedule {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: hsl(var(--foreground));
-}
-
-.superadmin-ticket-schedule-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.superadmin-ticket-schedule-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-}
-
-.superadmin-ticket-schedule-sep {
-  color: hsl(var(--muted-foreground));
-  font-size: 11px;
 }
 
 .superadmin-ticket-meta {
@@ -327,174 +261,60 @@
   to { transform: rotate(360deg); }
 }
 
-/* Detail dialog */
-.superadmin-tickets-detail-dialog {
+/* Detail overlay / modal */
+.superadmin-tickets-detail-card {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  max-height: min(90dvh, 760px);
-  padding: 0;
-  overflow: hidden;
+  gap: 24px;
 }
 
-.superadmin-tickets-detail-header {
-  flex-shrink: 0;
-  gap: 0;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid hsl(var(--border));
-  background: linear-gradient(180deg, hsl(var(--accent) / 0.55) 0%, hsl(var(--background)) 100%);
-}
-
-.superadmin-tickets-detail-header-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.superadmin-tickets-detail-title {
-  font-size: 1.05rem;
-  line-height: 1.35;
-  margin-right: 28px;
-}
-
-.superadmin-tickets-detail-subtitle {
-  margin-top: 4px;
-}
-
-.superadmin-tickets-detail-route-banner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-}
-
-.superadmin-tickets-detail-route-end {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.superadmin-tickets-detail-route-end--right {
-  text-align: right;
-  align-items: flex-end;
-}
-
-.superadmin-tickets-detail-route-code {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: hsl(var(--foreground));
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.superadmin-tickets-detail-route-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-
-.superadmin-tickets-detail-route-time {
-  font-size: 13px;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  overflow-wrap: anywhere;
-}
-
-.superadmin-tickets-detail-route-line {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 88px;
-}
-
-.superadmin-tickets-detail-route-line > span:first-child,
-.superadmin-tickets-detail-route-line > span:last-child {
-  width: 100%;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, hsl(var(--primary) / 0.15), hsl(var(--primary)), hsl(var(--primary) / 0.15));
-}
-
-.superadmin-tickets-detail-route-trip {
-  font-size: 11px;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
-  text-transform: capitalize;
-  white-space: nowrap;
-}
-
-.superadmin-tickets-detail-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 16px 24px;
-}
-
-.superadmin-tickets-detail-body .superadmin-ticket-approve-detail {
-  margin-top: 14px;
-}
-
-.superadmin-tickets-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.superadmin-tickets-detail-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
+.superadmin-tickets-detail-section {
+  padding: 16px;
+  background: hsl(var(--accent));
   border-radius: 10px;
   border: 1px solid hsl(var(--border));
-  background: hsl(var(--accent) / 0.35);
-  min-width: 0;
 }
 
-.superadmin-tickets-detail-field--full {
-  grid-column: 1 / -1;
-}
-
-.superadmin-tickets-detail-field-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-
-.superadmin-tickets-detail-field-value {
+.superadmin-tickets-detail-heading {
+  margin: 0 0 12px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: hsl(var(--foreground));
-  overflow-wrap: anywhere;
 }
 
-.superadmin-tickets-detail-field-meta {
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-  overflow-wrap: anywhere;
-}
-
-.superadmin-tickets-detail-footer {
-  flex-shrink: 0;
+.superadmin-tickets-detail-list {
   margin: 0;
-  padding: 14px 24px 20px;
-  border-top: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.superadmin-tickets-detail-item {
+  margin: 0;
+}
+
+.superadmin-tickets-detail-item dt {
+  font-size: 12px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 4px;
+}
+
+.superadmin-tickets-detail-item dd {
+  margin: 0;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+}
+
+.superadmin-tickets-detail-meta {
+  font-size: 12px !important;
+  color: hsl(var(--muted-foreground)) !important;
+  margin-top: 2px !important;
+}
+
+.superadmin-tickets-detail-pdf-status {
+  margin: 0 0 12px;
+  font-size: 14px;
 }
 
 .superadmin-tickets-detail-pdf-uploaded {
@@ -506,6 +326,13 @@
 
 .superadmin-tickets-detail-pdf-missing {
   color: hsl(var(--muted-foreground));
+}
+
+.superadmin-tickets-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .superadmin-ticket-upload-spinner,
@@ -540,16 +367,6 @@
   .superadmin-tickets-list {
     padding: 12px;
     gap: 10px;
-    max-height: calc(100dvh - 240px);
-  }
-
-  .superadmin-tickets-pagination {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .superadmin-tickets-pagination-btns {
-    justify-content: space-between;
   }
 
   .superadmin-ticket-card {
@@ -565,49 +382,6 @@
 
   .superadmin-ticket-route {
     font-size: 14px;
-  }
-
-  .superadmin-ticket-schedule {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .superadmin-ticket-schedule-sep {
-    display: none;
-  }
-
-  .superadmin-tickets-detail-header,
-  .superadmin-tickets-detail-body,
-  .superadmin-tickets-detail-footer {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .superadmin-tickets-detail-route-banner {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .superadmin-tickets-detail-route-end--right {
-    text-align: left;
-    align-items: flex-start;
-  }
-
-  .superadmin-tickets-detail-route-line {
-    flex-direction: row;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .superadmin-tickets-detail-route-line > span:first-child,
-  .superadmin-tickets-detail-route-line > span:last-child {
-    height: auto;
-    min-height: 2px;
-  }
-
-  .superadmin-tickets-detail-grid {
-    grid-template-columns: 1fr;
   }
 
   .superadmin-ticket-badges {

@@ -102,7 +102,6 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
     norwegianDNumber: pickString(raw, 'norwegian_d_number', 'norwegianDNumber'),
     dawinciNumber: pickString(raw, 'dawinci_number', 'dawinciNumber'),
     vantageNumber: pickString(raw, 'vantage_number', 'vantageNumber'),
-    rank: pickString(raw, 'rank'),
     organization: pickString(raw, 'organization'),
     linkedin: pickString(raw, 'linkedin'),
     visa: pickString(raw, 'visa'),
@@ -150,7 +149,6 @@ export interface CrewMemberApi {
   norwegian_d_number?: string;
   dawinci_number?: string;
   vantage_number?: string;
-  rank?: string;
   organization?: string;
   linkedin?: string;
   visa?: string;
@@ -164,10 +162,7 @@ export interface CrewMemberApi {
   signal?: string;
   /** Active project assignments when returned on the crew list payload. */
   activeProjects?: CrewAssignedProject[];
-}
-
-export function getCrewRankLabel(member: Pick<CrewMemberApi, 'rank'>): string {
-  return member.rank?.trim() || '—';
+  isAvailable?: boolean;
 }
 
 export interface GetCrewResponse {
@@ -367,9 +362,6 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   }
   if (data.vantageNumber?.trim()) {
     formData.append('vantage_number', data.vantageNumber.trim());
-  }
-  if (data.rank?.trim()) {
-    formData.append('rank', data.rank.trim());
   }
   if (data.organization?.trim()) {
     formData.append('organization', data.organization.trim());
@@ -1132,6 +1124,98 @@ export async function updateCrewAvailability(payload: {
   };
 }
 
+export interface CrewAvailabilityItem {
+  id: string;
+  crew_id: string;
+  from: string;
+  to: string;
+}
+
+export async function getCrewAvailabilityListAdmin(crewId: string): Promise<CrewAvailabilityItem[]> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/crew-availability?crew_id=${encodeURIComponent(crewId)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      throw new Error(`Failed to load availability list (${response.status})`);
+    }
+    const data = await response.json();
+    return Array.isArray(data?.availabilities) ? data.availabilities : [];
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+export async function addCrewAvailabilityAdmin(crewId: string, from: string, to: string): Promise<CrewAvailabilityItem> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/crew-availability`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ crew_id: crewId, from, to }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || `Failed to add availability (${response.status})`);
+    }
+    return data.availability;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+export async function deleteCrewAvailabilityAdmin(availabilityId: string): Promise<void> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/crew-availability/${encodeURIComponent(availabilityId)}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || `Failed to delete availability (${response.status})`);
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+
 export async function createCrewMember(data: CrewMemberFormData): Promise<Response> {
   const formData = buildCrewFormData(data);
   const token = getAuthToken();
@@ -1313,5 +1397,35 @@ export async function removeCrewFromProject(projectId: string, crewId: string): 
       }
     }
     throw new Error(message);
+  }
+}
+
+/**
+ * Updates a crew member's availability status.
+ * PATCH /crew/:id/availability
+ */
+export async function updateCrewAvailabilityStatus(id: string, isAvailable: boolean): Promise<Response> {
+  const token = getAuthToken();
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(id)}/availability`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ isAvailable }),
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

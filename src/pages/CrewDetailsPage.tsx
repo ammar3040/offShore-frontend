@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { DateRange } from 'react-day-picker';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,21 +21,32 @@ import {
   Settings,
   Ship,
   User,
+  Trash2,
 } from 'lucide-react';
-import { crewApiToFormData, getCrewById, updateCrewMember, type CrewAssignedProject, type CrewMemberApi } from '../api/crew';
+import {
+  crewApiToFormData,
+  getCrewById,
+  updateCrewMember,
+  updateCrewAvailabilityStatus,
+  getCrewAvailabilityListAdmin,
+  addCrewAvailabilityAdmin,
+  deleteCrewAvailabilityAdmin,
+  type CrewAssignedProject,
+  type CrewMemberApi,
+  type CrewAvailabilityItem,
+} from '../api/crew';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
-import type { CrewMemberFormData } from '../components/forms/CrewMemberForm';
-import { availabilityFromCrewSignal } from '../utils/crewAvailability';
+import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
+import { availabilityFromCrewSignal, getCrewSignal } from '../utils/crewAvailability';
+import { Calendar as DayPickerCalendar } from '../components/ui/calendar';
 import './RigsPage.css';
-
-const CrewMemberForm = lazy(() => import('../components/forms/CrewMemberForm'));
 
 type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay';
 
-const SAMPLE_RIGS = ['MV Deepwater Alpha', 'MV Nordic Surveyor', 'MV Poseidon Rex', 'MV Atlantic Pioneer'];
+
 
 function formatDate(value?: string): string {
   if (!value) return '-';
@@ -64,17 +76,19 @@ function field(value?: string | null): string {
   return value?.trim() || '-';
 }
 
-function statusMeta(crew?: CrewMemberApi | null): { label: string; className: string } {
-  const availability = availabilityFromCrewSignal(crew?.signal);
+function statusMeta(crew?: CrewMemberApi | null, projects?: CrewAssignedProject[]): { label: string; className: string } {
+  if (crew?.isAvailable === false) return { label: 'Unavailable', className: 'subsea-b-red' };
+  const activeProjects = projects ?? crew?.activeProjects ?? [];
+  const availability = availabilityFromCrewSignal(crew ? getCrewSignal({ ...crew, activeProjects }) : undefined);
   if (availability === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (availability === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
-  return { label: 'In Project', className: 'subsea-b-blue' };
+  return { label: 'In Proddject', className: 'subsea-b-blue' };
 }
 
 function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi | null) {
   const project = projects[0] ?? crew?.activeProjects?.[0];
   return {
-    rig: project?.title || SAMPLE_RIGS[0],
+    rig: project?.title || '—',
     signOn: project?.duration?.startDate,
     signOff: project?.duration?.endDate,
     status: project?.status || 'Active',
@@ -90,15 +104,178 @@ const CrewDetailsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAvailabilityOpen, setIsAvailabilityOpen] = useState(false);
   const [editCrew, setEditCrew] = useState<CrewMemberApi | null>(null);
   const [editPrefillLoading, setEditPrefillLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState(false);
 
-  const loadCrewDetails = useCallback(async () => {
+  const [availabilityItems, setAvailabilityItems] = useState<CrewAvailabilityItem[]>([]);
+  const [loadingAvailabilities, setLoadingAvailabilities] = useState(false);
+  const [availError, setAvailError] = useState<string | null>(null);
+  const [newAvailFrom, setNewAvailFrom] = useState('');
+  const [newAvailTo, setNewAvailTo] = useState('');
+  const [addingAvail, setAddingAvail] = useState(false);
+  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(undefined);
+
+  useEffect(() => {
+    if (selectedRange?.from) {
+      const yyyy = selectedRange.from.getFullYear();
+      const mm = String(selectedRange.from.getMonth() + 1).padStart(2, '0');
+      const dd = String(selectedRange.from.getDate()).padStart(2, '0');
+      setNewAvailFrom(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setNewAvailFrom('');
+    }
+    if (selectedRange?.to) {
+      const yyyy = selectedRange.to.getFullYear();
+      const mm = String(selectedRange.to.getMonth() + 1).padStart(2, '0');
+      const dd = String(selectedRange.to.getDate()).padStart(2, '0');
+      setNewAvailTo(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setNewAvailTo('');
+    }
+  }, [selectedRange]);
+
+  const loadAvailabilities = useCallback(async () => {
+    if (!crewId) return;
+    setLoadingAvailabilities(true);
+    setAvailError(null);
+    try {
+      const items = await getCrewAvailabilityListAdmin(crewId);
+      setAvailabilityItems(items);
+    } catch (err) {
+      setAvailError(err instanceof Error ? err.message : 'Failed to load availability');
+    } finally {
+      setLoadingAvailabilities(false);
+    }
+  }, [crewId]);
+
+  useEffect(() => {
+    if (isAvailabilityOpen) {
+      void loadAvailabilities();
+    }
+  }, [isAvailabilityOpen, loadAvailabilities]);
+
+  const handleAddAvailability = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!crewId || !newAvailFrom || !newAvailTo) return;
+    setAddingAvail(true);
+    setAvailError(null);
+    try {
+      await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo);
+      setNewAvailFrom('');
+      setNewAvailTo('');
+      setSelectedRange(undefined);
+      await loadAvailabilities();
+      await loadCrewDetails();
+    } catch (err) {
+      setAvailError(err instanceof Error ? err.message : 'Failed to add availability');
+    } finally {
+      setAddingAvail(false);
+    }
+  };
+
+  const handleFromChange = (val: string) => {
+    setNewAvailFrom(val);
+    if (val) {
+      const d = new Date(val);
+      setSelectedRange(prev => ({
+        from: d,
+        to: prev?.to && prev.to >= d ? prev.to : undefined
+      }));
+    } else {
+      setSelectedRange(prev => ({ ...prev, from: undefined }));
+    }
+  };
+
+  const handleToChange = (val: string) => {
+    setNewAvailTo(val);
+    if (val) {
+      const d = new Date(val);
+      setSelectedRange(prev => ({
+        from: prev?.from && prev.from <= d ? prev.from : undefined,
+        to: d
+      }));
+    } else {
+      setSelectedRange(prev => ({ from: prev?.from, to: undefined }));
+    }
+  };
+
+  const handleDeleteAvailability = async (availabilityId: string) => {
+    if (!window.confirm('Are you sure you want to delete this availability window?')) return;
+    setLoadingAvailabilities(true);
+    setAvailError(null);
+    try {
+      await deleteCrewAvailabilityAdmin(availabilityId);
+      await loadAvailabilities();
+      await loadCrewDetails();
+    } catch (err) {
+      setAvailError(err instanceof Error ? err.message : 'Failed to delete availability');
+    } finally {
+      setLoadingAvailabilities(false);
+    }
+  };
+
+  const selectedDates = useMemo(() => {
+    const dates: Date[] = [];
+    availabilityItems.forEach(item => {
+      if (!item.from || !item.to) return;
+      const start = new Date(item.from);
+      const end = new Date(item.to);
+      const current = new Date(start);
+      let limit = 0;
+      while (current <= end && limit < 1000) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+        limit++;
+      }
+    });
+    return dates;
+  }, [availabilityItems]);
+
+  const handleToggleAvailability = async () => {
+    if (!crew || !crewId) return;
+
+    const originalIsAvailable = crew.isAvailable;
+    const nextState = originalIsAvailable === false;
+
+    // 1. Optimistic Update (Immediate UI response)
+    setCrew(prev => prev ? { ...prev, isAvailable: nextState } : null);
+
+    setToggling(true);
+    setError(null);
+    try {
+      const res = await updateCrewAvailabilityStatus(crewId, nextState);
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = `Failed to update availability (${res.status})`;
+        if (text) {
+          try {
+            const j = JSON.parse(text);
+            msg = j?.message || j?.error || msg;
+          } catch {
+            msg = text;
+          }
+        }
+        throw new Error(msg);
+      }
+      // 2. Silent background reload to sync other computed properties (like signal)
+      await loadCrewDetails(false);
+    } catch (err) {
+      // 3. Rollback on failure
+      setCrew(prev => prev ? { ...prev, isAvailable: originalIsAvailable } : null);
+      setError(err instanceof Error ? err.message : 'Failed to update availability');
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const loadCrewDetails = useCallback(async (showSpinner = true) => {
     if (!crewId) return;
 
-    setLoading(true);
+    if (showSpinner) setLoading(true);
     setError(null);
     try {
       const res = await getCrewById(crewId);
@@ -107,7 +284,7 @@ const CrewDetailsPage = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load crew details');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, [crewId]);
 
@@ -174,10 +351,10 @@ const CrewDetailsPage = () => {
     }
   };
 
-  const status = statusMeta(crew);
+  const status = statusMeta(crew, projects);
   const pageError = !crewId ? 'Missing crew id' : error;
   const assignment = useMemo(() => currentAssignment(projects, crew), [projects, crew]);
-  const rank = crew?.rank?.trim() || '—';
+  const rank = crew?.organization || '—';
   const certExpiry = crew?.certificate_expiry_date || crew?.crew_certificate?.expiry_date;
   const passport = crew?.passport;
   const identity = crew?.identity;
@@ -227,6 +404,13 @@ const CrewDetailsPage = () => {
 
       <div className="subsea-main">
         <div className="subsea-topbar">
+          <button
+            type="button"
+            className="subsea-btn subsea-btn-default subsea-btn-sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={12} className="mr-1.5" /> Back
+          </button>
           <div className="subsea-crumb">
             <span>Subseacore</span>
             <span className="subsea-crumb-sep">/</span>
@@ -292,13 +476,51 @@ const CrewDetailsPage = () => {
                         <div className="subsea-prof-meta-item"><Mail size={13} /><span>{field(crew.email)}</span></div>
                       </div>
                     </div>
-                    <span className={`subsea-badge ${status.className}`}>{status.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className={`subsea-badge ${status.className}`}>{status.label}</span>
+                      <button
+                        type="button"
+                        onClick={handleToggleAvailability}
+                        disabled={toggling || loading}
+                        style={{
+                          position: 'relative',
+                          width: '40px',
+                          height: '20px',
+                          borderRadius: '10px',
+                          backgroundColor: crew.isAvailable !== false ? '#22c55e' : '#d1d5db',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                          transition: 'background-color 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          outline: 'none',
+                        }}
+                        title={crew.isAvailable !== false ? "Click to make Unavailable" : "Click to make Available"}
+                      >
+                        <span
+                          style={{
+                            display: 'block',
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: '#fff',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                            transform: crew.isAvailable !== false ? 'translateX(22px)' : 'translateX(2px)',
+                            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                        />
+                      </button>
+                    </div>
                   </div>
                   <div className="subsea-prof-actions">
                     <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Sign Off</button>
                     <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><RefreshCw size={11} /> Find Relief</button>
                     <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><Plane size={11} /> Book Flight</button>
                     <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><FileText size={11} /> View Contract</button>
+                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setIsAvailabilityOpen(true)}>
+                      <Calendar size={11} /> Check Availability
+                    </button>
                   </div>
                 </div>
               </section>
@@ -469,14 +691,6 @@ const CrewDetailsPage = () => {
             <p>Loading profile…</p>
           </div>
         ) : editCrew && editInitialData ? (
-          <Suspense
-            fallback={
-              <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading form">
-                <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
-                <p>Loading form…</p>
-              </div>
-            }
-          >
             <CrewMemberForm
               key={editCrew.id}
               mode="edit"
@@ -487,8 +701,134 @@ const CrewDetailsPage = () => {
               submitLabel="Save Changes"
               theme="subsea"
             />
-          </Suspense>
         ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={isAvailabilityOpen}
+        onClose={() => setIsAvailabilityOpen(false)}
+        title="Check Availability"
+        size="large"
+        variant="subsea"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
+          <div className="flex flex-col items-center">
+            <h3 className="text-sm font-semibold mb-3 text-muted-foreground flex items-center gap-2">
+              <Calendar size={14} className="text-primary" />
+              Availability Calendar
+            </h3>
+            <div className="border rounded-xl p-4 bg-muted/40 shadow-sm w-full flex justify-center">
+              <DayPickerCalendar
+                mode="range"
+                selected={selectedRange}
+                onSelect={setSelectedRange}
+                modifiers={{
+                  available: selectedDates
+                }}
+                modifiersClassNames={{
+                  available: "bg-emerald-600! text-white! font-semibold hover:bg-emerald-700!"
+                }}
+                className="rounded-md border shadow-sm bg-background"
+              />
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground self-start">
+              <span className="inline-block w-3.5 h-3.5 bg-emerald-500 rounded" />
+              <span>Highlighted dates indicate crew availability.</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 overflow-y-auto max-h-[500px] pr-2">
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Crew Availability Status</h3>
+              <p className="text-xs text-muted-foreground font-medium">
+                Currently tracking active rotation windows and custom availability ranges for {crewName(crew)}.
+              </p>
+            </div>
+
+            {availError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-200">
+                {availError}
+              </div>
+            )}
+
+            {/* Add Availability Form */}
+            <form onSubmit={handleAddAvailability} className="border p-3 rounded-lg bg-muted/20 flex flex-col gap-3">
+              <div className="text-xs font-semibold text-foreground">Add New Availability Window</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">START DATE</label>
+                  <input
+                    type="date"
+                    required
+                    value={newAvailFrom}
+                    onChange={(e) => handleFromChange(e.target.value)}
+                    className="w-full text-xs p-1.5 border rounded bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">END DATE</label>
+                  <input
+                    type="date"
+                    required
+                    value={newAvailTo}
+                    onChange={(e) => handleToChange(e.target.value)}
+                    className="w-full text-xs p-1.5 border rounded bg-background"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={addingAvail}
+                className="subsea-btn subsea-btn-primary subsea-btn-xs self-end"
+              >
+                {addingAvail ? 'Adding...' : 'Add Range'}
+              </button>
+            </form>
+
+            <div className="text-xs font-semibold mt-2 text-foreground">Active Availability Ranges</div>
+            
+            <div className="subsea-pane-body-flat flex flex-col gap-3 overflow-y-auto max-h-[220px]">
+              {loadingAvailabilities && availabilityItems.length === 0 ? (
+                <div className="text-xs text-muted-foreground text-center py-4">Loading ranges...</div>
+              ) : availabilityItems.length === 0 ? (
+                <div className="text-xs text-muted-foreground text-center py-4">No custom availability ranges defined.</div>
+              ) : (
+                availabilityItems.map((item) => {
+                  const fromStr = item.from ? new Date(item.from).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
+                  const toStr = item.to ? new Date(item.to).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
+                  return (
+                    <div key={item.id} className="p-3 border rounded-lg bg-emerald-50/60 border-emerald-200 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-semibold text-emerald-800">Available Window</div>
+                        <div className="text-sm font-bold text-emerald-950">{fromStr} — {toStr}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAvailability(item.id)}
+                        className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Delete availability range"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="border-t pt-3 mt-auto">
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  className="subsea-btn subsea-btn-default subsea-btn-sm"
+                  onClick={() => setIsAvailabilityOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </Modal>
     </div>
   );

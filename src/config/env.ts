@@ -3,7 +3,7 @@
  * All environment variables must be prefixed with VITE_ to be accessible in the client
  */
 
-const DEFAULT_PRODUCTION_API = 'https://marine-flight-backend.vercel.app';
+const DEFAULT_PRODUCTION_API = 'https://offshore-backend-x8wo.onrender.com';
 
 function normalizeApiBaseUrl(raw: string | undefined): string {
   const value = (raw ?? '').trim().replace(/\/+$/, '');
@@ -23,6 +23,13 @@ export const env = {
   apiBaseUrl: normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
 
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
+  flightSearchTimeout: Number(import.meta.env.VITE_FLIGHT_SEARCH_TIMEOUT) || 90000,
+
+  // Encryption Settings
+  enableEncryption: import.meta.env.VITE_ENABLE_ENCRYPTION === 'true',
+  aesSecret: (import.meta.env.VITE_AES_SECRET ?? '').replace(/\\n/g, '\n') || '0kob1_(6#hooH$-vt<fbQr6|CZD4gS_aes',
+  hmacSecret: import.meta.env.VITE_HMAC_SECRET || '0kob1_(6#hooH$-vt<fbQr6|CZD4gS',
+  rsaPublicKey: (import.meta.env.VITE_RSA_PUBLIC_KEY ?? '').replace(/\\n/g, '\n'),
 
   // Authentication
   authTokenKey: import.meta.env.VITE_AUTH_TOKEN_KEY || 'offshore_crm_auth_token',

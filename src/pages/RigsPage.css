@@ -1167,6 +1167,7 @@
 }
 
 .user-mgmt-availability-dot {
+  display: inline-block;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -1200,6 +1201,10 @@
 
 .user-mgmt-availability-dot--ending-soon {
   background-color: #f97316;
+}
+
+.user-mgmt-availability-dot--unavailable {
+  background-color: #9ca3af;
 }
 
 .subsea-row-actions {
@@ -1259,6 +1264,7 @@
 .subsea-c-av-3 { background: #fef3c7; color: #92400e; }
 .subsea-c-av-4 { background: #ede9fe; color: #6d28d9; }
 .subsea-c-av-5 { background: #ecfeff; color: #0e7490; }
+.subsea-c-av-unavailable { background: #f3f4f6; color: #4b5563; }
 
 .subsea-state,
 .subsea-empty-cell {
@@ -1479,30 +1485,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 96px;
-}
-
-.subsea-airport--end {
-  text-align: right;
-}
-
-.subsea-airport--end .subsea-airport-city,
-.subsea-airport--end .subsea-airport-date {
-  margin-left: auto;
-}
-
-.subsea-airport-date {
-  margin-top: 3px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.subsea-airport--end .subsea-airport-date {
-  margin-left: auto;
 }
 
 .subsea-flight-line {
@@ -2423,6 +2405,23 @@
   color: #111827 !important;
   border-color: #dde1e8 !important;
   color-scheme: light !important;
+  --background: 0 0% 100% !important;
+  --foreground: 222.2 84% 4.9% !important;
+  --card: 0 0% 100% !important;
+  --card-foreground: 222.2 84% 4.9% !important;
+  --popover: 0 0% 100% !important;
+  --popover-foreground: 222.2 84% 4.9% !important;
+  --primary: 221.2 83.2% 53.3% !important;
+  --primary-foreground: 210 40% 98% !important;
+  --secondary: 210 40% 96.1% !important;
+  --secondary-foreground: 222.2 47.4% 11.2% !important;
+  --muted: 210 40% 96.1% !important;
+  --muted-foreground: 215.4 16.3% 46.9% !important;
+  --accent: 210 40% 96.1% !important;
+  --accent-foreground: 222.2 47.4% 11.2% !important;
+  --border: 214.3 31.8% 91.4% !important;
+  --input: 214.3 31.8% 91.4% !important;
+  --ring: 221.2 83.2% 53.3% !important;
 }
 
 .subsea-form-light .modal-header {
@@ -2734,4 +2733,70 @@
 .subsea-form-light-overlay li:hover,
 .subsea-form-light-overlay [class*="hover:bg-muted"]:hover {
   background: #f7f8fa !important;
+}
+
+/* Custom styling overrides for calendar selected availability dates inside light modal */
+.subsea-form-light button[data-selected-single="true"],
+.subsea-form-light button[aria-selected="true"],
+.subsea-form-light button.rdp-day_selected,
+.subsea-form-light [data-selected-single="true"] button {
+  background-color: #059669 !important; /* emerald-600 */
+  color: #ffffff !important; /* white text */
+}
+
+/* Force the text color of the day numbers and any inner elements to be white */
+.subsea-form-light button[data-selected-single="true"] *,
+.subsea-form-light button[aria-selected="true"] *,
+.subsea-form-light button.rdp-day_selected *,
+.subsea-form-light [data-variant="ghost"][data-selected-single="true"],
+.subsea-form-light [data-variant="ghost"][data-selected-single="true"] * {
+  color: #ffffff !important;
+}
+
+.subsea-form-light button[data-selected-single="true"]:hover,
+.subsea-form-light button[aria-selected="true"]:hover,
+.subsea-form-light button.rdp-day_selected:hover,
+.subsea-form-light [data-selected-single="true"] button:hover,
+.subsea-form-light [data-variant="ghost"][data-selected-single="true"]:hover {
+  background-color: #047857 !important; /* emerald-700 */
+  color: #ffffff !important;
+}
+
+/* Force white text for available/booked availability highlighted dates and active selections */
+.subsea-form-light button.rdp-day_available,
+.subsea-form-light button.rdp-day_available *,
+.subsea-form-light button[class*="available"],
+.subsea-form-light button[class*="available"] *,
+.subsea-form-light button[class*="bg-emerald"],
+.subsea-form-light button[class*="bg-emerald"] *,
+.subsea-form-light button[data-selected-single="true"],
+.subsea-form-light button[data-selected-single="true"] *,
+.subsea-form-light button[data-range-start="true"],
+.subsea-form-light button[data-range-start="true"] *,
+.subsea-form-light button[data-range-end="true"],
+.subsea-form-light button[data-range-end="true"] *,
+.subsea-form-light button[data-range-middle="true"],
+.subsea-form-light button[data-range-middle="true"] *,
+.subsea-form-light button[aria-selected="true"],
+.subsea-form-light button[aria-selected="true"] * {
+  color: #ffffff !important;
+}
+
+.subsea-form-light button.rdp-day_available:hover,
+.subsea-form-light button.rdp-day_available:hover *,
+.subsea-form-light button[class*="available"]:hover,
+.subsea-form-light button[class*="available"]:hover *,
+.subsea-form-light button[class*="bg-emerald"]:hover,
+.subsea-form-light button[class*="bg-emerald"]:hover *,
+.subsea-form-light button[data-selected-single="true"]:hover,
+.subsea-form-light button[data-selected-single="true"]:hover *,
+.subsea-form-light button[data-range-start="true"]:hover,
+.subsea-form-light button[data-range-start="true"]:hover *,
+.subsea-form-light button[data-range-end="true"]:hover,
+.subsea-form-light button[data-range-end="true"]:hover *,
+.subsea-form-light button[data-range-middle="true"]:hover,
+.subsea-form-light button[data-range-middle="true"]:hover *,
+.subsea-form-light button[aria-selected="true"]:hover,
+.subsea-form-light button[aria-selected="true"]:hover * {
+  color: #ffffff !important;
 }

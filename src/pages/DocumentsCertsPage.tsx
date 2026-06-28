@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
+  ArrowLeft,
   BadgeCheck,
   ChevronDown,
   Download,
@@ -309,6 +310,13 @@ const DocumentsCertsPage = () => {
 
       <div className="subsea-main">
         <div className="subsea-topbar">
+          <button
+            type="button"
+            className="subsea-btn subsea-btn-default subsea-btn-sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={12} className="mr-1.5" /> Back
+          </button>
           <div className="subsea-crumb">
             <span>Subseacore</span>
             <span className="subsea-crumb-sep">/</span>

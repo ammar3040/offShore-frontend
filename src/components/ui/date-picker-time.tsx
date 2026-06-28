@@ -10,10 +10,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import {
-  TimeFilterModeToggle,
-  type TimeFilterMode,
-} from "@/components/ui/time-wheel-picker"
 import { format, parseISO } from "date-fns"
 import { ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -32,20 +28,6 @@ function parseDate(value: string | undefined): Date | undefined {
 /** Format Date to YYYY-MM-DD */
 function toDateString(d: Date): string {
   return format(d, "yyyy-MM-dd")
-}
-
-/** Convert HH:mm to native time input value (HH:mm:ss) */
-function toTimeInputValue(value: string | undefined): string {
-  if (!value?.trim()) return ""
-  const [hours = "00", minutes = "00", seconds = "00"] = value.split(":")
-  return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}:${seconds.padStart(2, "0")}`
-}
-
-/** Convert native time input value to HH:mm */
-function fromTimeInputValue(value: string): string {
-  if (!value.trim()) return ""
-  const [hours = "00", minutes = "00"] = value.split(":")
-  return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`
 }
 
 function InlineClearButton({
@@ -91,6 +73,7 @@ export interface DatePickerTimeProps {
   dateLabel?: string
   timeLabel?: string
   datePlaceholder?: string
+  timePlaceholder?: string
   /** If false, hide the time input */
   showTime?: boolean
   idPrefix?: string
@@ -104,12 +87,6 @@ export interface DatePickerTimeProps {
   popoverContentClassName?: string
   /** Extra classes for the date trigger button */
   triggerClassName?: string
-  /** Show before/after toggle when a time is set */
-  showTimeMode?: boolean
-  timeMode?: TimeFilterMode
-  onTimeModeChange?: (mode: TimeFilterMode) => void
-  /** departure = before/after departure; arrival = before/after arrival labels */
-  timeModeKind?: "departure" | "arrival"
 }
 
 export function DatePickerTime({
@@ -120,6 +97,7 @@ export function DatePickerTime({
   dateLabel = "Date",
   timeLabel = "Time",
   datePlaceholder = "Select date",
+  timePlaceholder = "HH:mm",
   showTime = true,
   idPrefix = "date-picker",
   className,
@@ -128,12 +106,8 @@ export function DatePickerTime({
   disablePastDates = false,
   popoverContentClassName,
   triggerClassName,
-  showTimeMode = false,
-  timeMode = "after",
-  onTimeModeChange,
-  timeModeKind = "departure",
 }: DatePickerTimeProps) {
-  const [dateOpen, setDateOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
   const today = React.useMemo(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -146,7 +120,7 @@ export function DatePickerTime({
     <FieldGroup className={cn("flex-row flex-wrap gap-4", className)}>
       <Field>
         <FieldLabel htmlFor={`${idPrefix}-date`}>{dateLabel}</FieldLabel>
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+        <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -180,7 +154,7 @@ export function DatePickerTime({
               onSelect={(d) => {
                 if (d) {
                   onDateChange(toDateString(d))
-                  setDateOpen(false)
+                  setOpen(false)
                 }
               }}
             />
@@ -188,30 +162,16 @@ export function DatePickerTime({
         </Popover>
       </Field>
       {showTime && (
-        <Field className="min-w-[120px] flex-1">
-          <div className="time-picker-field-header">
-            <FieldLabel htmlFor={`${idPrefix}-time`}>{timeLabel}</FieldLabel>
-            {showTimeMode && !!time?.trim() && onTimeModeChange ? (
-              <TimeFilterModeToggle
-                mode={timeMode}
-                onChange={onTimeModeChange}
-                kind={timeModeKind}
-              />
-            ) : null}
-          </div>
+        <Field className="min-w-[100px] flex-1">
+          <FieldLabel htmlFor={`${idPrefix}-time`}>{timeLabel}</FieldLabel>
           <div className="admin-tickets-datetime-time-wrap">
             <Input
               type="time"
               id={`${idPrefix}-time`}
-              step={1}
-              value={toTimeInputValue(time)}
-              onChange={(e) => onTimeChange(fromTimeInputValue(e.target.value))}
-              className={cn(
-                "admin-tickets-search-control admin-tickets-datetime-time-input",
-                "bg-background appearance-none",
-                "[&::-webkit-calendar-picker-indicator]:hidden",
-                "[&::-webkit-calendar-picker-indicator]:appearance-none"
-              )}
+              value={time ?? ""}
+              onChange={(e) => onTimeChange(e.target.value)}
+              placeholder={timePlaceholder}
+              className="appearance-none bg-background admin-tickets-datetime-time-input [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
             />
             {onClear && showClear ? (
               <InlineClearButton onClear={onClear} label={`Clear ${timeLabel.toLowerCase()}`} />

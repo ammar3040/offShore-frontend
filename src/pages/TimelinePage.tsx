@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Anchor,
+  ArrowLeft,
   BadgeCheck,
   CalendarDays,
   ChevronDown,
@@ -19,7 +20,7 @@ import {
   UserMinus,
   Users,
 } from 'lucide-react';
-import { getCrewList, type CrewMemberApi } from '../api/crew';
+import { getCrewList, getCrewAvailabilityListAdmin, type CrewMemberApi, type CrewAvailabilityItem } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import {
@@ -322,6 +323,27 @@ const TimelinePage = () => {
   const [selectedRigId, setSelectedRigId] = useState<string>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedEventType, setSelectedEventType] = useState<EventTypeFilter>('all');
+  const [selectedCrewAvailabilities, setSelectedCrewAvailabilities] = useState<CrewAvailabilityItem[]>([]);
+
+  useEffect(() => {
+    if (selectedCrewId === 'all') {
+      setSelectedCrewAvailabilities([]);
+      return;
+    }
+
+    let active = true;
+    getCrewAvailabilityListAdmin(selectedCrewId)
+      .then(items => {
+        if (active) setSelectedCrewAvailabilities(items);
+      })
+      .catch(err => {
+        console.error('Failed to load selected crew availability:', err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCrewId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -456,6 +478,29 @@ const TimelinePage = () => {
       });
     });
 
+    const selectedCrewMember = data.crew.find(c => c.id === selectedCrewId);
+    const selectedCrewName = selectedCrewMember ? crewName(selectedCrewMember) : '';
+
+    if (selectedCrewId !== 'all' && selectedCrewName) {
+      selectedCrewAvailabilities.forEach((avail) => {
+        const start = parseDate(avail.from);
+        const end = parseDate(avail.to);
+        if (start && end) {
+          rows.push({
+            id: `crew-avail-${avail.id}`,
+            date: start,
+            title: `${selectedCrewName} Available`,
+            reference: `Available from ${formatShortDate(start)} to ${formatShortDate(end)}`,
+            crew: selectedCrewName,
+            type: 'Sign-On',
+            status: 'Available',
+            tone: 'green',
+            icon: UserCheck,
+          });
+        }
+      });
+    }
+
     data.rigs.forEach((rig) => {
       const created = parseDate(rig.createdAt);
       if (!created) return;
@@ -473,7 +518,7 @@ const TimelinePage = () => {
     });
 
     return rows.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [data]);
+  }, [data, selectedCrewId, selectedCrewAvailabilities]);
 
   const sidebarCrewOptions = useMemo(() => {
     return [...data.crew]
@@ -781,6 +826,26 @@ const TimelinePage = () => {
     return map;
   }, [filteredEvents]);
 
+  const isDayAvailable = useMemo(() => {
+    if (selectedCrewId === 'all') return () => true;
+    
+    if (selectedCrewAvailabilities.length === 0) {
+      return () => true;
+    }
+    
+    return (day: Date) => {
+      const d = new Date(day);
+      d.setHours(0,0,0,0);
+      return selectedCrewAvailabilities.some(avail => {
+        const start = new Date(avail.from);
+        start.setHours(0,0,0,0);
+        const end = new Date(avail.to);
+        end.setHours(23,59,59,999);
+        return d >= start && d <= end;
+      });
+    };
+  }, [selectedCrewId, selectedCrewAvailabilities]);
+
   const visibleMonthEvents = useMemo(() => {
     return filteredEvents.filter(
       (event) => event.date.getFullYear() === monthStart.getFullYear() && event.date.getMonth() === monthStart.getMonth()
@@ -887,17 +952,19 @@ const TimelinePage = () => {
           >
             <Users size={13} /> All crew <span className="subsea-sb-count">{data.crew.length}</span>
           </button>
-          {sidebarCrewOptions.slice(0, 12).map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              className={`subsea-sb-link timeline-crew-link${selectedCrewId === row.id ? ' active' : ''}`}
-              onClick={() => setSelectedCrewId(row.id)}
-            >
-              <span className={`${crewAvailabilityDotClass(row.availability)} timeline-crew-link-dot`} />
-              <span className="timeline-crew-link-name">{row.name}</span>
-            </button>
-          ))}
+          <div className="timeline-crew-list-container">
+            {sidebarCrewOptions.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                className={`subsea-sb-link timeline-crew-link${selectedCrewId === row.id ? ' active' : ''}`}
+                onClick={() => setSelectedCrewId(row.id)}
+              >
+                <span className={`${crewAvailabilityDotClass(row.availability)} timeline-crew-link-dot`} />
+                <span className="timeline-crew-link-name">{row.name}</span>
+              </button>
+            ))}
+          </div>
           <div className="subsea-sb-group">Event Types</div>
           <button
             type="button"
@@ -953,6 +1020,13 @@ const TimelinePage = () => {
 
       <div className="subsea-main">
         <div className="subsea-topbar">
+          <button
+            type="button"
+            className="subsea-btn subsea-btn-default subsea-btn-sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={12} className="mr-1.5" /> Back
+          </button>
           <div className="subsea-crumb">
             <span>Subseacore</span>
             <span className="subsea-crumb-sep">/</span>
@@ -1054,8 +1128,9 @@ const TimelinePage = () => {
                       const dayEvents = eventsByDay.get(dateKey(day)) ?? [];
                       const isOtherMonth = day.getMonth() !== monthStart.getMonth();
                       const isToday = dateKey(day) === todayKey;
+                      const isUnavailable = !isDayAvailable(day);
                       return (
-                        <article key={dateKey(day)} className={`timeline-cal-day${isOtherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}`}>
+                        <article key={dateKey(day)} className={`timeline-cal-day${isOtherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isUnavailable ? ' unavailable' : ''}`}>
                           <div className="timeline-cal-day-num">{day.getDate()}</div>
                           {dayEvents.slice(0, 3).map((event) => {
                             const Icon = event.icon;

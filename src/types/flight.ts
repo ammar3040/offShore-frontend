@@ -55,35 +55,10 @@ export interface Journey {
   itinerary: ItinerarySegment[];
 }
 
-/** Summary for one direction of a round-trip search result. */
-export interface FlightDirection {
-  departureTime: string;
-  arrivalTime: string;
-  from: string;
-  to: string;
-  duration: string;
-  stops: number;
-  /** Segment-level legs when provided by search API */
-  legs?: ItinerarySegment[] | Journey[];
-  airlineName: string;
-  airlineCode: string;
-  via?: string | null;
-}
-
-export type FlightTripType = 'one-way' | 'round-trip' | 'split-tickets';
-
 export interface Flight {
   id: string;
-  tripType?: FlightTripType;
   legs: Journey[];
   fares: Fare[];
-  /** Outbound summary (round-trip search results) */
-  outbound?: FlightDirection;
-  /** Return summary (round-trip search results) */
-  inbound?: FlightDirection;
-  /** Full trip bounds: outbound departure through return arrival */
-  departureTime?: string;
-  arrivalTime?: string;
   cashback?: number | null;
   markup?: number | null;
 }
@@ -93,18 +68,14 @@ export type CurrencyCode = 'USD' | 'GBP' | 'INR';
 export type FlightSortBy = 'price' | 'duration' | 'stops' | 'departureTime' | 'arrivalTime';
 export type FlightSortOrder = 'asc' | 'desc';
 
-export type TimeFilterMode = 'before' | 'after';
-
 export interface SearchPayload {
   tripType: 'one-way' | 'round-trip' | 'split-tickets';
   from: Airport | null;
   to: Airport | null;
   departureDate: string;
   returnDate?: string;
-  /** Return-leg departure time for round-trip, HH:mm (e.g. "18:00") */
+  /** Return time for round-trip, HH:mm (e.g. "18:00") */
   returnTime?: string;
-  /** When returnTime is set: after (default) or before that return departure time */
-  returnTimeMode?: TimeFilterMode;
   connectingDate?: string;
   adults: number;
   children: number;
@@ -124,16 +95,12 @@ export interface SearchPayload {
   page?: number;
   limit?: number;
   /** Optional time-based filters (backend filters first leg) */
-  /** Departure time filter, HH:mm (e.g. "08:00") */
+  /** Minimum departure time, HH:mm (e.g. "08:00") */
   departureTime?: string;
-  /** When departureTime is set: after (default) or before that departure time */
-  departureTimeMode?: TimeFilterMode;
   /** Arrival date at destination, YYYY-MM-DD (e.g. "2025-03-15") */
   arrivalDate?: string;
-  /** Arrival time filter, HH:mm (e.g. "18:00") */
+  /** Maximum arrival time at destination, HH:mm (e.g. "18:00") */
   arrivalTime?: string;
-  /** When arrivalTime is set: before (default) or after that arrival time */
-  arrivalTimeMode?: TimeFilterMode;
   /** Backend sorting applied after filters and before pagination */
   sortBy?: FlightSortBy;
   sortOrder?: FlightSortOrder;
