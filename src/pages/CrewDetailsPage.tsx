@@ -7,7 +7,6 @@ import {
   Banknote,
   Calendar,
   CreditCard,
-  FileText,
   History,
   IdCard,
   Loader2,
@@ -17,17 +16,16 @@ import {
   Phone,
   Plane,
   Printer,
-  RefreshCw,
   Settings,
   Ship,
   User,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   crewApiToFormData,
   getCrewById,
   updateCrewMember,
-  updateCrewAvailabilityStatus,
   getCrewAvailabilityListAdmin,
   addCrewAvailabilityAdmin,
   deleteCrewAvailabilityAdmin,
@@ -42,9 +40,10 @@ import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import { availabilityFromCrewSignal, getCrewSignal } from '../utils/crewAvailability';
 import { Calendar as DayPickerCalendar } from '../components/ui/calendar';
+import { toast } from 'sonner';
 import './RigsPage.css';
 
-type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay';
+type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay' | 'availability';
 
 
 
@@ -104,12 +103,13 @@ const CrewDetailsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAvailabilityOpen, setIsAvailabilityOpen] = useState(false);
   const [editCrew, setEditCrew] = useState<CrewMemberApi | null>(null);
   const [editPrefillLoading, setEditPrefillLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [toggling, setToggling] = useState(false);
+
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const [availabilityItems, setAvailabilityItems] = useState<CrewAvailabilityItem[]>([]);
   const [loadingAvailabilities, setLoadingAvailabilities] = useState(false);
@@ -153,25 +153,33 @@ const CrewDetailsPage = () => {
   }, [crewId]);
 
   useEffect(() => {
-    if (isAvailabilityOpen) {
+    if (crewId) {
       void loadAvailabilities();
     }
-  }, [isAvailabilityOpen, loadAvailabilities]);
+  }, [crewId, loadAvailabilities]);
 
-  const handleAddAvailability = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddAvailability = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!crewId || !newAvailFrom || !newAvailTo) return;
     setAddingAvail(true);
     setAvailError(null);
     try {
       await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo);
+      
+      const startFormatted = new Date(newAvailFrom).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const endFormatted = new Date(newAvailTo).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      toast.success(`Successfully added availability from ${startFormatted} to ${endFormatted}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       setNewAvailFrom('');
       setNewAvailTo('');
       setSelectedRange(undefined);
       await loadAvailabilities();
       await loadCrewDetails();
     } catch (err) {
-      setAvailError(err instanceof Error ? err.message : 'Failed to add availability');
+      const msg = err instanceof Error ? err.message : 'Failed to add availability';
+      setAvailError(msg);
+      toast.error(msg);
     } finally {
       setAddingAvail(false);
     }
@@ -203,18 +211,29 @@ const CrewDetailsPage = () => {
     }
   };
 
-  const handleDeleteAvailability = async (availabilityId: string) => {
-    if (!window.confirm('Are you sure you want to delete this availability window?')) return;
+  const handleDeleteAvailability = (availabilityId: string) => {
+    setDeleteTargetId(availabilityId);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteAvailability = async () => {
+    if (!deleteTargetId) return;
     setLoadingAvailabilities(true);
     setAvailError(null);
     try {
-      await deleteCrewAvailabilityAdmin(availabilityId);
+      await deleteCrewAvailabilityAdmin(deleteTargetId);
+      toast.success('Availability window deleted successfully');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       await loadAvailabilities();
       await loadCrewDetails();
     } catch (err) {
-      setAvailError(err instanceof Error ? err.message : 'Failed to delete availability');
+      const msg = err instanceof Error ? err.message : 'Failed to delete availability';
+      setAvailError(msg);
+      toast.error(msg);
     } finally {
       setLoadingAvailabilities(false);
+      setIsDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -235,42 +254,6 @@ const CrewDetailsPage = () => {
     return dates;
   }, [availabilityItems]);
 
-  const handleToggleAvailability = async () => {
-    if (!crew || !crewId) return;
-
-    const originalIsAvailable = crew.isAvailable;
-    const nextState = originalIsAvailable === false;
-
-    // 1. Optimistic Update (Immediate UI response)
-    setCrew(prev => prev ? { ...prev, isAvailable: nextState } : null);
-
-    setToggling(true);
-    setError(null);
-    try {
-      const res = await updateCrewAvailabilityStatus(crewId, nextState);
-      if (!res.ok) {
-        const text = await res.text();
-        let msg = `Failed to update availability (${res.status})`;
-        if (text) {
-          try {
-            const j = JSON.parse(text);
-            msg = j?.message || j?.error || msg;
-          } catch {
-            msg = text;
-          }
-        }
-        throw new Error(msg);
-      }
-      // 2. Silent background reload to sync other computed properties (like signal)
-      await loadCrewDetails(false);
-    } catch (err) {
-      // 3. Rollback on failure
-      setCrew(prev => prev ? { ...prev, isAvailable: originalIsAvailable } : null);
-      setError(err instanceof Error ? err.message : 'Failed to update availability');
-    } finally {
-      setToggling(false);
-    }
-  };
 
   const loadCrewDetails = useCallback(async (showSpinner = true) => {
     if (!crewId) return;
@@ -366,6 +349,7 @@ const CrewDetailsPage = () => {
     { id: 'jobs', label: 'Jobs', icon: Ship },
     { id: 'visa', label: 'Visa', icon: IdCard },
     { id: 'pay', label: 'Pay', icon: Banknote },
+    { id: 'availability', label: 'Availability', icon: Calendar },
   ];
 
   return (
@@ -478,49 +462,27 @@ const CrewDetailsPage = () => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span className={`subsea-badge ${status.className}`}>{status.label}</span>
-                      <button
-                        type="button"
-                        onClick={handleToggleAvailability}
-                        disabled={toggling || loading}
-                        style={{
-                          position: 'relative',
-                          width: '40px',
-                          height: '20px',
-                          borderRadius: '10px',
-                          backgroundColor: crew.isAvailable !== false ? '#22c55e' : '#d1d5db',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 0,
-                          transition: 'background-color 0.2s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          outline: 'none',
-                        }}
-                        title={crew.isAvailable !== false ? "Click to make Unavailable" : "Click to make Available"}
-                      >
-                        <span
-                          style={{
-                            display: 'block',
-                            width: '16px',
-                            height: '16px',
-                            borderRadius: '50%',
-                            backgroundColor: '#fff',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                            transform: crew.isAvailable !== false ? 'translateX(22px)' : 'translateX(2px)',
-                            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                          }}
-                        />
-                      </button>
                     </div>
                   </div>
                   <div className="subsea-prof-actions">
-                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Sign Off</button>
-                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><RefreshCw size={11} /> Find Relief</button>
-                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><Plane size={11} /> Book Flight</button>
-                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><FileText size={11} /> View Contract</button>
-                    <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setIsAvailabilityOpen(true)}>
-                      <Calendar size={11} /> Check Availability
+                    <button
+                      type="button"
+                      className="subsea-btn subsea-btn-default subsea-btn-sm"
+                      onClick={() => {
+                        if (crew) {
+                          const activeProjectId = projects[0]?.id || '';
+                          navigate('/tickets', {
+                            state: {
+                              crewId: crew.id,
+                              projectId: activeProjectId
+                            }
+                          });
+                        }
+                      }}
+                    >
+                      <Plane size={11} /> Book Flight
                     </button>
+
                   </div>
                 </div>
               </section>
@@ -676,10 +638,234 @@ const CrewDetailsPage = () => {
                   </div>
                 </div>
               )}
+
+              {activeTab === 'availability' && (
+                <div className="subsea-g2">
+                  <style dangerouslySetInnerHTML={{
+                    __html: `
+                    .subsea-date-input::-webkit-calendar-picker-indicator {
+                      filter: invert(0) !important;
+                      cursor: pointer;
+                    }
+                  ` }} />
+                  <div className="subsea-pane" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px' }}>
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground flex items-center gap-2" style={{ alignSelf: 'flex-start' }}>
+                      <Calendar size={14} className="text-primary" />
+                      Availability Calendar
+                    </h3>
+                    <div className="border rounded-xl p-4 bg-white shadow-sm w-full flex justify-center" style={{ backgroundColor: '#ffffff', borderColor: 'var(--subsea-border)' }}>
+                      <DayPickerCalendar
+                        mode="range"
+                        selected={selectedRange}
+                        onSelect={setSelectedRange}
+                        modifiers={{
+                          available: selectedDates
+                        }}
+                        modifiersClassNames={{
+                          available: "bg-emerald-600! text-white! font-semibold hover:bg-emerald-700!"
+                        }}
+                        className="rounded-md border shadow-sm bg-white! text-black!"
+                        style={{
+                          backgroundColor: '#ffffff',
+                          color: '#000000'
+                        }}
+                        classNames={{
+                          caption_label: "text-black! font-semibold text-sm",
+                          weekday: "text-zinc-600! font-medium",
+                          day: "text-black!",
+                          button_previous: "text-black! hover:bg-zinc-100!",
+                          button_next: "text-black! hover:bg-zinc-100!",
+                          outside: "text-zinc-400! opacity-50",
+                        }}
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground" style={{ alignSelf: 'flex-start' }}>
+                      <span className="inline-block w-3.5 h-3.5 bg-emerald-500 rounded" />
+                      <span>Highlighted dates indicate crew availability.</span>
+                    </div>
+                  </div>
+
+                  <div className="subsea-pane" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">Crew Availability Status</h3>
+                      <p className="text-xs text-muted-foreground font-medium">
+                        Currently tracking active rotation windows and custom availability ranges for {crewName(crew)}.
+                      </p>
+                    </div>
+
+                    {availError && (
+                      <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-200" style={{ margin: 0 }}>
+                        {availError}
+                      </div>
+                    )}
+
+                    {/* Add Availability Form */}
+                    <form onSubmit={(e) => e.preventDefault()} className="border p-3 rounded-lg bg-muted/20 flex flex-col gap-3" style={{ borderColor: 'var(--subsea-border)' }}>
+                      <div className="text-xs font-semibold text-foreground">Add New Availability Window</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">START DATE</label>
+                          <input
+                            type="date"
+                            required
+                            value={newAvailFrom}
+                            onChange={(e) => handleFromChange(e.target.value)}
+                            className="w-full text-xs p-1.5 border rounded bg-white text-black subsea-date-input"
+                            style={{ borderColor: 'var(--subsea-border)', backgroundColor: '#ffffff', color: '#000000' }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">END DATE</label>
+                          <input
+                            type="date"
+                            required
+                            value={newAvailTo}
+                            min={newAvailFrom}
+                            onChange={(e) => handleToChange(e.target.value)}
+                            className="w-full text-xs p-1.5 border rounded bg-white text-black subsea-date-input"
+                            style={{ borderColor: 'var(--subsea-border)', backgroundColor: '#ffffff', color: '#000000' }}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddAvailability()}
+                        disabled={addingAvail}
+                        className="subsea-btn subsea-btn-primary subsea-btn-xs"
+                        style={{ alignSelf: 'flex-end' }}
+                      >
+                        {addingAvail ? 'Adding...' : 'Add Range'}
+                      </button>
+                    </form>
+
+                    <div className="text-xs font-semibold mt-2 text-foreground">Active Availability Ranges</div>
+
+                    <div className="subsea-pane-body-flat flex flex-col gap-3 overflow-y-auto" style={{ maxHeight: '220px' }}>
+                      {loadingAvailabilities && availabilityItems.length === 0 ? (
+                        <div className="text-xs text-muted-foreground text-center py-4">Loading ranges...</div>
+                      ) : availabilityItems.length === 0 ? (
+                        <div className="text-xs text-muted-foreground text-center py-4">No custom availability ranges defined.</div>
+                      ) : (
+                        availabilityItems.map((item) => {
+                          const fromStr = item.from ? new Date(item.from).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
+                          const toStr = item.to ? new Date(item.to).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
+                          return (
+                            <div key={item.id} className="p-3 border rounded-lg bg-emerald-50/60 border-emerald-200 flex items-center justify-between" style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                              <div>
+                                <div className="text-xs font-semibold text-emerald-800" style={{ color: 'var(--subsea-text-success, #059669)' }}>Available Window</div>
+                                <div className="text-sm font-bold text-emerald-950" style={{ color: 'var(--subsea-text)' }}>{fromStr} — {toStr}</div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAvailability(item.id)}
+                                className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                title="Delete availability range"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           ) : null}
         </main>
       </div>
+
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          setIsDeleteConfirmOpen(false);
+          setDeleteTargetId(null);
+        }}
+        title="Confirm Deletion"
+        size="small"
+        variant="subsea"
+      >
+        <div style={{ padding: '20px 10px', textAlign: 'center' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            color: '#ef4444',
+            marginBottom: '16px'
+          }}>
+            <AlertTriangle size={28} />
+          </div>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: 700,
+            color: '#111827',
+            marginBottom: '8px',
+            fontFamily: 'inherit'
+          }}>
+            Delete Availability Window?
+          </h3>
+          <p style={{
+            fontSize: '14px',
+            color: '#4b5563',
+            lineHeight: 1.5,
+            marginBottom: '24px'
+          }}>
+            Are you sure you want to delete this availability window? This action cannot be undone and will immediately update the crew's availability status.
+          </p>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '12px'
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsDeleteConfirmOpen(false);
+                setDeleteTargetId(null);
+              }}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: '1px solid #d1d5db',
+                backgroundColor: '#ffffff',
+                color: '#374151',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteAvailability}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#ef4444',
+                color: '#ffffff',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+              }}
+              className="hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={isEditModalOpen} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea">
         {editError && (
@@ -691,144 +877,17 @@ const CrewDetailsPage = () => {
             <p>Loading profile…</p>
           </div>
         ) : editCrew && editInitialData ? (
-            <CrewMemberForm
-              key={editCrew.id}
-              mode="edit"
-              onSubmit={handleSubmitEdit}
-              onCancel={closeEditModal}
-              isLoading={editLoading}
-              initialData={editInitialData}
-              submitLabel="Save Changes"
-              theme="subsea"
-            />
+          <CrewMemberForm
+            key={editCrew.id}
+            mode="edit"
+            onSubmit={handleSubmitEdit}
+            onCancel={closeEditModal}
+            isLoading={editLoading}
+            initialData={editInitialData}
+            submitLabel="Save Changes"
+            theme="subsea"
+          />
         ) : null}
-      </Modal>
-
-      <Modal
-        isOpen={isAvailabilityOpen}
-        onClose={() => setIsAvailabilityOpen(false)}
-        title="Check Availability"
-        size="large"
-        variant="subsea"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-          <div className="flex flex-col items-center">
-            <h3 className="text-sm font-semibold mb-3 text-muted-foreground flex items-center gap-2">
-              <Calendar size={14} className="text-primary" />
-              Availability Calendar
-            </h3>
-            <div className="border rounded-xl p-4 bg-muted/40 shadow-sm w-full flex justify-center">
-              <DayPickerCalendar
-                mode="range"
-                selected={selectedRange}
-                onSelect={setSelectedRange}
-                modifiers={{
-                  available: selectedDates
-                }}
-                modifiersClassNames={{
-                  available: "bg-emerald-600! text-white! font-semibold hover:bg-emerald-700!"
-                }}
-                className="rounded-md border shadow-sm bg-background"
-              />
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground self-start">
-              <span className="inline-block w-3.5 h-3.5 bg-emerald-500 rounded" />
-              <span>Highlighted dates indicate crew availability.</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 overflow-y-auto max-h-[500px] pr-2">
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Crew Availability Status</h3>
-              <p className="text-xs text-muted-foreground font-medium">
-                Currently tracking active rotation windows and custom availability ranges for {crewName(crew)}.
-              </p>
-            </div>
-
-            {availError && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-200">
-                {availError}
-              </div>
-            )}
-
-            {/* Add Availability Form */}
-            <form onSubmit={handleAddAvailability} className="border p-3 rounded-lg bg-muted/20 flex flex-col gap-3">
-              <div className="text-xs font-semibold text-foreground">Add New Availability Window</div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">START DATE</label>
-                  <input
-                    type="date"
-                    required
-                    value={newAvailFrom}
-                    onChange={(e) => handleFromChange(e.target.value)}
-                    className="w-full text-xs p-1.5 border rounded bg-background"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">END DATE</label>
-                  <input
-                    type="date"
-                    required
-                    value={newAvailTo}
-                    onChange={(e) => handleToChange(e.target.value)}
-                    className="w-full text-xs p-1.5 border rounded bg-background"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={addingAvail}
-                className="subsea-btn subsea-btn-primary subsea-btn-xs self-end"
-              >
-                {addingAvail ? 'Adding...' : 'Add Range'}
-              </button>
-            </form>
-
-            <div className="text-xs font-semibold mt-2 text-foreground">Active Availability Ranges</div>
-            
-            <div className="subsea-pane-body-flat flex flex-col gap-3 overflow-y-auto max-h-[220px]">
-              {loadingAvailabilities && availabilityItems.length === 0 ? (
-                <div className="text-xs text-muted-foreground text-center py-4">Loading ranges...</div>
-              ) : availabilityItems.length === 0 ? (
-                <div className="text-xs text-muted-foreground text-center py-4">No custom availability ranges defined.</div>
-              ) : (
-                availabilityItems.map((item) => {
-                  const fromStr = item.from ? new Date(item.from).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
-                  const toStr = item.to ? new Date(item.to).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
-                  return (
-                    <div key={item.id} className="p-3 border rounded-lg bg-emerald-50/60 border-emerald-200 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-semibold text-emerald-800">Available Window</div>
-                        <div className="text-sm font-bold text-emerald-950">{fromStr} — {toStr}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAvailability(item.id)}
-                        className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete availability range"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="border-t pt-3 mt-auto">
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  className="subsea-btn subsea-btn-default subsea-btn-sm"
-                  onClick={() => setIsAvailabilityOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </Modal>
     </div>
   );

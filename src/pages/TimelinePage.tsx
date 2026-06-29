@@ -828,19 +828,19 @@ const TimelinePage = () => {
 
   const isDayAvailable = useMemo(() => {
     if (selectedCrewId === 'all') return () => true;
-    
+
     if (selectedCrewAvailabilities.length === 0) {
       return () => true;
     }
-    
+
     return (day: Date) => {
       const d = new Date(day);
-      d.setHours(0,0,0,0);
+      d.setHours(0, 0, 0, 0);
       return selectedCrewAvailabilities.some(avail => {
         const start = new Date(avail.from);
-        start.setHours(0,0,0,0);
+        start.setHours(0, 0, 0, 0);
         const end = new Date(avail.to);
-        end.setHours(23,59,59,999);
+        end.setHours(23, 59, 59, 999);
         return d >= start && d <= end;
       });
     };

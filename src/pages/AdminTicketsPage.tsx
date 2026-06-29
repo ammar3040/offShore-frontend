@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { SubseaNavRail } from '@/components/SubseaNavRail';
 import { SubseaProfileMenu } from '@/components/SubseaProfileMenu';
 import { SUBSEA_FORM_LIGHT_CLASS } from '@/lib/subseaTheme';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -696,6 +696,7 @@ function FlightResultCard({
 
 const AdminTicketsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [rigs, setRigs] = useState<RigApi[]>([]);
@@ -810,6 +811,47 @@ const AdminTicketsPage = () => {
       cancelled = true;
     };
   }, []);
+  useEffect(() => {
+    if (location.state?.crewId && projects.length > 0) {
+      const { crewId, projectId } = location.state;
+      
+      // 1. Pre-fill Search tab
+      setSearchCrewIds([crewId]);
+      if (projectId) {
+        setSearchProjectId(projectId);
+      }
+      setActiveTab('search');
+
+      // 2. Pre-fill and open the manual modal
+      if (projectId) {
+        setCreateProjectId(projectId);
+        const project = projects.find((p) => p.id === projectId);
+        if (project) {
+          setSelectedProject(project);
+          setModalStep('crew');
+          setSelectedCrewIds([crewId]);
+          setCrewLoading(true);
+          getCrewEnrolledInProject(projectId)
+            .then((res) => {
+              setCrew(res.crew ?? []);
+              setModalStep('form');
+            })
+            .catch(() => setCrew([]))
+            .finally(() => {
+              setCrewLoading(false);
+              setIsCreateModalOpen(true);
+            });
+        } else {
+          setIsCreateModalOpen(true);
+        }
+      } else {
+        setIsCreateModalOpen(true);
+      }
+
+      // Clear the history state so refreshing doesn't keep opening the modal
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, projects]);
 
   const filteredSearchCrewList = useMemo(() => {
     const q = searchCrewFilter.trim().toLowerCase();

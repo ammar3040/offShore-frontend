@@ -26,17 +26,26 @@ const LoginPage = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('handleSubmit called, preventing default...');
     e.preventDefault();
     setError(null);
-    if (!email || !password) return;
+    console.log('email:', email, 'password:', password);
+    if (!email || !password) {
+      console.log('email or password empty, returning');
+      return;
+    }
     setIsLoading(true);
     try {
+      console.log('calling authLogin...');
       const { redirectTo } = await authLogin({ email, password });
+      console.log('authLogin success, redirecting to:', redirectTo);
       navigate(redirectTo, { replace: true });
     } catch (err) {
+      console.error('handleSubmit error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
+      console.log('handleSubmit finished, isLoading set to false');
     }
   };
 

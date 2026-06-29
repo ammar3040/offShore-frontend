@@ -56,6 +56,7 @@ function getErrorMessage(data: Record<string, unknown>, fallback: string): strin
  * Stores token in the appropriate key based on role and returns redirect path.
  */
 export async function authLogin(payload: AuthLoginPayload): Promise<{ redirectTo: string }> {
+  console.log('authLogin api function called with:', { email: payload.email });
   const body = {
     email: payload.email.trim(),
     password: payload.password,
@@ -64,51 +65,63 @@ export async function authLogin(payload: AuthLoginPayload): Promise<{ redirectTo
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  });
-  clearTimeout(timeoutId);
+  const url = `${env.apiBaseUrl}/auth/login`;
+  console.log('fetching url:', url, 'with body:', { email: body.email });
 
-  const text = await response.text();
-  let data: AuthLoginResponse & { message?: string; error?: string; detail?: string | string[]; msg?: string } = {};
-  if (text) {
-    try {
-      data = JSON.parse(text) as typeof data;
-    } catch {
-      data = {};
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    console.log('fetch response received, status:', response.status);
+    const text = await response.text();
+    console.log('response body text length:', text.length);
+
+    let data: AuthLoginResponse & { message?: string; error?: string; detail?: string | string[]; msg?: string } = {};
+    if (text) {
+      try {
+        data = JSON.parse(text) as typeof data;
+      } catch (err) {
+        console.error('failed to parse json:', err);
+      }
     }
-  }
 
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data as Record<string, unknown>, `Login failed (${response.status})`));
-  }
+    if (!response.ok) {
+      throw new Error(getErrorMessage(data as Record<string, unknown>, `Login failed (${response.status})`));
+    }
 
-  const token = getToken(data);
-  const role = getRole(data);
+    const token = getToken(data);
+    const role = getRole(data);
+    console.log('parsed token:', token ? 'exists' : 'missing', 'role:', role);
 
-  if (!token) {
-    throw new Error('Invalid response: missing access token');
-  }
+    if (!token) {
+      throw new Error('Invalid response: missing access token');
+    }
 
-  const email = data.user?.email ?? payload.email.trim();
+    const email = data.user?.email ?? payload.email.trim();
 
-  switch (role) {
-    case 'admin':
-      localStorage.setItem(env.authTokenKey, token);
-      return { redirectTo: '/' };
-    case 'crew':
-      localStorage.setItem(env.crewTokenKey, token);
-      setCrewPanelUser({ email });
-      return { redirectTo: '/panel/crew/dashboard' };
-    case 'superadmin':
-      localStorage.setItem(env.superadminTokenKey, token);
-      return { redirectTo: '/panel/superadmin/dashboard' };
-    default:
-      // Fallback: treat as admin if role not specified
-      localStorage.setItem(env.authTokenKey, token);
-      return { redirectTo: '/' };
+    switch (role) {
+      case 'admin':
+        localStorage.setItem(env.authTokenKey, token);
+        return { redirectTo: '/' };
+      case 'crew':
+        localStorage.setItem(env.crewTokenKey, token);
+        setCrewPanelUser({ email });
+        return { redirectTo: '/panel/crew/dashboard' };
+      case 'superadmin':
+        localStorage.setItem(env.superadminTokenKey, token);
+        return { redirectTo: '/panel/superadmin/dashboard' };
+      default:
+        // Fallback: treat as admin if role not specified
+        localStorage.setItem(env.authTokenKey, token);
+        return { redirectTo: '/' };
+    }
+  } catch (err) {
+    console.error('fetch or api processing error inside authLogin:', err);
+    throw err;
   }
 }

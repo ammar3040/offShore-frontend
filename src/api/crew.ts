@@ -457,7 +457,7 @@ export async function getCrewById(crewId: string): Promise<GetCrewByIdResponse> 
   return { crew: crewData, projects: projectsList };
 }
 
-export async function getCrewList(): Promise<GetCrewResponse> {
+export async function getCrewList(filters?: { availabilityStart?: string; availabilityEnd?: string }): Promise<GetCrewResponse> {
   const token = getAuthToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -466,10 +466,21 @@ export async function getCrewList(): Promise<GetCrewResponse> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const queryParams = new URLSearchParams();
+  if (filters?.availabilityStart) {
+    queryParams.append('availabilityStart', filters.availabilityStart);
+  }
+  if (filters?.availabilityEnd) {
+    queryParams.append('availabilityEnd', filters.availabilityEnd);
+  }
+
+  const queryString = queryParams.toString();
+  const url = `${env.apiBaseUrl}/crew${queryString ? `?${queryString}` : ''}`;
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
-  const response = await fetch(`${env.apiBaseUrl}/crew`, {
+  const response = await fetch(url, {
     method: 'GET',
     headers,
     signal: controller.signal,
@@ -1400,32 +1411,3 @@ export async function removeCrewFromProject(projectId: string, crewId: string): 
   }
 }
 
-/**
- * Updates a crew member's availability status.
- * PATCH /crew/:id/availability
- */
-export async function updateCrewAvailabilityStatus(id: string, isAvailable: boolean): Promise<Response> {
-  const token = getAuthToken();
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
-
-  try {
-    const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(id)}/availability`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ isAvailable }),
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}

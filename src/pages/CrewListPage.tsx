@@ -97,15 +97,30 @@ const CrewListPage = () => {
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [removeSuccess, setRemoveSuccess] = useState(false);
 
+  const getTodayString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const [startDateFilter, setStartDateFilter] = useState(getTodayString());
+  const [endDateFilter, setEndDateFilter] = useState(getTodayString());
+
   const pageSize = 5;
 
-  const loadCrew = useCallback(async (withListLoading: boolean) => {
+  const loadCrew = useCallback(async (withListLoading: boolean, start?: string, end?: string) => {
     if (withListLoading) {
       setLoading(true);
       setError(null);
     }
     try {
-      const crewRes = await getCrewList();
+      const filters = {
+        availabilityStart: start || undefined,
+        availabilityEnd: end || undefined,
+      };
+      const crewRes = await getCrewList(filters);
       setCrew(crewRes.crew ?? []);
     } catch (err) {
       if (withListLoading) {
@@ -117,12 +132,12 @@ const CrewListPage = () => {
   }, []);
 
   useEffect(() => {
-    void loadCrew(true);
-  }, [loadCrew]);
+    void loadCrew(true, startDateFilter, endDateFilter);
+  }, [startDateFilter, endDateFilter, loadCrew]);
 
   const refreshCrewData = useCallback(() => {
-    return loadCrew(false);
-  }, [loadCrew]);
+    return loadCrew(false, startDateFilter, endDateFilter);
+  }, [loadCrew, startDateFilter, endDateFilter]);
 
   const filteredCrew = useMemo(() => {
     let list = crew.filter((member) => {
@@ -482,6 +497,35 @@ const CrewListPage = () => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
+              />
+            </div>
+            <div className="subsea-tb-search" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', width: 'auto', minWidth: '150px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--subsea-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>From</span>
+              <input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => {
+                  const newFrom = e.target.value;
+                  setStartDateFilter(newFrom);
+                  if (endDateFilter < newFrom) {
+                    setEndDateFilter(newFrom);
+                  }
+                  setPage(1);
+                }}
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'inherit', cursor: 'pointer', width: '100%' }}
+              />
+            </div>
+            <div className="subsea-tb-search" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', width: 'auto', minWidth: '150px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--subsea-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>To</span>
+              <input
+                type="date"
+                value={endDateFilter}
+                min={startDateFilter}
+                onChange={(e) => {
+                  setEndDateFilter(e.target.value);
+                  setPage(1);
+                }}
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'inherit', cursor: 'pointer', width: '100%' }}
               />
             </div>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Ranks</button>

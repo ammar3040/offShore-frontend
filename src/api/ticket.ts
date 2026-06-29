@@ -635,3 +635,30 @@ export async function uploadCrewTicketPdfByCrew(ticketId: string, file: File): P
 
   return response.json();
 }
+
+export interface CrewTicketReportSpends {
+  scope: {
+    projectId: string;
+    bookingsInScope: number;
+    currency: string;
+    timezone: string;
+  };
+  mtd: {
+    month: string;
+    totalSpend: number;
+    pricedBookings: number;
+    averageTicketCost: number;
+    topCabinClass: string | null;
+  };
+  comparison: {
+    previousMonth: string;
+    previousMonthTotalSpend: number;
+    percentChange: number;
+    direction: 'up' | 'down' | 'flat';
+  };
+  spendByDestination: Array<{ label: string; amount: number; bookingCount: number }>;
+  bookingsByClass: Array<{ label: string; count: number; percent: number }>;
+  summary: {
+    destinationCount: number;
+  };
+}

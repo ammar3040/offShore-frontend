@@ -1,7 +1,7 @@
 import { env } from '../config/env';
 import { encryptPayload, decryptPayload, generateAuthHeaders } from './crypto';
 
-const originalFetch = window.fetch;
+const originalFetch = window.fetch.bind(window);
 
 window.fetch = async function (input, init) {
   // If encryption is disabled, bypass interceptor
