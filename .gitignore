@@ -30,3 +30,7 @@ dist-ssr
 *.sw?
 
 .cursor/plans/
+
+# Git Backups
+.git-vishjit/
+.git.backup/
