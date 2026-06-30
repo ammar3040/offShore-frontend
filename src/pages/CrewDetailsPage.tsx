@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { DateRange } from 'react-day-picker';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -21,6 +20,8 @@ import {
   User,
   Trash2,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   crewApiToFormData,
@@ -39,9 +40,33 @@ import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import { availabilityFromCrewSignal, getCrewSignal } from '../utils/crewAvailability';
-import { Calendar as DayPickerCalendar } from '../components/ui/calendar';
 import { toast } from 'sonner';
 import './RigsPage.css';
+import './TimelinePage.css';
+
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, months: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function buildCalendarDays(month: Date): Date[] {
+  const first = startOfMonth(month);
+  const start = addDays(first, -first.getDay());
+  return Array.from({ length: 42 }, (_, index) => addDays(start, index));
+}
+
+const MONTH_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 
 type ProfileTab = 'overview' | 'records' | 'documents' | 'jobs' | 'visa' | 'pay' | 'availability';
 
@@ -76,12 +101,12 @@ function field(value?: string | null): string {
 }
 
 function statusMeta(crew?: CrewMemberApi | null, projects?: CrewAssignedProject[]): { label: string; className: string } {
-  if (crew?.isAvailable === false) return { label: 'Unavailable', className: 'subsea-b-red' };
   const activeProjects = projects ?? crew?.activeProjects ?? [];
   const availability = availabilityFromCrewSignal(crew ? getCrewSignal({ ...crew, activeProjects }) : undefined);
+  if (availability === 'unavailable') return { label: 'Unavailable', className: 'subsea-b-red' };
   if (availability === 'available') return { label: 'Available', className: 'subsea-b-green' };
   if (availability === 'endingSoon') return { label: 'Sign-Off Due', className: 'subsea-b-amber' };
-  return { label: 'In Proddject', className: 'subsea-b-blue' };
+  return { label: 'In Project', className: 'subsea-b-blue' };
 }
 
 function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi | null) {
@@ -117,26 +142,33 @@ const CrewDetailsPage = () => {
   const [newAvailFrom, setNewAvailFrom] = useState('');
   const [newAvailTo, setNewAvailTo] = useState('');
   const [addingAvail, setAddingAvail] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(undefined);
+
+  const [calendarDate, setCalendarDate] = useState(() => startOfMonth(new Date()));
+  const [rangeStart, setRangeStart] = useState<Date | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
+  const [newAvailType, setNewAvailType] = useState<'available' | 'unavailable'>('available');
+
+  const monthStart = startOfMonth(calendarDate);
+  const calendarDays = useMemo(() => buildCalendarDays(monthStart), [monthStart]);
 
   useEffect(() => {
-    if (selectedRange?.from) {
-      const yyyy = selectedRange.from.getFullYear();
-      const mm = String(selectedRange.from.getMonth() + 1).padStart(2, '0');
-      const dd = String(selectedRange.from.getDate()).padStart(2, '0');
+    if (rangeStart) {
+      const yyyy = rangeStart.getFullYear();
+      const mm = String(rangeStart.getMonth() + 1).padStart(2, '0');
+      const dd = String(rangeStart.getDate()).padStart(2, '0');
       setNewAvailFrom(`${yyyy}-${mm}-${dd}`);
     } else {
       setNewAvailFrom('');
     }
-    if (selectedRange?.to) {
-      const yyyy = selectedRange.to.getFullYear();
-      const mm = String(selectedRange.to.getMonth() + 1).padStart(2, '0');
-      const dd = String(selectedRange.to.getDate()).padStart(2, '0');
+    if (rangeEnd) {
+      const yyyy = rangeEnd.getFullYear();
+      const mm = String(rangeEnd.getMonth() + 1).padStart(2, '0');
+      const dd = String(rangeEnd.getDate()).padStart(2, '0');
       setNewAvailTo(`${yyyy}-${mm}-${dd}`);
     } else {
       setNewAvailTo('');
     }
-  }, [selectedRange]);
+  }, [rangeStart, rangeEnd]);
 
   const loadAvailabilities = useCallback(async () => {
     if (!crewId) return;
@@ -164,20 +196,20 @@ const CrewDetailsPage = () => {
     setAddingAvail(true);
     setAvailError(null);
     try {
-      await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo);
+      const isAvail = newAvailType === 'available';
+      await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo, isAvail);
       
       const startFormatted = new Date(newAvailFrom).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
       const endFormatted = new Date(newAvailTo).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      toast.success(`Successfully added availability from ${startFormatted} to ${endFormatted}`);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      toast.success(`Successfully added ${isAvail ? 'availability' : 'unavailability'} from ${startFormatted} to ${endFormatted}`);
 
       setNewAvailFrom('');
       setNewAvailTo('');
-      setSelectedRange(undefined);
+      setRangeStart(null);
+      setRangeEnd(null);
       await loadAvailabilities();
-      await loadCrewDetails();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to add availability';
+      const msg = err instanceof Error ? err.message : 'Failed to add range';
       setAvailError(msg);
       toast.error(msg);
     } finally {
@@ -189,12 +221,11 @@ const CrewDetailsPage = () => {
     setNewAvailFrom(val);
     if (val) {
       const d = new Date(val);
-      setSelectedRange(prev => ({
-        from: d,
-        to: prev?.to && prev.to >= d ? prev.to : undefined
-      }));
+      if (!Number.isNaN(d.getTime())) {
+        setRangeStart(d);
+      }
     } else {
-      setSelectedRange(prev => ({ ...prev, from: undefined }));
+      setRangeStart(null);
     }
   };
 
@@ -202,13 +233,49 @@ const CrewDetailsPage = () => {
     setNewAvailTo(val);
     if (val) {
       const d = new Date(val);
-      setSelectedRange(prev => ({
-        from: prev?.from && prev.from <= d ? prev.from : undefined,
-        to: d
-      }));
+      if (!Number.isNaN(d.getTime())) {
+        setRangeEnd(d);
+      }
     } else {
-      setSelectedRange(prev => ({ from: prev?.from, to: undefined }));
+      setRangeEnd(null);
     }
+  };
+
+  const handleDateClick = (date: Date) => {
+    if (!rangeStart || (rangeStart && rangeEnd)) {
+      setRangeStart(date);
+      setRangeEnd(null);
+    } else {
+      if (date < rangeStart) {
+        setRangeStart(date);
+      } else {
+        setRangeEnd(date);
+      }
+    }
+  };
+
+  const getDayAvailabilityType = (day: Date): 'available' | 'unavailable' | 'none' => {
+    const dStr = dateKey(day);
+    for (const item of availabilityItems) {
+      if (!item.from || !item.to) continue;
+      const start = dateKey(new Date(item.from));
+      const end = dateKey(new Date(item.to));
+      if (dStr >= start && dStr <= end) {
+        return item.isAvailable !== false ? 'available' : 'unavailable';
+      }
+    }
+    return 'none';
+  };
+
+  const isDayInSelectedRange = (day: Date): boolean => {
+    if (!rangeStart) return false;
+    const dTime = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+    const startTime = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate()).getTime();
+    if (!rangeEnd) {
+      return dTime === startTime;
+    }
+    const endTime = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate()).getTime();
+    return dTime >= startTime && dTime <= endTime;
   };
 
   const handleDeleteAvailability = (availabilityId: string) => {
@@ -223,9 +290,7 @@ const CrewDetailsPage = () => {
     try {
       await deleteCrewAvailabilityAdmin(deleteTargetId);
       toast.success('Availability window deleted successfully');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
       await loadAvailabilities();
-      await loadCrewDetails();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to delete availability';
       setAvailError(msg);
@@ -237,22 +302,7 @@ const CrewDetailsPage = () => {
     }
   };
 
-  const selectedDates = useMemo(() => {
-    const dates: Date[] = [];
-    availabilityItems.forEach(item => {
-      if (!item.from || !item.to) return;
-      const start = new Date(item.from);
-      const end = new Date(item.to);
-      const current = new Date(start);
-      let limit = 0;
-      while (current <= end && limit < 1000) {
-        dates.push(new Date(current));
-        current.setDate(current.getDate() + 1);
-        limit++;
-      }
-    });
-    return dates;
-  }, [availabilityItems]);
+
 
 
   const loadCrewDetails = useCallback(async (showSpinner = true) => {
@@ -648,40 +698,99 @@ const CrewDetailsPage = () => {
                       cursor: pointer;
                     }
                   ` }} />
-                  <div className="subsea-pane" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px' }}>
-                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground flex items-center gap-2" style={{ alignSelf: 'flex-start' }}>
-                      <Calendar size={14} className="text-primary" />
-                      Availability Calendar
-                    </h3>
-                    <div className="border rounded-xl p-4 bg-white shadow-sm w-full flex justify-center" style={{ backgroundColor: '#ffffff', borderColor: 'var(--subsea-border)' }}>
-                      <DayPickerCalendar
-                        mode="range"
-                        selected={selectedRange}
-                        onSelect={setSelectedRange}
-                        modifiers={{
-                          available: selectedDates
-                        }}
-                        modifiersClassNames={{
-                          available: "bg-emerald-600! text-white! font-semibold hover:bg-emerald-700!"
-                        }}
-                        className="rounded-md border shadow-sm bg-white! text-black!"
-                        style={{
-                          backgroundColor: '#ffffff',
-                          color: '#000000'
-                        }}
-                        classNames={{
-                          caption_label: "text-black! font-semibold text-sm",
-                          weekday: "text-zinc-600! font-medium",
-                          day: "text-black!",
-                          button_previous: "text-black! hover:bg-zinc-100!",
-                          button_next: "text-black! hover:bg-zinc-100!",
-                          outside: "text-zinc-400! opacity-50",
-                        }}
-                      />
+                  <div className="subsea-pane" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2" style={{ margin: 0 }}>
+                        <Calendar size={14} className="text-primary" />
+                        Availability Calendar
+                      </h3>
+                      <div className="timeline-calendar-nav" style={{ margin: 0 }}>
+                        <button type="button" className="timeline-nav-btn" aria-label="Previous month" onClick={() => setCalendarDate((date) => addMonths(date, -1))}>
+                          <ChevronLeft size={14} />
+                        </button>
+                        <strong style={{ minWidth: '120px', display: 'inline-block', textAlign: 'center' }}>{MONTH_FORMAT.format(monthStart)}</strong>
+                        <button type="button" className="timeline-nav-btn" aria-label="Next month" onClick={() => setCalendarDate((date) => addMonths(date, 1))}>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground" style={{ alignSelf: 'flex-start' }}>
-                      <span className="inline-block w-3.5 h-3.5 bg-emerald-500 rounded" />
-                      <span>Highlighted dates indicate crew availability.</span>
+
+                    <div className="timeline-calendar-grid" style={{ width: '100%', margin: 0 }}>
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                        <div key={day} className="timeline-cal-dow">{day}</div>
+                      ))}
+                      {calendarDays.map((day) => {
+                        const isOtherMonth = day.getMonth() !== monthStart.getMonth();
+                        const isToday = dateKey(day) === dateKey(new Date());
+                        const type = getDayAvailabilityType(day);
+                        const isSelected = isDayInSelectedRange(day);
+                        
+                        let dayClass = 'timeline-cal-day';
+                        if (isOtherMonth) dayClass += ' other-month';
+                        if (isToday) dayClass += ' today';
+                        
+                        let customStyle: React.CSSProperties = {
+                          cursor: 'pointer',
+                          position: 'relative',
+                          minHeight: '80px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          padding: '8px',
+                          border: isSelected ? '2px solid var(--subsea-primary, #2563eb)' : undefined,
+                          backgroundColor: isSelected 
+                            ? 'rgba(37, 99, 235, 0.08)' 
+                            : type === 'available' 
+                              ? 'rgba(16, 185, 129, 0.08)' 
+                              : type === 'unavailable' 
+                                ? 'rgba(239, 68, 68, 0.08)' 
+                                : undefined
+                        };
+
+                        return (
+                          <article 
+                            key={dateKey(day)} 
+                            className={dayClass} 
+                            style={customStyle}
+                            onClick={() => handleDateClick(day)}
+                          >
+                            <div className="timeline-cal-day-num">{day.getDate()}</div>
+                            
+                            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {type === 'available' && (
+                                <span className="subsea-badge subsea-b-green" style={{ fontSize: '9px', padding: '1px 4px', width: 'fit-content' }}>
+                                  Available
+                                </span>
+                              )}
+                              {type === 'unavailable' && (
+                                <span className="subsea-badge subsea-b-red" style={{ fontSize: '9px', padding: '1px 4px', width: 'fit-content' }}>
+                                  Unavailable
+                                </span>
+                              )}
+                              {isSelected && (
+                                <span className="subsea-badge subsea-b-blue" style={{ fontSize: '9px', padding: '1px 4px', width: 'fit-content' }}>
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--subsea-text-muted)', alignSelf: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)' }} />
+                        <span>Available Range</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }} />
+                        <span>Unavailable Range</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(37, 99, 235, 0.08)', border: '2px solid var(--subsea-primary, #2563eb)' }} />
+                        <span>Selected Days</span>
+                      </div>
                     </div>
                   </div>
 
@@ -689,7 +798,7 @@ const CrewDetailsPage = () => {
                     <div>
                       <h3 className="text-sm font-semibold mb-2">Crew Availability Status</h3>
                       <p className="text-xs text-muted-foreground font-medium">
-                        Currently tracking active rotation windows and custom availability ranges for {crewName(crew)}.
+                        Currently tracking active rotation windows and custom availability/unavailability ranges for {crewName(crew)}.
                       </p>
                     </div>
 
@@ -701,8 +810,8 @@ const CrewDetailsPage = () => {
 
                     {/* Add Availability Form */}
                     <form onSubmit={(e) => e.preventDefault()} className="border p-3 rounded-lg bg-muted/20 flex flex-col gap-3" style={{ borderColor: 'var(--subsea-border)' }}>
-                      <div className="text-xs font-semibold text-foreground">Add New Availability Window</div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="text-xs font-semibold text-foreground">Add New Range</div>
+                      <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">START DATE</label>
                           <input
@@ -726,6 +835,18 @@ const CrewDetailsPage = () => {
                             style={{ borderColor: 'var(--subsea-border)', backgroundColor: '#ffffff', color: '#000000' }}
                           />
                         </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">STATUS</label>
+                          <select
+                            value={newAvailType}
+                            onChange={(e) => setNewAvailType(e.target.value as 'available' | 'unavailable')}
+                            className="w-full text-xs p-1.5 border rounded bg-white text-black"
+                            style={{ borderColor: 'var(--subsea-border)', backgroundColor: '#ffffff', color: '#000000', height: '30px' }}
+                          >
+                            <option value="available">Available</option>
+                            <option value="unavailable">Unavailable</option>
+                          </select>
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -738,29 +859,34 @@ const CrewDetailsPage = () => {
                       </button>
                     </form>
 
-                    <div className="text-xs font-semibold mt-2 text-foreground">Active Availability Ranges</div>
+                    <div className="text-xs font-semibold mt-2 text-foreground">Active Ranges</div>
 
                     <div className="subsea-pane-body-flat flex flex-col gap-3 overflow-y-auto" style={{ maxHeight: '220px' }}>
                       {loadingAvailabilities && availabilityItems.length === 0 ? (
                         <div className="text-xs text-muted-foreground text-center py-4">Loading ranges...</div>
                       ) : availabilityItems.length === 0 ? (
-                        <div className="text-xs text-muted-foreground text-center py-4">No custom availability ranges defined.</div>
+                        <div className="text-xs text-muted-foreground text-center py-4">No custom ranges defined.</div>
                       ) : (
                         availabilityItems.map((item) => {
                           const fromStr = item.from ? new Date(item.from).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
                           const toStr = item.to ? new Date(item.to).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
+                          const isAvail = item.isAvailable !== false;
+                          const bg = isAvail ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)';
+                          const border = isAvail ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                          const titleColor = isAvail ? 'var(--subsea-text-success, #059669)' : 'var(--subsea-text-danger, #ef4444)';
+                          const titleLabel = isAvail ? 'Available Window' : 'Unavailable Window';
                           return (
-                            <div key={item.id} className="p-3 border rounded-lg bg-emerald-50/60 border-emerald-200 flex items-center justify-between" style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                            <div key={item.id} className="p-3 border rounded-lg flex items-center justify-between" style={{ backgroundColor: bg, borderColor: border }}>
                               <div>
-                                <div className="text-xs font-semibold text-emerald-800" style={{ color: 'var(--subsea-text-success, #059669)' }}>Available Window</div>
-                                <div className="text-sm font-bold text-emerald-950" style={{ color: 'var(--subsea-text)' }}>{fromStr} — {toStr}</div>
+                                <div className="text-xs font-semibold" style={{ color: titleColor }}>{titleLabel}</div>
+                                <div className="text-sm font-bold" style={{ color: 'var(--subsea-text)' }}>{fromStr} — {toStr}</div>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteAvailability(item.id)}
                                 className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                 style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
-                                title="Delete availability range"
+                                title="Delete range"
                               >
                                 <Trash2 size={14} />
                               </button>

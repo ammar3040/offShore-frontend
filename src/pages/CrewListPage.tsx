@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Award,
   Briefcase,
+  CalendarRange,
   CreditCard,
   Download,
   FileText,
@@ -48,6 +49,8 @@ function field(value: string | undefined): string {
 
 
 
+type CrewActiveView = 'roster' | 'searchAvailability';
+
 type RosterTab = 'available' | 'inProject';
 
 function crewStatus(kind: CrewAvailability | 'unavailable'): { label: string; className: string } {
@@ -64,6 +67,7 @@ const CrewListPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [rosterTab, setRosterTab] = useState<RosterTab>('available');
+  const [activeView, setActiveView] = useState<CrewActiveView>('roster');
   const [page, setPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
@@ -107,10 +111,16 @@ const CrewListPage = () => {
 
   const [startDateFilter, setStartDateFilter] = useState(getTodayString());
   const [endDateFilter, setEndDateFilter] = useState(getTodayString());
+  const [availabilitySearchType, setAvailabilitySearchType] = useState<'all' | 'available' | 'unavailable'>('all');
 
   const pageSize = 5;
 
-  const loadCrew = useCallback(async (withListLoading: boolean, start?: string, end?: string) => {
+  const loadCrew = useCallback(async (
+    withListLoading: boolean, 
+    start?: string, 
+    end?: string, 
+    searchType?: 'available' | 'unavailable'
+  ) => {
     if (withListLoading) {
       setLoading(true);
       setError(null);
@@ -119,6 +129,7 @@ const CrewListPage = () => {
       const filters = {
         availabilityStart: start || undefined,
         availabilityEnd: end || undefined,
+        type: searchType || undefined,
       };
       const crewRes = await getCrewList(filters);
       setCrew(crewRes.crew ?? []);
@@ -132,19 +143,30 @@ const CrewListPage = () => {
   }, []);
 
   useEffect(() => {
-    void loadCrew(true, startDateFilter, endDateFilter);
-  }, [startDateFilter, endDateFilter, loadCrew]);
+    if (availabilitySearchType === 'all') {
+      void loadCrew(true);
+    } else {
+      void loadCrew(true, startDateFilter, endDateFilter, availabilitySearchType);
+    }
+  }, [availabilitySearchType, startDateFilter, endDateFilter, loadCrew]);
 
   const refreshCrewData = useCallback(() => {
-    return loadCrew(false, startDateFilter, endDateFilter);
-  }, [loadCrew, startDateFilter, endDateFilter]);
+    if (availabilitySearchType === 'all') {
+      return loadCrew(false);
+    } else {
+      return loadCrew(false, startDateFilter, endDateFilter, availabilitySearchType);
+    }
+  }, [loadCrew, availabilitySearchType, startDateFilter, endDateFilter]);
 
   const filteredCrew = useMemo(() => {
-    let list = crew.filter((member) => {
-      const kind = availabilityFromCrewSignal(getCrewSignal(member));
-      if (rosterTab === 'available') return kind === 'available' || kind === 'unavailable';
-      return kind === 'onProject' || kind === 'endingSoon';
-    });
+    let list = crew;
+    if (activeView === 'roster') {
+      list = crew.filter((member) => {
+        const kind = availabilityFromCrewSignal(getCrewSignal(member));
+        if (rosterTab === 'available') return kind === 'available' || kind === 'unavailable';
+        return kind === 'onProject' || kind === 'endingSoon';
+      });
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
@@ -154,7 +176,7 @@ const CrewListPage = () => {
       );
     }
     return list;
-  }, [crew, rosterTab, search]);
+  }, [crew, rosterTab, search, activeView]);
 
   const paginatedCrew = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -397,8 +419,9 @@ const CrewListPage = () => {
           <div className="subsea-sb-group">Crew</div>
           <button
             type="button"
-            className={`subsea-sb-link${rosterTab === 'available' ? ' active' : ''}`}
+            className={`subsea-sb-link${activeView === 'roster' && rosterTab === 'available' ? ' active' : ''}`}
             onClick={() => {
+              setActiveView('roster');
               setRosterTab('available');
               setPage(1);
             }}
@@ -407,14 +430,23 @@ const CrewListPage = () => {
           </button>
           <button
             type="button"
-            className={`subsea-sb-link${rosterTab === 'inProject' ? ' active' : ''}`}
+            className={`subsea-sb-link${activeView === 'roster' && rosterTab === 'inProject' ? ' active' : ''}`}
             onClick={() => {
+              setActiveView('roster');
               setRosterTab('inProject');
               setPage(1);
             }}
           >
             <UserCheck size={13} /> In Project <span className="subsea-sb-count">{loading ? '...' : onProjectCount}</span>
           </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeView === 'searchAvailability' ? ' active' : ''}`}
+            onClick={() => setActiveView('searchAvailability')}
+          >
+            <CalendarRange size={13} /> Search Availability
+          </button>
+
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
             <Ship size={13} /> Rig Assignments <span className="subsea-sb-count">11</span>
@@ -453,6 +485,267 @@ const CrewListPage = () => {
         </div>
 
         <main className="subsea-content">
+          {activeView === 'searchAvailability' && (
+            <div className="admin-tickets-search-view">
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '20px',
+                padding: '28px 32px',
+                marginBottom: '28px',
+                background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%)',
+                borderRadius: '16px',
+                border: '1px solid #a7f3d0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                boxSizing: 'border-box' as const,
+                width: '100%',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                  <div style={{
+                    width: '52px', height: '52px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    borderRadius: '14px',
+                    color: '#059669',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                  }}>
+                    <CalendarRange size={28} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#064e3b', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+                      Crew Availability
+                    </h2>
+                    <p style={{ fontSize: '0.875rem', color: '#047857', margin: 0 }}>
+                      Search and filter crew by availability or unavailability
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                background: 'var(--subsea-surface, #fff)',
+                border: '1px solid var(--subsea-border, #e5e7eb)',
+                borderRadius: '14px',
+                padding: '20px 22px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                boxSizing: 'border-box' as const,
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', padding: '12px 14px', border: '1px solid var(--subsea-border, #f3f4f6)', borderRadius: '10px', background: 'var(--subsea-bg-muted, #f9fafb)' }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--subsea-text, #374151)', flexShrink: 0 }}>Search type</span>
+                    <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', fontSize: '0.875rem', color: 'var(--subsea-text, #374151)', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="avail-search-type"
+                          checked={availabilitySearchType === 'available'}
+                          onChange={() => {
+                            setAvailabilitySearchType('available');
+                            setPage(1);
+                          }}
+                          style={{ width: '18px', height: '18px', accentColor: '#059669', cursor: 'pointer' }}
+                        />
+                        <span>Available crew</span>
+                      </label>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', fontSize: '0.875rem', color: 'var(--subsea-text, #374151)', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="avail-search-type"
+                          checked={availabilitySearchType === 'unavailable'}
+                          onChange={() => {
+                            setAvailabilitySearchType('unavailable');
+                            setPage(1);
+                          }}
+                          style={{ width: '18px', height: '18px', accentColor: '#ef4444', cursor: 'pointer' }}
+                        />
+                        <span>Unavailable crew</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 style={{ margin: '0 0 12px', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--subsea-text-muted, #6b7280)' }}>Date range</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 16px', alignItems: 'end' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--subsea-text, #374151)', marginBottom: '6px' }}>From date</label>
+                        <input
+                          type="date"
+                          value={startDateFilter}
+                          onChange={(e) => {
+                            const newFrom = e.target.value;
+                            setStartDateFilter(newFrom);
+                            if (endDateFilter < newFrom) {
+                              setEndDateFilter(newFrom);
+                            }
+                            setPage(1);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            fontSize: '14px',
+                            border: '1px solid var(--subsea-border, #e5e7eb)',
+                            borderRadius: '8px',
+                            background: 'var(--subsea-surface, #fff)',
+                            color: 'var(--subsea-text, #1f2937)',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--subsea-text, #374151)', marginBottom: '6px' }}>To date</label>
+                        <input
+                          type="date"
+                          value={endDateFilter}
+                          min={startDateFilter}
+                          onChange={(e) => {
+                            setEndDateFilter(e.target.value);
+                            setPage(1);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            fontSize: '14px',
+                            border: '1px solid var(--subsea-border, #e5e7eb)',
+                            borderRadius: '8px',
+                            background: 'var(--subsea-surface, #fff)',
+                            color: 'var(--subsea-text, #1f2937)',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="subsea-btn subsea-btn-primary subsea-btn-sm"
+                          style={{ height: '42px', padding: '0 24px' }}
+                          onClick={() => {
+                            if (availabilitySearchType === 'all') {
+                              setAvailabilitySearchType('available');
+                            }
+                            setPage(1);
+                          }}
+                        >
+                          <Search size={14} /> Search
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '10px 14px', background: availabilitySearchType === 'unavailable' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)', border: `1px solid ${availabilitySearchType === 'unavailable' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`, borderRadius: '10px', fontSize: '0.8125rem', color: 'var(--subsea-text, #374151)' }}>
+                    {(() => {
+                      const days = startDateFilter && endDateFilter
+                        ? Math.round((new Date(endDateFilter).getTime() - new Date(startDateFilter).getTime()) / 86_400_000) + 1
+                        : 1;
+                      return availabilitySearchType === 'unavailable' ? (
+                        <span>Showing crew members who are <strong>unavailable</strong> for any day within <strong>{days} day{days !== 1 ? 's' : ''}</strong> ({startDateFilter} — {endDateFilter})</span>
+                      ) : (
+                        <span>Showing crew members who are <strong>available</strong> for any day within <strong>{days} day{days !== 1 ? 's' : ''}</strong> ({startDateFilter} — {endDateFilter})</span>
+                      );
+                    })()}
+                    <span style={{ marginLeft: '8px', fontWeight: 600 }}>
+                      · {filteredCrew.length} result{filteredCrew.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search results table */}
+              {filteredCrew.length > 0 ? (
+                <div className="subsea-pane" style={{ marginTop: '20px' }}>
+                  <div className="subsea-pane-head">
+                    <div className="subsea-pane-title">
+                      {availabilitySearchType === 'unavailable' ? 'Unavailable Crew' : 'Available Crew'} ({filteredCrew.length})
+                    </div>
+                  </div>
+                  <div className="subsea-table-wrap">
+                    <table className="subsea-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Name</th>
+                          <th>Rank</th>
+                          <th>Nationality</th>
+                          <th>Days</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedCrew.map((member, idx) => {
+                          const memberSignal = getCrewSignal(member);
+                          const availability = availabilityFromCrewSignal(memberSignal);
+                          const status = crewStatus(availability);
+                          const availDays = (member as CrewMemberApi & { availableDays?: number }).availableDays;
+                          return (
+                            <tr key={member.id}>
+                              <td style={{ color: 'var(--subsea-text-muted)', fontSize: '12px' }}>{(page - 1) * pageSize + idx + 1}</td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div className="subsea-avatar-xs">{getInitials(member.firstname, member.lastname)}</div>
+                                  <div>
+                                    <div style={{ fontWeight: 600, fontSize: '13px' }}>{member.firstname} {member.lastname}</div>
+                                    <div style={{ fontSize: '11px', color: 'var(--subsea-text-muted)' }}>{member.email || '—'}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>{field(member.rank)}</td>
+                              <td>{field(member.nationality)}</td>
+                              <td>
+                                {availDays != null ? (
+                                  <span className={`subsea-badge ${availabilitySearchType === 'unavailable' ? 'subsea-b-red' : 'subsea-b-green'}`} style={{ fontSize: '11px' }}>
+                                    {availDays} day{availDays !== 1 ? 's' : ''}
+                                  </span>
+                                ) : '—'}
+                              </td>
+                              <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="subsea-btn subsea-btn-default subsea-btn-xs"
+                                  onClick={() => navigate(`/crew/${member.id}`)}
+                                >
+                                  View
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="subsea-pagination">
+                      <span>
+                        Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredCrew.length)} of {filteredCrew.length}
+                      </span>
+                      <div>
+                        <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                          <button key={p} type="button" className={`subsea-btn subsea-btn-sm ${p === page ? 'subsea-btn-primary' : 'subsea-btn-default'}`} onClick={() => setPage(p)}>{p}</button>
+                        ))}
+                        <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="subsea-pane" style={{ marginTop: '20px' }}>
+                  <div className="subsea-empty-cell" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                    <CalendarRange size={40} style={{ color: 'var(--subsea-text-muted)', marginBottom: '12px' }} />
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>No crew found</div>
+                    <div style={{ fontSize: '12px', color: 'var(--subsea-text-muted)' }}>
+                      No crew members match your {availabilitySearchType === 'unavailable' ? 'unavailability' : 'availability'} search criteria. Try adjusting the date range.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeView === 'roster' && (
+            <>
           <div className="subsea-page-head">
             <div>
               <h1>Crew Management</h1>
@@ -499,39 +792,13 @@ const CrewListPage = () => {
                 }}
               />
             </div>
-            <div className="subsea-tb-search" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', width: 'auto', minWidth: '150px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--subsea-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>From</span>
-              <input
-                type="date"
-                value={startDateFilter}
-                onChange={(e) => {
-                  const newFrom = e.target.value;
-                  setStartDateFilter(newFrom);
-                  if (endDateFilter < newFrom) {
-                    setEndDateFilter(newFrom);
-                  }
-                  setPage(1);
-                }}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'inherit', cursor: 'pointer', width: '100%' }}
-              />
-            </div>
-            <div className="subsea-tb-search" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', width: 'auto', minWidth: '150px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--subsea-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>To</span>
-              <input
-                type="date"
-                value={endDateFilter}
-                min={startDateFilter}
-                onChange={(e) => {
-                  setEndDateFilter(e.target.value);
-                  setPage(1);
-                }}
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'inherit', cursor: 'pointer', width: '100%' }}
-              />
-            </div>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Ranks</button>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Rigs</button>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Status: All</button>
             <div className="subsea-toolbar-spacer" />
+            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setActiveView('searchAvailability')}>
+              <CalendarRange size={11} /> Search Availability
+            </button>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={11} /> Export
             </button>
@@ -664,6 +931,8 @@ const CrewListPage = () => {
                 <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
               </div>
             </div>
+          )}
+            </>
           )}
         </main>
       </div>

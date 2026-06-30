@@ -85,8 +85,7 @@ export function getProjectEnrollmentAvailability(project: ProjectApi): CrewAvail
   return 'onProject';
 }
 
-export function getCrewSignal(member: { signal?: string; activeProjects?: any[]; isAvailable?: boolean }): string {
-  if (member.isAvailable === false) return 'UNAVAILABLE';
+export function getCrewSignal(member: { signal?: string; activeProjects?: any[] }): string {
   if (member.signal) return member.signal;
   const activeProjects = member.activeProjects ?? [];
   if (activeProjects.length === 0) return 'GREEN';

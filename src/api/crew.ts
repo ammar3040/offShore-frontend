@@ -162,7 +162,7 @@ export interface CrewMemberApi {
   signal?: string;
   /** Active project assignments when returned on the crew list payload. */
   activeProjects?: CrewAssignedProject[];
-  isAvailable?: boolean;
+  rank?: string;
 }
 
 export interface GetCrewResponse {
@@ -457,7 +457,7 @@ export async function getCrewById(crewId: string): Promise<GetCrewByIdResponse> 
   return { crew: crewData, projects: projectsList };
 }
 
-export async function getCrewList(filters?: { availabilityStart?: string; availabilityEnd?: string }): Promise<GetCrewResponse> {
+export async function getCrewList(filters?: { availabilityStart?: string; availabilityEnd?: string; type?: 'available' | 'unavailable' }): Promise<GetCrewResponse> {
   const token = getAuthToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -472,6 +472,9 @@ export async function getCrewList(filters?: { availabilityStart?: string; availa
   }
   if (filters?.availabilityEnd) {
     queryParams.append('availabilityEnd', filters.availabilityEnd);
+  }
+  if (filters?.type) {
+    queryParams.append('type', filters.type);
   }
 
   const queryString = queryParams.toString();
@@ -1140,6 +1143,7 @@ export interface CrewAvailabilityItem {
   crew_id: string;
   from: string;
   to: string;
+  isAvailable?: boolean;
 }
 
 export async function getCrewAvailabilityListAdmin(crewId: string): Promise<CrewAvailabilityItem[]> {
@@ -1170,7 +1174,7 @@ export async function getCrewAvailabilityListAdmin(crewId: string): Promise<Crew
   }
 }
 
-export async function addCrewAvailabilityAdmin(crewId: string, from: string, to: string): Promise<CrewAvailabilityItem> {
+export async function addCrewAvailabilityAdmin(crewId: string, from: string, to: string, isAvailable?: boolean): Promise<CrewAvailabilityItem> {
   const token = getAuthToken();
   if (!token) throw new Error('Not authenticated');
 
@@ -1184,7 +1188,7 @@ export async function addCrewAvailabilityAdmin(crewId: string, from: string, to:
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ crew_id: crewId, from, to }),
+      body: JSON.stringify({ crew_id: crewId, from, to, isAvailable }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);

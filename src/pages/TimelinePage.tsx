@@ -477,29 +477,8 @@ const TimelinePage = () => {
         });
       });
     });
-
-    const selectedCrewMember = data.crew.find(c => c.id === selectedCrewId);
-    const selectedCrewName = selectedCrewMember ? crewName(selectedCrewMember) : '';
-
-    if (selectedCrewId !== 'all' && selectedCrewName) {
-      selectedCrewAvailabilities.forEach((avail) => {
-        const start = parseDate(avail.from);
-        const end = parseDate(avail.to);
-        if (start && end) {
-          rows.push({
-            id: `crew-avail-${avail.id}`,
-            date: start,
-            title: `${selectedCrewName} Available`,
-            reference: `Available from ${formatShortDate(start)} to ${formatShortDate(end)}`,
-            crew: selectedCrewName,
-            type: 'Sign-On',
-            status: 'Available',
-            tone: 'green',
-            icon: UserCheck,
-          });
-        }
-      });
-    }
+    // Availability events are rendered visually on the calendar grid directly,
+    // not as point events in the events list.
 
     data.rigs.forEach((rig) => {
       const created = parseDate(rig.createdAt);
@@ -826,23 +805,24 @@ const TimelinePage = () => {
     return map;
   }, [filteredEvents]);
 
-  const isDayAvailable = useMemo(() => {
-    if (selectedCrewId === 'all') return () => true;
-
-    if (selectedCrewAvailabilities.length === 0) {
-      return () => true;
+  const getDayAvailStatus = useMemo(() => {
+    if (selectedCrewId === 'all' || selectedCrewAvailabilities.length === 0) {
+      return (): 'available' | 'unavailable' | 'none' => 'none';
     }
 
-    return (day: Date) => {
+    return (day: Date): 'available' | 'unavailable' | 'none' => {
       const d = new Date(day);
       d.setHours(0, 0, 0, 0);
-      return selectedCrewAvailabilities.some(avail => {
+      for (const avail of selectedCrewAvailabilities) {
         const start = new Date(avail.from);
         start.setHours(0, 0, 0, 0);
         const end = new Date(avail.to);
         end.setHours(23, 59, 59, 999);
-        return d >= start && d <= end;
-      });
+        if (d >= start && d <= end) {
+          return avail.isAvailable !== false ? 'available' : 'unavailable';
+        }
+      }
+      return 'none';
     };
   }, [selectedCrewId, selectedCrewAvailabilities]);
 
@@ -1117,6 +1097,18 @@ const TimelinePage = () => {
                           {label}
                         </span>
                       ))}
+                      {selectedCrewId !== 'all' && (
+                        <>
+                          <span className="timeline-legend-item">
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.5)', border: '1px solid rgba(16, 185, 129, 0.8)' }} />
+                            Available
+                          </span>
+                          <span className="timeline-legend-item">
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.5)', border: '1px solid rgba(239, 68, 68, 0.8)' }} />
+                            Unavailable
+                          </span>
+                        </>
+                      )}
                     </div>
                   </section>
 
@@ -1128,11 +1120,35 @@ const TimelinePage = () => {
                       const dayEvents = eventsByDay.get(dateKey(day)) ?? [];
                       const isOtherMonth = day.getMonth() !== monthStart.getMonth();
                       const isToday = dateKey(day) === todayKey;
-                      const isUnavailable = !isDayAvailable(day);
+                      const availStatus = getDayAvailStatus(day);
+
+                      let dayClass = 'timeline-cal-day';
+                      if (isOtherMonth) dayClass += ' other-month';
+                      if (isToday) dayClass += ' today';
+                      if (availStatus === 'unavailable') dayClass += ' unavailable';
+
+                      const dayStyle: React.CSSProperties = availStatus === 'available'
+                        ? { backgroundColor: 'rgba(16, 185, 129, 0.08)' }
+                        : availStatus === 'unavailable'
+                          ? { backgroundColor: 'rgba(239, 68, 68, 0.06)' }
+                          : {};
+
                       return (
-                        <article key={dateKey(day)} className={`timeline-cal-day${isOtherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isUnavailable ? ' unavailable' : ''}`}>
+                        <article key={dateKey(day)} className={dayClass} style={dayStyle}>
                           <div className="timeline-cal-day-num">{day.getDate()}</div>
-                          {dayEvents.slice(0, 3).map((event) => {
+                          {availStatus === 'available' && (
+                            <div className="timeline-event timeline-event-green" style={{ fontSize: '9px', padding: '1px 4px' }}>
+                              <UserCheck size={8} />
+                              <span>Available</span>
+                            </div>
+                          )}
+                          {availStatus === 'unavailable' && (
+                            <div className="timeline-event timeline-event-red" style={{ fontSize: '9px', padding: '1px 4px' }}>
+                              <UserMinus size={8} />
+                              <span>Unavailable</span>
+                            </div>
+                          )}
+                          {dayEvents.slice(0, availStatus !== 'none' ? 2 : 3).map((event) => {
                             const Icon = event.icon;
                             return (
                               <div key={event.id} className={eventClass(event.tone)} title={`${event.title} - ${event.reference}`}>
@@ -1141,7 +1157,7 @@ const TimelinePage = () => {
                               </div>
                             );
                           })}
-                          {dayEvents.length > 3 && <div className="timeline-event-more">+{dayEvents.length - 3} more</div>}
+                          {dayEvents.length > (availStatus !== 'none' ? 2 : 3) && <div className="timeline-event-more">+{dayEvents.length - (availStatus !== 'none' ? 2 : 3)} more</div>}
                         </article>
                       );
                     })}
