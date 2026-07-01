@@ -34,6 +34,7 @@ import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
+import { DatePickerTime } from '../components/ui/date-picker-time';
 import './CrewListPage.css';
 import './RigsPage.css';
 
@@ -568,68 +569,54 @@ const CrewListPage = () => {
                   <div>
                     <h3 style={{ margin: '0 0 12px', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--subsea-text-muted, #6b7280)' }}>Date range</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px 16px', alignItems: 'end' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--subsea-text, #374151)', marginBottom: '6px' }}>From date</label>
-                        <input
-                          type="date"
-                          value={startDateFilter}
-                          onChange={(e) => {
-                            const newFrom = e.target.value;
-                            setStartDateFilter(newFrom);
-                            if (endDateFilter < newFrom) {
-                              setEndDateFilter(newFrom);
+                        <DatePickerTime
+                          date={startDateFilter}
+                          onDateChange={(val) => {
+                            setStartDateFilter(val);
+                            if (endDateFilter < val) {
+                              setEndDateFilter(val);
                             }
                             setPage(1);
                           }}
-                          style={{
-                            width: '100%',
-                            padding: '10px 14px',
-                            fontSize: '14px',
-                            border: '1px solid var(--subsea-border, #e5e7eb)',
-                            borderRadius: '8px',
-                            background: 'var(--subsea-surface, #fff)',
-                            color: 'var(--subsea-text, #1f2937)',
-                            boxSizing: 'border-box',
-                          }}
+                          showTime={false}
+                          dateLabel="From date"
+                          datePlaceholder="Select start date"
+                          idPrefix="search-start-date"
+                          onTimeChange={() => {}}
+                          triggerClassName="h-[42px] px-[14px] py-[10px] text-sm border border-[#e5e7eb] rounded-lg bg-white text-[#1f2937] hover:bg-gray-50 flex items-center justify-between w-full shadow-none"
+                          labelClassName="text-xs font-semibold text-[#374151] mb-1.5"
+                          className="w-full gap-0"
                         />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--subsea-text, #374151)', marginBottom: '6px' }}>To date</label>
-                        <input
-                          type="date"
-                          value={endDateFilter}
-                          min={startDateFilter}
-                          onChange={(e) => {
-                            setEndDateFilter(e.target.value);
+                        <DatePickerTime
+                          date={endDateFilter}
+                          onDateChange={(val) => {
+                            setEndDateFilter(val);
                             setPage(1);
                           }}
-                          style={{
-                            width: '100%',
-                            padding: '10px 14px',
-                            fontSize: '14px',
-                            border: '1px solid var(--subsea-border, #e5e7eb)',
-                            borderRadius: '8px',
-                            background: 'var(--subsea-surface, #fff)',
-                            color: 'var(--subsea-text, #1f2937)',
-                            boxSizing: 'border-box',
-                          }}
+                          showTime={false}
+                          dateLabel="To date"
+                          datePlaceholder="Select end date"
+                          idPrefix="search-end-date"
+                          onTimeChange={() => {}}
+                          triggerClassName="h-[42px] px-[14px] py-[10px] text-sm border border-[#e5e7eb] rounded-lg bg-white text-[#1f2937] hover:bg-gray-50 flex items-center justify-between w-full shadow-none"
+                          labelClassName="text-xs font-semibold text-[#374151] mb-1.5"
+                          className="w-full gap-0"
                         />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                        <button
-                          type="button"
-                          className="subsea-btn subsea-btn-primary subsea-btn-sm"
-                          style={{ height: '42px', padding: '0 24px' }}
-                          onClick={() => {
-                            if (availabilitySearchType === 'all') {
-                              setAvailabilitySearchType('available');
-                            }
-                            setPage(1);
-                          }}
-                        >
-                          <Search size={14} /> Search
-                        </button>
-                      </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                          <button
+                            type="button"
+                            className="subsea-btn subsea-btn-primary subsea-btn-sm"
+                            style={{ height: '42px', padding: '0 24px' }}
+                            onClick={() => {
+                              if (availabilitySearchType === 'all') {
+                                setAvailabilitySearchType('available');
+                              }
+                              setPage(1);
+                            }}
+                          >
+                            <Search size={14} /> Search
+                          </button>
+                        </div>
                     </div>
                   </div>
 

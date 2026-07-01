@@ -39,6 +39,8 @@ import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
+import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
+import { Calendar as UiCalendar } from '../components/ui/calendar';
 import { availabilityFromCrewSignal, getCrewSignal } from '../utils/crewAvailability';
 import { toast } from 'sonner';
 import './RigsPage.css';
@@ -118,6 +120,12 @@ function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi
     status: project?.status || 'Active',
   };
 }
+
+const formatDateToDisplay = (dateStr: string) => {
+  if (!dateStr) return '';
+  const [yyyy, mm, dd] = dateStr.split('-');
+  return `${dd}/${mm}/${yyyy}`;
+};
 
 const CrewDetailsPage = () => {
   const { crewId } = useParams<{ crewId: string }>();
@@ -809,39 +817,72 @@ const CrewDetailsPage = () => {
                     )}
 
                     {/* Add Availability Form */}
-                    <form onSubmit={(e) => e.preventDefault()} className="border p-3 rounded-lg bg-muted/20 flex flex-col gap-3" style={{ borderColor: 'var(--subsea-border)' }}>
-                      <div className="text-xs font-semibold text-foreground">Add New Range</div>
+                    <form onSubmit={(e) => e.preventDefault()} className="border p-3 rounded-lg flex flex-col gap-3" style={{ borderColor: '#cbd5e1', backgroundColor: '#f1f5f9', borderWidth: '1px', borderStyle: 'solid' }}>
+                      <div className="text-xs font-semibold text-slate-700">Add New Range</div>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">START DATE</label>
-                          <input
-                            type="date"
-                            required
-                            value={newAvailFrom}
-                            onChange={(e) => handleFromChange(e.target.value)}
-                            className="w-full text-xs p-1.5 border rounded bg-white text-black subsea-date-input"
-                            style={{ borderColor: 'var(--subsea-border)', backgroundColor: '#ffffff', color: '#000000' }}
-                          />
+                          <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">START DATE</label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="w-full text-xs p-1.5 border rounded bg-white text-slate-900 h-[30px] flex items-center justify-between border-[#cbd5e1]"
+                              >
+                                <span className="truncate">{newAvailFrom ? formatDateToDisplay(newAvailFrom) : 'dd/mm/yyyy'}</span>
+                                <Calendar size={12} className="text-slate-400 shrink-0 ml-1" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <UiCalendar
+                                mode="single"
+                                selected={newAvailFrom ? new Date(newAvailFrom) : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    const yyyy = date.getFullYear();
+                                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                    const dd = String(date.getDate()).padStart(2, '0');
+                                    handleFromChange(`${yyyy}-${mm}-${dd}`);
+                                  }
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">END DATE</label>
-                          <input
-                            type="date"
-                            required
-                            value={newAvailTo}
-                            min={newAvailFrom}
-                            onChange={(e) => handleToChange(e.target.value)}
-                            className="w-full text-xs p-1.5 border rounded bg-white text-black subsea-date-input"
-                            style={{ borderColor: 'var(--subsea-border)', backgroundColor: '#ffffff', color: '#000000' }}
-                          />
+                          <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">END DATE</label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="w-full text-xs p-1.5 border rounded bg-white text-slate-900 h-[30px] flex items-center justify-between border-[#cbd5e1]"
+                              >
+                                <span className="truncate">{newAvailTo ? formatDateToDisplay(newAvailTo) : 'dd/mm/yyyy'}</span>
+                                <Calendar size={12} className="text-slate-400 shrink-0 ml-1" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <UiCalendar
+                                mode="single"
+                                selected={newAvailTo ? new Date(newAvailTo) : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    const yyyy = date.getFullYear();
+                                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                    const dd = String(date.getDate()).padStart(2, '0');
+                                    handleToChange(`${yyyy}-${mm}-${dd}`);
+                                  }
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div>
-                          <label className="text-[10px] text-muted-foreground block mb-1 font-semibold">STATUS</label>
+                          <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">STATUS</label>
                           <select
                             value={newAvailType}
                             onChange={(e) => setNewAvailType(e.target.value as 'available' | 'unavailable')}
-                            className="w-full text-xs p-1.5 border rounded bg-white text-black"
-                            style={{ borderColor: 'var(--subsea-border)', backgroundColor: '#ffffff', color: '#000000', height: '30px' }}
+                            className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                            style={{ borderColor: '#cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', height: '30px' }}
                           >
                             <option value="available">Available</option>
                             <option value="unavailable">Unavailable</option>

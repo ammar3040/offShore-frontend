@@ -670,6 +670,405 @@
   border-radius: 2px;
 }
 
+/* ─── Calendar All-Crew Availability Count Pills ─── */
+.timeline-cal-crew-counts {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+
+.timeline-cal-crew-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.35;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-cal-crew-pill-green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border-left: 2px solid #10b981;
+}
+
+.timeline-cal-crew-pill-red {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-left: 2px solid #ef4444;
+}
+
+/* ─── Clickable Calendar Day ─── */
+.timeline-cal-day-clickable {
+  cursor: pointer;
+}
+
+.timeline-cal-day-clickable:hover {
+  box-shadow: inset 0 0 0 2px rgba(26, 86, 219, 0.18);
+}
+
+/* ─── Calendar Day Detail Popup ─── */
+.cal-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cal-popup-fade-in 0.15s ease-out;
+}
+
+@keyframes cal-popup-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cal-popup {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18), 0 4px 16px rgba(15, 23, 42, 0.08);
+  width: 420px;
+  max-width: 94vw;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: cal-popup-slide-up 0.18s ease-out;
+}
+
+@keyframes cal-popup-slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.cal-popup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.cal-popup-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.cal-popup-subtitle {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.cal-popup-count-green {
+  color: #059669;
+  font-weight: 500;
+}
+
+.cal-popup-count-red {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.cal-popup-sep {
+  color: var(--text-tertiary);
+}
+
+.cal-popup-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+
+.cal-popup-close:hover {
+  background: var(--surface3);
+  border-color: var(--border2);
+  color: var(--text-primary);
+}
+
+.cal-popup-body {
+  overflow-y: auto;
+  padding: 8px;
+  flex: 1;
+}
+
+.cal-popup-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cal-popup-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.cal-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.cal-popup-row:hover {
+  background: var(--surface2);
+}
+
+.cal-popup-row-indicator {
+  width: 3px;
+  height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.cal-popup-row-avail .cal-popup-row-indicator {
+  background: #10b981;
+}
+
+.cal-popup-row-unavail .cal-popup-row-indicator {
+  background: #ef4444;
+}
+
+.cal-popup-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cal-popup-row-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-popup-row-range {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.cal-popup-row-days {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--surface3);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+.cal-popup-row-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cal-popup-badge-green {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.cal-popup-badge-red {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+}
+
+/* ─── All Crew Availability Swimlane Chart ─── */
+.allcrew-gantt-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 640px;
+  background: var(--surface);
+}
+
+.allcrew-gantt-wrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.allcrew-gantt-wrap::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 3px;
+}
+
+.allcrew-gantt-wrap::-webkit-scrollbar-track {
+  background: var(--surface2);
+}
+
+.allcrew-gantt {
+  display: grid;
+}
+
+.allcrew-gantt-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+.allcrew-gantt-name-col {
+  width: 180px;
+  min-width: 180px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  padding: 7px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-right: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+}
+
+.allcrew-gantt-day-col {
+  flex: 1;
+  min-width: 30px;
+  padding: 7px 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  font-family: 'IBM Plex Mono', monospace;
+  border-right: 1px solid var(--border);
+}
+
+.allcrew-gantt-day-col:last-child {
+  border-right: none;
+}
+
+.allcrew-gantt-day-col.allcrew-today {
+  background: rgba(26, 86, 219, 0.08);
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.allcrew-gantt-body {
+  position: relative;
+}
+
+.allcrew-gantt-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.allcrew-gantt-row:last-child {
+  border-bottom: none;
+}
+
+.allcrew-gantt-row:hover {
+  background: var(--surface2);
+}
+
+.allcrew-gantt-name-cell {
+  width: 180px;
+  min-width: 180px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+}
+
+.allcrew-gantt-row:hover .allcrew-gantt-name-cell {
+  background: var(--surface2);
+}
+
+.allcrew-gantt-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allcrew-gantt-day-cell {
+  flex: 1;
+  min-width: 30px;
+  min-height: 34px;
+  border-right: 1px solid var(--border);
+  position: relative;
+  transition: background 0.12s;
+}
+
+.allcrew-gantt-day-cell:last-child {
+  border-right: none;
+}
+
+.allcrew-gantt-day-cell.allcrew-today {
+  background: rgba(26, 86, 219, 0.03);
+}
+
+.allcrew-gantt-day-cell.allcrew-day-avail {
+  background: rgba(16, 185, 129, 0.22);
+}
+
+.allcrew-gantt-day-cell.allcrew-day-unavail {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-avail {
+  background: rgba(16, 185, 129, 0.30);
+}
+
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-unavail {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-avail {
+  background: rgba(16, 185, 129, 0.30);
+}
+
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-unavail {
+  background: rgba(239, 68, 68, 0.25);
+}
+
 @media (max-width: 1200px) {
   .timeline-kpi-strip {
     grid-template-columns: repeat(3, 1fr);

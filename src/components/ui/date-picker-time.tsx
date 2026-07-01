@@ -87,6 +87,8 @@ export interface DatePickerTimeProps {
   popoverContentClassName?: string
   /** Extra classes for the date trigger button */
   triggerClassName?: string
+  /** Extra classes for the field label */
+  labelClassName?: string
 }
 
 export function DatePickerTime({
@@ -106,6 +108,7 @@ export function DatePickerTime({
   disablePastDates = false,
   popoverContentClassName,
   triggerClassName,
+  labelClassName,
 }: DatePickerTimeProps) {
   const [open, setOpen] = React.useState(false)
   const today = React.useMemo(() => {
@@ -119,7 +122,7 @@ export function DatePickerTime({
   return (
     <FieldGroup className={cn("flex-row flex-wrap gap-4", className)}>
       <Field>
-        <FieldLabel htmlFor={`${idPrefix}-date`}>{dateLabel}</FieldLabel>
+        <FieldLabel htmlFor={`${idPrefix}-date`} className={labelClassName}>{dateLabel}</FieldLabel>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button

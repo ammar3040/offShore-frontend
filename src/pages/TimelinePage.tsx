@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Anchor,
@@ -19,6 +19,7 @@ import {
   UserCheck,
   UserMinus,
   Users,
+  X,
 } from 'lucide-react';
 import { getCrewList, getCrewAvailabilityListAdmin, type CrewMemberApi, type CrewAvailabilityItem } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
@@ -45,7 +46,7 @@ const WEEK_MS = DAY_MS * 7;
 const MONTH_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit' });
 
-type ViewMode = 'calendar' | 'gantt';
+type ViewMode = 'calendar' | 'gantt' | 'allCrew';
 type EventTone = 'green' | 'amber' | 'blue' | 'red' | 'teal' | 'orange' | 'gray';
 type EventType = 'Sign-On' | 'Sign-Off' | 'Flight' | 'Project' | 'Certificate' | 'Fleet';
 type TimelineEventKind = 'Sign-On' | 'Sign-Off' | 'Flight' | 'Project' | 'Certificate' | 'Fleet';
@@ -311,6 +312,13 @@ function buildCalendarDays(month: Date): Date[] {
   return Array.from({ length: 42 }, (_, index) => addDays(start, index));
 }
 
+interface AllCrewAvailRow {
+  crewId: string;
+  crewName: string;
+  availability: CrewAvailability;
+  items: CrewAvailabilityItem[];
+}
+
 const TimelinePage = () => {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
@@ -324,6 +332,29 @@ const TimelinePage = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedEventType, setSelectedEventType] = useState<EventTypeFilter>('all');
   const [selectedCrewAvailabilities, setSelectedCrewAvailabilities] = useState<CrewAvailabilityItem[]>([]);
+  const [allCrewAvailRows, setAllCrewAvailRows] = useState<AllCrewAvailRow[]>([]);
+  const [allCrewAvailLoading, setAllCrewAvailLoading] = useState(false);
+  const [calendarPopupDay, setCalendarPopupDay] = useState<string | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // Close popup on outside click or Escape
+  useEffect(() => {
+    if (!calendarPopupDay) return;
+    const handleClick = (e: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        setCalendarPopupDay(null);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCalendarPopupDay(null);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [calendarPopupDay]);
 
   useEffect(() => {
     if (selectedCrewId === 'all') {
@@ -371,6 +402,41 @@ const TimelinePage = () => {
       cancelled = true;
     };
   }, []);
+
+  // Load all crew availabilities when allCrew view is active or calendar with all crew selected
+  const needsAllCrewAvail = viewMode === 'allCrew' || (viewMode === 'calendar' && selectedCrewId === 'all');
+  useEffect(() => {
+    if (!needsAllCrewAvail || data.crew.length === 0) return;
+    if (allCrewAvailRows.length > 0 && !allCrewAvailLoading) return; // already loaded
+    let active = true;
+    setAllCrewAvailLoading(true);
+
+    const promises = data.crew.map(member =>
+      getCrewAvailabilityListAdmin(member.id)
+        .then(items => ({
+          crewId: member.id,
+          crewName: crewName(member),
+          availability: availabilityFromCrewSignal(member.signal),
+          items,
+        }))
+        .catch(() => ({
+          crewId: member.id,
+          crewName: crewName(member),
+          availability: availabilityFromCrewSignal(member.signal),
+          items: [] as CrewAvailabilityItem[],
+        }))
+    );
+
+    Promise.all(promises).then(rows => {
+      if (active) {
+        setAllCrewAvailRows(rows.sort((a, b) => a.crewName.localeCompare(b.crewName)));
+        setAllCrewAvailLoading(false);
+      }
+    });
+
+    return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsAllCrewAvail, data.crew]);
 
   const events = useMemo<TimelineEvent[]>(() => {
     const rows: TimelineEvent[] = [];
@@ -826,6 +892,69 @@ const TimelinePage = () => {
     };
   }, [selectedCrewId, selectedCrewAvailabilities]);
 
+  // Per-day aggregated available/unavailable crew counts for the "all crew" calendar overlay
+  const allCrewDayCounts = useMemo(() => {
+    if (selectedCrewId !== 'all' || allCrewAvailRows.length === 0) return new Map<string, { available: number; unavailable: number }>();
+    const map = new Map<string, { available: number; unavailable: number }>();
+    // Calculate for the visible month
+    const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(monthStart.getFullYear(), monthStart.getMonth(), d);
+      date.setHours(0, 0, 0, 0);
+      let available = 0;
+      let unavailable = 0;
+      for (const row of allCrewAvailRows) {
+        for (const avail of row.items) {
+          const start = new Date(avail.from);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(avail.to);
+          end.setHours(23, 59, 59, 999);
+          if (date >= start && date <= end) {
+            if (avail.isAvailable !== false) available++;
+            else unavailable++;
+            break; // one status per crew per day
+          }
+        }
+      }
+      if (available > 0 || unavailable > 0) {
+        map.set(dateKey(date), { available, unavailable });
+      }
+    }
+    return map;
+  }, [selectedCrewId, allCrewAvailRows, monthStart]);
+
+  // Detailed crew list for popup when a calendar day is clicked
+  const calendarPopupDetails = useMemo(() => {
+    if (!calendarPopupDay || allCrewAvailRows.length === 0) return [];
+    const [y, m, d] = calendarPopupDay.split('-').map(Number);
+    const clickedDate = new Date(y, m - 1, d);
+    clickedDate.setHours(0, 0, 0, 0);
+
+    const results: { crewId: string; crewName: string; from: string; to: string; isAvailable: boolean }[] = [];
+    for (const row of allCrewAvailRows) {
+      for (const avail of row.items) {
+        const start = new Date(avail.from);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(avail.to);
+        end.setHours(23, 59, 59, 999);
+        if (clickedDate >= start && clickedDate <= end) {
+          results.push({
+            crewId: row.crewId,
+            crewName: row.crewName,
+            from: avail.from,
+            to: avail.to,
+            isAvailable: avail.isAvailable !== false,
+          });
+          break;
+        }
+      }
+    }
+    return results.sort((a, b) => {
+      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+      return a.crewName.localeCompare(b.crewName);
+    });
+  }, [calendarPopupDay, allCrewAvailRows]);
+
   const visibleMonthEvents = useMemo(() => {
     return filteredEvents.filter(
       (event) => event.date.getFullYear() === monthStart.getFullYear() && event.date.getMonth() === monthStart.getMonth()
@@ -889,6 +1018,9 @@ const TimelinePage = () => {
           </button>
           <button type="button" className={`subsea-sb-link${viewMode === 'gantt' ? ' active' : ''}`} onClick={() => setViewMode('gantt')}>
             <FolderKanban size={13} /> Gantt Chart <span className="subsea-sb-count">{ganttItems.length}</span>
+          </button>
+          <button type="button" className={`subsea-sb-link${viewMode === 'allCrew' ? ' active' : ''}`} onClick={() => setViewMode('allCrew')}>
+            <Users size={13} /> All Crew Availability <span className="subsea-sb-count">{data.crew.length}</span>
           </button>
           {viewMode === 'gantt' && (
             <>
@@ -1039,6 +1171,9 @@ const TimelinePage = () => {
                 <button type="button" className={`subsea-vt-btn${viewMode === 'gantt' ? ' active' : ''}`} onClick={() => setViewMode('gantt')}>
                   <FolderKanban size={12} /> Gantt
                 </button>
+                <button type="button" className={`subsea-vt-btn${viewMode === 'allCrew' ? ' active' : ''}`} onClick={() => setViewMode('allCrew')}>
+                  <Users size={12} /> All Crew
+                </button>
               </div>
               <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
                 <Filter size={12} /> Filter
@@ -1071,7 +1206,7 @@ const TimelinePage = () => {
             <div className="subsea-state subsea-state-error" role="alert">{error}</div>
           ) : (
             <>
-              {viewMode === 'calendar' ? (
+              {viewMode === 'calendar' && (
                 <>
                   <section className="timeline-calendar-header">
                     <div className="timeline-calendar-nav">
@@ -1097,7 +1232,7 @@ const TimelinePage = () => {
                           {label}
                         </span>
                       ))}
-                      {selectedCrewId !== 'all' && (
+                      {(selectedCrewId !== 'all' || allCrewDayCounts.size > 0) && (
                         <>
                           <span className="timeline-legend-item">
                             <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.5)', border: '1px solid rgba(16, 185, 129, 0.8)' }} />
@@ -1121,6 +1256,8 @@ const TimelinePage = () => {
                       const isOtherMonth = day.getMonth() !== monthStart.getMonth();
                       const isToday = dateKey(day) === todayKey;
                       const availStatus = getDayAvailStatus(day);
+                      const allCrewCounts = allCrewDayCounts.get(dateKey(day));
+                      const hasAllCrewData = selectedCrewId === 'all' && allCrewCounts && (allCrewCounts.available > 0 || allCrewCounts.unavailable > 0);
 
                       let dayClass = 'timeline-cal-day';
                       if (isOtherMonth) dayClass += ' other-month';
@@ -1133,9 +1270,35 @@ const TimelinePage = () => {
                           ? { backgroundColor: 'rgba(239, 68, 68, 0.06)' }
                           : {};
 
+                      const maxEvents = hasAllCrewData ? 1 : (availStatus !== 'none' ? 2 : 3);
+                      const dk = dateKey(day);
+
                       return (
-                        <article key={dateKey(day)} className={dayClass} style={dayStyle}>
+                        <article
+                          key={dk}
+                          className={`${dayClass}${hasAllCrewData ? ' timeline-cal-day-clickable' : ''}`}
+                          style={dayStyle}
+                          onClick={hasAllCrewData ? () => setCalendarPopupDay(prev => prev === dk ? null : dk) : undefined}
+                        >
                           <div className="timeline-cal-day-num">{day.getDate()}</div>
+                          {/* All-crew aggregate pills */}
+                          {hasAllCrewData && (
+                            <div className="timeline-cal-crew-counts">
+                              {allCrewCounts.available > 0 && (
+                                <div className="timeline-cal-crew-pill timeline-cal-crew-pill-green" title={`${allCrewCounts.available} crew available`}>
+                                  <UserCheck size={8} />
+                                  <span>{allCrewCounts.available}</span>
+                                </div>
+                              )}
+                              {allCrewCounts.unavailable > 0 && (
+                                <div className="timeline-cal-crew-pill timeline-cal-crew-pill-red" title={`${allCrewCounts.unavailable} crew unavailable`}>
+                                  <UserMinus size={8} />
+                                  <span>{allCrewCounts.unavailable}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Single-crew availability status */}
                           {availStatus === 'available' && (
                             <div className="timeline-event timeline-event-green" style={{ fontSize: '9px', padding: '1px 4px' }}>
                               <UserCheck size={8} />
@@ -1148,7 +1311,7 @@ const TimelinePage = () => {
                               <span>Unavailable</span>
                             </div>
                           )}
-                          {dayEvents.slice(0, availStatus !== 'none' ? 2 : 3).map((event) => {
+                          {dayEvents.slice(0, maxEvents).map((event) => {
                             const Icon = event.icon;
                             return (
                               <div key={event.id} className={eventClass(event.tone)} title={`${event.title} - ${event.reference}`}>
@@ -1157,11 +1320,70 @@ const TimelinePage = () => {
                               </div>
                             );
                           })}
-                          {dayEvents.length > (availStatus !== 'none' ? 2 : 3) && <div className="timeline-event-more">+{dayEvents.length - (availStatus !== 'none' ? 2 : 3)} more</div>}
+                          {dayEvents.length > maxEvents && <div className="timeline-event-more">+{dayEvents.length - maxEvents} more</div>}
                         </article>
                       );
                     })}
                   </section>
+
+                  {/* ── Crew Availability Detail Popup ── */}
+                  {calendarPopupDay && calendarPopupDetails.length > 0 && (() => {
+                    const [py, pm, pd] = calendarPopupDay.split('-').map(Number);
+                    const popupDate = new Date(py, pm - 1, pd);
+                    const availCount = calendarPopupDetails.filter(c => c.isAvailable).length;
+                    const unavailCount = calendarPopupDetails.filter(c => !c.isAvailable).length;
+                    const dateFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+                    return (
+                      <div className="cal-popup-backdrop">
+                        <div className="cal-popup" ref={popupRef}>
+                          <div className="cal-popup-header">
+                            <div>
+                              <div className="cal-popup-title">{dateFmt.format(popupDate)}</div>
+                              <div className="cal-popup-subtitle">
+                                {availCount > 0 && <span className="cal-popup-count-green">{availCount} available</span>}
+                                {availCount > 0 && unavailCount > 0 && <span className="cal-popup-sep"> · </span>}
+                                {unavailCount > 0 && <span className="cal-popup-count-red">{unavailCount} unavailable</span>}
+                              </div>
+                            </div>
+                            <button type="button" className="cal-popup-close" onClick={() => setCalendarPopupDay(null)} aria-label="Close">
+                              <X size={16} />
+                            </button>
+                          </div>
+                          <div className="cal-popup-body">
+                            {calendarPopupDetails.map(crew => {
+                              const fromDate = parseDate(crew.from);
+                              const toDate = parseDate(crew.to);
+                              const rangeStr = fromDate && toDate
+                                ? `${SHORT_DATE_FORMAT.format(fromDate)} — ${SHORT_DATE_FORMAT.format(toDate)}`
+                                : '—';
+                              const rangeDays = fromDate && toDate ? daysBetween(fromDate, toDate) + 1 : 0;
+                              return (
+                                <div
+                                  key={crew.crewId}
+                                  className={`cal-popup-row ${crew.isAvailable ? 'cal-popup-row-avail' : 'cal-popup-row-unavail'}`}
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/crew/${crew.crewId}`); }}
+                                >
+                                  <div className="cal-popup-row-indicator" />
+                                  <div className="cal-popup-row-info">
+                                    <div className="cal-popup-row-name">{crew.crewName}</div>
+                                    <div className="cal-popup-row-range">
+                                      <CalendarDays size={10} />
+                                      <span>{rangeStr}</span>
+                                      {rangeDays > 0 && <span className="cal-popup-row-days">{rangeDays}d</span>}
+                                    </div>
+                                  </div>
+                                  <div className={`cal-popup-row-badge ${crew.isAvailable ? 'cal-popup-badge-green' : 'cal-popup-badge-red'}`}>
+                                    {crew.isAvailable ? 'Available' : 'Unavailable'}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <section className="subsea-g-main timeline-lower-grid">
                     <div className="subsea-pane">
@@ -1298,7 +1520,8 @@ const TimelinePage = () => {
                     </div>
                   </section>
                 </>
-              ) : (
+              )}
+              {viewMode === 'gantt' && (
                 <>
                   <section className="subsea-pane">
                     <div className="subsea-pane-head timeline-gantt-head">
@@ -1484,6 +1707,116 @@ const TimelinePage = () => {
                   </section>
                 </>
               )}
+              {viewMode === 'allCrew' && (() => {
+                const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+                const dayColumns = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+                const filteredRows = allCrewAvailRows.filter(row => {
+                  if (!searchQuery.trim()) return true;
+                  return row.crewName.toLowerCase().includes(searchQuery.trim().toLowerCase());
+                });
+
+                const getDayStatus = (row: AllCrewAvailRow, dayNum: number): 'available' | 'unavailable' | 'none' => {
+                  const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), dayNum);
+                  d.setHours(0, 0, 0, 0);
+                  for (const avail of row.items) {
+                    const start = new Date(avail.from);
+                    start.setHours(0, 0, 0, 0);
+                    const end = new Date(avail.to);
+                    end.setHours(23, 59, 59, 999);
+                    if (d >= start && d <= end) {
+                      return avail.isAvailable !== false ? 'available' : 'unavailable';
+                    }
+                  }
+                  return 'none';
+                };
+
+                const todayDate = new Date();
+                const todayDayNum = todayDate.getFullYear() === monthStart.getFullYear() && todayDate.getMonth() === monthStart.getMonth() ? todayDate.getDate() : -1;
+
+                return (
+                  <>
+                    <section className="timeline-calendar-header">
+                      <div className="timeline-calendar-nav">
+                        <button type="button" className="timeline-nav-btn" aria-label="Previous month" onClick={() => setCalendarDate((date) => addMonths(date, -1))}>
+                          <ChevronLeft size={14} />
+                        </button>
+                        <strong>{MONTH_FORMAT.format(monthStart)}</strong>
+                        <button type="button" className="timeline-nav-btn" aria-label="Next month" onClick={() => setCalendarDate((date) => addMonths(date, 1))}>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                      <div className="timeline-legend" aria-label="Availability legend">
+                        <span className="timeline-legend-item">
+                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#10b981' }} />
+                          Available
+                        </span>
+                        <span className="timeline-legend-item">
+                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#ef4444' }} />
+                          Unavailable
+                        </span>
+                        <span className="timeline-legend-item">
+                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', backgroundColor: 'var(--surface3)' }} />
+                          No data
+                        </span>
+                      </div>
+                    </section>
+
+                    <section className="subsea-pane">
+                      <div className="subsea-pane-head">
+                        <div>
+                          <div className="subsea-pane-title">All Crew Availability — {MONTH_FORMAT.format(monthStart)}</div>
+                          <div className="subsea-pane-sub">
+                            {allCrewAvailLoading ? 'Loading availability data...' : `${filteredRows.length} crew member${filteredRows.length === 1 ? '' : 's'} · ${daysInMonth} days`}
+                          </div>
+                        </div>
+                      </div>
+
+                      {allCrewAvailLoading ? (
+                        <div className="timeline-empty">Loading all crew availability data…</div>
+                      ) : filteredRows.length === 0 ? (
+                        <div className="timeline-empty">No crew members match your search.</div>
+                      ) : (
+                        <div className="allcrew-gantt-wrap">
+                          <div className="allcrew-gantt" style={{ minWidth: `${180 + daysInMonth * 32}px` }}>
+                            {/* Header row: Crew name column + day columns */}
+                            <div className="allcrew-gantt-header">
+                              <div className="allcrew-gantt-name-col">Crew Member</div>
+                              {dayColumns.map(d => (
+                                <div
+                                  key={d}
+                                  className={`allcrew-gantt-day-col${d === todayDayNum ? ' allcrew-today' : ''}`}
+                                >
+                                  {d}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Crew rows */}
+                            <div className="allcrew-gantt-body">
+                              {filteredRows.map(row => (
+                                <div key={row.crewId} className="allcrew-gantt-row" onClick={() => navigate(`/crew/${row.crewId}`)} title={`View ${row.crewName}`}>
+                                  <div className="allcrew-gantt-name-cell">
+                                    <span className={`${crewAvailabilityDotClass(row.availability)} timeline-crew-link-dot`} />
+                                    <span className="allcrew-gantt-name-text">{row.crewName}</span>
+                                  </div>
+                                  {dayColumns.map(d => {
+                                    const status = getDayStatus(row, d);
+                                    let cellClass = 'allcrew-gantt-day-cell';
+                                    if (d === todayDayNum) cellClass += ' allcrew-today';
+                                    if (status === 'available') cellClass += ' allcrew-day-avail';
+                                    else if (status === 'unavailable') cellClass += ' allcrew-day-unavail';
+                                    return <div key={d} className={cellClass} />;
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  </>
+                );
+              })()}
             </>
           )}
         </main>
