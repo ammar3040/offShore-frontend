@@ -443,7 +443,12 @@ const CrewListPage = () => {
           <button
             type="button"
             className={`subsea-sb-link${activeView === 'searchAvailability' ? ' active' : ''}`}
-            onClick={() => setActiveView('searchAvailability')}
+            onClick={() => {
+              setActiveView('searchAvailability');
+              if (availabilitySearchType === 'all') {
+                setAvailabilitySearchType('available');
+              }
+            }}
           >
             <CalendarRange size={13} /> Search Availability
           </button>
@@ -576,6 +581,9 @@ const CrewListPage = () => {
                             if (endDateFilter < val) {
                               setEndDateFilter(val);
                             }
+                            if (availabilitySearchType === 'all') {
+                              setAvailabilitySearchType('available');
+                            }
                             setPage(1);
                           }}
                           showTime={false}
@@ -586,11 +594,15 @@ const CrewListPage = () => {
                           triggerClassName="h-[42px] px-[14px] py-[10px] text-sm border border-[#e5e7eb] rounded-lg bg-white text-[#1f2937] hover:bg-gray-50 flex items-center justify-between w-full shadow-none"
                           labelClassName="text-xs font-semibold text-[#374151] mb-1.5"
                           className="w-full gap-0"
+                          popoverContentClassName="admin-tickets-search-overlay"
                         />
                         <DatePickerTime
                           date={endDateFilter}
                           onDateChange={(val) => {
                             setEndDateFilter(val);
+                            if (availabilitySearchType === 'all') {
+                              setAvailabilitySearchType('available');
+                            }
                             setPage(1);
                           }}
                           showTime={false}
@@ -601,6 +613,7 @@ const CrewListPage = () => {
                           triggerClassName="h-[42px] px-[14px] py-[10px] text-sm border border-[#e5e7eb] rounded-lg bg-white text-[#1f2937] hover:bg-gray-50 flex items-center justify-between w-full shadow-none"
                           labelClassName="text-xs font-semibold text-[#374151] mb-1.5"
                           className="w-full gap-0"
+                          popoverContentClassName="admin-tickets-search-overlay"
                         />
                         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                           <button
@@ -783,7 +796,16 @@ const CrewListPage = () => {
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Rigs</button>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Status: All</button>
             <div className="subsea-toolbar-spacer" />
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setActiveView('searchAvailability')}>
+            <button
+              type="button"
+              className="subsea-btn subsea-btn-default subsea-btn-sm"
+              onClick={() => {
+                setActiveView('searchAvailability');
+                if (availabilitySearchType === 'all') {
+                  setAvailabilitySearchType('available');
+                }
+              }}
+            >
               <CalendarRange size={11} /> Search Availability
             </button>
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">

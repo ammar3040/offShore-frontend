@@ -122,3 +122,54 @@
     @apply bg-background text-foreground;
     }
 }
+
+/* White calendar theme & datepicker overlay overrides */
+.admin-tickets-search-overlay[data-slot="popover-content"] {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #dde1e8 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12) !important;
+}
+
+.admin-tickets-search-overlay [data-slot="calendar"] {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.admin-tickets-search-overlay .text-muted-foreground {
+  color: #9ca3af !important;
+}
+
+/* Explicit selected and hover colors for white calendar */
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-selected="true"],
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-selected-single="true"],
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-range-start="true"],
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-range-end="true"] {
+  background-color: #1a56db !important;
+  color: #ffffff !important;
+}
+
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-selected="true"]:hover,
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-selected-single="true"]:hover,
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-range-start="true"]:hover,
+.admin-tickets-search-overlay [data-slot="calendar"] button[data-range-end="true"]:hover {
+  background-color: #1a56db !important;
+  color: #ffffff !important;
+}
+
+.admin-tickets-search-overlay [data-slot="calendar"] button:hover:not([data-selected="true"]):not([data-selected-single="true"]):not([data-range-start="true"]):not([data-range-end="true"]) {
+  background-color: #ebf0ff !important;
+  color: #1a56db !important;
+}
+
+/* Force light color scheme on native selection inputs and options to override browser dark mode */
+.admin-tickets-search-overlay select,
+.admin-tickets-search-overlay option,
+.admin-tickets-search-overlay select option,
+.admin-tickets-search-overlay [data-slot="calendar"] select,
+.admin-tickets-search-overlay [data-slot="calendar"] option {
+  color-scheme: light !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
