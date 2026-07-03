@@ -32,8 +32,9 @@ import {
   deleteCrewAvailabilityAdmin,
   type CrewAssignedProject,
   type CrewMemberApi,
-  type CrewAvailabilityItem,
+  type CrewAvailabilityAdminItem,
 } from '../api/crew';
+import { EMPLOYER_OPTIONS } from '../constants/employers';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
@@ -144,12 +145,18 @@ const CrewDetailsPage = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  const [availabilityItems, setAvailabilityItems] = useState<CrewAvailabilityItem[]>([]);
+  const [availabilityItems, setAvailabilityItems] = useState<CrewAvailabilityAdminItem[]>([]);
   const [loadingAvailabilities, setLoadingAvailabilities] = useState(false);
   const [availError, setAvailError] = useState<string | null>(null);
   const [newAvailFrom, setNewAvailFrom] = useState('');
   const [newAvailTo, setNewAvailTo] = useState('');
   const [addingAvail, setAddingAvail] = useState(false);
+  const [newAvailEmployer, setNewAvailEmployer] = useState('');
+  const [newAvailEmployerOther, setNewAvailEmployerOther] = useState('');
+  const [newAvailClient, setNewAvailClient] = useState('');
+  const [newAvailRigVessel, setNewAvailRigVessel] = useState('');
+  const [newAvailCountry, setNewAvailCountry] = useState('');
+  const [newAvailNotes, setNewAvailNotes] = useState('');
 
   const [calendarDate, setCalendarDate] = useState(() => startOfMonth(new Date()));
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
@@ -205,7 +212,20 @@ const CrewDetailsPage = () => {
     setAvailError(null);
     try {
       const isAvail = newAvailType === 'available';
-      await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo, isAvail);
+      const assignment =
+        !isAvail
+          ? {
+              ...(newAvailEmployer ? { employer: newAvailEmployer } : {}),
+              ...(newAvailEmployer === 'Other' && newAvailEmployerOther.trim()
+                ? { employer_other: newAvailEmployerOther.trim() }
+                : {}),
+              ...(newAvailClient.trim() ? { client: newAvailClient.trim() } : {}),
+              ...(newAvailRigVessel.trim() ? { rig_vessel: newAvailRigVessel.trim() } : {}),
+              ...(newAvailCountry.trim() ? { country: newAvailCountry.trim() } : {}),
+              ...(newAvailNotes.trim() ? { notes: newAvailNotes.trim() } : {}),
+            }
+          : undefined;
+      await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo, isAvail, assignment);
       
       const startFormatted = new Date(newAvailFrom).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
       const endFormatted = new Date(newAvailTo).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -213,6 +233,12 @@ const CrewDetailsPage = () => {
 
       setNewAvailFrom('');
       setNewAvailTo('');
+      setNewAvailEmployer('');
+      setNewAvailEmployerOther('');
+      setNewAvailClient('');
+      setNewAvailRigVessel('');
+      setNewAvailCountry('');
+      setNewAvailNotes('');
       setRangeStart(null);
       setRangeEnd(null);
       await loadAvailabilities();
@@ -889,6 +915,85 @@ const CrewDetailsPage = () => {
                           </select>
                         </div>
                       </div>
+                      {newAvailType === 'unavailable' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* MD Section 3.3 — employer dropdown */}
+                          <div className="dev-new-field" data-dev-tag="NEW">
+                            <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">CURRENT EMPLOYER</label>
+                            <select
+                              value={newAvailEmployer}
+                              onChange={(e) => setNewAvailEmployer(e.target.value)}
+                              className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                              style={{ borderColor: '#cbd5e1', height: '30px' }}
+                            >
+                              <option value="">Select employer</option>
+                              {EMPLOYER_OPTIONS.map((emp) => (
+                                <option key={emp} value={emp}>{emp}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {newAvailEmployer === 'Other' && (
+                            <div className="dev-new-field" data-dev-tag="NEW">
+                              <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">EMPLOYER (OTHER)</label>
+                              <input
+                                type="text"
+                                value={newAvailEmployerOther}
+                                onChange={(e) => setNewAvailEmployerOther(e.target.value)}
+                                className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                                style={{ borderColor: '#cbd5e1', height: '30px' }}
+                                placeholder="Free text"
+                              />
+                            </div>
+                          )}
+                          {/* MD Section 3.3 — client / operator */}
+                          <div className="dev-new-field" data-dev-tag="NEW">
+                            <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">CLIENT / OPERATOR</label>
+                            <input
+                              type="text"
+                              value={newAvailClient}
+                              onChange={(e) => setNewAvailClient(e.target.value)}
+                              className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                              style={{ borderColor: '#cbd5e1', height: '30px' }}
+                              placeholder="e.g. Transocean"
+                            />
+                          </div>
+                          {/* MD Section 3.3 — rig / vessel */}
+                          <div className="dev-new-field" data-dev-tag="NEW">
+                            <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">RIG / VESSEL</label>
+                            <input
+                              type="text"
+                              value={newAvailRigVessel}
+                              onChange={(e) => setNewAvailRigVessel(e.target.value)}
+                              className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                              style={{ borderColor: '#cbd5e1', height: '30px' }}
+                              placeholder="e.g. Deepwater Atlas"
+                            />
+                          </div>
+                          {/* MD Section 3.3 — country */}
+                          <div className="dev-new-field" data-dev-tag="NEW">
+                            <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">COUNTRY</label>
+                            <input
+                              type="text"
+                              value={newAvailCountry}
+                              onChange={(e) => setNewAvailCountry(e.target.value)}
+                              className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                              style={{ borderColor: '#cbd5e1', height: '30px' }}
+                            />
+                          </div>
+                          {/* MD Section 3.3 — notes */}
+                          <div className="col-span-full dev-new-field" data-dev-tag="NEW">
+                            <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">NOTES</label>
+                            <input
+                              type="text"
+                              value={newAvailNotes}
+                              onChange={(e) => setNewAvailNotes(e.target.value)}
+                              className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                              style={{ borderColor: '#cbd5e1', height: '30px' }}
+                              placeholder="e.g. Working 3-week rotation"
+                            />
+                          </div>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleAddAvailability()}
@@ -921,6 +1026,16 @@ const CrewDetailsPage = () => {
                               <div>
                                 <div className="text-xs font-semibold" style={{ color: titleColor }}>{titleLabel}</div>
                                 <div className="text-sm font-bold" style={{ color: 'var(--subsea-text)' }}>{fromStr} — {toStr}</div>
+                                {!isAvail && (item.employer || item.client || item.rig_vessel) && (
+                                  <div className="text-[10px] text-muted-foreground mt-1 dev-new-field" data-dev-tag="NEW">
+                                    {[item.employer === 'Other' ? item.employer_other : item.employer, item.client, item.rig_vessel, item.country]
+                                      .filter(Boolean)
+                                      .join(' · ')}
+                                    {item.available_from && (
+                                      <span> · Available from {new Date(item.available_from).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <button
                                 type="button"

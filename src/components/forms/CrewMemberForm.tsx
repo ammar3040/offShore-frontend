@@ -6,6 +6,7 @@ import { countries as phoneCountries } from 'country-codes-flags-phone-codes';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { SUBSEA_OVERLAY_LIGHT_CLASS } from '@/lib/subseaTheme';
+import { BOP_OEM_OPTIONS, CREW_STATUS_TIER_OPTIONS, PREFERRED_RATING_OPTIONS } from '@/utils/crewAvailability';
 
 function parsePhoneValue(value: string): { dialCode: string; number: string } {
   const trimmed = (value || '').trim();
@@ -72,6 +73,13 @@ export interface CrewMemberFormData {
   visaCountry: string;
   visaIssueDate: string;
   visaExpiryDate: string;
+
+  // MD Section 3.1 — extended contractor profile fields
+  preferredRating: string;
+  primaryBopOem: string;
+  secondarySkills: string;
+  currentStatus: string;
+  lastWorked: string;
 }
 
 interface CrewMemberFormProps {
@@ -119,6 +127,11 @@ const defaultFormData: CrewMemberFormData = {
   visaCountry: '',
   visaIssueDate: '',
   visaExpiryDate: '',
+  preferredRating: 'None',
+  primaryBopOem: 'Other',
+  secondarySkills: '',
+  currentStatus: 'Available',
+  lastWorked: '',
 };
 
 const ALL_COUNTRIES = Country.getAllCountries();
@@ -239,6 +252,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
       data.identityExpiryDate = toDateInputValue(data.identityExpiryDate);
       data.visaIssueDate = toDateInputValue(data.visaIssueDate);
       data.visaExpiryDate = toDateInputValue(data.visaExpiryDate);
+      data.lastWorked = toDateInputValue(data.lastWorked);
       if (!data.certificates?.length && (initialData as unknown as Record<string, unknown>).certificateIssueDate != null) {
         const leg = initialData as typeof initialData & { certificateIssueDate?: string; certificateExpiryDate?: string; certificateDocuments?: File[] };
         data.certificates = [{
@@ -1154,6 +1168,83 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="linkedin"
                 placeholder="https://linkedin.com/in/..."
                 value={formData.linkedin}
+                onChange={handleInputChange}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* MD Section 3.1 — Mobilization Profile */}
+        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Mobilization Profile</h3>
+          <div className="grid grid-cols-2 gap-5">
+            {/* MD Section 3.1 — Preferred Rating */}
+            <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="NEW">
+              <label htmlFor="preferredRating" className="text-sm font-semibold text-foreground">Preferred Rating</label>
+              <select
+                id="preferredRating"
+                name="preferredRating"
+                value={formData.preferredRating}
+                onChange={handleInputChange}
+                className={inputClass}
+              >
+                {PREFERRED_RATING_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            {/* MD Section 3.1 — Primary BOP OEM */}
+            <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="NEW">
+              <label htmlFor="primaryBopOem" className="text-sm font-semibold text-foreground">Primary BOP OEM</label>
+              <select
+                id="primaryBopOem"
+                name="primaryBopOem"
+                value={formData.primaryBopOem}
+                onChange={handleInputChange}
+                className={inputClass}
+              >
+                {BOP_OEM_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            {/* MD Section 3.1 — Secondary Skills */}
+            <div className={cn('flex flex-col gap-2 col-span-full dev-new-field')} data-dev-tag="NEW">
+              <label htmlFor="secondarySkills" className="text-sm font-semibold text-foreground">Secondary Skills</label>
+              <input
+                type="text"
+                id="secondarySkills"
+                name="secondarySkills"
+                value={formData.secondarySkills}
+                onChange={handleInputChange}
+                placeholder="e.g. Tubing, Controls (comma-separated)"
+                className={inputClass}
+              />
+            </div>
+            {/* MD Section 3.2 — 7-tier current status */}
+            <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="NEW">
+              <label htmlFor="currentStatus" className="text-sm font-semibold text-foreground">Current Status</label>
+              <select
+                id="currentStatus"
+                name="currentStatus"
+                value={formData.currentStatus}
+                onChange={handleInputChange}
+                className={inputClass}
+              >
+                {CREW_STATUS_TIER_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            {/* MD Section 3.1 — Last Worked */}
+            <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="NEW">
+              <label htmlFor="lastWorked" className="text-sm font-semibold text-foreground">Last Worked (Subseaquence)</label>
+              <input
+                type="date"
+                id="lastWorked"
+                name="lastWorked"
+                value={formData.lastWorked}
                 onChange={handleInputChange}
                 className={inputClass}
               />

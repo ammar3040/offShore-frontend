@@ -26,9 +26,10 @@ import {
   ArrowLeft,
   UserPlus,
 } from 'lucide-react';
-import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject } from '../api/crew';
+import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject, type GetCrewListFilters } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
-import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, getCrewSignal, type CrewAvailability } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, getCrewSignal, crewStatusTierBadgeClass, crewStatusTierLabel, CREW_STATUS_TIER_OPTIONS, PREFERRED_RATING_OPTIONS, BOP_OEM_OPTIONS, type CrewAvailability } from '../utils/crewAvailability';
+import { EMPLOYER_OPTIONS } from '../constants/employers';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
@@ -114,7 +115,36 @@ const CrewListPage = () => {
   const [endDateFilter, setEndDateFilter] = useState(getTodayString());
   const [availabilitySearchType, setAvailabilitySearchType] = useState<'all' | 'available' | 'unavailable'>('all');
 
+  // MD Section 3.4 — operations console filters (server-side via GET /crew)
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterRating, setFilterRating] = useState('');
+  const [filterBopOem, setFilterBopOem] = useState('');
+  const [filterEmployer, setFilterEmployer] = useState('');
+  const [filterAvailableWithinDays, setFilterAvailableWithinDays] = useState('');
+  const [filterExpiredCerts, setFilterExpiredCerts] = useState(false);
+
   const pageSize = 5;
+
+  const buildListFilters = useCallback((
+    start?: string,
+    end?: string,
+    searchType?: 'available' | 'unavailable'
+  ): GetCrewListFilters => {
+    const filters: GetCrewListFilters = {};
+    if (start && searchType && searchType !== 'all' as unknown as string) {
+      filters.availabilityStart = start;
+      filters.availabilityEnd = end || start;
+      filters.type = searchType;
+    }
+    if (filterStatus) filters.status = filterStatus;
+    if (filterRating) filters.rating = filterRating;
+    if (filterBopOem) filters.bopOem = filterBopOem;
+    if (filterEmployer) filters.employer = filterEmployer;
+    const days = parseInt(filterAvailableWithinDays, 10);
+    if (!Number.isNaN(days) && days > 0) filters.availableWithinDays = days;
+    if (filterExpiredCerts) filters.expiredCerts = true;
+    return filters;
+  }, [filterStatus, filterRating, filterBopOem, filterEmployer, filterAvailableWithinDays, filterExpiredCerts]);
 
   const loadCrew = useCallback(async (
     withListLoading: boolean, 
@@ -127,11 +157,7 @@ const CrewListPage = () => {
       setError(null);
     }
     try {
-      const filters = {
-        availabilityStart: start || undefined,
-        availabilityEnd: end || undefined,
-        type: searchType || undefined,
-      };
+      const filters = buildListFilters(start, end, searchType);
       const crewRes = await getCrewList(filters);
       setCrew(crewRes.crew ?? []);
     } catch (err) {
@@ -141,7 +167,7 @@ const CrewListPage = () => {
     } finally {
       if (withListLoading) setLoading(false);
     }
-  }, []);
+  }, [buildListFilters]);
 
   useEffect(() => {
     if (availabilitySearchType === 'all') {
@@ -149,7 +175,7 @@ const CrewListPage = () => {
     } else {
       void loadCrew(true, startDateFilter, endDateFilter, availabilitySearchType);
     }
-  }, [availabilitySearchType, startDateFilter, endDateFilter, loadCrew]);
+  }, [availabilitySearchType, startDateFilter, endDateFilter, loadCrew, filterStatus, filterRating, filterBopOem, filterEmployer, filterAvailableWithinDays, filterExpiredCerts]);
 
   const refreshCrewData = useCallback(() => {
     if (availabilitySearchType === 'all') {
@@ -792,9 +818,85 @@ const CrewListPage = () => {
                 }}
               />
             </div>
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Ranks</button>
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">All Rigs</button>
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">Status: All</button>
+            {/* MD Section 3.4 — rating filter */}
+            <div className="dev-new-field" data-dev-tag="NEW">
+              <select
+                className="subsea-btn subsea-btn-default subsea-btn-sm mobilization-filter-select"
+                value={filterRating}
+                onChange={(e) => { setFilterRating(e.target.value); setPage(1); }}
+                aria-label="Filter by rating"
+              >
+                <option value="">All Ratings</option>
+                {PREFERRED_RATING_OPTIONS.filter((r) => r !== 'None').map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+            {/* MD Section 3.4 — BOP OEM filter */}
+            <div className="dev-new-field" data-dev-tag="NEW">
+              <select
+                className="subsea-btn subsea-btn-default subsea-btn-sm mobilization-filter-select"
+                value={filterBopOem}
+                onChange={(e) => { setFilterBopOem(e.target.value); setPage(1); }}
+                aria-label="Filter by BOP OEM"
+              >
+                <option value="">All BOP OEM</option>
+                {BOP_OEM_OPTIONS.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+            {/* MD Section 3.4 — 7-tier status filter */}
+            <div className="dev-new-field" data-dev-tag="NEW">
+              <select
+                className="subsea-btn subsea-btn-default subsea-btn-sm mobilization-filter-select"
+                value={filterStatus}
+                onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                aria-label="Filter by status"
+              >
+                <option value="">Status: All</option>
+                {CREW_STATUS_TIER_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{crewStatusTierLabel(s)}</option>
+                ))}
+              </select>
+            </div>
+            {/* MD Section 3.4 — employer filter */}
+            <div className="dev-new-field" data-dev-tag="NEW">
+              <select
+                className="subsea-btn subsea-btn-default subsea-btn-sm mobilization-filter-select"
+                value={filterEmployer}
+                onChange={(e) => { setFilterEmployer(e.target.value); setPage(1); }}
+                aria-label="Filter by employer"
+              >
+                <option value="">All Employers</option>
+                {EMPLOYER_OPTIONS.filter((e) => e !== 'Other').map((emp) => (
+                  <option key={emp} value={emp}>{emp}</option>
+                ))}
+              </select>
+            </div>
+            {/* MD Section 3.4 — available within N days */}
+            <div className="dev-new-field" data-dev-tag="NEW">
+              <select
+                className="subsea-btn subsea-btn-default subsea-btn-sm mobilization-filter-select"
+                value={filterAvailableWithinDays}
+                onChange={(e) => { setFilterAvailableWithinDays(e.target.value); setPage(1); }}
+                aria-label="Available within days"
+              >
+                <option value="">Available window</option>
+                <option value="14">Available in 14 days</option>
+                <option value="7">Available in 7 days</option>
+                <option value="30">Available in 30 days</option>
+              </select>
+            </div>
+            {/* MD Section 3.4 — expired certs filter */}
+            <label className="dev-new-field subsea-btn subsea-btn-default subsea-btn-sm mobilization-filter-check" data-dev-tag="NEW">
+              <input
+                type="checkbox"
+                checked={filterExpiredCerts}
+                onChange={(e) => { setFilterExpiredCerts(e.target.checked); setPage(1); }}
+              />
+              Expired certs
+            </label>
             <div className="subsea-toolbar-spacer" />
             <button
               type="button"
@@ -850,9 +952,15 @@ const CrewListPage = () => {
                     <tr>
                       <th>Name</th>
                       <th>Rank</th>
+                      <th className="dev-new-field" data-dev-tag="NEW">Rating</th>
+                      <th className="dev-new-field" data-dev-tag="NEW">BOP OEM</th>
                       <th>Nationality</th>
                       <th>Rig</th>
-                      <th>Status</th>
+                      <th className="dev-new-field" data-dev-tag="NEW">Personnel Status</th>
+                      <th className="dev-new-field" data-dev-tag="NEW">Employer</th>
+                      <th className="dev-new-field" data-dev-tag="NEW">Client</th>
+                      <th className="dev-new-field" data-dev-tag="NEW">Available From</th>
+                      <th>Signal</th>
                       <th>Certs</th>
                       <th />
                     </tr>
@@ -860,7 +968,7 @@ const CrewListPage = () => {
                   <tbody>
                     {paginatedCrew.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="subsea-empty-cell">
+                        <td colSpan={13} className="subsea-empty-cell">
                           {rosterTab === 'available' ? 'No available crew members found.' : 'No crew members currently in project.'}
                         </td>
                       </tr>
@@ -870,6 +978,15 @@ const CrewListPage = () => {
                         const status = crewStatus(kind);
                         const project = member.activeProjects?.[0];
                         const certExpiring = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
+                        const assignment = member.currentAssignment;
+                        const personnelStatus = member.current_status ?? 'Available';
+                        const employerDisplay =
+                          assignment?.employer === 'Other'
+                            ? assignment?.employer_other
+                            : assignment?.employer;
+                        const availableFromDisplay = assignment?.available_from
+                          ? new Date(assignment.available_from).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                          : '—';
                         return (
                           <tr key={member.id} onClick={() => openCrewDetail(member)}>
                             <td className="strong">
@@ -889,9 +1006,19 @@ const CrewListPage = () => {
                                 <span>{member.firstname} {member.lastname}</span>
                               </div>
                             </td>
-                            <td>{member.organization || '—'}</td>
+                            <td>{member.rank || member.organization || '—'}</td>
+                            <td className="dev-new-field" data-dev-tag="NEW">{member.preferred_rating && member.preferred_rating !== 'None' ? member.preferred_rating : '—'}</td>
+                            <td className="dev-new-field" data-dev-tag="NEW">{member.primary_bop_oem && member.primary_bop_oem !== 'Other' ? member.primary_bop_oem : '—'}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
-                            <td>{project?.title || '—'}</td>
+                            <td>{assignment?.rig_vessel || project?.title || '—'}</td>
+                            <td className="dev-new-field" data-dev-tag="NEW">
+                              <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(personnelStatus)}`}>
+                                {crewStatusTierLabel(personnelStatus)}
+                              </span>
+                            </td>
+                            <td className="dev-new-field" data-dev-tag="NEW">{employerDisplay || '—'}</td>
+                            <td className="dev-new-field" data-dev-tag="NEW">{assignment?.client || '—'}</td>
+                            <td className="dev-new-field" data-dev-tag="NEW">{availableFromDisplay}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
                             <td>
                               <span className={`subsea-badge ${certExpiring ? 'subsea-b-amber' : 'subsea-b-green'}`}>

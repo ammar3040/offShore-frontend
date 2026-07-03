@@ -105,9 +105,24 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
     organization: pickString(raw, 'organization'),
     linkedin: pickString(raw, 'linkedin'),
     visa: pickString(raw, 'visa'),
-    visaCountry: pickString(raw, 'visa_country', 'visaCountry'),
-    visaIssueDate: toDateInputValue(pickString(raw, 'visa_issue_date', 'visaIssueDate')),
-    visaExpiryDate: toDateInputValue(pickString(raw, 'visa_expiry_date', 'visaExpiryDate')),
+    visaCountry:
+      pickString(raw, 'visa_country', 'visaCountry') ||
+      pickString((raw.visa_details as Record<string, unknown> | undefined) ?? {}, 'visa_country'),
+    visaIssueDate: toDateInputValue(
+      pickString(raw, 'visa_issue_date', 'visaIssueDate') ||
+        pickString((raw.visa_details as Record<string, unknown> | undefined) ?? {}, 'visa_issue_date')
+    ),
+    visaExpiryDate: toDateInputValue(
+      pickString(raw, 'visa_expiry_date', 'visaExpiryDate') ||
+        pickString((raw.visa_details as Record<string, unknown> | undefined) ?? {}, 'visa_expiry_date')
+    ),
+    preferredRating: pickString(raw, 'preferred_rating', 'preferredRating') || 'None',
+    primaryBopOem: pickString(raw, 'primary_bop_oem', 'primaryBopOem') || 'Other',
+    secondarySkills: Array.isArray(raw.secondary_skills)
+      ? (raw.secondary_skills as string[]).join(', ')
+      : pickString(raw, 'secondary_skills', 'secondarySkills'),
+    currentStatus: pickString(raw, 'current_status', 'currentStatus') || 'Available',
+    lastWorked: toDateInputValue(pickString(raw, 'last_worked', 'lastWorked')),
   };
 }
 
@@ -163,6 +178,37 @@ export interface CrewMemberApi {
   /** Active project assignments when returned on the crew list payload. */
   activeProjects?: CrewAssignedProject[];
   rank?: string;
+  preferred_rating?: string;
+  primary_bop_oem?: string;
+  secondary_skills?: string[];
+  current_status?: string;
+  last_worked?: string;
+  visa_details?: {
+    visa_country?: string;
+    visa_issue_date?: string;
+    visa_expiry_date?: string;
+  };
+  currentAssignment?: {
+    employer?: string;
+    employer_other?: string;
+    client?: string;
+    rig_vessel?: string;
+    country?: string;
+    available_from?: string;
+    notes?: string;
+  };
+}
+
+export interface GetCrewListFilters {
+  availabilityStart?: string;
+  availabilityEnd?: string;
+  type?: 'available' | 'unavailable';
+  status?: string;
+  rating?: string;
+  bopOem?: string;
+  employer?: string;
+  availableWithinDays?: number;
+  expiredCerts?: boolean;
 }
 
 export interface GetCrewResponse {
@@ -369,18 +415,41 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   if (data.linkedin?.trim()) {
     formData.append('linkedin', data.linkedin.trim());
   }
-  // Visa: backend expects single 'visa' string; combine country + issue + expiry dates
   const hasVisaCountry = data.visaCountry?.trim();
   const hasVisaIssueDate = data.visaIssueDate?.trim();
   const hasVisaExpiryDate = data.visaExpiryDate?.trim();
   const hasVisaFreeform = data.visa?.trim();
-  if (hasVisaCountry || hasVisaIssueDate || hasVisaExpiryDate || hasVisaFreeform) {
-    const visaParts: string[] = [];
-    if (hasVisaCountry) visaParts.push(`Country: ${data.visaCountry!.trim()}`);
-    if (hasVisaIssueDate) visaParts.push(`Issue: ${data.visaIssueDate!.trim()}`);
-    if (hasVisaExpiryDate) visaParts.push(`Expiry: ${data.visaExpiryDate!.trim()}`);
-    if (hasVisaFreeform) visaParts.push(data.visa!.trim());
-    formData.append('visa', visaParts.join(' | ').trim());
+  if (hasVisaCountry || hasVisaIssueDate || hasVisaExpiryDate) {
+    formData.append(
+      'visa_details',
+      JSON.stringify({
+        ...(hasVisaCountry ? { visa_country: data.visaCountry!.trim() } : {}),
+        ...(hasVisaIssueDate ? { visa_issue_date: data.visaIssueDate!.trim() } : {}),
+        ...(hasVisaExpiryDate ? { visa_expiry_date: data.visaExpiryDate!.trim() } : {}),
+      })
+    );
+  }
+  if (hasVisaFreeform) {
+    formData.append('visa', data.visa!.trim());
+  }
+
+  if (data.preferredRating?.trim()) {
+    formData.append('preferred_rating', data.preferredRating.trim());
+  }
+  if (data.primaryBopOem?.trim()) {
+    formData.append('primary_bop_oem', data.primaryBopOem.trim());
+  }
+  if (data.secondarySkills?.trim()) {
+    const skills = data.secondarySkills.split(',').map((s) => s.trim()).filter(Boolean);
+    if (skills.length > 0) {
+      formData.append('secondary_skills', JSON.stringify(skills));
+    }
+  }
+  if (data.currentStatus?.trim()) {
+    formData.append('current_status', data.currentStatus.trim());
+  }
+  if (data.lastWorked?.trim()) {
+    formData.append('last_worked', data.lastWorked.trim());
   }
 
   data.passportDocuments.forEach((file) => {
@@ -457,7 +526,7 @@ export async function getCrewById(crewId: string): Promise<GetCrewByIdResponse> 
   return { crew: crewData, projects: projectsList };
 }
 
-export async function getCrewList(filters?: { availabilityStart?: string; availabilityEnd?: string; type?: 'available' | 'unavailable' }): Promise<GetCrewResponse> {
+export async function getCrewList(filters?: GetCrewListFilters): Promise<GetCrewResponse> {
   const token = getAuthToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -475,6 +544,24 @@ export async function getCrewList(filters?: { availabilityStart?: string; availa
   }
   if (filters?.type) {
     queryParams.append('type', filters.type);
+  }
+  if (filters?.status) {
+    queryParams.append('status', filters.status);
+  }
+  if (filters?.rating) {
+    queryParams.append('rating', filters.rating);
+  }
+  if (filters?.bopOem) {
+    queryParams.append('bopOem', filters.bopOem);
+  }
+  if (filters?.employer) {
+    queryParams.append('employer', filters.employer);
+  }
+  if (filters?.availableWithinDays != null) {
+    queryParams.append('availableWithinDays', String(filters.availableWithinDays));
+  }
+  if (filters?.expiredCerts) {
+    queryParams.append('expiredCerts', 'true');
   }
 
   const queryString = queryParams.toString();
@@ -967,11 +1054,20 @@ export async function getCrewMe(): Promise<CrewMemberApi | null> {
   }
 }
 
-/** Raw availability item from GET /crew/me (availability array) */
+/** Raw availability item from GET /crew/me or admin list */
 export interface CrewAvailabilityItem {
   id: string;
   from: string;
   to: string;
+  crew_id?: string;
+  isAvailable?: boolean;
+  employer?: string;
+  employer_other?: string;
+  client?: string;
+  rig_vessel?: string;
+  country?: string;
+  notes?: string;
+  available_from?: string;
 }
 
 /** Response from GET /crew/me when used for dashboard (crew + availability + enrolledProjects) */
@@ -1138,15 +1234,19 @@ export async function updateCrewAvailability(payload: {
   };
 }
 
-export interface CrewAvailabilityItem {
-  id: string;
-  crew_id: string;
-  from: string;
-  to: string;
-  isAvailable?: boolean;
+/** Admin availability interval — alias for list/detail views */
+export type CrewAvailabilityAdminItem = CrewAvailabilityItem;
+
+export interface CrewAvailabilityAssignmentInput {
+  employer?: string;
+  employer_other?: string;
+  client?: string;
+  rig_vessel?: string;
+  country?: string;
+  notes?: string;
 }
 
-export async function getCrewAvailabilityListAdmin(crewId: string): Promise<CrewAvailabilityItem[]> {
+export async function getCrewAvailabilityListAdmin(crewId: string): Promise<CrewAvailabilityAdminItem[]> {
   const token = getAuthToken();
   if (!token) throw new Error('Not authenticated');
 
@@ -1174,7 +1274,13 @@ export async function getCrewAvailabilityListAdmin(crewId: string): Promise<Crew
   }
 }
 
-export async function addCrewAvailabilityAdmin(crewId: string, from: string, to: string, isAvailable?: boolean): Promise<CrewAvailabilityItem> {
+export async function addCrewAvailabilityAdmin(
+  crewId: string,
+  from: string,
+  to: string,
+  isAvailable?: boolean,
+  assignment?: CrewAvailabilityAssignmentInput
+): Promise<CrewAvailabilityAdminItem> {
   const token = getAuthToken();
   if (!token) throw new Error('Not authenticated');
 
@@ -1188,7 +1294,13 @@ export async function addCrewAvailabilityAdmin(crewId: string, from: string, to:
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ crew_id: crewId, from, to, isAvailable }),
+      body: JSON.stringify({
+        crew_id: crewId,
+        from,
+        to,
+        isAvailable,
+        ...(assignment ?? {}),
+      }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);

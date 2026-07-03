@@ -2,6 +2,62 @@ import type { ProjectApi } from '../api/project';
 
 export type CrewAvailability = 'available' | 'onProject' | 'endingSoon' | 'unavailable';
 
+/** MD Section 3.2 — 7-tier personnel status (matches backend CrewStatus enum). */
+export type CrewStatusTier =
+  | 'Available'
+  | 'Offered'
+  | 'Confirmed'
+  | 'On assignment for us'
+  | 'Offshore (Competitor)'
+  | 'Holiday / Not Available'
+  | 'Unknown / Inactive';
+
+export const CREW_STATUS_TIER_OPTIONS: CrewStatusTier[] = [
+  'Available',
+  'Offered',
+  'Confirmed',
+  // TODO: confirm with client — see MD Section 9 #2 (display label "On Assignment" vs enum "On assignment for us")
+  'On assignment for us',
+  // TODO: confirm with client — see MD Section 9 #3 (Red=Competitor vs doc1 colour mix-up)
+  'Offshore (Competitor)',
+  'Holiday / Not Available',
+  'Unknown / Inactive',
+];
+
+export const PREFERRED_RATING_OPTIONS = ['AAA', 'AA', 'A', 'None'] as const;
+export const BOP_OEM_OPTIONS = ['Cameron', 'NOV', 'GE', 'Other'] as const;
+
+const CREW_STATUS_BADGE_CLASS: Record<CrewStatusTier, string> = {
+  Available: 'crew-status-tier--available',
+  Offered: 'crew-status-tier--offered',
+  Confirmed: 'crew-status-tier--confirmed',
+  'On assignment for us': 'crew-status-tier--on-assignment',
+  'Offshore (Competitor)': 'crew-status-tier--offshore-competitor',
+  'Holiday / Not Available': 'crew-status-tier--holiday',
+  'Unknown / Inactive': 'crew-status-tier--inactive',
+};
+
+/** MD Section 3.2 — short display label for roster badges. */
+export function crewStatusTierLabel(status: string | undefined | null): string {
+  if (!status) return 'Available';
+  if (status === 'On assignment for us') return 'On Assignment';
+  if (status === 'Holiday / Not Available') return 'Holiday';
+  if (status === 'Unknown / Inactive') return 'Inactive';
+  if (status === 'Offshore (Competitor)') return 'Offshore (Competitor)';
+  return status;
+}
+
+/** MD Section 3.2 — CSS class for 7-tier status badge. */
+export function crewStatusTierBadgeClass(status: string | undefined | null): string {
+  const key = (status ?? 'Available') as CrewStatusTier;
+  return CREW_STATUS_BADGE_CLASS[key] ?? CREW_STATUS_BADGE_CLASS.Available;
+}
+
+/** MD Section 3.2 — dot class for 7-tier status indicator. */
+export function crewStatusTierDotClass(status: string | undefined | null): string {
+  return `crew-status-dot ${crewStatusTierBadgeClass(status)}`;
+}
+
 function stripToLocalDate(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
