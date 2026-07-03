@@ -174,14 +174,14 @@
   color: #111827 !important;
 }
 
-/* Temporary dev marker — remove .dev-new-field class after UI review (mobilization plan) */
-.dev-new-field {
+/* Controlled dev marker — shown only when show-new-markers class is added to body (via VITE_SHOW_NEW_MARKERS env variable) */
+body.show-new-markers .dev-new-field {
   position: relative;
   outline: 2px solid red;
   outline-offset: 1px;
   border-radius: 4px;
 }
-.dev-new-field::after {
+body.show-new-markers .dev-new-field::after {
   content: attr(data-dev-tag);
   position: absolute;
   top: -8px;

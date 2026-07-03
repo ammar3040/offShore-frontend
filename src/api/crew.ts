@@ -197,6 +197,7 @@ export interface CrewMemberApi {
     available_from?: string;
     notes?: string;
   };
+  expiryWarnings?: string[];
 }
 
 export interface GetCrewListFilters {
@@ -207,6 +208,7 @@ export interface GetCrewListFilters {
   rating?: string;
   bopOem?: string;
   employer?: string;
+  client?: string;
   availableWithinDays?: number;
   expiredCerts?: boolean;
 }
@@ -562,6 +564,9 @@ export async function getCrewList(filters?: GetCrewListFilters): Promise<GetCrew
   }
   if (filters?.expiredCerts) {
     queryParams.append('expiredCerts', 'true');
+  }
+  if (filters?.client) {
+    queryParams.append('client', filters.client);
   }
 
   const queryString = queryParams.toString();
@@ -1244,6 +1249,50 @@ export interface CrewAvailabilityAssignmentInput {
   rig_vessel?: string;
   country?: string;
   notes?: string;
+}
+
+const BULK_AVAILABILITY_CHUNK_SIZE = 40;
+
+async function fetchBulkCrewAvailabilitiesChunk(
+  crewIds: string[],
+  token: string,
+  signal: AbortSignal
+): Promise<CrewAvailabilityAdminItem[]> {
+  const response = await fetch(
+    `${env.apiBaseUrl}/crew-availability/bulk?crew_ids=${encodeURIComponent(crewIds.join(','))}`,
+    {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      signal,
+    }
+  );
+  if (!response.ok) return [];
+  const data = await response.json();
+  return Array.isArray(data?.availabilities) ? data.availabilities : [];
+}
+
+/** Bulk availability for Timeline All Crew grid — chunked to support 50+ crew (avoids URL limits). */
+export async function getBulkCrewAvailabilitiesAdmin(crewIds: string[]): Promise<CrewAvailabilityAdminItem[]> {
+  const token = getAuthToken();
+  if (!token || crewIds.length === 0) return [];
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout * Math.max(1, Math.ceil(crewIds.length / BULK_AVAILABILITY_CHUNK_SIZE)));
+
+  try {
+    const chunks: string[][] = [];
+    for (let i = 0; i < crewIds.length; i += BULK_AVAILABILITY_CHUNK_SIZE) {
+      chunks.push(crewIds.slice(i, i + BULK_AVAILABILITY_CHUNK_SIZE));
+    }
+    const results = await Promise.all(
+      chunks.map((chunk) => fetchBulkCrewAvailabilitiesChunk(chunk, token, controller.signal))
+    );
+    clearTimeout(timeoutId);
+    return results.flat();
+  } catch {
+    clearTimeout(timeoutId);
+    return [];
+  }
 }
 
 export async function getCrewAvailabilityListAdmin(crewId: string): Promise<CrewAvailabilityAdminItem[]> {

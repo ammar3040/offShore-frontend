@@ -7,6 +7,18 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils';
 import { SUBSEA_OVERLAY_LIGHT_CLASS } from '@/lib/subseaTheme';
 import { BOP_OEM_OPTIONS, CREW_STATUS_TIER_OPTIONS, PREFERRED_RATING_OPTIONS } from '@/utils/crewAvailability';
+import './CrewMemberForm.css';
+
+const FORM_SECTIONS = [
+  { id: 'crew-form-personal', label: 'Personal' },
+  { id: 'crew-form-contact', label: 'Contact' },
+  { id: 'crew-form-passport', label: 'Passport' },
+  { id: 'crew-form-identity', label: 'Identity' },
+  { id: 'crew-form-certificates', label: 'Certificates' },
+  { id: 'crew-form-professional', label: 'Professional' },
+  { id: 'crew-form-mobilization', label: 'Mobilization' },
+  { id: 'crew-form-visa', label: 'Visa' },
+] as const;
 
 function parsePhoneValue(value: string): { dialCode: string; number: string } {
   const trimmed = (value || '').trim();
@@ -207,6 +219,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   const visaCountryInputRef = useRef<HTMLInputElement>(null);
   const [visaCountryOpen, setVisaCountryOpen] = useState(false);
   const [visaCountryQuery, setVisaCountryQuery] = useState('');
+  const [activeSection, setActiveSection] = useState<string>(FORM_SECTIONS[0].id);
+
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const filteredCountries = useMemo(() => {
     const q = countryQuery.trim().toLowerCase();
@@ -462,12 +480,25 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   };
 
   return (
-    <form className="flex flex-col gap-0" onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-8 max-h-[calc(90vh-200px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/50">
+    <form className="crew-member-form" onSubmit={handleSubmit}>
+      <nav className="crew-member-form__nav" aria-label="Form sections">
+        {FORM_SECTIONS.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            className={`crew-member-form__nav-btn${activeSection === section.id ? ' is-active' : ''}`}
+            onClick={() => scrollToSection(section.id)}
+          >
+            {section.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="crew-member-form__scroll">
         {/* Personal Details Section */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Personal Details</h3>
-          <div className="grid grid-cols-2 gap-5">
+        <section id="crew-form-personal" className="crew-member-form__section">
+          <h3 className="crew-member-form__section-title">Personal Details</h3>
+          <div className="crew-member-form__grid crew-member-form__grid--dense">
             <div className="flex flex-col gap-2">
               <label htmlFor="firstName" className="text-sm font-semibold text-foreground">First Name *</label>
               <input
@@ -534,12 +565,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </select>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Contact Details Section */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Contact Details</h3>
-          <div className="grid grid-cols-2 gap-5">
+        <section id="crew-form-contact" className="crew-member-form__section">
+          <h3 className="crew-member-form__section-title">Contact Details</h3>
+          <div className="crew-member-form__grid crew-member-form__grid--dense">
             <div className="flex flex-col gap-2">
               <label htmlFor="email" className="text-sm font-semibold text-foreground">Email *</label>
               <input
@@ -688,7 +719,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 />
               </div>
             </div>
-            <div className={cn("flex flex-col gap-2", "col-span-full")}>
+            <div className="flex flex-col gap-2 crew-member-form__field--full">
               <label htmlFor="address" className="text-sm font-semibold text-foreground">Address *</label>
               <input
                 type="text"
@@ -799,12 +830,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               />
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Passport Information Section */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Passport Information</h3>
-          <div className="grid grid-cols-2 gap-5">
+        <section id="crew-form-passport" className="crew-member-form__section">
+          <h3 className="crew-member-form__section-title">Passport Information</h3>
+          <div className="crew-member-form__grid crew-member-form__grid--dense">
             <div className="flex flex-col gap-2">
               <label htmlFor="passportNumber" className="text-sm font-semibold text-foreground">Passport Number *</label>
               <input
@@ -855,9 +886,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
             </div>
           </div>
           
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 mt-4 crew-member-form__field--full">
             <label className="text-sm font-semibold text-foreground">Passport Document *</label>
-            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-6 hover:border-muted-foreground/50">
+            <div className="crew-member-form__upload-zone">
               <input
                 ref={passportFileInputRef}
                 type="file"
@@ -893,12 +924,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Identity Information Section */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Identity Information</h3>
-          <div className="grid grid-cols-2 gap-5">
+        <section id="crew-form-identity" className="crew-member-form__section">
+          <h3 className="crew-member-form__section-title">Identity Information</h3>
+          <div className="crew-member-form__grid crew-member-form__grid--dense">
             <div className="flex flex-col gap-2">
               <label htmlFor="identityType" className="text-sm font-semibold text-foreground">Identity Type *</label>
               <select
@@ -954,9 +985,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
             </div>
           </div>
           
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 mt-4 crew-member-form__field--full">
             <label className="text-sm font-semibold text-foreground">Identity Document *</label>
-            <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-6 hover:border-muted-foreground/50">
+            <div className="crew-member-form__upload-zone">
               <input
                 ref={identityFileInputRef}
                 type="file"
@@ -992,12 +1023,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Crew Certificates Section */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <div className="flex items-center justify-between mb-5 pb-3 border-b-2 border-muted">
-            <h3 className="text-lg font-bold text-foreground">Crew Certificates</h3>
+        <section id="crew-form-certificates" className="crew-member-form__section">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b-2 border-[#e5e7eb]">
+            <h3 className="crew-member-form__section-title" style={{ margin: 0, padding: 0, border: 'none' }}>Crew Certificates</h3>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
@@ -1007,11 +1038,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               Add certificate
             </button>
           </div>
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {formData.certificates.map((cert, certIndex) => (
               <div
                 key={certIndex}
-                className="rounded-lg border border-border bg-muted/20 p-4 space-y-4"
+                className="crew-member-form__cert-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-foreground">
@@ -1028,8 +1059,8 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="flex flex-col gap-2 col-span-full">
+                <div className="crew-member-form__grid crew-member-form__grid--dense">
+                  <div className="flex flex-col gap-2 crew-member-form__field--full">
                     <label className="text-sm font-semibold text-foreground">Certificate Name *</label>
                     <input
                       type="text"
@@ -1061,9 +1092,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                     />
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 crew-member-form__field--full">
                   <label className="text-sm font-semibold text-foreground">Certificate Document *</label>
-                  <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-muted/30 p-4 hover:border-muted-foreground/50">
+                  <div className="crew-member-form__upload-zone">
                     <input
                       ref={(el) => {
                         certificateFileInputRefs.current[certIndex] = el;
@@ -1099,12 +1130,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
         {/* Professional & Compliance Section */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Professional & Compliance</h3>
-          <div className="grid grid-cols-2 gap-5">
+        <section id="crew-form-professional" className="crew-member-form__section">
+          <h3 className="crew-member-form__section-title">Professional & Compliance</h3>
+          <div className="crew-member-form__grid crew-member-form__grid--dense">
             <div className="flex flex-col gap-2">
               <label htmlFor="azerbaijanVantageNumber" className="text-sm font-semibold text-foreground">Azerbaijan Vantage Number</label>
               <input
@@ -1160,7 +1191,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 className={inputClass}
               />
             </div>
-            <div className={cn("flex flex-col gap-2", "col-span-full")}>
+            <div className="flex flex-col gap-2 crew-member-form__field--full">
               <label htmlFor="linkedin" className="text-sm font-semibold text-foreground">LinkedIn URL</label>
               <input
                 type="url"
@@ -1173,12 +1204,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               />
             </div>
           </div>
-        </div>
+        </section>
 
         {/* MD Section 3.1 — Mobilization Profile */}
-        <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Mobilization Profile</h3>
-          <div className="grid grid-cols-2 gap-5">
+        <section id="crew-form-mobilization" className="crew-member-form__section">
+          <h3 className="crew-member-form__section-title">Mobilization Profile</h3>
+          <div className="crew-member-form__grid crew-member-form__grid--dense">
             {/* MD Section 3.1 — Preferred Rating */}
             <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="NEW">
               <label htmlFor="preferredRating" className="text-sm font-semibold text-foreground">Preferred Rating</label>
@@ -1210,7 +1241,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </select>
             </div>
             {/* MD Section 3.1 — Secondary Skills */}
-            <div className={cn('flex flex-col gap-2 col-span-full dev-new-field')} data-dev-tag="NEW">
+            <div className="flex flex-col gap-2 crew-member-form__field--full dev-new-field" data-dev-tag="NEW">
               <label htmlFor="secondarySkills" className="text-sm font-semibold text-foreground">Secondary Skills</label>
               <input
                 type="text"
@@ -1250,13 +1281,13 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               />
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Visa Details Section */}
-        <div className="border-b border-border pb-6 mb-6 last:border-b-0 last:pb-0">
-          <h3 className="text-lg font-bold text-foreground mb-5 pb-3 border-b-2 border-muted">Visa Details</h3>
-          <div className="grid grid-cols-2 gap-5">
-            <div className="flex flex-col gap-2">
+        <section id="crew-form-visa" className="crew-member-form__section">
+          <h3 className="crew-member-form__section-title">Visa Details</h3>
+          <div className="crew-member-form__grid crew-member-form__grid--dense">
+            <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="UPDATED">
               <label htmlFor="visaCountry" className="text-sm font-semibold text-foreground">Visa Country</label>
               <Popover open={visaCountryOpen} onOpenChange={setVisaCountryOpen} modal={false}>
                 <PopoverAnchor asChild>
@@ -1319,7 +1350,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="UPDATED">
               <label htmlFor="visaIssueDate" className="text-sm font-semibold text-foreground">Visa Issue Date</label>
               <input
                 type="date"
@@ -1330,7 +1361,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 className={inputClass}
               />
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 dev-new-field" data-dev-tag="UPDATED">
               <label htmlFor="visaExpiryDate" className="text-sm font-semibold text-foreground">Visa Expiry Date</label>
               <input
                 type="date"
@@ -1342,15 +1373,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               />
             </div>
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* Form Actions */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-        <button type="button" className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50" onClick={onCancel} disabled={isLoading}>
+      <div className="crew-member-form__actions">
+        <button type="button" className="crew-member-form__btn crew-member-form__btn--cancel" onClick={onCancel} disabled={isLoading}>
           Cancel
         </button>
-        <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={isLoading}>
+        <button type="submit" className="crew-member-form__btn crew-member-form__btn--submit" disabled={isLoading}>
           {isLoading ? 'Saving...' : submitLabel}
         </button>
       </div>

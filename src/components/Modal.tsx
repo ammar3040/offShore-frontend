@@ -9,9 +9,10 @@ interface ModalProps {
   children: ReactNode;
   size?: 'small' | 'medium' | 'large' | 'xlarge';
   variant?: 'default' | 'subsea';
+  bodyClassName?: string;
 }
 
-const Modal = ({ isOpen, onClose, title, children, size = 'large', variant = 'default' }: ModalProps) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'large', variant = 'default', bodyClassName }: ModalProps) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -54,7 +55,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'large', variant = 'de
             <X size={20} />
           </button>
         </div>
-        <div className="modal-body">{children}</div>
+        <div className={`modal-body${bodyClassName ? ` ${bodyClassName}` : ''}`}>{children}</div>
       </div>
     </div>
   );

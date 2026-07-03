@@ -1,0 +1,188 @@
+.crew-member-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(82vh, 880px);
+}
+
+.crew-member-form__nav {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  flex-shrink: 0;
+  scrollbar-width: thin;
+}
+
+.crew-member-form__nav-btn {
+  flex-shrink: 0;
+  border: 1px solid #dde1e8;
+  background: #fff;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.crew-member-form__nav-btn:hover {
+  background: #ebf0ff;
+  border-color: #93b4f5;
+  color: #1a56db;
+}
+
+.crew-member-form__nav-btn.is-active {
+  background: #1a56db;
+  border-color: #1a56db;
+  color: #fff;
+}
+
+.crew-member-form__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px 8px;
+  scrollbar-width: thin;
+}
+
+.crew-member-form__scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.crew-member-form__scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.crew-member-form__section {
+  scroll-margin-top: 12px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.crew-member-form__section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.crew-member-form__section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.crew-member-form__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 640px) {
+  .crew-member-form__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .crew-member-form__grid--dense {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.crew-member-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.crew-member-form__cert-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  background: #f9fafb;
+}
+
+.crew-member-form__upload-zone {
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 16px;
+  background: #f9fafb;
+  text-align: center;
+}
+
+.crew-member-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.crew-member-form__btn {
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.crew-member-form__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.crew-member-form__btn--cancel {
+  border: 1px solid #dde1e8;
+  background: #fff;
+  color: #374151;
+}
+
+.crew-member-form__btn--cancel:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.crew-member-form__btn--submit {
+  border: none;
+  background: #1a56db;
+  color: #fff;
+}
+
+.crew-member-form__btn--submit:hover:not(:disabled) {
+  background: #1648b8;
+}
+
+@media (max-width: 640px) {
+  .crew-member-form {
+    max-height: min(92vh, 100%);
+  }
+
+  .crew-member-form__nav {
+    padding: 10px 14px;
+  }
+
+  .crew-member-form__scroll {
+    padding: 12px 14px 6px;
+  }
+
+  .crew-member-form__actions {
+    padding: 12px 14px;
+    flex-direction: column-reverse;
+  }
+
+  .crew-member-form__btn {
+    width: 100%;
+  }
+}

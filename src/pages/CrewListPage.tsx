@@ -39,6 +39,8 @@ import { DatePickerTime } from '../components/ui/date-picker-time';
 import './CrewListPage.css';
 import './RigsPage.css';
 
+const PAGE_SIZE_OPTIONS = [10, 30, 50];
+
 function getInitials(firstname: string, lastname: string): string {
   const f = (firstname || '').trim().charAt(0) || '';
   const l = (lastname || '').trim().charAt(0) || '';
@@ -122,8 +124,9 @@ const CrewListPage = () => {
   const [filterEmployer, setFilterEmployer] = useState('');
   const [filterAvailableWithinDays, setFilterAvailableWithinDays] = useState('');
   const [filterExpiredCerts, setFilterExpiredCerts] = useState(false);
+  const [filterClient, setFilterClient] = useState('');
 
-  const pageSize = 5;
+  const [pageSize, setPageSize] = useState(10);
 
   const buildListFilters = useCallback((
     start?: string,
@@ -143,8 +146,9 @@ const CrewListPage = () => {
     const days = parseInt(filterAvailableWithinDays, 10);
     if (!Number.isNaN(days) && days > 0) filters.availableWithinDays = days;
     if (filterExpiredCerts) filters.expiredCerts = true;
+    if (filterClient.trim()) filters.client = filterClient.trim();
     return filters;
-  }, [filterStatus, filterRating, filterBopOem, filterEmployer, filterAvailableWithinDays, filterExpiredCerts]);
+  }, [filterStatus, filterRating, filterBopOem, filterEmployer, filterAvailableWithinDays, filterExpiredCerts, filterClient]);
 
   const loadCrew = useCallback(async (
     withListLoading: boolean, 
@@ -175,7 +179,7 @@ const CrewListPage = () => {
     } else {
       void loadCrew(true, startDateFilter, endDateFilter, availabilitySearchType);
     }
-  }, [availabilitySearchType, startDateFilter, endDateFilter, loadCrew, filterStatus, filterRating, filterBopOem, filterEmployer, filterAvailableWithinDays, filterExpiredCerts]);
+  }, [availabilitySearchType, startDateFilter, endDateFilter, loadCrew, filterStatus, filterRating, filterBopOem, filterEmployer, filterAvailableWithinDays, filterExpiredCerts, filterClient]);
 
   const refreshCrewData = useCallback(() => {
     if (availabilitySearchType === 'all') {
@@ -897,6 +901,17 @@ const CrewListPage = () => {
               />
               Expired certs
             </label>
+            <div className="dev-new-field" data-dev-tag="NEW">
+              <input
+                type="text"
+                className="mobilization-filter-select subsea-btn subsea-btn-default subsea-btn-sm"
+                placeholder="Operator history (e.g. BP)"
+                value={filterClient}
+                onChange={(e) => { setFilterClient(e.target.value); setPage(1); }}
+                aria-label="Filter by operator history"
+                style={{ minWidth: '160px' }}
+              />
+            </div>
             <div className="subsea-toolbar-spacer" />
             <button
               type="button"
@@ -978,6 +993,18 @@ const CrewListPage = () => {
                         const status = crewStatus(kind);
                         const project = member.activeProjects?.[0];
                         const certExpiring = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
+                        const expiryWarnings = member.expiryWarnings ?? [];
+                        const hasExpired = expiryWarnings.some((w) => /expired/i.test(w));
+                        const certLabel = expiryWarnings.length
+                          ? expiryWarnings[0]
+                          : certExpiring
+                            ? '1 expiring'
+                            : 'All valid';
+                        const certClass = hasExpired
+                          ? 'subsea-b-red'
+                          : expiryWarnings.length || certExpiring
+                            ? 'subsea-b-amber'
+                            : 'subsea-b-green';
                         const assignment = member.currentAssignment;
                         const personnelStatus = member.current_status ?? 'Available';
                         const employerDisplay =
@@ -1021,8 +1048,8 @@ const CrewListPage = () => {
                             <td className="dev-new-field" data-dev-tag="NEW">{availableFromDisplay}</td>
                             <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
                             <td>
-                              <span className={`subsea-badge ${certExpiring ? 'subsea-b-amber' : 'subsea-b-green'}`}>
-                                {certExpiring ? '1 expiring' : 'All valid'}
+                              <span className={`subsea-badge dev-new-field ${certClass}`} data-dev-tag="UPDATED" title={expiryWarnings.join('; ')}>
+                                {certLabel}
                               </span>
                             </td>
                             <td onClick={(e) => e.stopPropagation()}>
@@ -1054,18 +1081,47 @@ const CrewListPage = () => {
             </div>
           </div>
 
-          {!loading && !error && filteredCrew.length > pageSize && (
+          {!loading && !error && filteredCrew.length > 0 && (
             <div className="subsea-pagination">
-              <span>
-                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredCrew.length)} of {filteredCrew.length} crew members
-              </span>
-              <div>
-                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} type="button" className={`subsea-btn subsea-btn-sm ${p === page ? 'subsea-btn-primary' : 'subsea-btn-default'}`} onClick={() => setPage(p)}>{p}</button>
-                ))}
-                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+              <div className="subsea-pagination-left">
+                <span className="subsea-pagination-info">
+                  Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredCrew.length)} of {filteredCrew.length} crew members
+                </span>
+                <div className="subsea-page-size-selector">
+                  <label htmlFor="roster-page-size" className="subsea-page-size-label">Rows per page</label>
+                  <select
+                    id="roster-page-size"
+                    className="subsea-page-size-select"
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
+              {totalPages > 1 && (
+                <div className="subsea-pagination-btns">
+                  <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                    .map((p, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      const showEllipsis = prev != null && p - prev > 1;
+                      return (
+                        <span key={p}>
+                          {showEllipsis && <span className="subsea-pagination-ellipsis">…</span>}
+                          <button type="button" className={`subsea-btn subsea-btn-sm ${p === page ? 'subsea-btn-primary' : 'subsea-btn-default'}`} onClick={() => setPage(p)}>{p}</button>
+                        </span>
+                      );
+                    })}
+                  <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                </div>
+              )}
             </div>
           )}
             </>
@@ -1073,7 +1129,7 @@ const CrewListPage = () => {
         </main>
       </div>
 
-      <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge" variant="subsea">
+      <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge" variant="subsea" bodyClassName="modal-body--flush">
         {addError && (
           <ErrorAlertPopup message={addError} onDismiss={() => setAddError(null)} />
         )}
@@ -1085,7 +1141,7 @@ const CrewListPage = () => {
         />
       </Modal>
 
-      <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea">
+      <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea" bodyClassName="modal-body--flush">
         {editingCrew && (
           <>
             {editError && (

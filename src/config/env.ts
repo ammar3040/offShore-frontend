@@ -64,6 +64,11 @@ export const env = {
   enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
   enableErrorTracking: import.meta.env.VITE_ENABLE_ERROR_TRACKING === 'true',
 
+  /** Red NEW/UPDATED borders on mobilization fields — set VITE_IS_NEW=true or VITE_SHOW_NEW_MARKERS=true */
+  isNew: import.meta.env.VITE_IS_NEW === 'true',
+  showNewMarkers:
+    import.meta.env.VITE_SHOW_NEW_MARKERS === 'true' || import.meta.env.VITE_IS_NEW === 'true',
+
   // Development mode check
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,

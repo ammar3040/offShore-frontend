@@ -21,7 +21,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { getCrewList, getCrewAvailabilityListAdmin, type CrewMemberApi, type CrewAvailabilityItem } from '../api/crew';
+import { getCrewList, getBulkCrewAvailabilitiesAdmin, getCrewAvailabilityListAdmin, type CrewMemberApi, type CrewAvailabilityItem } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import {
@@ -312,6 +312,35 @@ function buildCalendarDays(month: Date): Date[] {
   return Array.from({ length: 42 }, (_, index) => addDays(start, index));
 }
 
+function normalizeAvailabilityCrewId(raw: unknown): string {
+  if (typeof raw === 'string') return raw.trim();
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj.$oid === 'string') return obj.$oid;
+    if (obj._id != null) return String(obj._id);
+    if (obj.id != null) return String(obj.id);
+    if (typeof obj.toString === 'function') {
+      const s = obj.toString();
+      if (/^[a-f0-9]{24}$/i.test(s)) return s;
+    }
+  }
+  return raw != null ? String(raw) : '';
+}
+
+function buildAllCrewAvailRows(
+  crew: CrewMemberApi[],
+  itemsByCrewId: Map<string, CrewAvailabilityItem[]>
+): AllCrewAvailRow[] {
+  return [...crew]
+    .map((member) => ({
+      crewId: member.id,
+      crewName: crewName(member),
+      availability: availabilityFromCrewSignal(member.signal),
+      items: itemsByCrewId.get(member.id) ?? [],
+    }))
+    .sort((a, b) => a.crewName.localeCompare(b.crewName));
+}
+
 interface AllCrewAvailRow {
   crewId: string;
   crewName: string;
@@ -403,40 +432,43 @@ const TimelinePage = () => {
     };
   }, []);
 
+  const crewIdsKey = useMemo(
+    () => data.crew.map((member) => member.id).sort().join('|'),
+    [data.crew]
+  );
+
   // Load all crew availabilities when allCrew view is active or calendar with all crew selected
   const needsAllCrewAvail = viewMode === 'allCrew' || (viewMode === 'calendar' && selectedCrewId === 'all');
   useEffect(() => {
-    if (!needsAllCrewAvail || data.crew.length === 0) return;
-    if (allCrewAvailRows.length > 0 && !allCrewAvailLoading) return; // already loaded
+    if (!needsAllCrewAvail || data.crew.length === 0) {
+      if (!needsAllCrewAvail) setAllCrewAvailRows([]);
+      return;
+    }
+
     let active = true;
     setAllCrewAvailLoading(true);
+    // Show every crew member in the grid immediately (availability fills in when loaded)
+    setAllCrewAvailRows(buildAllCrewAvailRows(data.crew, new Map()));
 
-    const promises = data.crew.map(member =>
-      getCrewAvailabilityListAdmin(member.id)
-        .then(items => ({
-          crewId: member.id,
-          crewName: crewName(member),
-          availability: availabilityFromCrewSignal(member.signal),
-          items,
-        }))
-        .catch(() => ({
-          crewId: member.id,
-          crewName: crewName(member),
-          availability: availabilityFromCrewSignal(member.signal),
-          items: [] as CrewAvailabilityItem[],
-        }))
-    );
-
-    Promise.all(promises).then(rows => {
-      if (active) {
-        setAllCrewAvailRows(rows.sort((a, b) => a.crewName.localeCompare(b.crewName)));
-        setAllCrewAvailLoading(false);
-      }
-    });
+    const crewIds = data.crew.map((member) => member.id);
+    getBulkCrewAvailabilitiesAdmin(crewIds)
+      .then((allItems) => {
+        if (!active) return;
+        const byCrew = new Map<string, CrewAvailabilityItem[]>();
+        for (const item of allItems) {
+          const cid = normalizeAvailabilityCrewId(item.crew_id);
+          if (!cid) continue;
+          if (!byCrew.has(cid)) byCrew.set(cid, []);
+          byCrew.get(cid)!.push(item);
+        }
+        setAllCrewAvailRows(buildAllCrewAvailRows(data.crew, byCrew));
+      })
+      .finally(() => {
+        if (active) setAllCrewAvailLoading(false);
+      });
 
     return () => { active = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsAllCrewAvail, data.crew]);
+  }, [needsAllCrewAvail, crewIdsKey, data.crew]);
 
   const events = useMemo<TimelineEvent[]>(() => {
     const rows: TimelineEvent[] = [];
