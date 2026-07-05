@@ -36,7 +36,14 @@ import {
   availabilityFromCrewSignal,
   crewAvailabilityDotClass,
   getCrewAvailabilityLabel,
+  crewStatusTierBadgeClass,
+  crewStatusTierLabel,
+  crewStatusTierGanttClass,
+  crewStatusTierTint,
+  resolveAvailabilityItemStatus,
+  CREW_STATUS_TIER_OPTIONS,
   type CrewAvailability,
+  type CrewStatusTier,
 } from '../utils/crewAvailability';
 import './RigsPage.css';
 import './TimelinePage.css';
@@ -146,6 +153,28 @@ function daysBetween(start: Date, end: Date): number {
 function crewName(member?: CrewMemberApi): string {
   if (!member) return 'Unassigned crew';
   return `${member.firstname ?? ''} ${member.lastname ?? ''}`.trim() || member.email || 'Unnamed crew';
+}
+
+function getCalendarDayStyle(status: string | undefined): React.CSSProperties {
+  if (!status) return {};
+  switch (status) {
+    case 'Available':
+      return { backgroundColor: 'rgba(34, 197, 94, 0.08)' };
+    case 'Offered':
+      return { backgroundColor: 'rgba(234, 179, 8, 0.08)' };
+    case 'Confirmed':
+      return { backgroundColor: 'rgba(59, 130, 246, 0.08)' };
+    case 'On assignment for us':
+      return { backgroundColor: 'rgba(168, 85, 247, 0.08)' };
+    case 'Offshore (Competitor)':
+      return { backgroundColor: 'rgba(239, 68, 68, 0.08)' };
+    case 'Holiday / Not Available':
+      return { backgroundColor: 'rgba(249, 115, 22, 0.08)' };
+    case 'Unknown / Inactive':
+      return { backgroundColor: 'rgba(156, 163, 175, 0.08)' };
+    default:
+      return {};
+  }
 }
 
 function ticketCrewName(ticket: CrewTicketApi): string {
@@ -336,6 +365,7 @@ function buildAllCrewAvailRows(
       crewId: member.id,
       crewName: crewName(member),
       availability: availabilityFromCrewSignal(member.signal),
+      currentStatus: (member.current_status || 'Available') as CrewStatusTier,
       items: itemsByCrewId.get(member.id) ?? [],
     }))
     .sort((a, b) => a.crewName.localeCompare(b.crewName));
@@ -345,7 +375,32 @@ interface AllCrewAvailRow {
   crewId: string;
   crewName: string;
   availability: CrewAvailability;
+  currentStatus: CrewStatusTier;
   items: CrewAvailabilityItem[];
+}
+
+type StatusCountMap = Partial<Record<CrewStatusTier, number>>;
+
+function emptyStatusCounts(): StatusCountMap {
+  return {};
+}
+
+function findStatusForDay(
+  items: CrewAvailabilityItem[],
+  day: Date
+): CrewStatusTier | 'none' {
+  const d = new Date(day);
+  d.setHours(0, 0, 0, 0);
+  for (const avail of items) {
+    const start = new Date(avail.from);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(avail.to);
+    end.setHours(23, 59, 59, 999);
+    if (d >= start && d <= end) {
+      return resolveAvailabilityItemStatus(avail);
+    }
+  }
+  return 'none';
 }
 
 const TimelinePage = () => {
@@ -905,10 +960,10 @@ const TimelinePage = () => {
 
   const getDayAvailStatus = useMemo(() => {
     if (selectedCrewId === 'all' || selectedCrewAvailabilities.length === 0) {
-      return (): 'available' | 'unavailable' | 'none' => 'none';
+      return (): string | 'none' => 'none';
     }
 
-    return (day: Date): 'available' | 'unavailable' | 'none' => {
+    return (day: Date): string | 'none' => {
       const d = new Date(day);
       d.setHours(0, 0, 0, 0);
       for (const avail of selectedCrewAvailabilities) {
@@ -917,39 +972,31 @@ const TimelinePage = () => {
         const end = new Date(avail.to);
         end.setHours(23, 59, 59, 999);
         if (d >= start && d <= end) {
-          return avail.isAvailable !== false ? 'available' : 'unavailable';
+          return resolveAvailabilityItemStatus(avail);
         }
       }
       return 'none';
     };
   }, [selectedCrewId, selectedCrewAvailabilities]);
 
-  // Per-day aggregated available/unavailable crew counts for the "all crew" calendar overlay
+  // Per-day aggregated status counts for the "all crew" calendar overlay
   const allCrewDayCounts = useMemo(() => {
-    if (selectedCrewId !== 'all' || allCrewAvailRows.length === 0) return new Map<string, { available: number; unavailable: number }>();
-    const map = new Map<string, { available: number; unavailable: number }>();
-    // Calculate for the visible month
+    if (selectedCrewId !== 'all' || allCrewAvailRows.length === 0) return new Map<string, StatusCountMap>();
+    const map = new Map<string, StatusCountMap>();
     const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(monthStart.getFullYear(), monthStart.getMonth(), d);
-      date.setHours(0, 0, 0, 0);
-      let available = 0;
-      let unavailable = 0;
+      const counts = emptyStatusCounts();
+      let hasData = false;
       for (const row of allCrewAvailRows) {
-        for (const avail of row.items) {
-          const start = new Date(avail.from);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(avail.to);
-          end.setHours(23, 59, 59, 999);
-          if (date >= start && date <= end) {
-            if (avail.isAvailable !== false) available++;
-            else unavailable++;
-            break; // one status per crew per day
-          }
+        const tier = findStatusForDay(row.items, date);
+        if (tier !== 'none') {
+          counts[tier] = (counts[tier] ?? 0) + 1;
+          hasData = true;
         }
       }
-      if (available > 0 || unavailable > 0) {
-        map.set(dateKey(date), { available, unavailable });
+      if (hasData) {
+        map.set(dateKey(date), counts);
       }
     }
     return map;
@@ -962,7 +1009,7 @@ const TimelinePage = () => {
     const clickedDate = new Date(y, m - 1, d);
     clickedDate.setHours(0, 0, 0, 0);
 
-    const results: { crewId: string; crewName: string; from: string; to: string; isAvailable: boolean }[] = [];
+    const results: { crewId: string; crewName: string; from: string; to: string; status: CrewStatusTier }[] = [];
     for (const row of allCrewAvailRows) {
       for (const avail of row.items) {
         const start = new Date(avail.from);
@@ -975,14 +1022,15 @@ const TimelinePage = () => {
             crewName: row.crewName,
             from: avail.from,
             to: avail.to,
-            isAvailable: avail.isAvailable !== false,
+            status: resolveAvailabilityItemStatus(avail),
           });
           break;
         }
       }
     }
     return results.sort((a, b) => {
-      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+      const order = CREW_STATUS_TIER_OPTIONS.indexOf(a.status) - CREW_STATUS_TIER_OPTIONS.indexOf(b.status);
+      if (order !== 0) return order;
       return a.crewName.localeCompare(b.crewName);
     });
   }, [calendarPopupDay, allCrewAvailRows]);
@@ -1264,18 +1312,43 @@ const TimelinePage = () => {
                           {label}
                         </span>
                       ))}
-                      {(selectedCrewId !== 'all' || allCrewDayCounts.size > 0) && (
+                      {selectedCrewId !== 'all' ? (
                         <>
-                          <span className="timeline-legend-item">
-                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.5)', border: '1px solid rgba(16, 185, 129, 0.8)' }} />
-                            Available
-                          </span>
-                          <span className="timeline-legend-item">
-                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.5)', border: '1px solid rgba(239, 68, 68, 0.8)' }} />
-                            Unavailable
-                          </span>
+                          {CREW_STATUS_TIER_OPTIONS.map((tier) => {
+                            const styleVal = getCalendarDayStyle(tier);
+                            return (
+                              <span key={tier} className="timeline-legend-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ 
+                                  display: 'inline-block', 
+                                  width: '8px', 
+                                  height: '8px', 
+                                  borderRadius: '50%', 
+                                  backgroundColor: styleVal.backgroundColor || 'rgba(0,0,0,0.05)',
+                                  border: `1px solid ${styleVal.backgroundColor ? (styleVal.backgroundColor as string).replace('0.08', '0.4') : 'rgba(0,0,0,0.1)'}`
+                                }} />
+                                {crewStatusTierLabel(tier)}
+                              </span>
+                            );
+                          })}
                         </>
-                      )}
+                      ) : allCrewDayCounts.size > 0 ? (
+                        <>
+                          {CREW_STATUS_TIER_OPTIONS.map((tier) => (
+                            <span key={tier} className="timeline-legend-item">
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  width: '8px',
+                                  height: '8px',
+                                  borderRadius: '2px',
+                                  backgroundColor: crewStatusTierTint(tier, 0.65),
+                                }}
+                              />
+                              {crewStatusTierLabel(tier)}
+                            </span>
+                          ))}
+                        </>
+                      ) : null}
                     </div>
                   </section>
 
@@ -1289,18 +1362,16 @@ const TimelinePage = () => {
                       const isToday = dateKey(day) === todayKey;
                       const availStatus = getDayAvailStatus(day);
                       const allCrewCounts = allCrewDayCounts.get(dateKey(day));
-                      const hasAllCrewData = selectedCrewId === 'all' && allCrewCounts && (allCrewCounts.available > 0 || allCrewCounts.unavailable > 0);
+                      const hasAllCrewData = selectedCrewId === 'all' && allCrewCounts && CREW_STATUS_TIER_OPTIONS.some((tier) => (allCrewCounts[tier] ?? 0) > 0);
 
                       let dayClass = 'timeline-cal-day';
                       if (isOtherMonth) dayClass += ' other-month';
                       if (isToday) dayClass += ' today';
-                      if (availStatus === 'unavailable') dayClass += ' unavailable';
+                      if (availStatus === 'Holiday / Not Available' || availStatus === 'Offshore (Competitor)') dayClass += ' unavailable';
 
-                      const dayStyle: React.CSSProperties = availStatus === 'available'
-                        ? { backgroundColor: 'rgba(16, 185, 129, 0.08)' }
-                        : availStatus === 'unavailable'
-                          ? { backgroundColor: 'rgba(239, 68, 68, 0.06)' }
-                          : {};
+                      const dayStyle: React.CSSProperties = availStatus !== 'none'
+                        ? getCalendarDayStyle(availStatus)
+                        : {};
 
                       const maxEvents = hasAllCrewData ? 1 : (availStatus !== 'none' ? 2 : 3);
                       const dk = dateKey(day);
@@ -1314,33 +1385,27 @@ const TimelinePage = () => {
                         >
                           <div className="timeline-cal-day-num">{day.getDate()}</div>
                           {/* All-crew aggregate pills */}
-                          {hasAllCrewData && (
+                          {hasAllCrewData && allCrewCounts && (
                             <div className="timeline-cal-crew-counts">
-                              {allCrewCounts.available > 0 && (
-                                <div className="timeline-cal-crew-pill timeline-cal-crew-pill-green" title={`${allCrewCounts.available} crew available`}>
-                                  <UserCheck size={8} />
-                                  <span>{allCrewCounts.available}</span>
-                                </div>
-                              )}
-                              {allCrewCounts.unavailable > 0 && (
-                                <div className="timeline-cal-crew-pill timeline-cal-crew-pill-red" title={`${allCrewCounts.unavailable} crew unavailable`}>
-                                  <UserMinus size={8} />
-                                  <span>{allCrewCounts.unavailable}</span>
-                                </div>
-                              )}
+                              {CREW_STATUS_TIER_OPTIONS.map((tier) => {
+                                const count = allCrewCounts[tier] ?? 0;
+                                if (count <= 0) return null;
+                                return (
+                                  <div
+                                    key={tier}
+                                    className={`timeline-cal-crew-pill timeline-cal-crew-pill-tier ${crewStatusTierBadgeClass(tier)}`}
+                                    title={`${count} ${crewStatusTierLabel(tier)}`}
+                                  >
+                                    <span>{count}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           {/* Single-crew availability status */}
-                          {availStatus === 'available' && (
-                            <div className="timeline-event timeline-event-green" style={{ fontSize: '9px', padding: '1px 4px' }}>
-                              <UserCheck size={8} />
-                              <span>Available</span>
-                            </div>
-                          )}
-                          {availStatus === 'unavailable' && (
-                            <div className="timeline-event timeline-event-red" style={{ fontSize: '9px', padding: '1px 4px' }}>
-                              <UserMinus size={8} />
-                              <span>Unavailable</span>
+                          {availStatus !== 'none' && (
+                            <div className={`timeline-event crew-status-badge ${crewStatusTierBadgeClass(availStatus)}`} style={{ fontSize: '9px', padding: '1px 4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span>{crewStatusTierLabel(availStatus)}</span>
                             </div>
                           )}
                           {dayEvents.slice(0, maxEvents).map((event) => {
@@ -1362,8 +1427,10 @@ const TimelinePage = () => {
                   {calendarPopupDay && calendarPopupDetails.length > 0 && (() => {
                     const [py, pm, pd] = calendarPopupDay.split('-').map(Number);
                     const popupDate = new Date(py, pm - 1, pd);
-                    const availCount = calendarPopupDetails.filter(c => c.isAvailable).length;
-                    const unavailCount = calendarPopupDetails.filter(c => !c.isAvailable).length;
+                    const statusSummary = CREW_STATUS_TIER_OPTIONS.map((tier) => ({
+                      tier,
+                      count: calendarPopupDetails.filter((c) => c.status === tier).length,
+                    })).filter((s) => s.count > 0);
                     const dateFmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
                     return (
@@ -1372,10 +1439,15 @@ const TimelinePage = () => {
                           <div className="cal-popup-header">
                             <div>
                               <div className="cal-popup-title">{dateFmt.format(popupDate)}</div>
-                              <div className="cal-popup-subtitle">
-                                {availCount > 0 && <span className="cal-popup-count-green">{availCount} available</span>}
-                                {availCount > 0 && unavailCount > 0 && <span className="cal-popup-sep"> · </span>}
-                                {unavailCount > 0 && <span className="cal-popup-count-red">{unavailCount} unavailable</span>}
+                              <div className="cal-popup-subtitle cal-popup-status-summary">
+                                {statusSummary.map((s, i) => (
+                                  <span key={s.tier}>
+                                    {i > 0 && <span className="cal-popup-sep"> · </span>}
+                                    <span className={`cal-popup-status-chip ${crewStatusTierBadgeClass(s.tier)}`}>
+                                      {s.count} {crewStatusTierLabel(s.tier)}
+                                    </span>
+                                  </span>
+                                ))}
                               </div>
                             </div>
                             <button type="button" className="cal-popup-close" onClick={() => setCalendarPopupDay(null)} aria-label="Close">
@@ -1393,7 +1465,7 @@ const TimelinePage = () => {
                               return (
                                 <div
                                   key={crew.crewId}
-                                  className={`cal-popup-row ${crew.isAvailable ? 'cal-popup-row-avail' : 'cal-popup-row-unavail'}`}
+                                  className={`cal-popup-row cal-popup-row-tier ${crewStatusTierBadgeClass(crew.status)}`}
                                   onClick={(e) => { e.stopPropagation(); navigate(`/crew/${crew.crewId}`); }}
                                 >
                                   <div className="cal-popup-row-indicator" />
@@ -1405,8 +1477,8 @@ const TimelinePage = () => {
                                       {rangeDays > 0 && <span className="cal-popup-row-days">{rangeDays}d</span>}
                                     </div>
                                   </div>
-                                  <div className={`cal-popup-row-badge ${crew.isAvailable ? 'cal-popup-badge-green' : 'cal-popup-badge-red'}`}>
-                                    {crew.isAvailable ? 'Available' : 'Unavailable'}
+                                  <div className={`cal-popup-row-badge crew-status-badge ${crewStatusTierBadgeClass(crew.status)}`}>
+                                    {crewStatusTierLabel(crew.status)}
                                   </div>
                                 </div>
                               );
@@ -1747,19 +1819,9 @@ const TimelinePage = () => {
                   return row.crewName.toLowerCase().includes(searchQuery.trim().toLowerCase());
                 });
 
-                const getDayStatus = (row: AllCrewAvailRow, dayNum: number): 'available' | 'unavailable' | 'none' => {
+                const getDayStatusTier = (row: AllCrewAvailRow, dayNum: number): CrewStatusTier | 'none' => {
                   const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), dayNum);
-                  d.setHours(0, 0, 0, 0);
-                  for (const avail of row.items) {
-                    const start = new Date(avail.from);
-                    start.setHours(0, 0, 0, 0);
-                    const end = new Date(avail.to);
-                    end.setHours(23, 59, 59, 999);
-                    if (d >= start && d <= end) {
-                      return avail.isAvailable !== false ? 'available' : 'unavailable';
-                    }
-                  }
-                  return 'none';
+                  return findStatusForDay(row.items, d);
                 };
 
                 const todayDate = new Date();
@@ -1777,17 +1839,17 @@ const TimelinePage = () => {
                           <ChevronRight size={14} />
                         </button>
                       </div>
-                      <div className="timeline-legend" aria-label="Availability legend">
+                      <div className="timeline-legend" aria-label="Personnel status legend">
+                        {CREW_STATUS_TIER_OPTIONS.map((tier) => (
+                          <span key={tier} className="timeline-legend-item">
+                            <span
+                              className={`timeline-legend-swatch ${crewStatusTierGanttClass(tier)}`}
+                            />
+                            {crewStatusTierLabel(tier)}
+                          </span>
+                        ))}
                         <span className="timeline-legend-item">
-                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#10b981' }} />
-                          Available
-                        </span>
-                        <span className="timeline-legend-item">
-                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#ef4444' }} />
-                          Unavailable
-                        </span>
-                        <span className="timeline-legend-item">
-                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', backgroundColor: 'var(--surface3)' }} />
+                          <span className="timeline-legend-swatch timeline-legend-swatch-empty" />
                           No data
                         </span>
                       </div>
@@ -1832,12 +1894,19 @@ const TimelinePage = () => {
                                     <span className="allcrew-gantt-name-text">{row.crewName}</span>
                                   </div>
                                   {dayColumns.map(d => {
-                                    const status = getDayStatus(row, d);
+                                    const tier = getDayStatusTier(row, d);
                                     let cellClass = 'allcrew-gantt-day-cell';
                                     if (d === todayDayNum) cellClass += ' allcrew-today';
-                                    if (status === 'available') cellClass += ' allcrew-day-avail';
-                                    else if (status === 'unavailable') cellClass += ' allcrew-day-unavail';
-                                    return <div key={d} className={cellClass} />;
+                                    if (tier !== 'none') {
+                                      cellClass += ` ${crewStatusTierGanttClass(tier)}`;
+                                    }
+                                    return (
+                                      <div
+                                        key={d}
+                                        className={cellClass}
+                                        title={tier !== 'none' ? crewStatusTierLabel(tier) : undefined}
+                                      />
+                                    );
                                   })}
                                 </div>
                               ))}

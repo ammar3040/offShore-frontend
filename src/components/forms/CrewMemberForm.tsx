@@ -191,6 +191,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   const [altPhoneCountryQuery, setAltPhoneCountryQuery] = useState('');
   const phoneCountryWrapRef = useRef<HTMLDivElement>(null);
   const altPhoneCountryWrapRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasPrefilled = useRef(false);
 
   const filteredPhoneCountries = useMemo(() => {
@@ -220,11 +221,43 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
   const [visaCountryOpen, setVisaCountryOpen] = useState(false);
   const [visaCountryQuery, setVisaCountryQuery] = useState('');
   const [activeSection, setActiveSection] = useState<string>(FORM_SECTIONS[0].id);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const container = scrollContainerRef.current;
+    const section = document.getElementById(sectionId);
+    if (!container || !section) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const sectionRect = section.getBoundingClientRect();
+    const offset = sectionRect.top - containerRect.top + container.scrollTop - 4;
+
+    container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const id = visible[0]?.target.id;
+        if (id) setActiveSection(id);
+      },
+      { root: container, rootMargin: '-8% 0px -72% 0px', threshold: [0, 0.15, 0.4] }
+    );
+
+    FORM_SECTIONS.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const filteredCountries = useMemo(() => {
     const q = countryQuery.trim().toLowerCase();
@@ -468,33 +501,102 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.country?.trim()) return;
-    if (!formData.city?.trim()) return;
+    const errors: Record<string, string> = {};
+    if (!formData.firstName.trim()) errors.firstName = 'First Name is required';
+    if (!formData.lastName.trim()) errors.lastName = 'Last Name is required';
+    if (!formData.dateOfBirth) errors.dateOfBirth = 'Date of Birth is required';
+    if (!formData.nationality.trim()) errors.nationality = 'Nationality is required';
+    if (!formData.gender) errors.gender = 'Gender is required';
+    
+    if (!formData.email.trim()) errors.email = 'Email is required';
+    if (!phoneNumber.trim()) errors.phone = 'Phone number is required';
+    if (!altPhoneNumber.trim()) errors.alternatePhone = 'Alternate Phone is required';
+    if (!formData.address.trim()) errors.address = 'Address is required';
+    if (!formData.country.trim()) errors.country = 'Country is required';
+    if (!formData.city.trim()) errors.city = 'City is required';
+    if (!formData.postalCode.trim()) errors.postalCode = 'Postal Code is required';
+    
+    if (!formData.passportNumber.trim()) errors.passportNumber = 'Passport Number is required';
+    if (!formData.passportIssueDate) errors.passportIssueDate = 'Passport Issue Date is required';
+    if (!formData.passportExpiryDate) errors.passportExpiryDate = 'Passport Expiry Date is required';
+    if (!formData.passportIssuingCountry.trim()) errors.passportIssuingCountry = 'Passport Issuing Country is required';
+    if (mode === 'create' && formData.passportDocuments.length === 0) {
+      errors.passportDocuments = 'Passport document upload is required';
+    }
+    
+    if (!formData.identityType) errors.identityType = 'Identity Type is required';
+    if (!formData.identityNumber.trim()) errors.identityNumber = 'Identity Number is required';
+    if (!formData.identityIssueDate) errors.identityIssueDate = 'Identity Issue Date is required';
+    if (!formData.identityExpiryDate) errors.identityExpiryDate = 'Identity Expiry Date is required';
+    if (mode === 'create' && formData.identityDocuments.length === 0) {
+      errors.identityDocuments = 'Identity document upload is required';
+    }
+    
     if (mode === 'create') {
       const validCerts = formData.certificates.filter(
         (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document
       );
-      if (validCerts.length === 0) return;
+      if (validCerts.length === 0) {
+        errors.certificates = 'At least one complete certificate is required';
+      }
     }
+    
+    setValidationErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      if (errors.firstName || errors.lastName || errors.dateOfBirth || errors.nationality || errors.gender) {
+        scrollToSection('crew-form-personal');
+      } else if (errors.email || errors.phone || errors.alternatePhone || errors.address || errors.country || errors.city || errors.postalCode) {
+        scrollToSection('crew-form-contact');
+      } else if (errors.passportNumber || errors.passportIssueDate || errors.passportExpiryDate || errors.passportIssuingCountry || errors.passportDocuments) {
+        scrollToSection('crew-form-passport');
+      } else if (errors.identityType || errors.identityNumber || errors.identityIssueDate || errors.identityExpiryDate || errors.identityDocuments) {
+        scrollToSection('crew-form-identity');
+      } else if (errors.certificates) {
+        scrollToSection('crew-form-certificates');
+      }
+      return;
+    }
+    
     await onSubmit(formData);
   };
 
   return (
     <form className="crew-member-form" onSubmit={handleSubmit}>
       <nav className="crew-member-form__nav" aria-label="Form sections">
-        {FORM_SECTIONS.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            className={`crew-member-form__nav-btn${activeSection === section.id ? ' is-active' : ''}`}
-            onClick={() => scrollToSection(section.id)}
-          >
-            {section.label}
-          </button>
-        ))}
+        {FORM_SECTIONS.map((section) => {
+          const hasError = (() => {
+            if (section.id === 'crew-form-personal') {
+              return ['firstName', 'lastName', 'dateOfBirth', 'nationality', 'gender'].some(k => validationErrors[k]);
+            }
+            if (section.id === 'crew-form-contact') {
+              return ['email', 'phone', 'alternatePhone', 'address', 'country', 'city', 'postalCode'].some(k => validationErrors[k]);
+            }
+            if (section.id === 'crew-form-passport') {
+              return ['passportNumber', 'passportIssueDate', 'passportExpiryDate', 'passportIssuingCountry', 'passportDocuments'].some(k => validationErrors[k]);
+            }
+            if (section.id === 'crew-form-identity') {
+              return ['identityType', 'identityNumber', 'identityIssueDate', 'identityExpiryDate', 'identityDocuments'].some(k => validationErrors[k]);
+            }
+            if (section.id === 'crew-form-certificates') {
+              return ['certificates'].some(k => validationErrors[k]);
+            }
+            return false;
+          })();
+          return (
+            <button
+              key={section.id}
+              type="button"
+              className={`crew-member-form__nav-btn${activeSection === section.id ? ' is-active' : ''}${hasError ? ' has-error' : ''}`}
+              onClick={() => scrollToSection(section.id)}
+            >
+              {section.label} {hasError && '⚠️'}
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="crew-member-form__scroll">
+      <div className="crew-member-form__scroll" ref={scrollContainerRef}>
         {/* Personal Details Section */}
         <section id="crew-form-personal" className="crew-member-form__section">
           <h3 className="crew-member-form__section-title">Personal Details</h3>
@@ -507,9 +609,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.firstName && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.firstName && <span className="text-xs text-red-500">{validationErrors.firstName}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="lastName" className="text-sm font-semibold text-foreground">Last Name *</label>
@@ -519,9 +621,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.lastName && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.lastName && <span className="text-xs text-red-500">{validationErrors.lastName}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="dateOfBirth" className="text-sm font-semibold text-foreground">Date of Birth *</label>
@@ -531,9 +633,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.dateOfBirth && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.dateOfBirth && <span className="text-xs text-red-500">{validationErrors.dateOfBirth}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="nationality" className="text-sm font-semibold text-foreground">Nationality *</label>
@@ -543,9 +645,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="nationality"
                 value={formData.nationality}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.nationality && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.nationality && <span className="text-xs text-red-500">{validationErrors.nationality}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="gender" className="text-sm font-semibold text-foreground">Gender *</label>
@@ -554,8 +656,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="gender"
                 value={formData.gender}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.gender && 'border-red-500 focus:ring-red-200')}
               >
                 <option value="">Select</option>
                 <option value="male">Male</option>
@@ -563,6 +664,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 <option value="other">Other</option>
                 <option value="prefer-not-to-say">Prefer not to say</option>
               </select>
+              {validationErrors.gender && <span className="text-xs text-red-500">{validationErrors.gender}</span>}
             </div>
           </div>
         </section>
@@ -579,9 +681,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.email && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.email && <span className="text-xs text-red-500">{validationErrors.email}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="phone" className="text-sm font-semibold text-foreground">Phone *</label>
@@ -622,9 +724,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                         <li
                           key={c.code}
                           className={cn(
-                          dropdownItemClass,
-                          c.dialCode === phoneDialCode && dropdownItemSelectedClass
-                        )}
+                            dropdownItemClass,
+                            c.dialCode === phoneDialCode && dropdownItemSelectedClass
+                          )}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
                             setPhoneDialCode(c.dialCode);
@@ -642,14 +744,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   type="tel"
                   id="phone"
                   name="phone"
-                  className={cn(inputClass, 'flex-1 min-w-0')}
+                  className={cn(inputClass, 'flex-1 min-w-0', validationErrors.phone && 'border-red-500 focus:ring-red-200')}
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
                   placeholder="5551234567"
                   autoComplete="tel-national"
-                  required
                 />
               </div>
+              {validationErrors.phone && <span className="text-xs text-red-500">{validationErrors.phone}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="alternatePhone" className="text-sm font-semibold text-foreground">Alternate Phone *</label>
@@ -690,9 +792,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                         <li
                           key={c.code}
                           className={cn(
-                          dropdownItemClass,
-                          c.dialCode === altPhoneDialCode && dropdownItemSelectedClass
-                        )}
+                            dropdownItemClass,
+                            c.dialCode === altPhoneDialCode && dropdownItemSelectedClass
+                          )}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
                             setAltPhoneDialCode(c.dialCode);
@@ -710,14 +812,14 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   type="tel"
                   id="alternatePhone"
                   name="alternatePhone"
-                  className={cn(inputClass, 'flex-1 min-w-0')}
+                  className={cn(inputClass, 'flex-1 min-w-0', validationErrors.alternatePhone && 'border-red-500 focus:ring-red-200')}
                   value={altPhoneNumber}
                   onChange={(e) => setAltPhoneNumber(e.target.value.replace(/\D/g, ''))}
                   placeholder="5551234567"
                   autoComplete="tel-national"
-                  required
                 />
               </div>
+              {validationErrors.alternatePhone && <span className="text-xs text-red-500">{validationErrors.alternatePhone}</span>}
             </div>
             <div className="flex flex-col gap-2 crew-member-form__field--full">
               <label htmlFor="address" className="text-sm font-semibold text-foreground">Address *</label>
@@ -727,9 +829,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="address"
                 value={formData.address}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.address && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.address && <span className="text-xs text-red-500">{validationErrors.address}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="country" className="text-sm font-semibold text-foreground">Country *</label>
@@ -737,7 +839,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 <input
                   id="country"
                   type="text"
-                  className={inputClass}
+                  className={cn(inputClass, 'w-full', validationErrors.country && 'border-red-500 focus:ring-red-200')}
                   value={countryOpen ? countryQuery : formData.country}
                   onChange={(e) => {
                     setCountryQuery(e.target.value);
@@ -753,7 +855,6 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   }}
                   placeholder="Type to search country…"
                   autoComplete="off"
-                  required={!formData.country}
                 />
                 {countryOpen && (
                   <ul className={dropdownListClass}>
@@ -774,6 +875,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   </ul>
                 )}
               </div>
+              {validationErrors.country && <span className="text-xs text-red-500">{validationErrors.country}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="city" className="text-sm font-semibold text-foreground">City *</label>
@@ -781,7 +883,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 <input
                   id="city"
                   type="text"
-                  className={inputClass}
+                  className={cn(inputClass, 'w-full', validationErrors.city && 'border-red-500 focus:ring-red-200')}
                   value={cityOpen ? cityQuery : formData.city}
                   onChange={(e) => {
                     setCityQuery(e.target.value);
@@ -794,7 +896,6 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   }}
                   placeholder={selectedCountryCode ? 'Type to search city…' : 'Select country first'}
                   autoComplete="off"
-                  required={!formData.city}
                   disabled={!selectedCountryCode}
                 />
                 {cityOpen && selectedCountryCode && (
@@ -816,6 +917,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                   </ul>
                 )}
               </div>
+              {validationErrors.city && <span className="text-xs text-red-500">{validationErrors.city}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="postalCode" className="text-sm font-semibold text-foreground">Postal Code *</label>
@@ -825,9 +927,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="postalCode"
                 value={formData.postalCode}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.postalCode && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.postalCode && <span className="text-xs text-red-500">{validationErrors.postalCode}</span>}
             </div>
           </div>
         </section>
@@ -844,9 +946,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="passportNumber"
                 value={formData.passportNumber}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.passportNumber && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.passportNumber && <span className="text-xs text-red-500">{validationErrors.passportNumber}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="passportIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
@@ -856,9 +958,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="passportIssueDate"
                 value={formData.passportIssueDate}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.passportIssueDate && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.passportIssueDate && <span className="text-xs text-red-500">{validationErrors.passportIssueDate}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="passportExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date *</label>
@@ -868,9 +970,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="passportExpiryDate"
                 value={formData.passportExpiryDate}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.passportExpiryDate && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.passportExpiryDate && <span className="text-xs text-red-500">{validationErrors.passportExpiryDate}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="passportIssuingCountry" className="text-sm font-semibold text-foreground">Issuing Country *</label>
@@ -880,15 +982,15 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="passportIssuingCountry"
                 value={formData.passportIssuingCountry}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.passportIssuingCountry && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.passportIssuingCountry && <span className="text-xs text-red-500">{validationErrors.passportIssuingCountry}</span>}
             </div>
           </div>
           
           <div className="flex flex-col gap-2 mt-4 crew-member-form__field--full">
             <label className="text-sm font-semibold text-foreground">Passport Document *</label>
-            <div className="crew-member-form__upload-zone">
+            <div className={cn('crew-member-form__upload-zone', validationErrors.passportDocuments && 'border-red-500 bg-red-50/10')}>
               <input
                 ref={passportFileInputRef}
                 type="file"
@@ -907,6 +1009,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </button>
               <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 10MB per file)</p>
             </div>
+            {validationErrors.passportDocuments && <span className="text-xs text-red-500 mt-1">{validationErrors.passportDocuments}</span>}
             {formData.passportDocuments.length > 0 && (
               <div className="flex flex-col gap-2 mt-2">
                 {formData.passportDocuments.map((file, index) => (
@@ -937,8 +1040,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="identityType"
                 value={formData.identityType}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.identityType && 'border-red-500 focus:ring-red-200')}
               >
                 <option value="">Select</option>
                 <option value="national_id">National ID</option>
@@ -946,6 +1048,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 <option value="identity_number">Identity Number</option>
                 <option value="other">Other</option>
               </select>
+              {validationErrors.identityType && <span className="text-xs text-red-500">{validationErrors.identityType}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="identityNumber" className="text-sm font-semibold text-foreground">Identity Number *</label>
@@ -955,9 +1058,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="identityNumber"
                 value={formData.identityNumber}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.identityNumber && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.identityNumber && <span className="text-xs text-red-500">{validationErrors.identityNumber}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="identityIssueDate" className="text-sm font-semibold text-foreground">Issue Date *</label>
@@ -967,9 +1070,9 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="identityIssueDate"
                 value={formData.identityIssueDate}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.identityIssueDate && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.identityIssueDate && <span className="text-xs text-red-500">{validationErrors.identityIssueDate}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="identityExpiryDate" className="text-sm font-semibold text-foreground">Expiry Date *</label>
@@ -979,15 +1082,15 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                 name="identityExpiryDate"
                 value={formData.identityExpiryDate}
                 onChange={handleInputChange}
-                required
-                className={inputClass}
+                className={cn(inputClass, validationErrors.identityExpiryDate && 'border-red-500 focus:ring-red-200')}
               />
+              {validationErrors.identityExpiryDate && <span className="text-xs text-red-500">{validationErrors.identityExpiryDate}</span>}
             </div>
           </div>
           
           <div className="flex flex-col gap-2 mt-4 crew-member-form__field--full">
             <label className="text-sm font-semibold text-foreground">Identity Document *</label>
-            <div className="crew-member-form__upload-zone">
+            <div className={cn('crew-member-form__upload-zone', validationErrors.identityDocuments && 'border-red-500 bg-red-50/10')}>
               <input
                 ref={identityFileInputRef}
                 type="file"
@@ -1006,6 +1109,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               </button>
               <p className="text-xs text-muted-foreground">PDF, JPG, PNG (Max 10MB per file)</p>
             </div>
+            {validationErrors.identityDocuments && <span className="text-xs text-red-500 mt-1">{validationErrors.identityDocuments}</span>}
             {formData.identityDocuments.length > 0 && (
               <div className="flex flex-col gap-2 mt-2">
                 {formData.identityDocuments.map((file, index) => (
@@ -1038,6 +1142,11 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
               Add certificate
             </button>
           </div>
+          {validationErrors.certificates && (
+            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-500 border border-red-200">
+              {validationErrors.certificates}
+            </div>
+          )}
           <div className="flex flex-col gap-4">
             {formData.certificates.map((cert, certIndex) => (
               <div
@@ -1067,7 +1176,6 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                       value={cert.certificateName}
                       onChange={(e) => updateCertificate(certIndex, 'certificateName', e.target.value)}
                       placeholder="e.g. STCW Basic Safety"
-                      required
                       className={inputClass}
                     />
                   </div>
@@ -1077,7 +1185,6 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                       type="date"
                       value={cert.issueDate}
                       onChange={(e) => updateCertificate(certIndex, 'issueDate', e.target.value)}
-                      required
                       className={inputClass}
                     />
                   </div>
@@ -1087,7 +1194,6 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                       type="date"
                       value={cert.expiryDate}
                       onChange={(e) => updateCertificate(certIndex, 'expiryDate', e.target.value)}
-                      required
                       className={inputClass}
                     />
                   </div>

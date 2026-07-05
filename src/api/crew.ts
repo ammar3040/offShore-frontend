@@ -1073,6 +1073,7 @@ export interface CrewAvailabilityItem {
   country?: string;
   notes?: string;
   available_from?: string;
+  status?: string;
 }
 
 /** Response from GET /crew/me when used for dashboard (crew + availability + enrolledProjects) */
@@ -1328,7 +1329,8 @@ export async function addCrewAvailabilityAdmin(
   from: string,
   to: string,
   isAvailable?: boolean,
-  assignment?: CrewAvailabilityAssignmentInput
+  assignment?: CrewAvailabilityAssignmentInput,
+  status?: string
 ): Promise<CrewAvailabilityAdminItem> {
   const token = getAuthToken();
   if (!token) throw new Error('Not authenticated');
@@ -1348,6 +1350,7 @@ export async function addCrewAvailabilityAdmin(
         from,
         to,
         isAvailable,
+        status,
         ...(assignment ?? {}),
       }),
       signal: controller.signal,

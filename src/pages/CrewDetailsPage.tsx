@@ -8,7 +8,6 @@ import {
   CreditCard,
   History,
   IdCard,
-  Loader2,
   Mail,
   MapPin,
   MessageSquare,
@@ -24,9 +23,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import {
-  crewApiToFormData,
   getCrewById,
-  updateCrewMember,
   getCrewAvailabilityListAdmin,
   addCrewAvailabilityAdmin,
   deleteCrewAvailabilityAdmin,
@@ -35,14 +32,12 @@ import {
   type CrewAvailabilityAdminItem,
 } from '../api/crew';
 import { EMPLOYER_OPTIONS } from '../constants/employers';
-import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
-import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
 import { Calendar as UiCalendar } from '../components/ui/calendar';
-import { availabilityFromCrewSignal, getCrewSignal } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, getCrewSignal, CREW_STATUS_TIER_OPTIONS, type CrewStatusTier, crewStatusTierLabel, crewStatusTierBadgeClass } from '../utils/crewAvailability';
 import { toast } from 'sonner';
 import './RigsPage.css';
 import './TimelinePage.css';
@@ -128,6 +123,28 @@ const formatDateToDisplay = (dateStr: string) => {
   return `${dd}/${mm}/${yyyy}`;
 };
 
+function getCalendarDayStyle(status: string | undefined): React.CSSProperties {
+  if (!status) return {};
+  switch (status) {
+    case 'Available':
+      return { backgroundColor: 'rgba(34, 197, 94, 0.08)' };
+    case 'Offered':
+      return { backgroundColor: 'rgba(234, 179, 8, 0.08)' };
+    case 'Confirmed':
+      return { backgroundColor: 'rgba(59, 130, 246, 0.08)' };
+    case 'On assignment for us':
+      return { backgroundColor: 'rgba(168, 85, 247, 0.08)' };
+    case 'Offshore (Competitor)':
+      return { backgroundColor: 'rgba(239, 68, 68, 0.08)' };
+    case 'Holiday / Not Available':
+      return { backgroundColor: 'rgba(249, 115, 22, 0.08)' };
+    case 'Unknown / Inactive':
+      return { backgroundColor: 'rgba(156, 163, 175, 0.08)' };
+    default:
+      return {};
+  }
+}
+
 const CrewDetailsPage = () => {
   const { crewId } = useParams<{ crewId: string }>();
   const navigate = useNavigate();
@@ -136,11 +153,7 @@ const CrewDetailsPage = () => {
   const [loading, setLoading] = useState(() => Boolean(crewId));
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editCrew, setEditCrew] = useState<CrewMemberApi | null>(null);
-  const [editPrefillLoading, setEditPrefillLoading] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
+
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -161,7 +174,7 @@ const CrewDetailsPage = () => {
   const [calendarDate, setCalendarDate] = useState(() => startOfMonth(new Date()));
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
-  const [newAvailType, setNewAvailType] = useState<'available' | 'unavailable'>('available');
+  const [newAvailType, setNewAvailType] = useState<CrewStatusTier>('Available');
 
   const monthStart = startOfMonth(calendarDate);
   const calendarDays = useMemo(() => buildCalendarDays(monthStart), [monthStart]);
@@ -211,7 +224,7 @@ const CrewDetailsPage = () => {
     setAddingAvail(true);
     setAvailError(null);
     try {
-      const isAvail = newAvailType === 'available';
+      const isAvail = newAvailType === 'Available';
       const assignment =
         !isAvail
           ? {
@@ -225,11 +238,11 @@ const CrewDetailsPage = () => {
               ...(newAvailNotes.trim() ? { notes: newAvailNotes.trim() } : {}),
             }
           : undefined;
-      await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo, isAvail, assignment);
+      await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo, isAvail, assignment, newAvailType);
       
       const startFormatted = new Date(newAvailFrom).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
       const endFormatted = new Date(newAvailTo).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      toast.success(`Successfully added ${isAvail ? 'availability' : 'unavailability'} from ${startFormatted} to ${endFormatted}`);
+      toast.success(`Successfully added range with status "${crewStatusTierLabel(newAvailType)}" from ${startFormatted} to ${endFormatted}`);
 
       setNewAvailFrom('');
       setNewAvailTo('');
@@ -288,14 +301,14 @@ const CrewDetailsPage = () => {
     }
   };
 
-  const getDayAvailabilityType = (day: Date): 'available' | 'unavailable' | 'none' => {
+  const getDayAvailabilityStatus = (day: Date): string | 'none' => {
     const dStr = dateKey(day);
     for (const item of availabilityItems) {
       if (!item.from || !item.to) continue;
       const start = dateKey(new Date(item.from));
       const end = dateKey(new Date(item.to));
       if (dStr >= start && dStr <= end) {
-        return item.isAvailable !== false ? 'available' : 'unavailable';
+        return item.status || (item.isAvailable !== false ? 'Available' : 'Holiday / Not Available');
       }
     }
     return 'none';
@@ -359,62 +372,9 @@ const CrewDetailsPage = () => {
     void loadCrewDetails();
   }, [loadCrewDetails]);
 
-  const openEditModal = async () => {
-    if (!crewId) return;
-    setIsEditModalOpen(true);
-    setEditError(null);
-    setEditPrefillLoading(true);
-    try {
-      const res = await getCrewById(crewId);
-      setEditCrew(res.crew);
-    } catch {
-      if (crew) setEditCrew(crew);
-    } finally {
-      setEditPrefillLoading(false);
-    }
-  };
-
-  const closeEditModal = () => {
-    if (!editLoading) {
-      setIsEditModalOpen(false);
-      setEditCrew(null);
-      setEditError(null);
-    }
-  };
-
-  const editInitialData = useMemo(
-    () => (editCrew ? crewApiToFormData(editCrew) : undefined),
-    [editCrew]
-  );
-
-  const handleSubmitEdit = async (data: CrewMemberFormData) => {
-    const crewIdToUpdate = editCrew?.id ?? crew?.id;
-    if (!crewIdToUpdate) return;
-    setEditLoading(true);
-    setEditError(null);
-    try {
-      const res = await updateCrewMember(crewIdToUpdate, data);
-      if (!res.ok) {
-        const text = await res.text();
-        let msg = `Request failed (${res.status})`;
-        if (text) {
-          try {
-            const j = JSON.parse(text);
-            msg = j?.message || j?.error || msg;
-          } catch {
-            msg = text;
-          }
-        }
-        setEditError(msg);
-        return;
-      }
-      setIsEditModalOpen(false);
-      setEditError(null);
-      await loadCrewDetails();
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Failed to update crew member');
-    } finally {
-      setEditLoading(false);
+  const openEditModal = () => {
+    if (crewId) {
+      navigate(`/crew/edit/${crewId}`);
     }
   };
 
@@ -603,10 +563,60 @@ const CrewDetailsPage = () => {
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Address</div><div className="subsea-detail-val">{field(crew.address)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Gender</div><div className="subsea-detail-val">{field(crew.gender)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Visa</div><div className="subsea-detail-val">{field(crew.visa || crew.visa_country)}</div></div>
+                      <div className="subsea-detail-row" style={{ border: '2px solid #ef4444', borderRadius: '4px', padding: '4px' }}><div className="subsea-detail-label">Preferred Rating</div><div className="subsea-detail-val">{field(crew.preferred_rating)}</div></div>
+                      <div className="subsea-detail-row" style={{ border: '2px solid #ef4444', borderRadius: '4px', padding: '4px' }}><div className="subsea-detail-label">Primary BOP OEM</div><div className="subsea-detail-val">{field(crew.primary_bop_oem)}</div></div>
                     </div>
                   </div>
 
                   <div>
+                    <div className="subsea-pane subsea-mb-12" style={{ border: '2px solid #ef4444' }}>
+                      <div className="subsea-pane-head"><div className="subsea-pane-title">Status & Availability Details</div></div>
+                      <div className="subsea-detail-grid">
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Personnel Status</div>
+                          <div className="subsea-detail-val">
+                            <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(crew.current_status)}`}>
+                              {crewStatusTierLabel(crew.current_status)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Current Employer</div>
+                          <div className="subsea-detail-val">
+                            {field(
+                              crew.currentAssignment?.employer === 'Other'
+                                ? crew.currentAssignment?.employer_other
+                                : crew.currentAssignment?.employer
+                            )}
+                          </div>
+                        </div>
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Client</div>
+                          <div className="subsea-detail-val">{field(crew.currentAssignment?.client)}</div>
+                        </div>
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Rig / Vessel</div>
+                          <div className="subsea-detail-val">{field(crew.currentAssignment?.rig_vessel)}</div>
+                        </div>
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Available From</div>
+                          <div className="subsea-detail-val">
+                            {crew.currentAssignment?.available_from
+                              ? new Date(crew.currentAssignment.available_from).toLocaleDateString(undefined, {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })
+                              : '—'}
+                          </div>
+                        </div>
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Country</div>
+                          <div className="subsea-detail-val">{field(crew.currentAssignment?.country)}</div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="subsea-pane subsea-mb-12">
                       <div className="subsea-pane-head"><div className="subsea-pane-title">Current Assignment</div></div>
                       <div className="subsea-detail-grid">
@@ -756,7 +766,7 @@ const CrewDetailsPage = () => {
                       {calendarDays.map((day) => {
                         const isOtherMonth = day.getMonth() !== monthStart.getMonth();
                         const isToday = dateKey(day) === dateKey(new Date());
-                        const type = getDayAvailabilityType(day);
+                        const statusStr = getDayAvailabilityStatus(day);
                         const isSelected = isDayInSelectedRange(day);
                         
                         let dayClass = 'timeline-cal-day';
@@ -774,11 +784,9 @@ const CrewDetailsPage = () => {
                           border: isSelected ? '2px solid var(--subsea-primary, #2563eb)' : undefined,
                           backgroundColor: isSelected 
                             ? 'rgba(37, 99, 235, 0.08)' 
-                            : type === 'available' 
-                              ? 'rgba(16, 185, 129, 0.08)' 
-                              : type === 'unavailable' 
-                                ? 'rgba(239, 68, 68, 0.08)' 
-                                : undefined
+                            : statusStr !== 'none'
+                              ? getCalendarDayStyle(statusStr).backgroundColor
+                              : undefined
                         };
 
                         return (
@@ -791,14 +799,12 @@ const CrewDetailsPage = () => {
                             <div className="timeline-cal-day-num">{day.getDate()}</div>
                             
                             <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {type === 'available' && (
-                                <span className="subsea-badge subsea-b-green" style={{ fontSize: '9px', padding: '1px 4px', width: 'fit-content' }}>
-                                  Available
-                                </span>
-                              )}
-                              {type === 'unavailable' && (
-                                <span className="subsea-badge subsea-b-red" style={{ fontSize: '9px', padding: '1px 4px', width: 'fit-content' }}>
-                                  Unavailable
+                              {statusStr !== 'none' && (
+                                <span 
+                                  className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(statusStr)}`} 
+                                  style={{ fontSize: '9px', padding: '1px 4px', width: 'fit-content' }}
+                                >
+                                  {crewStatusTierLabel(statusStr)}
                                 </span>
                               )}
                               {isSelected && (
@@ -812,15 +818,23 @@ const CrewDetailsPage = () => {
                       })}
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--subsea-text-muted)', alignSelf: 'flex-start' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)' }} />
-                        <span>Available Range</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }} />
-                        <span>Unavailable Range</span>
-                      </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '11px', color: 'var(--subsea-text-muted)', alignSelf: 'flex-start', marginTop: '12px' }}>
+                      {CREW_STATUS_TIER_OPTIONS.map((tier) => {
+                        const styleVal = getCalendarDayStyle(tier);
+                        return (
+                          <div key={tier} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ 
+                              display: 'inline-block', 
+                              width: '12px', 
+                              height: '12px', 
+                              borderRadius: '3px', 
+                              backgroundColor: styleVal.backgroundColor || 'rgba(0,0,0,0.05)',
+                              border: `1px solid ${styleVal.backgroundColor ? (styleVal.backgroundColor as string).replace('0.08', '0.4') : 'rgba(0,0,0,0.1)'}`
+                            }} />
+                            <span>{crewStatusTierLabel(tier)}</span>
+                          </div>
+                        );
+                      })}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(37, 99, 235, 0.08)', border: '2px solid var(--subsea-primary, #2563eb)' }} />
                         <span>Selected Days</span>
@@ -906,16 +920,19 @@ const CrewDetailsPage = () => {
                           <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">STATUS</label>
                           <select
                             value={newAvailType}
-                            onChange={(e) => setNewAvailType(e.target.value as 'available' | 'unavailable')}
+                            onChange={(e) => setNewAvailType(e.target.value as CrewStatusTier)}
                             className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
                             style={{ borderColor: '#cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', height: '30px' }}
                           >
-                            <option value="available">Available</option>
-                            <option value="unavailable">Unavailable</option>
+                            {CREW_STATUS_TIER_OPTIONS.map((statusTier) => (
+                              <option key={statusTier} value={statusTier}>
+                                {crewStatusTierLabel(statusTier)}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       </div>
-                      {newAvailType === 'unavailable' && (
+                      {newAvailType !== 'Available' && (
                         <div className="grid grid-cols-2 gap-2">
                           {/* MD Section 3.3 — employer dropdown */}
                           <div className="dev-new-field" data-dev-tag="NEW">
@@ -1149,28 +1166,7 @@ const CrewDetailsPage = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={isEditModalOpen} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea">
-        {editError && (
-          <ErrorAlertPopup message={editError} onDismiss={() => setEditError(null)} />
-        )}
-        {editPrefillLoading ? (
-          <div className="user-mgmt-form-suspense" role="status" aria-busy="true" aria-label="Loading crew profile">
-            <Loader2 size={32} className="user-mgmt-form-suspense-spinner" />
-            <p>Loading profile…</p>
-          </div>
-        ) : editCrew && editInitialData ? (
-          <CrewMemberForm
-            key={editCrew.id}
-            mode="edit"
-            onSubmit={handleSubmitEdit}
-            onCancel={closeEditModal}
-            isLoading={editLoading}
-            initialData={editInitialData}
-            submitLabel="Save Changes"
-            theme="subsea"
-          />
-        ) : null}
-      </Modal>
+
     </div>
   );
 };

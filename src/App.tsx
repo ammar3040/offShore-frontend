@@ -11,6 +11,7 @@ import './App.css';
 const CrewManagementDashboard = lazy(() => import('./pages/CrewManagementDashboard'));
 const CrewListPage = lazy(() => import('./pages/CrewListPage'));
 const CrewDetailsPage = lazy(() => import('./pages/CrewDetailsPage'));
+const CrewMemberFormPage = lazy(() => import('./pages/CrewMemberFormPage'));
 const CrewLogin = lazy(() => import('./pages/CrewLogin'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SuperadminLoginPage = lazy(() => import('./pages/SuperadminLoginPage'));
@@ -101,6 +102,8 @@ function App() {
                   <Routes>
                     <Route path="/" element={<CrewManagementDashboard />} />
                     <Route path="/crew" element={<CrewListPage />} />
+                    <Route path="/crew/add" element={<CrewMemberFormPage />} />
+                    <Route path="/crew/edit/:crewId" element={<CrewMemberFormPage />} />
                     <Route path="/crew/:crewId" element={<CrewDetailsPage />} />
                     <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />

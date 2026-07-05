@@ -58,6 +58,37 @@ export function crewStatusTierDotClass(status: string | undefined | null): strin
   return `crew-status-dot ${crewStatusTierBadgeClass(status)}`;
 }
 
+/** Resolve status from an availability record (falls back from legacy isAvailable flag). */
+export function resolveAvailabilityItemStatus(
+  item: { status?: string; isAvailable?: boolean }
+): CrewStatusTier {
+  const raw = item.status?.trim();
+  if (raw && (CREW_STATUS_TIER_OPTIONS as readonly string[]).includes(raw)) {
+    return raw as CrewStatusTier;
+  }
+  return item.isAvailable !== false ? 'Available' : 'Holiday / Not Available';
+}
+
+/** CSS class for All Crew gantt day cells. */
+export function crewStatusTierGanttClass(status: string | undefined | null): string {
+  const suffix = crewStatusTierBadgeClass(status).replace('crew-status-tier--', '');
+  return `allcrew-day-tier-${suffix}`;
+}
+
+/** Background tint for calendar day cells / legend dots. */
+export function crewStatusTierTint(status: string | undefined | null, alpha = 0.22): string {
+  const colors: Record<string, string> = {
+    Available: `rgba(34, 197, 94, ${alpha})`,
+    Offered: `rgba(234, 179, 8, ${alpha})`,
+    Confirmed: `rgba(59, 130, 246, ${alpha})`,
+    'On assignment for us': `rgba(168, 85, 247, ${alpha})`,
+    'Offshore (Competitor)': `rgba(239, 68, 68, ${alpha})`,
+    'Holiday / Not Available': `rgba(249, 115, 22, ${alpha})`,
+    'Unknown / Inactive': `rgba(156, 163, 175, ${alpha})`,
+  };
+  return colors[status ?? 'Available'] ?? colors.Available;
+}
+
 function stripToLocalDate(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }

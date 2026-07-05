@@ -26,15 +26,14 @@ import {
   ArrowLeft,
   UserPlus,
 } from 'lucide-react';
-import { getCrewList, getCrewById, createCrewMember, updateCrewMember, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, crewApiToFormData, type CrewMemberApi, type CrewAssignedProject, type GetCrewListFilters } from '../api/crew';
+import { getCrewList, getCrewById, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, type CrewMemberApi, type CrewAssignedProject, type GetCrewListFilters } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
-import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel, getCrewSignal, crewStatusTierBadgeClass, crewStatusTierLabel, CREW_STATUS_TIER_OPTIONS, PREFERRED_RATING_OPTIONS, BOP_OEM_OPTIONS, type CrewAvailability } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, getCrewSignal, crewStatusTierBadgeClass, crewStatusTierLabel, crewStatusTierDotClass, CREW_STATUS_TIER_OPTIONS, PREFERRED_RATING_OPTIONS, BOP_OEM_OPTIONS, type CrewAvailability } from '../utils/crewAvailability';
 import { EMPLOYER_OPTIONS } from '../constants/employers';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
-import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import { DatePickerTime } from '../components/ui/date-picker-time';
 import './CrewListPage.css';
 import './RigsPage.css';
@@ -73,10 +72,6 @@ const CrewListPage = () => {
   const [rosterTab, setRosterTab] = useState<RosterTab>('available');
   const [activeView, setActiveView] = useState<CrewActiveView>('roster');
   const [page, setPage] = useState(1);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addLoading, setAddLoading] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-
   const [selectedCrew, setSelectedCrew] = useState<CrewMemberApi | null>(null);
   const [crewDetailData, setCrewDetailData] = useState<{ crew: CrewMemberApi; projects: CrewAssignedProject[] } | null>(null);
   const [crewDetailLoading] = useState(false);
@@ -88,10 +83,6 @@ const CrewListPage = () => {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
-
-  const [editingCrew, setEditingCrew] = useState<CrewMemberApi | null>(null);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   const [deleteCrewId, setDeleteCrewId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -217,15 +208,7 @@ const CrewListPage = () => {
   const totalPages = Math.max(1, Math.ceil(filteredCrew.length / pageSize));
 
   const handleAddCrewMember = () => {
-    setIsAddModalOpen(true);
-    setAddError(null);
-  };
-
-  const handleCloseAddModal = () => {
-    if (!addLoading) {
-      setIsAddModalOpen(false);
-      setAddError(null);
-    }
+    navigate('/crew/add');
   };
 
   const openInviteModal = useCallback((member: CrewMemberApi) => {
@@ -264,74 +247,8 @@ const CrewListPage = () => {
     }
   };
 
-  const handleSubmitCrewMember = async (data: CrewMemberFormData) => {
-    setAddLoading(true);
-    setAddError(null);
-    try {
-      const res = await createCrewMember(data);
-      if (!res.ok) {
-        const text = await res.text();
-        let msg = `Request failed (${res.status})`;
-        if (text) {
-          try {
-            const j = JSON.parse(text);
-            msg = j?.message || j?.error || msg;
-          } catch {
-            msg = text;
-          }
-          setAddError(msg);
-          return;
-        }
-      }
-      handleCloseAddModal();
-      await refreshCrewData();
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to add crew member');
-    } finally {
-      setAddLoading(false);
-    }
-  };
-
   const openEditModal = (member: CrewMemberApi) => {
-    setEditingCrew(member);
-    setEditError(null);
-  };
-
-  const closeEditModal = () => {
-    if (!editLoading) {
-      setEditingCrew(null);
-      setEditError(null);
-    }
-  };
-
-  const handleSubmitEdit = async (data: CrewMemberFormData) => {
-    if (!editingCrew) return;
-    setEditLoading(true);
-    setEditError(null);
-    try {
-      const res = await updateCrewMember(editingCrew.id, data);
-      if (!res.ok) {
-        const text = await res.text();
-        let msg = `Request failed (${res.status})`;
-        if (text) {
-          try {
-            const j = JSON.parse(text);
-            msg = j?.message || j?.error || msg;
-          } catch {
-            msg = text;
-          }
-          setEditError(msg);
-          return;
-        }
-      }
-      closeEditModal();
-      closeCrewDetail();
-      await refreshCrewData();
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Failed to update crew member');
-    } finally {
-      setEditLoading(false);
-    }
+    navigate(`/crew/edit/${member.id}`);
   };
 
   const openDeleteConfirm = (member: CrewMemberApi) => {
@@ -967,15 +884,10 @@ const CrewListPage = () => {
                     <tr>
                       <th>Name</th>
                       <th>Rank</th>
-                      <th className="dev-new-field" data-dev-tag="NEW">Rating</th>
-                      <th className="dev-new-field" data-dev-tag="NEW">BOP OEM</th>
                       <th>Nationality</th>
                       <th>Rig</th>
                       <th className="dev-new-field" data-dev-tag="NEW">Personnel Status</th>
-                      <th className="dev-new-field" data-dev-tag="NEW">Employer</th>
-                      <th className="dev-new-field" data-dev-tag="NEW">Client</th>
                       <th className="dev-new-field" data-dev-tag="NEW">Available From</th>
-                      <th>Signal</th>
                       <th>Certs</th>
                       <th />
                     </tr>
@@ -983,23 +895,29 @@ const CrewListPage = () => {
                   <tbody>
                     {paginatedCrew.length === 0 ? (
                       <tr>
-                        <td colSpan={13} className="subsea-empty-cell">
+                        <td colSpan={8} className="subsea-empty-cell">
                           {rosterTab === 'available' ? 'No available crew members found.' : 'No crew members currently in project.'}
                         </td>
                       </tr>
                     ) : (
                       paginatedCrew.map((member) => {
-                        const kind = availabilityFromCrewSignal(getCrewSignal(member));
-                        const status = crewStatus(kind);
                         const project = member.activeProjects?.[0];
                         const certExpiring = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
                         const expiryWarnings = member.expiryWarnings ?? [];
                         const hasExpired = expiryWarnings.some((w) => /expired/i.test(w));
-                        const certLabel = expiryWarnings.length
-                          ? expiryWarnings[0]
-                          : certExpiring
-                            ? '1 expiring'
-                            : 'All valid';
+                        const expiredCount = expiryWarnings.filter((w) => /expired/i.test(w)).length;
+                        const expiringCount = expiryWarnings.length - expiredCount;
+                        
+                        let certLabel = 'All valid';
+                        if (expiredCount > 0 && expiringCount > 0) {
+                          certLabel = `${expiredCount} exp. / ${expiringCount} soon`;
+                        } else if (expiredCount > 0) {
+                          certLabel = `${expiredCount} expired`;
+                        } else if (expiringCount > 0) {
+                          certLabel = `${expiringCount} expiring`;
+                        } else if (certExpiring) {
+                          certLabel = '1 expiring';
+                        }
                         const certClass = hasExpired
                           ? 'subsea-b-red'
                           : expiryWarnings.length || certExpiring
@@ -1007,10 +925,6 @@ const CrewListPage = () => {
                             : 'subsea-b-green';
                         const assignment = member.currentAssignment;
                         const personnelStatus = member.current_status ?? 'Available';
-                        const employerDisplay =
-                          assignment?.employer === 'Other'
-                            ? assignment?.employer_other
-                            : assignment?.employer;
                         const availableFromDisplay = assignment?.available_from
                           ? new Date(assignment.available_from).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
                           : '—';
@@ -1019,23 +933,17 @@ const CrewListPage = () => {
                             <td className="strong">
                               <div className="subsea-roster-name">
                                 <span
-                                  className={crewAvailabilityDotClass(kind)}
-                                  title={getCrewAvailabilityLabel(kind)}
-                                  aria-label={getCrewAvailabilityLabel(kind)}
+                                  className={crewStatusTierDotClass(personnelStatus)}
+                                  title={crewStatusTierLabel(personnelStatus)}
+                                  aria-label={crewStatusTierLabel(personnelStatus)}
                                 />
-                                <div className={`subsea-c-av ${kind === 'available' ? 'subsea-c-av-1' :
-                                  kind === 'onProject' ? 'subsea-c-av-2' :
-                                    kind === 'endingSoon' ? 'subsea-c-av-3' :
-                                      'subsea-c-av-unavailable'
-                                  }`}>
+                                <div className={`subsea-c-av ${crewStatusTierBadgeClass(personnelStatus)}`}>
                                   {getInitials(member.firstname, member.lastname)}
                                 </div>
                                 <span>{member.firstname} {member.lastname}</span>
                               </div>
                             </td>
                             <td>{member.rank || member.organization || '—'}</td>
-                            <td className="dev-new-field" data-dev-tag="NEW">{member.preferred_rating && member.preferred_rating !== 'None' ? member.preferred_rating : '—'}</td>
-                            <td className="dev-new-field" data-dev-tag="NEW">{member.primary_bop_oem && member.primary_bop_oem !== 'Other' ? member.primary_bop_oem : '—'}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
                             <td>{assignment?.rig_vessel || project?.title || '—'}</td>
                             <td className="dev-new-field" data-dev-tag="NEW">
@@ -1043,10 +951,7 @@ const CrewListPage = () => {
                                 {crewStatusTierLabel(personnelStatus)}
                               </span>
                             </td>
-                            <td className="dev-new-field" data-dev-tag="NEW">{employerDisplay || '—'}</td>
-                            <td className="dev-new-field" data-dev-tag="NEW">{assignment?.client || '—'}</td>
                             <td className="dev-new-field" data-dev-tag="NEW">{availableFromDisplay}</td>
-                            <td><span className={`subsea-badge ${status.className}`}>{status.label}</span></td>
                             <td>
                               <span className={`subsea-badge dev-new-field ${certClass}`} data-dev-tag="UPDATED" title={expiryWarnings.join('; ')}>
                                 {certLabel}
@@ -1129,37 +1034,7 @@ const CrewListPage = () => {
         </main>
       </div>
 
-      <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Crew Member" size="xlarge" variant="subsea" bodyClassName="modal-body--flush">
-        {addError && (
-          <ErrorAlertPopup message={addError} onDismiss={() => setAddError(null)} />
-        )}
-        <CrewMemberForm
-          onSubmit={handleSubmitCrewMember}
-          onCancel={handleCloseAddModal}
-          isLoading={addLoading}
-          theme="subsea"
-        />
-      </Modal>
 
-      <Modal isOpen={!!editingCrew} onClose={closeEditModal} title="Edit Crew Member" size="xlarge" variant="subsea" bodyClassName="modal-body--flush">
-        {editingCrew && (
-          <>
-            {editError && (
-              <ErrorAlertPopup message={editError} onDismiss={() => setEditError(null)} />
-            )}
-            <CrewMemberForm
-              key={editingCrew.id}
-              mode="edit"
-              onSubmit={handleSubmitEdit}
-              onCancel={closeEditModal}
-              isLoading={editLoading}
-              initialData={crewApiToFormData(editingCrew)}
-              submitLabel="Save Changes"
-              theme="subsea"
-            />
-          </>
-        )}
-      </Modal>
 
       <Modal
         isOpen={!!deleteCrewId}

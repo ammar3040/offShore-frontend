@@ -691,16 +691,94 @@
   font-variant-numeric: tabular-nums;
 }
 
-.timeline-cal-crew-pill-green {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
-  border-left: 2px solid #10b981;
+.timeline-cal-crew-pill-tier {
+  border-left: 2px solid transparent;
+  min-width: 18px;
+  justify-content: center;
 }
 
-.timeline-cal-crew-pill-red {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-  border-left: 2px solid #ef4444;
+.timeline-cal-crew-pill-tier.crew-status-tier--available {
+  background: rgba(34, 197, 94, 0.14);
+  color: #166534;
+  border-left-color: #22c55e;
+}
+
+.timeline-cal-crew-pill-tier.crew-status-tier--offered {
+  background: rgba(234, 179, 8, 0.14);
+  color: #854d0e;
+  border-left-color: #eab308;
+}
+
+.timeline-cal-crew-pill-tier.crew-status-tier--confirmed {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1e40af;
+  border-left-color: #3b82f6;
+}
+
+.timeline-cal-crew-pill-tier.crew-status-tier--on-assignment {
+  background: rgba(168, 85, 247, 0.14);
+  color: #6b21a8;
+  border-left-color: #a855f7;
+}
+
+.timeline-cal-crew-pill-tier.crew-status-tier--offshore-competitor {
+  background: rgba(239, 68, 68, 0.12);
+  color: #991b1b;
+  border-left-color: #ef4444;
+}
+
+.timeline-cal-crew-pill-tier.crew-status-tier--holiday {
+  background: rgba(249, 115, 22, 0.14);
+  color: #9a3412;
+  border-left-color: #f97316;
+}
+
+.timeline-cal-crew-pill-tier.crew-status-tier--inactive {
+  background: rgba(156, 163, 175, 0.18);
+  color: #4b5563;
+  border-left-color: #9ca3af;
+}
+
+.cal-popup-status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.cal-popup-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.cal-popup-row-tier .cal-popup-row-indicator {
+  width: 3px;
+  border-radius: 2px;
+}
+
+.cal-popup-row-tier.crew-status-tier--available .cal-popup-row-indicator { background: #22c55e; }
+.cal-popup-row-tier.crew-status-tier--offered .cal-popup-row-indicator { background: #eab308; }
+.cal-popup-row-tier.crew-status-tier--confirmed .cal-popup-row-indicator { background: #3b82f6; }
+.cal-popup-row-tier.crew-status-tier--on-assignment .cal-popup-row-indicator { background: #a855f7; }
+.cal-popup-row-tier.crew-status-tier--offshore-competitor .cal-popup-row-indicator { background: #ef4444; }
+.cal-popup-row-tier.crew-status-tier--holiday .cal-popup-row-indicator { background: #f97316; }
+.cal-popup-row-tier.crew-status-tier--inactive .cal-popup-row-indicator { background: #9ca3af; }
+
+.timeline-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.timeline-legend-swatch-empty {
+  background: var(--surface3);
+  border: 1px solid var(--border);
 }
 
 /* ─── Clickable Calendar Day ─── */
@@ -1045,29 +1123,37 @@
   background: rgba(26, 86, 219, 0.03);
 }
 
-.allcrew-gantt-day-cell.allcrew-day-avail {
-  background: rgba(16, 185, 129, 0.22);
-}
+.allcrew-gantt-day-cell.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.28); }
+.allcrew-gantt-day-cell.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.28); }
+.allcrew-gantt-day-cell.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.28); }
+.allcrew-gantt-day-cell.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.28); }
+.allcrew-gantt-day-cell.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.24); }
+.allcrew-gantt-day-cell.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.24); }
+.allcrew-gantt-day-cell.allcrew-day-tier-inactive { background: rgba(156, 163, 175, 0.32); }
 
-.allcrew-gantt-day-cell.allcrew-day-unavail {
-  background: rgba(239, 68, 68, 0.18);
-}
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.36); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.36); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.36); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.36); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.32); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.32); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-inactive { background: rgba(156, 163, 175, 0.4); }
 
-.allcrew-gantt-day-cell.allcrew-today.allcrew-day-avail {
-  background: rgba(16, 185, 129, 0.30);
-}
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.38); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.38); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.38); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.38); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.34); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.34); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-inactive { background: rgba(156, 163, 175, 0.42); }
 
-.allcrew-gantt-day-cell.allcrew-today.allcrew-day-unavail {
-  background: rgba(239, 68, 68, 0.25);
-}
-
-.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-avail {
-  background: rgba(16, 185, 129, 0.30);
-}
-
-.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-unavail {
-  background: rgba(239, 68, 68, 0.25);
-}
+.timeline-legend-swatch.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-inactive { background: rgba(156, 163, 175, 0.75); }
 
 @media (max-width: 1200px) {
   .timeline-kpi-strip {
