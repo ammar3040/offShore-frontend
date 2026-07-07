@@ -6,16 +6,23 @@ import { getCrewById, createCrewMember, updateCrewMember, crewApiToFormData } fr
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
+import { clearCrewMemberFormDraft } from '../utils/crewMemberFormDraft';
+import './RigsPage.css';
 
 const CrewMemberFormPage: React.FC = () => {
   const { crewId } = useParams<{ crewId?: string }>();
   const navigate = useNavigate();
   const isEdit = !!crewId;
+  const persistenceId = isEdit ? `edit-${crewId}` : 'create';
 
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [initialData, setInitialData] = useState<CrewMemberFormData | undefined>(undefined);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+  }, []);
 
   useEffect(() => {
     if (isEdit && crewId) {
@@ -45,9 +52,11 @@ const CrewMemberFormPage: React.FC = () => {
     try {
       if (isEdit && crewId) {
         await updateCrewMember(crewId, data);
+        clearCrewMemberFormDraft(persistenceId);
         navigate(`/crew/${crewId}`);
       } else {
         await createCrewMember(data);
+        clearCrewMemberFormDraft(persistenceId);
         navigate('/crew');
       }
     } catch (err) {
@@ -152,6 +161,7 @@ const CrewMemberFormPage: React.FC = () => {
             <div className="subsea-pane crew-form-page__panel">
               <CrewMemberForm
                 mode={isEdit ? 'edit' : 'create'}
+                persistenceId={persistenceId}
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
                 isLoading={submitLoading}

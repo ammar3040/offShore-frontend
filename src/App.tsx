@@ -6,6 +6,7 @@ import SuperadminPanelLayout from './components/SuperadminPanelLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedSuperadminRoute from './components/ProtectedSuperadminRoute';
 import PageLoader from './components/PageLoader';
+import { Toaster } from './components/ui/sonner';
 import './App.css';
 
 const CrewManagementDashboard = lazy(() => import('./pages/CrewManagementDashboard'));
@@ -40,6 +41,7 @@ const DocumentsCertsPage = lazy(() => import('./pages/DocumentsCertsPage'));
 function App() {
   return (
     <Router>
+      <Toaster theme="light" richColors position="bottom-right" />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Unified login - choose Admin, Crew, or Superadmin */}
@@ -93,31 +95,29 @@ function App() {
             }
           />
 
-          {/* Main app routes (with layout) */}
+          {/* Main app routes — subsea pages include their own shell (no legacy Layout wrapper) */}
           <Route
             path="/*"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<CrewManagementDashboard />} />
-                    <Route path="/crew" element={<CrewListPage />} />
-                    <Route path="/crew/add" element={<CrewMemberFormPage />} />
-                    <Route path="/crew/edit/:crewId" element={<CrewMemberFormPage />} />
-                    <Route path="/crew/:crewId" element={<CrewDetailsPage />} />
-                    <Route path="/projects" element={<ProjectsPage />} />
-                    <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
-                    <Route path="/rig" element={<RigsPage />} />
-                    <Route path="/rig/:rigId" element={<RigDetailsPage />} />
-                    <Route path="/timeline" element={<TimelinePage />} />
-                    <Route path="/tickets" element={<AdminTicketsPage />} />
-                    <Route path="/payroll" element={<PayrollPage />} />
-                    <Route path="/contracts" element={<ContractsPage />} />
-                    <Route path="/bills" element={<AdminBillsPage />} />
-                    <Route path="/documents" element={<DocumentsCertsPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </Layout>
+                <Routes>
+                  <Route path="/" element={<CrewManagementDashboard />} />
+                  <Route path="/crew" element={<CrewListPage />} />
+                  <Route path="/crew/add" element={<CrewMemberFormPage />} />
+                  <Route path="/crew/edit/:crewId" element={<CrewMemberFormPage />} />
+                  <Route path="/crew/:crewId" element={<CrewDetailsPage />} />
+                  <Route path="/projects" element={<ProjectsPage />} />
+                  <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
+                  <Route path="/rig" element={<RigsPage />} />
+                  <Route path="/rig/:rigId" element={<RigDetailsPage />} />
+                  <Route path="/timeline" element={<TimelinePage />} />
+                  <Route path="/tickets" element={<AdminTicketsPage />} />
+                  <Route path="/payroll" element={<PayrollPage />} />
+                  <Route path="/contracts" element={<ContractsPage />} />
+                  <Route path="/bills" element={<AdminBillsPage />} />
+                  <Route path="/documents" element={<DocumentsCertsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
               </ProtectedRoute>
             }
           />

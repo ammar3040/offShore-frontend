@@ -226,7 +226,7 @@ const CrewDetailsPage = () => {
     try {
       const isAvail = newAvailType === 'Available';
       const assignment =
-        !isAvail
+        newAvailType === 'Offshore (Competitor)'
           ? {
               ...(newAvailEmployer ? { employer: newAvailEmployer } : {}),
               ...(newAvailEmployer === 'Other' && newAvailEmployerOther.trim()
@@ -932,7 +932,7 @@ const CrewDetailsPage = () => {
                           </select>
                         </div>
                       </div>
-                      {newAvailType !== 'Available' && (
+                      {newAvailType === 'Offshore (Competitor)' && (
                         <div className="grid grid-cols-2 gap-2">
                           {/* MD Section 3.3 — employer dropdown */}
                           <div className="dev-new-field" data-dev-tag="NEW">
