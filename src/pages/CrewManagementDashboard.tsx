@@ -26,7 +26,8 @@ import { getCrewTickets, type CrewTicketApi } from '../api/ticket';
 import { useCommandPaletteOpen } from '../components/CommandPalette';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
-import { availabilityFromCrewSignal, crewAvailabilityDotClass, getCrewAvailabilityLabel } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, crewStatusTierDotClass, crewStatusTierLabel } from '../utils/crewAvailability';
+import { useUtcClock } from '../utils/useUtcClock';
 import './CrewManagementDashboard.css';
 
 type DashboardState = {
@@ -61,6 +62,14 @@ function ticketCrewId(ticket: CrewTicketApi): string {
   return ticket.crew_id?._id ?? '';
 }
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  if (hour >= 17 && hour < 21) return 'Good evening';
+  return 'Good night';
+}
+
 function ticketRoute(ticket?: CrewTicketApi): string {
   if (!ticket) return 'Pending';
   const from = ticket.from?.Name?.match(/\[([A-Z0-9]{3})\]/)?.[1] ?? ticket.from?.Name?.slice(0, 3).toUpperCase() ?? '---';
@@ -74,6 +83,7 @@ const CrewManagementDashboard = () => {
   const [dashboard, setDashboard] = useState<DashboardState>({ crew: [], rigs: [], projects: [], tickets: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const utcTime = useUtcClock();
 
   useEffect(() => {
     let cancelled = false;
@@ -143,8 +153,8 @@ const CrewManagementDashboard = () => {
       .map((member) => {
         const project = member.activeProjects?.[0];
         const kind = availabilityFromCrewSignal(member.signal);
-        const status =
-          kind === 'available' ? 'Available' : kind === 'endingSoon' ? 'Sign-Off Due' : 'In Project';
+        const personnelStatus = (member as any).current_status ?? 'Available';
+        const status = crewStatusTierLabel(personnelStatus);
         const statusClass =
           kind === 'available' ? 'subsea-b-green' : kind === 'endingSoon' ? 'subsea-b-amber' : 'subsea-b-blue';
         const certExpiry = member.certificate_expiry_date || member.crew_certificate?.expiry_date;
@@ -165,6 +175,7 @@ const CrewManagementDashboard = () => {
           id: member.id,
           name: crewName(member),
           kind,
+          personnelStatus,
           rank: member.organization || '—',
           rig: project?.title || '—',
           status,
@@ -181,10 +192,12 @@ const CrewManagementDashboard = () => {
       const project = member.activeProjects?.[0];
       const ticket = dashboard.tickets.find((item) => ticketCrewId(item) === member.id);
       const kind = availabilityFromCrewSignal(member.signal);
+      const personnelStatus = (member as any).current_status ?? 'Available';
       const type = kind === 'available' ? 'Ready for Mobilization' : 'Assigned';
       return {
         name: crewName(member),
         kind,
+        personnelStatus,
         rank: member.organization || '—',
         rig: project?.title || '—',
         type,
@@ -299,7 +312,7 @@ const CrewManagementDashboard = () => {
             <span className="subsea-crumb-sep">/</span>
             <span className="subsea-crumb-active">Dashboard</span>
           </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · {utcTime}</div>
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
@@ -315,8 +328,8 @@ const CrewManagementDashboard = () => {
         <main className="subsea-content">
           <section className="subsea-welcome">
             <div className="subsea-wb-left">
-              <div className="subsea-wb-greeting">Good morning</div>
-              <div className="subsea-wb-name">Welcome back, <span>Pranav</span> 👋</div>
+              <div className="subsea-wb-greeting">{getGreeting()}</div>
+              <div className="subsea-wb-name">Welcome bddack, <span>Pranav</span> 👋</div>
               <div className="subsea-wb-sub">Here's what's happening across your fleet today from the integrated backend APIs.</div>
               <div className="subsea-wb-chips">
                 <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />{expiringCrew.length} certs need attention</span>
@@ -328,7 +341,7 @@ const CrewManagementDashboard = () => {
             </div>
             <div className="subsea-wb-right">
               <div className="subsea-wb-date-block">
-                <div className="subsea-wb-date">--:-- UTC</div>
+                <div className="subsea-wb-date">{utcTime}</div>
                 <div className="subsea-wb-time">Coordinated Universal Time</div>
               </div>
               <div className="subsea-wb-status-row">
@@ -393,9 +406,9 @@ const CrewManagementDashboard = () => {
                             <td className="strong">
                               <div className="subsea-roster-name">
                                 <span
-                                  className={crewAvailabilityDotClass(row.kind)}
-                                  title={getCrewAvailabilityLabel(row.kind)}
-                                  aria-label={getCrewAvailabilityLabel(row.kind)}
+                                  className={crewStatusTierDotClass(row.personnelStatus)}
+                                  title={crewStatusTierLabel(row.personnelStatus)}
+                                  aria-label={crewStatusTierLabel(row.personnelStatus)}
                                 />
                                 <span>{row.name}</span>
                               </div>
@@ -438,9 +451,9 @@ const CrewManagementDashboard = () => {
                             <td className="strong">
                               <div className="subsea-roster-name">
                                 <span
-                                  className={crewAvailabilityDotClass(row.kind)}
-                                  title={getCrewAvailabilityLabel(row.kind)}
-                                  aria-label={getCrewAvailabilityLabel(row.kind)}
+                                  className={crewStatusTierDotClass(row.personnelStatus)}
+                                  title={crewStatusTierLabel(row.personnelStatus)}
+                                  aria-label={crewStatusTierLabel(row.personnelStatus)}
                                 />
                                 <span>{row.name}</span>
                               </div>

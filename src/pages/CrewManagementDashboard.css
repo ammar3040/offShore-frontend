@@ -954,3 +954,21 @@
 .layout--dark .admin-footer-links a:hover {
   color: hsl(var(--foreground));
 }
+
+/* ── 7-tier crew status dot (matches CrewListPage) ── */
+.crew-status-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.crew-status-dot.crew-status-tier--available { background: #22c55e; }
+.crew-status-dot.crew-status-tier--offered { background: #eab308; }
+.crew-status-dot.crew-status-tier--confirmed { background: #3b82f6; }
+.crew-status-dot.crew-status-tier--on-assignment { background: #a855f7; }
+.crew-status-dot.crew-status-tier--offshore-competitor { background: #ef4444; }
+.crew-status-dot.crew-status-tier--holiday { background: #f97316; }
+.crew-status-dot.crew-status-tier--inactive { background: #9ca3af; }

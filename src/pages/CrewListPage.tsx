@@ -37,6 +37,7 @@ import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import { DatePickerTime } from '../components/ui/date-picker-time';
 import './CrewListPage.css';
 import './RigsPage.css';
+import { useUtcClock } from '../utils/useUtcClock';
 
 const PAGE_SIZE_OPTIONS = [10, 30, 50];
 
@@ -65,6 +66,7 @@ function crewStatus(kind: CrewAvailability | 'unavailable'): { label: string; cl
 
 const CrewListPage = () => {
   const navigate = useNavigate();
+  const utcTime = useUtcClock();
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -424,7 +426,7 @@ const CrewListPage = () => {
             <span className="subsea-crumb-sep">/</span>
             <span className="subsea-crumb-active">Crew Management</span>
           </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · {utcTime}</div>
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export

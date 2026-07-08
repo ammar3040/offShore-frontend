@@ -563,13 +563,13 @@ const CrewDetailsPage = () => {
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Address</div><div className="subsea-detail-val">{field(crew.address)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Gender</div><div className="subsea-detail-val">{field(crew.gender)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Visa</div><div className="subsea-detail-val">{field(crew.visa || crew.visa_country)}</div></div>
-                      <div className="subsea-detail-row" style={{ border: '2px solid #ef4444', borderRadius: '4px', padding: '4px' }}><div className="subsea-detail-label">Preferred Rating</div><div className="subsea-detail-val">{field(crew.preferred_rating)}</div></div>
-                      <div className="subsea-detail-row" style={{ border: '2px solid #ef4444', borderRadius: '4px', padding: '4px' }}><div className="subsea-detail-label">Primary BOP OEM</div><div className="subsea-detail-val">{field(crew.primary_bop_oem)}</div></div>
+                      <div className="subsea-detail-row"><div className="subsea-detail-label">Preferred Rating</div><div className="subsea-detail-val">{field(crew.preferred_rating)}</div></div>
+                      <div className="subsea-detail-row"><div className="subsea-detail-label">Primary BOP OEM</div><div className="subsea-detail-val">{field(crew.primary_bop_oem)}</div></div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="subsea-pane subsea-mb-12" style={{ border: '2px solid #ef4444' }}>
+                    <div className="subsea-pane subsea-mb-12">
                       <div className="subsea-pane-head"><div className="subsea-pane-title">Status & Availability Details</div></div>
                       <div className="subsea-detail-grid">
                         <div className="subsea-detail-row">
