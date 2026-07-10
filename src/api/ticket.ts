@@ -34,7 +34,7 @@ export interface CrewTicketRigRef {
   [key: string]: unknown;
 }
 
-export type CrewTicketStatus = 'UNAPPROVED' | 'APPROVED';
+export type CrewTicketStatus = 'UNAPPROVED' | 'APPROVED' | 'CANCELLED';
 
 export interface CrewTicketFlightItinerarySegment {
   airlineName?: string;
@@ -97,6 +97,10 @@ export interface CrewTicketApi {
   approvedAt?: string;
   /** Superadmin identifier/email when returned by backend. */
   approvedBy?: string;
+  /** Cancellation timestamp when status is CANCELLED. */
+  cancelledAt?: string;
+  /** Admin identifier when returned by backend. */
+  cancelledBy?: string;
   /** True when a PDF is stored server-side (fetch via GET /crew-ticket/:id/pdf). */
   hasPdf?: boolean;
   /** Relative API path for authenticated PDF download. */
@@ -113,6 +117,8 @@ export type CrewTicketApiRaw = CrewTicketApi & {
   created_at?: string;
   has_pdf?: boolean;
   pdf_download_url?: string;
+  cancelled_at?: string;
+  cancelled_by?: string;
 };
 
 export type CrewTicketPdfAuthRole = 'admin' | 'crew' | 'superadmin';
@@ -160,11 +166,30 @@ export function isCrewTicketCreatedInLocalCalendarMonth(t: CrewTicketApi, now = 
 }
 
 export function getTicketStatus(ticket: Pick<CrewTicketApi, 'status'>): CrewTicketStatus {
-  return ticket.status === 'APPROVED' ? 'APPROVED' : 'UNAPPROVED';
+  const raw = ticket.status?.toString().trim().toUpperCase();
+  if (raw === 'CANCELLED') return 'CANCELLED';
+  if (raw === 'APPROVED') return 'APPROVED';
+  return 'UNAPPROVED';
 }
 
 export function getTicketStatusLabel(ticket: Pick<CrewTicketApi, 'status'>): string {
-  return getTicketStatus(ticket) === 'APPROVED' ? 'Approved' : 'Pending Approval';
+  const status = getTicketStatus(ticket);
+  if (status === 'CANCELLED') return 'Cancelled';
+  if (status === 'APPROVED') return 'Approved';
+  return 'Pending Approval';
+}
+
+export function getTicketApprovalStatusLabel(
+  ticket: Pick<CrewTicketApi, 'status' | 'approvedAt'>
+): string {
+  if (getTicketStatus(ticket) === 'CANCELLED') {
+    return ticket.approvedAt ? 'Approved before cancellation' : 'Pending before cancellation';
+  }
+  return getTicketStatusLabel(ticket);
+}
+
+export function isTicketCancelled(ticket: Pick<CrewTicketApi, 'status'>): boolean {
+  return getTicketStatus(ticket) === 'CANCELLED';
 }
 
 export function ticketHasStoredPdf(ticket: Pick<CrewTicketApi, 'hasPdf' | 'pdf'>): boolean {
@@ -195,6 +220,18 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
         : undefined;
   const iso = getCrewTicketCreatedIso(row) ?? (id ? createdAtIsoFromMongoObjectId(id) : undefined);
   const normalizedStatus = getTicketStatus(row);
+  const cancelledAt =
+    typeof row.cancelledAt === 'string'
+      ? row.cancelledAt
+      : typeof raw.cancelled_at === 'string'
+        ? raw.cancelled_at
+        : undefined;
+  const cancelledBy =
+    typeof row.cancelledBy === 'string'
+      ? row.cancelledBy
+      : typeof raw.cancelled_by === 'string'
+        ? raw.cancelled_by
+        : undefined;
   const hasPdf =
     typeof row.hasPdf === 'boolean'
       ? row.hasPdf
@@ -222,6 +259,8 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
     bookingReference,
     hasPdf,
     pdfDownloadUrl,
+    ...(cancelledAt ? { cancelledAt } : {}),
+    ...(cancelledBy ? { cancelledBy } : {}),
   };
 
   if (!iso) return normalized;
@@ -519,11 +558,22 @@ export async function createFlightTicket(payload: CreateFlightTicketPayload): Pr
   return response.json();
 }
 
+export type CrewTicketCancelResult = {
+  message: string;
+  crewTicket?: CrewTicketApi;
+  cancellation?: {
+    status: 'CHARGE_APPLIED' | 'NO_CHARGE';
+    feeGbp: number;
+    cancellationOutstanding: number | null;
+    cancellationSlotsRemaining: number | null;
+  };
+};
+
 /**
  * Cancels a crew ticket (accrues cancellation debt where configured, same as DELETE).
  * POST /crew-ticket/:id/cancel (admin auth)
  */
-export async function cancelCrewTicket(ticketId: string): Promise<void> {
+export async function cancelCrewTicket(ticketId: string): Promise<CrewTicketCancelResult> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
@@ -547,6 +597,12 @@ export async function cancelCrewTicket(ticketId: string): Promise<void> {
     }
     throw new Error(message);
   }
+
+  const data = (await response.json()) as CrewTicketCancelResult & { crewTicket?: CrewTicketApiRaw };
+  return {
+    ...data,
+    crewTicket: data.crewTicket ? normalizeCrewTicket(data.crewTicket) : undefined,
+  };
 }
 
 /**

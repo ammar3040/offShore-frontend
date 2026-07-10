@@ -1062,6 +1062,16 @@
   box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25);
 }
 
+.subsea-flight-status-cancelled {
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.3);
+}
+
+.subsea-flight-card.cancelled {
+  opacity: 0.78;
+  border-color: rgba(239, 68, 68, 0.28);
+  background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .subsea-flight-status-approved {
     animation: none;

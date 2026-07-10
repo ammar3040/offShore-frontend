@@ -172,6 +172,12 @@
   border: 1px solid #fde68a;
 }
 
+.superadmin-ticket-status-cancelled {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
 .superadmin-ticket-approve-inline {
   display: grid;
   grid-template-columns: minmax(110px, 140px) auto;

@@ -1,6 +1,6 @@
 import { env } from '../config/env';
 import type { CrewMemberApi } from './crew';
-import { normalizeCrewTicket, type CrewTicketApi } from './ticket';
+import { normalizeCrewTicket, type CrewTicketApi, type CrewTicketApiRaw } from './ticket';
 
 function pickAdminString(raw: Record<string, unknown>, ...keys: string[]): string | undefined {
   for (const key of keys) {
@@ -526,8 +526,11 @@ export async function approveCrewTicket(ticketId: string, bookingReference: stri
   };
 }
 
-/** Delete a crew ticket. DELETE /crew/:crew_id/ticket/:ticket_id (superadmin only) */
-export async function deleteSuperadminCrewTicket(crewId: string, ticketId: string): Promise<void> {
+/** Cancel a crew ticket. DELETE /crew/:crew_id/ticket/:ticket_id (superadmin only) */
+export async function deleteSuperadminCrewTicket(
+  crewId: string,
+  ticketId: string
+): Promise<{ crewTicket?: CrewTicketApi; message?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
@@ -554,6 +557,13 @@ export async function deleteSuperadminCrewTicket(crewId: string, ticketId: strin
     }
     throw new Error(msg);
   }
+
+  const data = await response.json().catch(() => ({}));
+  const rawTicket = data.crewTicket ?? data.ticket;
+  return {
+    message: typeof data.message === 'string' ? data.message : undefined,
+    crewTicket: rawTicket ? normalizeCrewTicket(rawTicket as CrewTicketApiRaw) : undefined,
+  };
 }
 
 /** Crew tickets for superadmin - GET /crew-ticket (uses superadmin token; project filter applied client-side if backend omits it) */

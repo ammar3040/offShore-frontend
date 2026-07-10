@@ -17,6 +17,11 @@ import {
   X,
   Ban,
   CircleDollarSign,
+  User,
+  Briefcase,
+  CheckCircle2,
+  Anchor,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SubseaNavRail } from '@/components/SubseaNavRail';
@@ -44,11 +49,11 @@ import {
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
-import { getCrewEnrolledInProject, getCrewList, type CrewMemberApi } from '../api/crew';
+import { getCrewEnrolledInProject, getCrewList, getBulkCrewAvailabilitiesAdmin, type CrewMemberApi } from '../api/crew';
 import {
-  availabilityFromCrewSignal,
-  crewAvailabilityDotClass,
-  getCrewAvailabilityLabel,
+  crewStatusTierDotClass,
+  crewStatusTierLabel,
+  crewStatusTierBadgeClass,
 } from '../utils/crewAvailability';
 import {
   getCrewTickets,
@@ -61,6 +66,9 @@ import {
   type CrewTicketApi,
   getTicketStatus,
   getTicketStatusLabel,
+  getTicketApprovalStatusLabel,
+  isTicketCancelled,
+  normalizeCrewTicket,
   isCrewTicketCreatedInLocalCalendarMonth,
   parseCrewTicketCreatedAt,
 } from '../api/ticket';
@@ -88,12 +96,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  collectTicketSegmentDisplays,
+  getTicketArrivalSummary,
+  getTicketDepartureSummary,
+  getTicketPrimaryAirline,
+  getTicketTotalDuration,
+} from '../lib/crewTicket/ticketFlightDetails';
+import {
+  findCrewTravelConflicts,
+  getTravelDateRange,
+  type CrewTravelConflict,
+} from '../utils/crewAvailabilityForDates';
 import './AdminTicketsPage.css';
 import './RigsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
 type TicketsTab = 'tickets' | 'search' | 'spends';
-type StatusFilter = 'all' | 'pending' | 'approved';
+type StatusFilter = 'all' | 'pending' | 'approved' | 'cancelled';
 
 /** Search tab trip UI; API uses SearchPayload tripType (`multi-city` maps to `one-way` per leg). */
 type SearchUITripType = 'one-way' | 'round-trip' | 'multi-city';
@@ -187,6 +207,12 @@ function formatTicketClass(cls?: string): string {
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatCancellationDebtSummary(outstanding: number, slots: number): string {
+  if (outstanding <= 0) return 'No outstanding cancellation debt';
+  const installment = slots > 0 ? Math.round((outstanding / slots) * 100) / 100 : outstanding;
+  return `£${outstanding.toLocaleString('en-GB')} outstanding · ${slots} recovery slot${slots !== 1 ? 's' : ''} (~£${installment.toLocaleString('en-GB')} per booking)`;
 }
 
 function sumPricedTickets(tickets: CrewTicketApi[]): { total: number; count: number; average: number } {
@@ -694,6 +720,22 @@ function FlightResultCard({
   );
 }
 
+const isMarineFare = (f: Fare): boolean => {
+  const ind = typeof f.indicator === 'string' ? f.indicator.trim().toUpperCase() : '';
+  if (ind === 'M') return true;
+  const label = `${f.name ?? ''} ${f.type ?? ''}`;
+  return /\bmarine\b/i.test(label);
+};
+
+const filterMarineFares = (flights: Flight[]): Flight[] => {
+  return flights
+    .map((flight) => ({
+      ...flight,
+      fares: (flight.fares ?? []).filter(isMarineFare),
+    }))
+    .filter((flight) => flight.fares.length > 0);
+};
+
 const AdminTicketsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -738,33 +780,49 @@ const AdminTicketsPage = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Load initial search state from localStorage on script load/init
+  const savedState = (() => {
+    try {
+      const saved = localStorage.getItem('admin_tickets_search_state');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  })();
+
   /* Search & Book tab state */
-  const [activeTab, setActiveTab] = useState<TicketsTab>('tickets');
-  const [searchTripTypeUI, setSearchTripTypeUI] = useState<SearchUITripType>('one-way');
-  const [multiSegments, setMultiSegments] = useState<MultiFlightSegment[]>(() => initialMultiSegments());
-  const [activeMultiLegIndex, setActiveMultiLegIndex] = useState(0);
-  const [preferNonStopPerLeg, setPreferNonStopPerLeg] = useState(false);
-  const [searchFrom, setSearchFrom] = useState<Airport | null>(() => AIRPORTS[0] ?? null);
-  const [searchTo, setSearchTo] = useState<Airport | null>(() => AIRPORTS[1] ?? null);
-  const [departureDate, setDepartureDate] = useState('');
+  const [activeTab, setActiveTab] = useState<TicketsTab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const qTab = params.get('tab');
+    if (qTab === 'search' || qTab === 'tickets' || qTab === 'spends') return qTab;
+    return savedState?.activeTab ?? 'tickets';
+  });
+  const [searchTripTypeUI, setSearchTripTypeUI] = useState<SearchUITripType>(() => savedState?.searchTripTypeUI ?? 'one-way');
+  const [multiSegments, setMultiSegments] = useState<MultiFlightSegment[]>(() => savedState?.multiSegments ?? initialMultiSegments());
+  const [activeMultiLegIndex, setActiveMultiLegIndex] = useState(() => savedState?.activeMultiLegIndex ?? 0);
+  const [preferNonStopPerLeg, setPreferNonStopPerLeg] = useState(() => savedState?.preferNonStopPerLeg ?? false);
+  const [searchFrom, setSearchFrom] = useState<Airport | null>(() => savedState?.searchFrom ?? AIRPORTS[0] ?? null);
+  const [searchTo, setSearchTo] = useState<Airport | null>(() => savedState?.searchTo ?? AIRPORTS[1] ?? null);
+  const [departureDate, setDepartureDate] = useState(() => savedState?.departureDate ?? '');
   const [returnDate, setReturnDate] = useState(() => {
+    if (savedState?.returnDate !== undefined) return savedState.returnDate;
     const d = new Date();
     d.setDate(d.getDate() + 7);
     return toYYYYMMDD(d);
   });
-  const [returnTime, setReturnTime] = useState('');
-  const [departureTime, setDepartureTime] = useState('');
-  const [arrivalDate, setArrivalDate] = useState('');
-  const [arrivalTime, setArrivalTime] = useState('');
-  const [adults, setAdults] = useState(1);
-  const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
-  const [currency, setCurrency] = useState<CurrencyCode>('GBP');
-  const [flightSortBy, setFlightSortBy] = useState<FlightSortBy>('price');
-  const [flightSortOrder, setFlightSortOrder] = useState<FlightSortOrder>('asc');
-  const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
-  const [searchTotalCount, setSearchTotalCount] = useState<number>(0);
-  const [searchPage, setSearchPage] = useState<number>(1);
-  const [searchCriteria, setSearchCriteria] = useState<SearchPayload | null>(null);
+  const [returnTime, setReturnTime] = useState(() => savedState?.returnTime ?? '');
+  const [departureTime, setDepartureTime] = useState(() => savedState?.departureTime ?? '');
+  const [arrivalDate, setArrivalDate] = useState(() => savedState?.arrivalDate ?? '');
+  const [arrivalTime, setArrivalTime] = useState(() => savedState?.arrivalTime ?? '');
+  const [adults, setAdults] = useState(() => savedState?.adults ?? 1);
+  const [cabinClass, setCabinClass] = useState<CabinClass>(() => savedState?.cabinClass ?? 'economy');
+  const [currency, setCurrency] = useState<CurrencyCode>(() => savedState?.currency ?? 'GBP');
+  const [flightSortBy, setFlightSortBy] = useState<FlightSortBy>(() => savedState?.flightSortBy ?? 'price');
+  const [flightSortOrder, setFlightSortOrder] = useState<FlightSortOrder>(() => savedState?.flightSortOrder ?? 'asc');
+  const [searchResults, setSearchResults] = useState<Flight[] | null>(() => savedState?.searchResults ?? null);
+  const [searchTotalCount, setSearchTotalCount] = useState<number>(() => savedState?.searchTotalCount ?? 0);
+  const [searchPage, setSearchPage] = useState<number>(() => savedState?.searchPage ?? 1);
+  const [searchCriteria, setSearchCriteria] = useState<SearchPayload | null>(() => savedState?.searchCriteria ?? null);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -774,24 +832,109 @@ const AdminTicketsPage = () => {
   const [searchBookingSuccess, setSearchBookingSuccess] = useState(false);
   const [searchSuccessMessage, setSearchSuccessMessage] = useState('');
 
+  /* Crew status confirmation dialog state */
+  const [crewStatusConfirmPending, setCrewStatusConfirmPending] = useState<{
+    crew: CrewMemberApi;
+    context: 'search' | 'modal';
+  } | null>(null);
+
+  const [crewAvailabilitySearchPending, setCrewAvailabilitySearchPending] = useState<{
+    conflicts: CrewTravelConflict[];
+    criteria: SearchPayload;
+  } | null>(null);
+
   /* Project & crew for search form */
-  const [searchProjectId, setSearchProjectId] = useState<string>('');
-  const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
+  const [searchProjectId, setSearchProjectId] = useState<string>(() => savedState?.searchProjectId ?? '');
+  const [searchCrewIds, setSearchCrewIds] = useState<string[]>(() => savedState?.searchCrewIds ?? []);
+
+  // Save state to localStorage when any search parameters or results change
+  useEffect(() => {
+    try {
+      const stateToSave = {
+        activeTab,
+        searchTripTypeUI,
+        multiSegments,
+        activeMultiLegIndex,
+        preferNonStopPerLeg,
+        searchFrom,
+        searchTo,
+        departureDate,
+        returnDate,
+        returnTime,
+        departureTime,
+        arrivalDate,
+        arrivalTime,
+        adults,
+        cabinClass,
+        currency,
+        flightSortBy,
+        flightSortOrder,
+        searchResults,
+        searchTotalCount,
+        searchPage,
+        searchCriteria,
+        searchProjectId,
+        searchCrewIds,
+      };
+      localStorage.setItem('admin_tickets_search_state', JSON.stringify(stateToSave));
+    } catch (e) {
+      console.error('Failed to save search state', e);
+    }
+  }, [
+    activeTab,
+    searchTripTypeUI,
+    multiSegments,
+    activeMultiLegIndex,
+    preferNonStopPerLeg,
+    searchFrom,
+    searchTo,
+    departureDate,
+    returnDate,
+    returnTime,
+    departureTime,
+    arrivalDate,
+    arrivalTime,
+    adults,
+    cabinClass,
+    currency,
+    flightSortBy,
+    flightSortOrder,
+    searchResults,
+    searchTotalCount,
+    searchPage,
+    searchCriteria,
+    searchProjectId,
+    searchCrewIds,
+  ]);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
   const [searchCrewFilter, setSearchCrewFilter] = useState('');
   const [, setAdminMarkup] = useState<number | null>(null);
+  const [adminCancellation, setAdminCancellation] = useState<{
+    outstanding: number;
+    slots: number;
+  } | null>(null);
   const selectedFlightSortValue = `${flightSortBy}:${flightSortOrder}` as FlightSortValue;
+
+  const refreshAdminCancellation = useCallback(() => {
+    return getAdminProfile()
+      .then((profile) => {
+        if (profile.markup != null) setAdminMarkup(profile.markup);
+        setAdminCancellation({
+          outstanding: profile.cancellationOutstanding ?? 0,
+          slots: profile.cancellationSlotsRemaining ?? 0,
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    getAdminProfile()
-      .then((profile) => {
-        if (!cancelled && profile.markup != null) setAdminMarkup(profile.markup);
-      })
-      .catch(() => {});
+    refreshAdminCancellation().then(() => {
+      if (cancelled) return;
+    });
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshAdminCancellation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -814,7 +957,7 @@ const AdminTicketsPage = () => {
   useEffect(() => {
     if (location.state?.crewId && projects.length > 0) {
       const { crewId, projectId } = location.state;
-      
+
       // 1. Pre-fill Search tab
       setSearchCrewIds([crewId]);
       if (projectId) {
@@ -865,10 +1008,20 @@ const AdminTicketsPage = () => {
   const searchAdultCount = searchCrewIds.length > 0 ? searchCrewIds.length : Math.max(1, adults);
 
   const toggleCrewSearch = useCallback((crewId: string) => {
-    setSearchCrewIds((prev) =>
-      prev.includes(crewId) ? prev.filter((id) => id !== crewId) : [...prev, crewId]
-    );
-  }, []);
+    // If already selected, just deselect (no confirmation needed)
+    if (searchCrewIds.includes(crewId)) {
+      setSearchCrewIds((prev) => prev.filter((id) => id !== crewId));
+      return;
+    }
+    // Check if crew has non-Available status
+    const crewMember = searchCrewList.find((c) => c.id === crewId);
+    const personnelStatus = crewMember?.current_status ?? 'Available';
+    if (personnelStatus !== 'Available' && crewMember) {
+      setCrewStatusConfirmPending({ crew: crewMember, context: 'search' });
+      return;
+    }
+    setSearchCrewIds((prev) => [...prev, crewId]);
+  }, [searchCrewIds, searchCrewList]);
 
   const updateMultiSegment = useCallback((index: number, patch: Partial<MultiFlightSegment>) => {
     setMultiSegments((prev) => {
@@ -903,7 +1056,7 @@ const AdminTicketsPage = () => {
     if (multiSegments.length <= 2) return;
     const newLen = multiSegments.length - 1;
     setMultiSegments((prev) => prev.filter((_, i) => i !== index));
-    setActiveMultiLegIndex((idx) => {
+    setActiveMultiLegIndex((idx: number) => {
       if (index < idx) return idx - 1;
       return Math.max(0, Math.min(idx, newLen - 1));
     });
@@ -960,21 +1113,39 @@ const AdminTicketsPage = () => {
   }, []);
 
   const requestCancelTicketFlow = useCallback((ticket: CrewTicketApi) => {
+    if (isTicketCancelled(ticket)) return;
     setSelectedTicket(null);
     setTicketToConfirmCancel(ticket);
-  }, []);
+    void refreshAdminCancellation();
+  }, [refreshAdminCancellation]);
 
   const handleConfirmCancelTicket = useCallback(async () => {
-    if (!ticketToConfirmCancel) return;
+    if (!ticketToConfirmCancel || isTicketCancelled(ticketToConfirmCancel)) return;
     const id = ticketToConfirmCancel.id;
     setCancelTicketSubmitting(true);
     try {
-      await cancelCrewTicket(id);
-      setTickets((prev) => prev.filter((t) => t.id !== id));
-      setSelectedTicket((prev) => (prev?.id === id ? null : prev));
+      const result = await cancelCrewTicket(id);
+      const cancelledTicket =
+        result.crewTicket ??
+        normalizeCrewTicket({
+          ...ticketToConfirmCancel,
+          status: 'CANCELLED',
+          cancelledAt: new Date().toISOString(),
+        });
+
+      setTickets((prev) => prev.map((t) => (t.id === id ? cancelledTicket : t)));
+      setSelectedTicket(cancelledTicket);
       setTicketToConfirmCancel(null);
+      void refreshAdminCancellation();
+      void fetchTickets();
+
+      const cancellation = result.cancellation;
+      const feeGbp = cancellation?.feeGbp ?? 0;
+      const outstanding = cancellation?.cancellationOutstanding ?? adminCancellation?.outstanding ?? 0;
+      const slots = cancellation?.cancellationSlotsRemaining ?? adminCancellation?.slots ?? 0;
+
       toast.success('Ticket cancelled', {
-        description: 'The booking was removed from your crew tickets list.',
+        description: `Status updated to Cancelled${feeGbp > 0 ? ` · Fee £${feeGbp.toLocaleString('en-GB')}` : ''}. ${formatCancellationDebtSummary(outstanding, slots)}`,
       });
       window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
     } catch (err) {
@@ -985,7 +1156,7 @@ const AdminTicketsPage = () => {
     } finally {
       setCancelTicketSubmitting(false);
     }
-  }, [ticketToConfirmCancel]);
+  }, [ticketToConfirmCancel, refreshAdminCancellation, adminCancellation, fetchTickets]);
 
   const handlePreviewTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
     if (!canUseTicketPdf(ticket)) {
@@ -1055,10 +1226,13 @@ const AdminTicketsPage = () => {
 
   const filteredTickets = useMemo(() => {
     if (statusFilter === 'pending') {
-      return projectFilteredTickets.filter((t) => getTicketStatus(t) !== 'APPROVED');
+      return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'UNAPPROVED');
     }
     if (statusFilter === 'approved') {
       return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'APPROVED');
+    }
+    if (statusFilter === 'cancelled') {
+      return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'CANCELLED');
     }
     return projectFilteredTickets;
   }, [projectFilteredTickets, statusFilter]);
@@ -1156,6 +1330,25 @@ const AdminTicketsPage = () => {
     setSubmitError(null);
   }, []);
 
+  const runFlightSearch = useCallback(async (criteria: SearchPayload) => {
+    setSearchCriteria(criteria);
+    setSearchResults(null);
+    setSearchTotalCount(0);
+    setSearchPage(1);
+    setSearchError(null);
+    setIsSearching(true);
+    try {
+      const data = await searchFlights(criteria);
+      setSearchResults(filterMarineFares(data.flights));
+      setSearchTotalCount(data.total);
+      setSearchPage(data.page ?? 1);
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : 'Search failed');
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
   const handleSearch = useCallback(
     async (overrides?: {
       departureDate?: string;
@@ -1231,22 +1424,32 @@ const AdminTicketsPage = () => {
         };
       }
 
-      setSearchCriteria(criteria);
-      setSearchResults(null);
-      setSearchTotalCount(0);
-      setSearchPage(1);
-      setSearchError(null);
-      setIsSearching(true);
-      try {
-        const data = await searchFlights(criteria);
-        setSearchResults(data.flights);
-        setSearchTotalCount(data.total);
-        setSearchPage(data.page ?? 1);
-      } catch (e) {
-        setSearchError(e instanceof Error ? e.message : 'Search failed');
-      } finally {
-        setIsSearching(false);
+      if (searchCrewIds.length > 0 && criteria.departureDate?.trim()) {
+        const range = getTravelDateRange(criteria.departureDate, criteria.returnDate);
+        if (range) {
+          try {
+            const availabilities = await getBulkCrewAvailabilitiesAdmin(searchCrewIds);
+            const conflicts = findCrewTravelConflicts(
+              searchCrewIds,
+              (id) => {
+                const crew = searchCrewList.find((c) => c.id === id);
+                return crew ? `${crew.firstname} ${crew.lastname}`.trim() : 'Crew member';
+              },
+              range.start,
+              range.end,
+              availabilities
+            );
+            if (conflicts.length > 0) {
+              setCrewAvailabilitySearchPending({ conflicts, criteria });
+              return;
+            }
+          } catch {
+            // Proceed with search if availability lookup fails.
+          }
+        }
       }
+
+      await runFlightSearch(criteria);
     },
     [
       searchTripTypeUI,
@@ -1268,6 +1471,8 @@ const AdminTicketsPage = () => {
       flightSortOrder,
       searchProjectId,
       searchCrewIds,
+      searchCrewList,
+      runFlightSearch,
     ]
   );
 
@@ -1291,7 +1496,7 @@ const AdminTicketsPage = () => {
       setIsSearching(true);
       try {
         const data = await searchFlights(criteria);
-        setSearchResults(data.flights);
+        setSearchResults(filterMarineFares(data.flights));
         setSearchTotalCount(data.total);
         setSearchPage(data.page ?? 1);
       } catch (e) {
@@ -1318,7 +1523,7 @@ const AdminTicketsPage = () => {
     setIsLoadingMore(true);
     try {
       const data = await searchFlights(criteria);
-      setSearchResults((prev) => (prev ? [...prev, ...data.flights] : data.flights));
+      setSearchResults((prev) => (prev ? [...prev, ...filterMarineFares(data.flights)] : filterMarineFares(data.flights)));
       setSearchTotalCount(data.total);
       setSearchPage(data.page ?? nextPage);
     } catch (e) {
@@ -1374,7 +1579,7 @@ const AdminTicketsPage = () => {
             window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
             fetchTickets();
             setTimeout(() => {
-              setActiveMultiLegIndex((i) => i + 1);
+              setActiveMultiLegIndex((i: number) => i + 1);
               setSearchResults(null);
               setSearchTotalCount(0);
               setSearchPage(1);
@@ -1559,19 +1764,24 @@ const AdminTicketsPage = () => {
   };
 
   const ticketDashboardStats = useMemo(() => {
-    const totalBookings = projectFilteredTickets.length;
-    const mtdTickets = projectFilteredTickets.filter((ticket) =>
+    const activeTickets = projectFilteredTickets.filter(
+      (ticket) => getTicketStatus(ticket) !== 'CANCELLED'
+    );
+    const totalBookings = activeTickets.length;
+    const mtdTickets = activeTickets.filter((ticket) =>
       isCrewTicketCreatedInLocalCalendarMonth(ticket)
     );
-    const lastMonthTickets = projectFilteredTickets.filter((ticket) =>
+    const lastMonthTickets = activeTickets.filter((ticket) =>
       isCrewTicketCreatedInPreviousLocalCalendarMonth(ticket)
     );
     const mtdSpend = sumPricedTickets(mtdTickets);
     const lastMonthSpend = sumPricedTickets(lastMonthTickets);
-    const approvedCount = projectFilteredTickets.filter(
+    const approvedCount = activeTickets.filter(
       (ticket) => getTicketStatus(ticket) === 'APPROVED'
     ).length;
-    const pendingCount = totalBookings - approvedCount;
+    const pendingCount = activeTickets.filter(
+      (ticket) => getTicketStatus(ticket) === 'UNAPPROVED'
+    ).length;
 
     let spendChangeMeta = 'No priced bookings this month';
     let spendChangeTone: 'up' | 'down' | 'flat' = 'flat';
@@ -1604,8 +1814,10 @@ const AdminTicketsPage = () => {
       ? `${mtdSpend.count} priced booking${mtdSpend.count !== 1 ? 's' : ''}${topClassEntry ? ` · ${topClassEntry[0]}` : ''}`
       : 'No priced bookings this month';
 
+    const cancelledCount = projectFilteredTickets.length - activeTickets.length;
+
     const spendByDestinationMap = new Map<string, number>();
-    for (const ticket of projectFilteredTickets) {
+    for (const ticket of activeTickets) {
       if (typeof ticket.price !== 'number') continue;
       const dest = ticket.to?.COUNTRYNAME?.trim() || ticket.to?.COUNTRY?.trim() || 'Unknown destination';
       spendByDestinationMap.set(dest, (spendByDestinationMap.get(dest) ?? 0) + ticket.price);
@@ -1620,7 +1832,7 @@ const AdminTicketsPage = () => {
     }));
 
     const classBookingMap = new Map<string, number>();
-    for (const ticket of projectFilteredTickets) {
+    for (const ticket of activeTickets) {
       const label = formatTicketClass(ticket.class);
       classBookingMap.set(label, (classBookingMap.get(label) ?? 0) + 1);
     }
@@ -1641,6 +1853,7 @@ const AdminTicketsPage = () => {
 
     return {
       totalBookings,
+      cancelledCount,
       approvedCount,
       pendingCount,
       mtdSpend,
@@ -1688,15 +1901,27 @@ const AdminTicketsPage = () => {
     return sortedRecentBookings.slice(start, start + RECENT_BOOKINGS_PAGE_SIZE);
   }, [sortedRecentBookings, recentBookingsPage]);
 
-  const pendingApprovalCount = useMemo(
-    () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) !== 'APPROVED').length,
+  const activeBookingsCount = useMemo(
+    () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) !== 'CANCELLED').length,
     [projectFilteredTickets]
   );
 
-  const getTicketStatusBadgeClass = (ticket: CrewTicketApi) =>
-    getTicketStatus(ticket) === 'APPROVED'
-      ? 'subsea-b-green subsea-flight-status-approved'
-      : 'subsea-b-orange subsea-flight-status-pending';
+  const cancelledBookingsCount = useMemo(
+    () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) === 'CANCELLED').length,
+    [projectFilteredTickets]
+  );
+
+  const pendingApprovalCount = useMemo(
+    () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) === 'UNAPPROVED').length,
+    [projectFilteredTickets]
+  );
+
+  const getTicketStatusBadgeClass = (ticket: CrewTicketApi) => {
+    const status = getTicketStatus(ticket);
+    if (status === 'CANCELLED') return 'subsea-b-red subsea-flight-status-cancelled';
+    if (status === 'APPROVED') return 'subsea-b-green subsea-flight-status-approved';
+    return 'subsea-b-orange subsea-flight-status-pending';
+  };
 
   const routeCode = (location?: AirportLocation) => {
     const name = location?.Name ?? '';
@@ -1711,6 +1936,11 @@ const AdminTicketsPage = () => {
   };
 
   const displayMoney = (amount: number) => `£${amount.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+  const selectedTicketSegments = useMemo(
+    () => (selectedTicket ? collectTicketSegmentDisplays(selectedTicket) : []),
+    [selectedTicket]
+  );
 
   return (
     <div className="subsea-shell">
@@ -1739,7 +1969,7 @@ const AdminTicketsPage = () => {
               setStatusFilter('all');
             }}
           >
-            <TicketIcon size={13} /> Active Bookings <span className="subsea-sb-count">{projectFilteredTickets.length}</span>
+            <TicketIcon size={13} /> Active Bookings <span className="subsea-sb-count">{activeBookingsCount}</span>
           </button>
           <button
             type="button"
@@ -1764,6 +1994,16 @@ const AdminTicketsPage = () => {
             }}
           >
             <AlertTriangle size={13} /> Pending Approval <span className="subsea-sb-count subsea-sb-count-red">{pendingApprovalCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'cancelled' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('tickets');
+              setStatusFilter('cancelled');
+            }}
+          >
+            <Ban size={13} /> Cancelled <span className="subsea-sb-count">{cancelledBookingsCount}</span>
           </button>
           <div className="subsea-sb-group">Operations</div>
           <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
@@ -1794,8 +2034,8 @@ const AdminTicketsPage = () => {
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
             </button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
-              <Plus size={12} /> Book Flight
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => setActiveTab('search')}>
+              <Plane size={12} /> Book Flight
             </button>
             <span className="subsea-vr" />
             <SubseaProfileMenu size="sm" />
@@ -1804,1110 +2044,1311 @@ const AdminTicketsPage = () => {
 
         <main className="subsea-content">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TicketsTab)}>
-          <TabsContent value="search" className="mt-0">
-        <div className="admin-tickets-search-view">
-          {searchResults == null ? (
-            <>
-              <div className="admin-tickets-flights-hero">
-                <div className="admin-tickets-flights-hero-left">
-                  <div className="admin-tickets-flights-hero-icon">
-                    <Plane size={28} />
-                  </div>
-                  <div>
-                    <h2 className="admin-tickets-flights-hero-title">Flights</h2>
-                    <p className="admin-tickets-flights-hero-subtitle">Search and compare flight options</p>
-                  </div>
-                </div>
-                <div className="admin-tickets-flights-hero-currency">
-                  <label htmlFor="hero-currency" className="admin-tickets-flights-hero-currency-label">CURRENCY</label>
-                  <select
-                    id="hero-currency"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                    className="admin-tickets-flights-hero-currency-select"
-                  >
-                    {CURRENCY_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.value}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="admin-tickets-search-panel">
-                <div className="admin-tickets-search-form">
-                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
-                    <div className="admin-tickets-search-row admin-tickets-search-row-trip">
-                      <span className="admin-tickets-search-row-label">Trip type</span>
-                      <div className="admin-tickets-search-radio-group admin-tickets-search-radio-group-trip">
-                        <label className="admin-tickets-search-radio">
-                          <input
-                            type="radio"
-                            name="trip-type"
-                            checked={searchTripTypeUI === 'one-way'}
-                            onChange={() => changeSearchTripType('one-way')}
-                          />
-                          <span>One way</span>
-                        </label>
-                        <label className="admin-tickets-search-radio">
-                          <input
-                            type="radio"
-                            name="trip-type"
-                            checked={searchTripTypeUI === 'round-trip'}
-                            onChange={() => changeSearchTripType('round-trip')}
-                          />
-                          <span>Round trip</span>
-                        </label>
-                        <label className="admin-tickets-search-radio">
-                          <input
-                            type="radio"
-                            name="trip-type"
-                            checked={searchTripTypeUI === 'multi-city'}
-                            onChange={() => changeSearchTripType('multi-city')}
-                          />
-                          <span>Multiple flights</span>
-                        </label>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
-                    <h3 className="admin-tickets-search-section-title">Assignment</h3>
-                    <div className="admin-tickets-search-section-grid">
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
-                        <label htmlFor="search-project">Project (optional)</label>
-                        <div className="admin-tickets-search-field-with-clear">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                id="search-project"
-                                variant="outline"
-                                className="admin-tickets-search-control"
-                              >
-                                <span className="truncate flex-1 text-left min-w-0">
-                                  {searchProjectId
-                                    ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
-                                    : 'No project'}
-                                </span>
-                                <SearchFieldClearButton
-                                  visible={!!searchProjectId}
-                                  onClear={() => setSearchProjectId('')}
-                                  label="Clear project"
-                                />
-                                <ChevronDown size={16} className="shrink-0 opacity-50" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              className={SEARCH_DROPDOWN_CONTENT_CLASS}
-                              align="start"
-                            >
-                              <DropdownMenuGroup>
-                                <DropdownMenuItem
-                                  onSelect={() => setSearchProjectId('')}
-                                  className={!searchProjectId ? 'admin-tickets-search-option-selected' : ''}
-                                >
-                                  No project
-                                </DropdownMenuItem>
-                                {projects.map((p) => (
-                                  <DropdownMenuItem
-                                    key={p.id}
-                                    onSelect={() => setSearchProjectId(p.id)}
-                                    className={searchProjectId === p.id ? 'admin-tickets-search-option-selected' : ''}
-                                  >
-                                    {p.title}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+            <TabsContent value="search" className="mt-0">
+              <div className="admin-tickets-search-view">
+                {searchResults == null ? (
+                  <>
+                    <div className="admin-tickets-flights-hero">
+                      <div className="admin-tickets-flights-hero-left">
+                        <div className="admin-tickets-flights-hero-icon">
+                          <Plane size={28} />
+                        </div>
+                        <div>
+                          <h2 className="admin-tickets-flights-hero-title">Flights</h2>
+                          <p className="admin-tickets-flights-hero-subtitle">Search and compare flight options</p>
                         </div>
                       </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6 admin-tickets-search-field-crew">
-                        <label htmlFor="search-crew">Crew members</label>
-                        <div className="admin-tickets-search-field-with-clear">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                id="search-crew"
-                                variant="outline"
-                                className="admin-tickets-search-control"
-                              >
-                                <span className="truncate flex-1 text-left min-w-0">
-                                  {searchCrewLoading
-                                    ? 'Loading…'
-                                    : searchCrewIds.length === 0
-                                      ? 'Select crew members…'
-                                      : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
-                                </span>
-                                <SearchFieldClearButton
-                                  visible={searchCrewIds.length > 0}
-                                  onClear={() => setSearchCrewIds([])}
-                                  label="Clear crew members"
-                                />
-                                <ChevronDown size={16} className="shrink-0 opacity-50" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              className={SEARCH_DROPDOWN_CONTENT_CLASS}
-                              align="start"
-                              onCloseAutoFocus={() => setSearchCrewFilter('')}
-                            >
-                              <div className="px-2 py-1.5">
-                                <Input
-                                  value={searchCrewFilter}
-                                  onChange={(e) => setSearchCrewFilter(e.target.value)}
-                                  placeholder="Search crew…"
-                                  className="h-8"
-                                  onKeyDown={(e) => e.stopPropagation()}
-                                />
-                              </div>
-                              {searchCrewLoading && searchCrewList.length === 0 ? (
-                                <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
-                              ) : searchCrewList.length === 0 ? (
-                                <DropdownMenuLabel>No crew members found.</DropdownMenuLabel>
-                              ) : filteredSearchCrewList.length === 0 ? (
-                                <DropdownMenuLabel>No crew match your search.</DropdownMenuLabel>
-                              ) : (
-                                <DropdownMenuGroup>
-                                  {filteredSearchCrewList.map((c) => {
-                                    const availability = availabilityFromCrewSignal(c.signal);
-                                    const activeProject = c.activeProjects?.[0]?.title;
-                                    return (
-                                      <DropdownMenuCheckboxItem
-                                        key={c.id}
-                                        checked={searchCrewIds.includes(c.id)}
-                                        onCheckedChange={() => toggleCrewSearch(c.id)}
-                                        onSelect={(e) => e.preventDefault()}
-                                      >
-                                        <div className="flex items-start gap-2 min-w-0 w-full">
-                                          <span
-                                            className={crewAvailabilityDotClass(availability)}
-                                            title={getCrewAvailabilityLabel(availability)}
-                                            aria-label={getCrewAvailabilityLabel(availability)}
-                                          />
-                                          <div className="flex flex-col min-w-0 flex-1">
-                                            <span>{c.firstname} {c.lastname}</span>
-                                            <span className="text-xs text-muted-foreground truncate">{c.email}</span>
-                                            {activeProject ? (
-                                              <span className="text-xs text-muted-foreground truncate">{activeProject}</span>
-                                            ) : null}
-                                          </div>
-                                        </div>
-                                      </DropdownMenuCheckboxItem>
-                                    );
-                                  })}
-                                </DropdownMenuGroup>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                      <div className="admin-tickets-flights-hero-currency">
+                        <label htmlFor="hero-currency" className="admin-tickets-flights-hero-currency-label">CURRENCY</label>
+                        <select
+                          id="hero-currency"
+                          value={currency}
+                          onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                          className="admin-tickets-flights-hero-currency-select"
+                        >
+                          {CURRENCY_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.value}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                  </section>
-
-                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
-                    <h3 className="admin-tickets-search-section-title">
-                      {searchTripTypeUI === 'multi-city' ? 'Flights' : 'Route & schedule'}
-                    </h3>
-                    <div className="admin-tickets-search-section-grid">
-                      {searchTripTypeUI === 'multi-city' ? (
-                        <>
-                          <p className="admin-tickets-multi-hint admin-tickets-search-field-col-12">
-                            Book each leg as its own ticket in one flow (separate from connecting flights sold as one itinerary).
-                          </p>
-                          <div className="admin-tickets-multi-nonstop admin-tickets-search-field-col-12">
-                        <Checkbox
-                          id="prefer-nonstop-legs"
-                          checked={preferNonStopPerLeg}
-                          onCheckedChange={(c) => setPreferNonStopPerLeg(c === true)}
-                        />
-                        <label htmlFor="prefer-nonstop-legs" className="admin-tickets-multi-nonstop-label">
-                          Prefer non-stop for each leg (search requests direct-only when supported; list is filtered to non-stop).
-                        </label>
-                      </div>
-                      <p className="admin-tickets-multi-active-hint admin-tickets-search-field-col-12">
-                        Active leg for search: <strong>{activeMultiLegIndex + 1}</strong> of {multiSegments.length}. Click a leg card to change it (when not viewing results).
-                      </p>
-                      <div className="admin-tickets-multi-segments admin-tickets-search-field-col-12">
-                        {multiSegments.map((seg, i) => (
-                          <div
-                            key={seg.id}
-                            className={
-                              'admin-tickets-multi-seg-card' +
-                              (i === activeMultiLegIndex ? ' admin-tickets-multi-seg-card-active' : '')
-                            }
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
-                              if (searchResults == null) setActiveMultiLegIndex(i);
-                            }}
-                            onKeyDown={(e) => {
-                              if (searchResults != null) return;
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                setActiveMultiLegIndex(i);
-                              }
-                            }}
-                          >
-                            <div className="admin-tickets-multi-seg-card-head">
-                              <span className="admin-tickets-multi-seg-title">Leg {i + 1}</span>
-                              {multiSegments.length > 2 ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="admin-tickets-multi-seg-remove"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeMultiSegment(i);
-                                  }}
-                                  aria-label={`Remove leg ${i + 1}`}
-                                >
-                                  <Trash2 size={16} />
-                                </Button>
-                              ) : null}
-                            </div>
-                            <div className="admin-tickets-search-airports-row">
-                              <div className="admin-tickets-search-field">
-                                <label htmlFor={`multi-from-${seg.id}`}>From</label>
-                                <AirportCombobox
-                                  id={`multi-from-${seg.id}`}
-                                  value={seg.from}
-                                  onChange={(a) => updateMultiSegment(i, { from: a })}
+                    <div className="admin-tickets-search-panel">
+                      <div className="admin-tickets-search-form">
+                        <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                          <div className="admin-tickets-search-row admin-tickets-search-row-trip">
+                            <span className="admin-tickets-search-row-label">Trip type</span>
+                            <div className="admin-tickets-search-radio-group admin-tickets-search-radio-group-trip">
+                              <label className="admin-tickets-search-radio">
+                                <input
+                                  type="radio"
+                                  name="trip-type"
+                                  checked={searchTripTypeUI === 'one-way'}
+                                  onChange={() => changeSearchTripType('one-way')}
                                 />
-                              </div>
-                              <div className="admin-tickets-search-field">
-                                <label htmlFor={`multi-to-${seg.id}`}>To</label>
-                                <AirportCombobox
-                                  id={`multi-to-${seg.id}`}
-                                  value={seg.to}
-                                  onChange={(a) => updateMultiSegment(i, { to: a })}
+                                <span>One way</span>
+                              </label>
+                              <label className="admin-tickets-search-radio">
+                                <input
+                                  type="radio"
+                                  name="trip-type"
+                                  checked={searchTripTypeUI === 'round-trip'}
+                                  onChange={() => changeSearchTripType('round-trip')}
                                 />
-                              </div>
-                            </div>
-                            <div className="admin-tickets-search-field admin-tickets-search-date-picker">
-                              <DatePickerTime
-                                date={seg.departureDate}
-                                time={seg.departureTime}
-                                onDateChange={(d) => updateMultiSegment(i, { departureDate: d })}
-                                onTimeChange={(t) => updateMultiSegment(i, { departureTime: t })}
-                                dateLabel="Departure date"
-                                timeLabel="Min. departure time"
-                                datePlaceholder="Select date"
-                                showTime={true}
-                                idPrefix={`multi-dep-${seg.id}`}
-                                onClear={() => updateMultiSegment(i, { departureDate: '', departureTime: '' })}
-                                hasValue={!!seg.departureDate?.trim() || !!seg.departureTime?.trim()}
-                                disablePastDates
-                                popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
-                              />
-                            </div>
-                            <div className="admin-tickets-search-field admin-tickets-search-date-picker">
-                              <DatePickerTime
-                                date={seg.arrivalDate}
-                                time={seg.arrivalTime}
-                                onDateChange={(d) => updateMultiSegment(i, { arrivalDate: d })}
-                                onTimeChange={(t) => updateMultiSegment(i, { arrivalTime: t })}
-                                dateLabel="Arrival date (optional)"
-                                timeLabel="Max. arrival time"
-                                datePlaceholder="Select date"
-                                showTime={true}
-                                idPrefix={`multi-arr-${seg.id}`}
-                                onClear={() => updateMultiSegment(i, { arrivalDate: '', arrivalTime: '' })}
-                                hasValue={!!seg.arrivalDate?.trim() || !!seg.arrivalTime?.trim()}
-                                popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
-                              />
+                                <span>Round trip</span>
+                              </label>
+                              <label className="admin-tickets-search-radio">
+                                <input
+                                  type="radio"
+                                  name="trip-type"
+                                  checked={searchTripTypeUI === 'multi-city'}
+                                  onChange={() => changeSearchTripType('multi-city')}
+                                />
+                                <span>Multiple flights</span>
+                              </label>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                      {multiSegments.length < MAX_MULTI_SEGMENTS ? (
-                        <div className="admin-tickets-multi-add-row admin-tickets-search-field-col-12">
-                          <Button type="button" variant="outline" size="sm" onClick={addMultiSegment}>
-                            <Plus size={16} className="mr-1" />
-                            Add flight
-                          </Button>
-                          <span className="admin-tickets-multi-add-cap">Up to {MAX_MULTI_SEGMENTS} legs</span>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
-                        <label htmlFor="search-from">From</label>
-                        <AirportCombobox
-                          id="search-from"
-                          value={searchFrom}
-                          onChange={setSearchFrom}
-                        />
-                      </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
-                        <label htmlFor="search-to">To</label>
-                        <AirportCombobox
-                          id="search-to"
-                          value={searchTo}
-                          onChange={setSearchTo}
-                        />
-                      </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
-                        <DatePickerTime
-                          date={departureDate}
-                          time={departureTime}
-                          onDateChange={setDepartureDate}
-                          onTimeChange={setDepartureTime}
-                          dateLabel="Departure date"
-                          timeLabel="Min. departure time"
-                          datePlaceholder="Select date"
-                          showTime={searchTripTypeUI === 'one-way'}
-                          idPrefix="search-departure"
-                          onClear={() => {
-                            setDepartureDate('');
-                            setDepartureTime('');
-                          }}
-                          hasValue={!!departureDate?.trim() || !!departureTime?.trim()}
-                          disablePastDates
-                          popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
-                        />
-                      </div>
-                      {searchTripTypeUI === 'one-way' ? (
-                        <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
-                          <DatePickerTime
-                            date={arrivalDate}
-                            time={arrivalTime}
-                            onDateChange={setArrivalDate}
-                            onTimeChange={setArrivalTime}
-                            dateLabel="Arrival date"
-                            timeLabel="Max. arrival time"
-                            datePlaceholder="Select date"
-                            showTime={true}
-                            idPrefix="search-arrival"
-                            onClear={() => {
-                              setArrivalDate('');
-                              setArrivalTime('');
-                            }}
-                            hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
-                            popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
-                          />
-                        </div>
-                      ) : null}
-                      {searchTripTypeUI === 'round-trip' ? (
-                        <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
-                          <DatePickerTime
-                            date={returnDate}
-                            time={returnTime}
-                            onDateChange={setReturnDate}
-                            onTimeChange={setReturnTime}
-                            dateLabel="Return date"
-                            timeLabel="Return time"
-                            datePlaceholder="Select date"
-                            showTime={true}
-                            idPrefix="search-return"
-                            onClear={() => {
-                              setReturnDate('');
-                              setReturnTime('');
-                            }}
-                            hasValue={!!returnDate?.trim() || !!returnTime?.trim()}
-                            popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
-                          />
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                    </div>
-                  </section>
+                        </section>
 
-                  <section className="admin-tickets-search-section admin-tickets-search-section-full">
-                    <h3 className="admin-tickets-search-section-title">Passengers</h3>
-                    <div className="admin-tickets-search-section-grid">
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4">
-                        <label htmlFor="search-adults">Adults</label>
-                        <Input
-                          id="search-adults"
-                          type="number"
-                          min={0}
-                          value={adults}
-                          onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                          className="admin-tickets-search-input"
-                        />
+                        <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                          <h3 className="admin-tickets-search-section-title">Assignment</h3>
+                          <div className="admin-tickets-search-section-grid">
+                            <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
+                              <label htmlFor="search-project">Project (optional)</label>
+                              <div className="admin-tickets-search-field-with-clear">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      id="search-project"
+                                      variant="outline"
+                                      className="admin-tickets-search-control"
+                                    >
+                                      <span className="truncate flex-1 text-left min-w-0">
+                                        {searchProjectId
+                                          ? (projects.find((p) => p.id === searchProjectId)?.title ?? 'Select project')
+                                          : 'No project'}
+                                      </span>
+                                      <SearchFieldClearButton
+                                        visible={!!searchProjectId}
+                                        onClear={() => setSearchProjectId('')}
+                                        label="Clear project"
+                                      />
+                                      <ChevronDown size={16} className="shrink-0 opacity-50" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    className={SEARCH_DROPDOWN_CONTENT_CLASS}
+                                    align="start"
+                                  >
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuItem
+                                        onSelect={() => setSearchProjectId('')}
+                                        className={!searchProjectId ? 'admin-tickets-search-option-selected' : ''}
+                                      >
+                                        No project
+                                      </DropdownMenuItem>
+                                      {projects.map((p) => (
+                                        <DropdownMenuItem
+                                          key={p.id}
+                                          onSelect={() => setSearchProjectId(p.id)}
+                                          className={searchProjectId === p.id ? 'admin-tickets-search-option-selected' : ''}
+                                        >
+                                          {p.title}
+                                        </DropdownMenuItem>
+                                      ))}
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+                            <div className="admin-tickets-search-field admin-tickets-search-field-col-6 admin-tickets-search-field-crew">
+                              <label htmlFor="search-crew">Crew members</label>
+                              <div className="admin-tickets-search-field-with-clear">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      id="search-crew"
+                                      variant="outline"
+                                      className="admin-tickets-search-control"
+                                    >
+                                      <span className="truncate flex-1 text-left min-w-0">
+                                        {searchCrewLoading
+                                          ? 'Loading…'
+                                          : searchCrewIds.length === 0
+                                            ? 'Select crew members…'
+                                            : `${searchCrewIds.length} crew member${searchCrewIds.length !== 1 ? 's' : ''} selected`}
+                                      </span>
+                                      <SearchFieldClearButton
+                                        visible={searchCrewIds.length > 0}
+                                        onClear={() => setSearchCrewIds([])}
+                                        label="Clear crew members"
+                                      />
+                                      <ChevronDown size={16} className="shrink-0 opacity-50" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    className={SEARCH_DROPDOWN_CONTENT_CLASS}
+                                    align="start"
+                                    onCloseAutoFocus={() => setSearchCrewFilter('')}
+                                  >
+                                    <div className="px-2 py-1.5">
+                                      <Input
+                                        value={searchCrewFilter}
+                                        onChange={(e) => setSearchCrewFilter(e.target.value)}
+                                        placeholder="Search crew…"
+                                        className="h-8"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                      />
+                                    </div>
+                                    {searchCrewLoading && searchCrewList.length === 0 ? (
+                                      <DropdownMenuLabel>Loading crew…</DropdownMenuLabel>
+                                    ) : searchCrewList.length === 0 ? (
+                                      <DropdownMenuLabel>No crew members found.</DropdownMenuLabel>
+                                    ) : filteredSearchCrewList.length === 0 ? (
+                                      <DropdownMenuLabel>No crew match your search.</DropdownMenuLabel>
+                                    ) : (
+                                      <DropdownMenuGroup>
+                                        {filteredSearchCrewList.map((c) => {
+                                          const personnelStatus = c.current_status ?? 'Available';
+                                          const activeProject = c.activeProjects?.[0]?.title;
+                                          const showStatus = !!departureDate;
+                                          return (
+                                            <DropdownMenuCheckboxItem
+                                              key={c.id}
+                                              checked={searchCrewIds.includes(c.id)}
+                                              onCheckedChange={() => toggleCrewSearch(c.id)}
+                                              onSelect={(e) => e.preventDefault()}
+                                            >
+                                              <div className="flex items-start gap-2 min-w-0 w-full">
+                                                {showStatus && (
+                                                  <span
+                                                    className={crewStatusTierDotClass(personnelStatus)}
+                                                    title={crewStatusTierLabel(personnelStatus)}
+                                                    aria-label={crewStatusTierLabel(personnelStatus)}
+                                                  />
+                                                )}
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                  <span>{c.firstname} {c.lastname}</span>
+                                                  <span className="text-xs text-muted-foreground truncate">{c.email}</span>
+                                                  {showStatus && personnelStatus !== 'Available' ? (
+                                                    <span className={`text-xs truncate crew-status-inline-label ${crewStatusTierBadgeClass(personnelStatus)}`}>
+                                                      {crewStatusTierLabel(personnelStatus)}
+                                                    </span>
+                                                  ) : activeProject ? (
+                                                    <span className="text-xs text-muted-foreground truncate">{activeProject}</span>
+                                                  ) : null}
+                                                </div>
+                                              </div>
+                                            </DropdownMenuCheckboxItem>
+                                          );
+                                        })}
+                                      </DropdownMenuGroup>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+                          </div>
+                        </section>
+
+                        <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                          <h3 className="admin-tickets-search-section-title">
+                            {searchTripTypeUI === 'multi-city' ? 'Flights' : 'Route & schedule'}
+                          </h3>
+                          <div className="admin-tickets-search-section-grid">
+                            {searchTripTypeUI === 'multi-city' ? (
+                              <>
+                                <p className="admin-tickets-multi-hint admin-tickets-search-field-col-12">
+                                  Book each leg as its own ticket in one flow (separate from connecting flights sold as one itinerary).
+                                </p>
+                                <div className="admin-tickets-multi-nonstop admin-tickets-search-field-col-12">
+                                  <Checkbox
+                                    id="prefer-nonstop-legs"
+                                    checked={preferNonStopPerLeg}
+                                    onCheckedChange={(c) => setPreferNonStopPerLeg(c === true)}
+                                  />
+                                  <label htmlFor="prefer-nonstop-legs" className="admin-tickets-multi-nonstop-label">
+                                    Prefer non-stop for each leg (search requests direct-only when supported; list is filtered to non-stop).
+                                  </label>
+                                </div>
+                                <p className="admin-tickets-multi-active-hint admin-tickets-search-field-col-12">
+                                  Active leg for search: <strong>{activeMultiLegIndex + 1}</strong> of {multiSegments.length}. Click a leg card to change it (when not viewing results).
+                                </p>
+                                <div className="admin-tickets-multi-segments admin-tickets-search-field-col-12">
+                                  {multiSegments.map((seg, i) => (
+                                    <div
+                                      key={seg.id}
+                                      className={
+                                        'admin-tickets-multi-seg-card' +
+                                        (i === activeMultiLegIndex ? ' admin-tickets-multi-seg-card-active' : '')
+                                      }
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={() => {
+                                        if (searchResults == null) setActiveMultiLegIndex(i);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (searchResults != null) return;
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
+                                          setActiveMultiLegIndex(i);
+                                        }
+                                      }}
+                                    >
+                                      <div className="admin-tickets-multi-seg-card-head">
+                                        <span className="admin-tickets-multi-seg-title">Leg {i + 1}</span>
+                                        {multiSegments.length > 2 ? (
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="admin-tickets-multi-seg-remove"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              removeMultiSegment(i);
+                                            }}
+                                            aria-label={`Remove leg ${i + 1}`}
+                                          >
+                                            <Trash2 size={16} />
+                                          </Button>
+                                        ) : null}
+                                      </div>
+                                      <div className="admin-tickets-search-airports-row">
+                                        <div className="admin-tickets-search-field">
+                                          <label htmlFor={`multi-from-${seg.id}`}>From</label>
+                                          <AirportCombobox
+                                            id={`multi-from-${seg.id}`}
+                                            value={seg.from}
+                                            onChange={(a) => updateMultiSegment(i, { from: a })}
+                                          />
+                                        </div>
+                                        <div className="admin-tickets-search-field">
+                                          <label htmlFor={`multi-to-${seg.id}`}>To</label>
+                                          <AirportCombobox
+                                            id={`multi-to-${seg.id}`}
+                                            value={seg.to}
+                                            onChange={(a) => updateMultiSegment(i, { to: a })}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                                        <DatePickerTime
+                                          date={seg.departureDate}
+                                          time={seg.departureTime}
+                                          onDateChange={(d) => updateMultiSegment(i, { departureDate: d })}
+                                          onTimeChange={(t) => updateMultiSegment(i, { departureTime: t })}
+                                          dateLabel="Departure date"
+                                          timeLabel="Min. departure time"
+                                          datePlaceholder="Select date"
+                                          showTime={true}
+                                          idPrefix={`multi-dep-${seg.id}`}
+                                          onClear={() => updateMultiSegment(i, { departureDate: '', departureTime: '' })}
+                                          hasValue={!!seg.departureDate?.trim() || !!seg.departureTime?.trim()}
+                                          disablePastDates
+                                          popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
+                                        />
+                                      </div>
+                                      <div className="admin-tickets-search-field admin-tickets-search-date-picker">
+                                        <DatePickerTime
+                                          date={seg.arrivalDate}
+                                          time={seg.arrivalTime}
+                                          onDateChange={(d) => updateMultiSegment(i, { arrivalDate: d })}
+                                          onTimeChange={(t) => updateMultiSegment(i, { arrivalTime: t })}
+                                          dateLabel="Arrival date (optional)"
+                                          timeLabel="Max. arrival time"
+                                          datePlaceholder="Select date"
+                                          showTime={true}
+                                          idPrefix={`multi-arr-${seg.id}`}
+                                          onClear={() => updateMultiSegment(i, { arrivalDate: '', arrivalTime: '' })}
+                                          hasValue={!!seg.arrivalDate?.trim() || !!seg.arrivalTime?.trim()}
+                                          popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                {multiSegments.length < MAX_MULTI_SEGMENTS ? (
+                                  <div className="admin-tickets-multi-add-row admin-tickets-search-field-col-12">
+                                    <Button type="button" variant="outline" size="sm" onClick={addMultiSegment}>
+                                      <Plus size={16} className="mr-1" />
+                                      Add flight
+                                    </Button>
+                                    <span className="admin-tickets-multi-add-cap">Up to {MAX_MULTI_SEGMENTS} legs</span>
+                                  </div>
+                                ) : null}
+                              </>
+                            ) : (
+                              <>
+                                <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
+                                  <label htmlFor="search-from">From</label>
+                                  <AirportCombobox
+                                    id="search-from"
+                                    value={searchFrom}
+                                    onChange={setSearchFrom}
+                                  />
+                                </div>
+                                <div className="admin-tickets-search-field admin-tickets-search-field-col-6">
+                                  <label htmlFor="search-to">To</label>
+                                  <AirportCombobox
+                                    id="search-to"
+                                    value={searchTo}
+                                    onChange={setSearchTo}
+                                  />
+                                </div>
+                                <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
+                                  <DatePickerTime
+                                    date={departureDate}
+                                    time={departureTime}
+                                    onDateChange={setDepartureDate}
+                                    onTimeChange={setDepartureTime}
+                                    dateLabel="Departure date"
+                                    timeLabel="Min. departure time"
+                                    datePlaceholder="Select date"
+                                    showTime={searchTripTypeUI === 'one-way'}
+                                    idPrefix="search-departure"
+                                    onClear={() => {
+                                      setDepartureDate('');
+                                      setDepartureTime('');
+                                    }}
+                                    hasValue={!!departureDate?.trim() || !!departureTime?.trim()}
+                                    disablePastDates
+                                    popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
+                                  />
+                                </div>
+                                {searchTripTypeUI === 'one-way' ? (
+                                  <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
+                                    <DatePickerTime
+                                      date={arrivalDate}
+                                      time={arrivalTime}
+                                      onDateChange={setArrivalDate}
+                                      onTimeChange={setArrivalTime}
+                                      dateLabel="Arrival date"
+                                      timeLabel="Max. arrival time"
+                                      datePlaceholder="Select date"
+                                      showTime={true}
+                                      idPrefix="search-arrival"
+                                      onClear={() => {
+                                        setArrivalDate('');
+                                        setArrivalTime('');
+                                      }}
+                                      hasValue={!!arrivalDate?.trim() || !!arrivalTime?.trim()}
+                                      popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
+                                    />
+                                  </div>
+                                ) : null}
+                                {searchTripTypeUI === 'round-trip' ? (
+                                  <div className="admin-tickets-search-field admin-tickets-search-date-picker admin-tickets-search-field-col-12">
+                                    <DatePickerTime
+                                      date={returnDate}
+                                      time={returnTime}
+                                      onDateChange={setReturnDate}
+                                      onTimeChange={setReturnTime}
+                                      dateLabel="Return date"
+                                      timeLabel="Return time"
+                                      datePlaceholder="Select date"
+                                      showTime={true}
+                                      idPrefix="search-return"
+                                      onClear={() => {
+                                        setReturnDate('');
+                                        setReturnTime('');
+                                      }}
+                                      hasValue={!!returnDate?.trim() || !!returnTime?.trim()}
+                                      popoverContentClassName={SEARCH_SELECT_CONTENT_CLASS}
+                                    />
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                        </section>
+
+                        <section className="admin-tickets-search-section admin-tickets-search-section-full">
+                          <h3 className="admin-tickets-search-section-title">Passengers</h3>
+                          <div className="admin-tickets-search-section-grid">
+                            <div className="admin-tickets-search-field admin-tickets-search-field-col-4">
+                              <label htmlFor="search-adults">Adults</label>
+                              <Input
+                                id="search-adults"
+                                type="number"
+                                min={0}
+                                value={adults}
+                                onChange={(e) => setAdults(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                                className="admin-tickets-search-input"
+                              />
+                            </div>
+                            <div className="admin-tickets-search-field admin-tickets-search-field-col-4 admin-tickets-search-field-cabin">
+                              <label htmlFor="search-cabin">Cabin class</label>
+                              <div className="admin-tickets-search-field-with-clear">
+                                <Select
+                                  value={cabinClass}
+                                  onValueChange={(v) => setCabinClass(v as CabinClass)}
+                                >
+                                  <SelectTrigger id="search-cabin" className="admin-tickets-search-control">
+                                    <SelectValue placeholder="Select cabin" />
+                                    <SearchFieldClearButton
+                                      visible={cabinClass !== 'economy'}
+                                      onClear={() => setCabinClass('economy')}
+                                      label="Clear cabin class"
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent className={SEARCH_SELECT_CONTENT_CLASS}>
+                                    {CABIN_OPTIONS.map((o) => (
+                                      <SelectItem key={o.value} value={o.value}>
+                                        {o.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </div>
+                        </section>
                       </div>
-                      <div className="admin-tickets-search-field admin-tickets-search-field-col-4 admin-tickets-search-field-cabin">
-                        <label htmlFor="search-cabin">Cabin class</label>
-                        <div className="admin-tickets-search-field-with-clear">
-                        <Select
-                          value={cabinClass}
-                          onValueChange={(v) => setCabinClass(v as CabinClass)}
+                      {searchError && (
+                        <div className="admin-tickets-search-error" role="alert">
+                          {searchError}
+                        </div>
+                      )}
+                      <div className="admin-tickets-search-actions">
+                        <Button
+                          type="button"
+                          onClick={() => handleSearch()}
+                          disabled={
+                            isSearching ||
+                            (searchTripTypeUI === 'multi-city'
+                              ? !(multiSegments[activeMultiLegIndex]?.from && multiSegments[activeMultiLegIndex]?.to)
+                              : !searchFrom || !searchTo)
+                          }
                         >
-                          <SelectTrigger id="search-cabin" className="admin-tickets-search-control">
-                            <SelectValue placeholder="Select cabin" />
-                            <SearchFieldClearButton
-                              visible={cabinClass !== 'economy'}
-                              onClear={() => setCabinClass('economy')}
-                              label="Clear cabin class"
-                            />
+                          {isSearching ? (
+                            <>
+                              <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
+                              Searching…
+                            </>
+                          ) : (
+                            <>
+                              <Search size={18} />
+                              {searchTripTypeUI === 'multi-city'
+                                ? `Search leg ${activeMultiLegIndex + 1}`
+                                : 'Search flights'}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="admin-tickets-results-wrap">
+                    <div className="admin-tickets-results-header">
+                      <Button variant="outline" type="button" onClick={handleSearchBack}>
+                        <ChevronLeft size={18} />
+                        Back to search
+                      </Button>
+                      {searchCriteria && (
+                        <p className="admin-tickets-results-summary">
+                          {searchTripTypeUI === 'multi-city' ? (
+                            <>
+                              Leg {activeMultiLegIndex + 1} of {multiSegments.length}:{' '}
+                              {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
+                              {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                            </>
+                          ) : (
+                            <>
+                              {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
+                              {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                            </>
+                          )}
+                        </p>
+                      )}
+                      <div className="admin-tickets-results-sort">
+                        <label htmlFor="flight-results-sort">Sort</label>
+                        <Select
+                          value={selectedFlightSortValue}
+                          onValueChange={(value) => {
+                            void handleResultSortChange(value as FlightSortValue);
+                          }}
+                          disabled={isSearching || isLoadingMore}
+                        >
+                          <SelectTrigger id="flight-results-sort" className="admin-tickets-results-sort-trigger">
+                            <SelectValue placeholder="Sort results" />
                           </SelectTrigger>
                           <SelectContent className={SEARCH_SELECT_CONTENT_CLASS}>
-                            {CABIN_OPTIONS.map((o) => (
-                              <SelectItem key={o.value} value={o.value}>
-                                {o.label}
+                            {FLIGHT_SORT_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        </div>
+                        {isSearching ? <span className="admin-tickets-spinner admin-tickets-spinner-inline" /> : null}
                       </div>
-                    </div>
-                  </section>
-                </div>
-                {searchError && (
-                  <div className="admin-tickets-search-error" role="alert">
-                    {searchError}
-                  </div>
-                )}
-                <div className="admin-tickets-search-actions">
-                  <Button
-                    type="button"
-                    onClick={() => handleSearch()}
-                    disabled={
-                      isSearching ||
-                      (searchTripTypeUI === 'multi-city'
-                        ? !(multiSegments[activeMultiLegIndex]?.from && multiSegments[activeMultiLegIndex]?.to)
-                        : !searchFrom || !searchTo)
-                    }
-                  >
-                    {isSearching ? (
-                      <>
-                        <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
-                        Searching…
-                      </>
-                    ) : (
-                      <>
-                        <Search size={18} />
-                        {searchTripTypeUI === 'multi-city'
-                          ? `Search leg ${activeMultiLegIndex + 1}`
-                          : 'Search flights'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="admin-tickets-results-wrap">
-              <div className="admin-tickets-results-header">
-                <Button variant="outline" type="button" onClick={handleSearchBack}>
-                  <ChevronLeft size={18} />
-                  Back to search
-                </Button>
-                {searchCriteria && (
-                  <p className="admin-tickets-results-summary">
-                    {searchTripTypeUI === 'multi-city' ? (
-                      <>
-                        Leg {activeMultiLegIndex + 1} of {multiSegments.length}:{' '}
-                        {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
-                        {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
-                      </>
-                    ) : (
-                      <>
-                        {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
-                        {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
-                      </>
-                    )}
-                  </p>
-                )}
-                <div className="admin-tickets-results-sort">
-                  <label htmlFor="flight-results-sort">Sort</label>
-                  <Select
-                    value={selectedFlightSortValue}
-                    onValueChange={(value) => {
-                      void handleResultSortChange(value as FlightSortValue);
-                    }}
-                    disabled={isSearching || isLoadingMore}
-                  >
-                    <SelectTrigger id="flight-results-sort" className="admin-tickets-results-sort-trigger">
-                      <SelectValue placeholder="Sort results" />
-                    </SelectTrigger>
-                    <SelectContent className={SEARCH_SELECT_CONTENT_CLASS}>
-                      {FLIGHT_SORT_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {isSearching ? <span className="admin-tickets-spinner admin-tickets-spinner-inline" /> : null}
-                </div>
-                <p className="admin-tickets-results-count">
-                  {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
-                  {searchTripTypeUI === 'multi-city' &&
-                    preferNonStopPerLeg &&
-                    displayedSearchFlights &&
-                    searchResults &&
-                    displayedSearchFlights.length !== searchResults.length && (
-                      <span className="admin-tickets-results-count-note">
-                        {' '}
-                        · {displayedSearchFlights.length} non-stop shown from {searchResults.length} loaded
-                      </span>
-                    )}
-                </p>
-              </div>
-              <div className="admin-tickets-results-list">
-                {searchResults.length === 0 ? (
-                  <p className="admin-tickets-results-empty">No flights match your criteria.</p>
-                ) : (displayedSearchFlights?.length ?? 0) === 0 ? (
-                  <p className="admin-tickets-results-empty">
-                    No non-stop flights in the loaded results. Clear the non-stop filter or try Load more.
-                  </p>
-                ) : (
-                  <>
-                    {(displayedSearchFlights ?? searchResults).map((flight) => (
-                      <FlightResultCard
-                        key={flight.id}
-                        flight={flight}
-                        currency={currency}
-                        onBook={handleBookNow}
-                        isBooking={
-                          bookingFlightKey ===
-                          (searchTripTypeUI === 'multi-city'
-                            ? `${activeMultiLegIndex}::${flight.id}`
-                            : flight.id)
-                        }
-                      />
-                    ))}
-                    {searchResults.length < searchTotalCount && (
-                      <div className="admin-tickets-load-more-wrap">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleLoadMore}
-                          disabled={isLoadingMore || isSearching}
-                          className="admin-tickets-load-more-btn"
-                        >
-                          {isLoadingMore ? (
-                            <>
-                              <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
-                              Loading…
-                            </>
-                          ) : (
-                            `Load more (showing ${searchResults.length} of ${searchTotalCount})`
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-          </TabsContent>
-          <TabsContent value="tickets" className="mt-0">
-            <div className="subsea-page-head">
-              <div>
-                <h1>Flight Bookings</h1>
-                <p>{filteredTickets.length} bookings active · {pendingApprovalCount} pending approval · IATA-compliant</p>
-              </div>
-              <div className="subsea-ph-right">
-                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setActiveTab('search')}>
-                  <Search size={11} /> Search Flights
-                </button>
-                <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
-                  <Plus size={11} /> Book Flight
-                </button>
-              </div>
-            </div>
-
-            <div className="subsea-kpi-strip subsea-kpi-strip-2">
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Active Bookings</div>
-                <div className="subsea-kpi-value">{ticketDashboardStats.totalBookings}</div>
-                <div className="subsea-kpi-meta flat">{ticketDashboardStats.approvedCount} approved</div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill blue" style={{ width: `${ticketDashboardStats.activeBookingsBarPct}%` }} />
-                </div>
-              </div>
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Pending Approval</div>
-                <div className="subsea-kpi-value">{pendingApprovalCount}</div>
-                <div className={`subsea-kpi-meta ${pendingApprovalCount ? 'down' : 'flat'}`}>
-                  {ticketDashboardStats.pendingMeta}
-                </div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill amber" style={{ width: `${ticketDashboardStats.pendingBarPct}%` }} />
-                </div>
-              </div>
-            </div>
-
-            <div className="subsea-alert subsea-alert-info">
-              <Info size={15} />
-              <span><strong>{pendingApprovalCount} ticket{pendingApprovalCount !== 1 ? 's' : ''}</strong> awaiting superadmin approval. Download links appear after approval and PDF generation.</span>
-              <button
-                type="button"
-                className="subsea-btn subsea-btn-default subsea-btn-sm"
-                onClick={() => {
-                  setActiveTab('tickets');
-                  setStatusFilter('pending');
-                }}
-              >
-                Review Status
-              </button>
-            </div>
-
-            <div className="subsea-toolbar-row">
-              <div className="subsea-filter-wrap">
-                <span className="subsea-filter-label">Project</span>
-                <select
-                  className="subsea-filter-select"
-                  value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
-                >
-                  <option value="all">All projects</option>
-                  {uniqueProjectsFromTickets.map((p) => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="subsea-filter-chevron" />
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="subsea-state" role="status">Loading flight bookings...</div>
-            ) : error ? (
-              <div className="subsea-empty-panel" role="alert">{error}</div>
-            ) : ticketsLoading && tickets.length === 0 ? (
-              <div className="subsea-state" role="status">Loading tickets...</div>
-            ) : filteredTickets.length === 0 ? (
-              <div className="subsea-empty-panel">
-                <Plane size={34} />
-                <h3>
-                  {statusFilter === 'pending'
-                    ? 'No tickets pending approval'
-                    : statusFilter === 'approved'
-                      ? 'No approved tickets'
-                      : projectFilter === 'all'
-                        ? 'No tickets yet'
-                        : 'No tickets for this project'}
-                </h3>
-                <p>
-                  {statusFilter === 'pending'
-                    ? 'All bookings in this view are approved, or none match the selected project.'
-                    : statusFilter === 'approved'
-                      ? 'No approved bookings match the current project filter.'
-                      : projectFilter === 'all'
-                        ? 'Create tickets for crew on your projects.'
-                        : 'Try selecting all projects or book a new flight.'}
-                </p>
-                <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
-                  <Plus size={12} /> Book Flight
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div className="subsea-pane">
-                  <div className="subsea-pane-head">
-                    <div className="subsea-pane-title">Recent Bookings</div>
-                    <div className="subsea-pane-actions">
-                      <span className="subsea-pane-sub">
-                        {sortedRecentBookings.length > 0
-                          ? `${(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-${Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of ${sortedRecentBookings.length}`
-                          : '0 bookings'}
-                      </span>
-                      <button
-                        type="button"
-                        className="subsea-btn subsea-btn-default subsea-btn-sm"
-                        onClick={() => {
-                          setProjectFilter('all');
-                          setStatusFilter('all');
-                        }}
-                      >
-                        All Bookings
-                      </button>
-                    </div>
-                  </div>
-                  <div className="subsea-pane-body">
-                    {paginatedRecentBookings.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        className={`subsea-flight-card${getTicketStatus(ticket) !== 'APPROVED' ? ' pending' : ''}`}
-                        onClick={() => setSelectedTicket(ticket)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            setSelectedTicket(ticket);
-                          }
-                        }}
-                      >
-                        <div className="subsea-flight-route">
-                          <div className="subsea-airport">
-                            <div className="subsea-airport-code">{routeCode(ticket.from)}</div>
-                            <div className="subsea-airport-city">{routeCity(ticket.from)}</div>
-                          </div>
-                          <div className="subsea-flight-line">
-                            <div className="subsea-flight-line-bar" />
-                            <div className="subsea-flight-dur">{ticket.trip?.replace('_', ' ') ?? 'One way'} · {ticket.class ?? 'Economy'}</div>
-                          </div>
-                          <div className="subsea-airport">
-                            <div className="subsea-airport-code">{routeCode(ticket.to)}</div>
-                            <div className="subsea-airport-city">{routeCity(ticket.to)}</div>
-                          </div>
-                          <div className="subsea-flight-status">
-                            <span className={`subsea-badge ${getTicketStatusBadgeClass(ticket)}`}>
-                              {getTicketStatusLabel(ticket)}
+                      <p className="admin-tickets-results-count">
+                        {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
+                        {searchTripTypeUI === 'multi-city' &&
+                          preferNonStopPerLeg &&
+                          displayedSearchFlights &&
+                          searchResults &&
+                          displayedSearchFlights.length !== searchResults.length && (
+                            <span className="admin-tickets-results-count-note">
+                              {' '}
+                              · {displayedSearchFlights.length} non-stop shown from {searchResults.length} loaded
                             </span>
-                          </div>
-                        </div>
-                        <div className="subsea-flight-meta">
-                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Pax</div><div className="subsea-flight-meta-val">{getCrewName(ticket)}</div></div>
-                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Project</div><div className="subsea-flight-meta-val">{getProjectTitle(ticket)}</div></div>
-                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Rig</div><div className="subsea-flight-meta-val">{getRigName(ticket)}</div></div>
-                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Booking ref</div><div className="subsea-flight-meta-val">{ticket.bookingReference || 'Pending'}</div></div>
-                          <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Fare</div><div className="subsea-flight-meta-val">{ticket.price != null ? displayMoney(ticket.price) : 'TBC'}</div></div>
-                          <button
-                            type="button"
-                            className="subsea-icon-action"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handlePreviewTicketPdf(ticket);
-                            }}
-                            disabled={previewingTicketId === ticket.id}
-                            aria-disabled={!canUseTicketPdf(ticket)}
-                            title={
-                              previewingTicketId === ticket.id
-                                ? 'Opening ticket PDF…'
-                                : canUseTicketPdf(ticket)
-                                  ? 'Preview ticket PDF in new tab'
-                                  : 'PDF available after approval'
-                            }
-                          >
-                            {previewingTicketId === ticket.id ? (
-                              <Loader2 size={14} className="animate-spin" aria-hidden />
-                            ) : (
-                              <ExternalLink size={14} />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className="subsea-icon-action"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              requestCancelTicketFlow(ticket);
-                            }}
-                            title="Cancel ticket"
-                          >
-                            <Ban size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                          )}
+                      </p>
+                    </div>
+                    <div className="admin-tickets-results-list">
+                      {searchResults.length === 0 ? (
+                        <p className="admin-tickets-results-empty">No flights match your criteria.</p>
+                      ) : (displayedSearchFlights?.length ?? 0) === 0 ? (
+                        <p className="admin-tickets-results-empty">
+                          No non-stop flights in the loaded results. Clear the non-stop filter or try Load more.
+                        </p>
+                      ) : (
+                        <>
+                          {(displayedSearchFlights ?? searchResults).map((flight) => (
+                            <FlightResultCard
+                              key={flight.id}
+                              flight={flight}
+                              currency={currency}
+                              onBook={handleBookNow}
+                              isBooking={
+                                bookingFlightKey ===
+                                (searchTripTypeUI === 'multi-city'
+                                  ? `${activeMultiLegIndex}::${flight.id}`
+                                  : flight.id)
+                              }
+                            />
+                          ))}
+                          {searchResults.length < searchTotalCount && (
+                            <div className="admin-tickets-load-more-wrap">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleLoadMore}
+                                disabled={isLoadingMore || isSearching}
+                                className="admin-tickets-load-more-btn"
+                              >
+                                {isLoadingMore ? (
+                                  <>
+                                    <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
+                                    Loading…
+                                  </>
+                                ) : (
+                                  `Load more (showing ${searchResults.length} of ${searchTotalCount})`
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                  {sortedRecentBookings.length > RECENT_BOOKINGS_PAGE_SIZE && (
-                    <div className="subsea-pagination">
-                      <span>
-                        Showing {(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-
-                        {Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of{' '}
-                        {sortedRecentBookings.length} bookings
-                      </span>
-                      <div>
+                )}
+              </div>
+            </TabsContent>
+            <TabsContent value="tickets" className="mt-0">
+              <div className="subsea-page-head">
+                <div>
+                  <h1>Flight Bookings</h1>
+                  <p>{filteredTickets.length} bookings active · {pendingApprovalCount} pending approval · IATA-compliant</p>
+                </div>
+                <div className="subsea-ph-right">
+                  <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => setActiveTab('search')}>
+                    <Search size={11} /> Search Flights
+                  </button>
+                  <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+                    <Plus size={11} /> Book Flight
+                  </button>
+                </div>
+              </div>
+
+              <div className="subsea-kpi-strip subsea-kpi-strip-2">
+                <div className="subsea-kpi">
+                  <div className="subsea-kpi-label">Active Bookings</div>
+                  <div className="subsea-kpi-value">{ticketDashboardStats.totalBookings}</div>
+                  <div className="subsea-kpi-meta flat">{ticketDashboardStats.approvedCount} approved</div>
+                  <div className="subsea-kpi-bar">
+                    <div className="subsea-kpi-fill blue" style={{ width: `${ticketDashboardStats.activeBookingsBarPct}%` }} />
+                  </div>
+                </div>
+                <div className="subsea-kpi">
+                  <div className="subsea-kpi-label">Pending Approval</div>
+                  <div className="subsea-kpi-value">{pendingApprovalCount}</div>
+                  <div className={`subsea-kpi-meta ${pendingApprovalCount ? 'down' : 'flat'}`}>
+                    {ticketDashboardStats.pendingMeta}
+                  </div>
+                  <div className="subsea-kpi-bar">
+                    <div className="subsea-kpi-fill amber" style={{ width: `${ticketDashboardStats.pendingBarPct}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="subsea-alert subsea-alert-info">
+                <Info size={15} />
+                <span><strong>{pendingApprovalCount} ticket{pendingApprovalCount !== 1 ? 's' : ''}</strong> awaiting superadmin approval. Download links appear after approval and PDF generation.</span>
+                <button
+                  type="button"
+                  className="subsea-btn subsea-btn-default subsea-btn-sm"
+                  onClick={() => {
+                    setActiveTab('tickets');
+                    setStatusFilter('pending');
+                  }}
+                >
+                  Review Status
+                </button>
+              </div>
+
+              <div className="subsea-toolbar-row">
+                <div className="subsea-filter-wrap">
+                  <span className="subsea-filter-label">Project</span>
+                  <select
+                    className="subsea-filter-select"
+                    value={projectFilter}
+                    onChange={(e) => setProjectFilter(e.target.value)}
+                  >
+                    <option value="all">All projects</option>
+                    {uniqueProjectsFromTickets.map((p) => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="subsea-filter-chevron" />
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="subsea-state" role="status">Loading flight bookings...</div>
+              ) : error ? (
+                <div className="subsea-empty-panel" role="alert">{error}</div>
+              ) : ticketsLoading && tickets.length === 0 ? (
+                <div className="subsea-state" role="status">Loading tickets...</div>
+              ) : filteredTickets.length === 0 ? (
+                <div className="subsea-empty-panel">
+                  <Plane size={34} />
+                  <h3>
+                    {statusFilter === 'pending'
+                      ? 'No tickets pending approval'
+                      : statusFilter === 'approved'
+                        ? 'No approved tickets'
+                        : statusFilter === 'cancelled'
+                          ? 'No cancelled tickets'
+                        : projectFilter === 'all'
+                          ? 'No tickets yet'
+                          : 'No tickets for this project'}
+                  </h3>
+                  <p>
+                    {statusFilter === 'pending'
+                      ? 'All bookings in this view are approved, or none match the selected project.'
+                      : statusFilter === 'approved'
+                        ? 'No approved bookings match the current project filter.'
+                        : statusFilter === 'cancelled'
+                          ? 'Cancelled bookings will appear here after you cancel an active ticket.'
+                        : projectFilter === 'all'
+                          ? 'Create tickets for crew on your projects.'
+                          : 'Try selecting all projects or book a new flight.'}
+                  </p>
+                  <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+                    <Plus size={12} /> Book Flight
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="subsea-pane">
+                    <div className="subsea-pane-head">
+                      <div className="subsea-pane-title">Recent Bookings</div>
+                      <div className="subsea-pane-actions">
+                        <span className="subsea-pane-sub">
+                          {sortedRecentBookings.length > 0
+                            ? `${(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-${Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of ${sortedRecentBookings.length}`
+                            : '0 bookings'}
+                        </span>
                         <button
                           type="button"
                           className="subsea-btn subsea-btn-default subsea-btn-sm"
-                          disabled={recentBookingsPage <= 1}
-                          onClick={() => setRecentBookingsPage((p) => Math.max(1, p - 1))}
+                          onClick={() => {
+                            setProjectFilter('all');
+                            setStatusFilter('all');
+                          }}
                         >
-                          Previous
-                        </button>
-                        {Array.from({ length: recentBookingsTotalPages }, (_, i) => i + 1).map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            className={`subsea-btn subsea-btn-sm ${p === recentBookingsPage ? 'subsea-btn-primary' : 'subsea-btn-default'}`}
-                            onClick={() => setRecentBookingsPage(p)}
-                          >
-                            {p}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="subsea-btn subsea-btn-default subsea-btn-sm"
-                          disabled={recentBookingsPage >= recentBookingsTotalPages}
-                          onClick={() => setRecentBookingsPage((p) => Math.min(recentBookingsTotalPages, p + 1))}
-                        >
-                          Next
+                          All Bookings
                         </button>
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent value="spends" className="mt-0">
-            <div className="subsea-page-head">
-              <div>
-                <h1>Report Spends</h1>
-                <p>Flight spend analytics · {projectFilteredTickets.length} bookings in scope</p>
-              </div>
-            </div>
-
-            <div className="subsea-kpi-strip subsea-kpi-strip-4">
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Total Spend MTD</div>
-                <div className="subsea-kpi-value">{displayMoney(ticketDashboardStats.mtdSpend.total)}</div>
-                <div className={`subsea-kpi-meta ${ticketDashboardStats.spendChangeTone}`}>
-                  {ticketDashboardStats.spendChangeMeta}
-                </div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill teal" style={{ width: `${ticketDashboardStats.spendMtdBarPct}%` }} />
-                </div>
-              </div>
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Avg Ticket Cost</div>
-                <div className="subsea-kpi-value">
-                  {ticketDashboardStats.mtdSpend.count
-                    ? displayMoney(ticketDashboardStats.mtdSpend.average)
-                    : '—'}
-                </div>
-                <div className="subsea-kpi-meta flat">{ticketDashboardStats.avgCostMeta}</div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill green" style={{ width: `${ticketDashboardStats.avgCostBarPct}%` }} />
-                </div>
-              </div>
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Priced Bookings</div>
-                <div className="subsea-kpi-value">{ticketDashboardStats.mtdSpend.count}</div>
-                <div className="subsea-kpi-meta flat">This month</div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill blue" style={{ width: `${Math.min(100, ticketDashboardStats.mtdSpend.count * 10)}%` }} />
-                </div>
-              </div>
-              <div className="subsea-kpi">
-                <div className="subsea-kpi-label">Destinations</div>
-                <div className="subsea-kpi-value">{ticketDashboardStats.spendByDestination.length}</div>
-                <div className="subsea-kpi-meta flat">With recorded spend</div>
-                <div className="subsea-kpi-bar">
-                  <div className="subsea-kpi-fill amber" style={{ width: `${Math.min(100, ticketDashboardStats.spendByDestination.length * 20)}%` }} />
-                </div>
-              </div>
-            </div>
-
-            <div className="subsea-g2">
-              <div className="subsea-pane">
-                <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Destination</div></div>
-                <div className="subsea-pane-body subsea-pane-body-compact">
-                  {ticketDashboardStats.spendByDestination.length === 0 ? (
-                    <div className="subsea-state">No priced bookings yet</div>
-                  ) : (
-                    ticketDashboardStats.spendByDestination.map((row) => (
-                      <div className="subsea-metric-row" key={row.label}>
-                        <div className="subsea-metric-grow">
-                          <div className="subsea-metric-label">{row.label}</div>
-                          <div className="subsea-prog-bar">
-                            <div className={`subsea-prog-fill ${row.color}`} style={{ width: `${row.barPct}%` }} />
+                    <div className="subsea-pane-body">
+                      {paginatedRecentBookings.map((ticket) => (
+                        <div
+                          key={ticket.id}
+                          className={`subsea-flight-card${
+                            getTicketStatus(ticket) === 'CANCELLED'
+                              ? ' cancelled'
+                              : getTicketStatus(ticket) !== 'APPROVED'
+                                ? ' pending'
+                                : ''
+                          }`}
+                          onClick={() => setSelectedTicket(ticket)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedTicket(ticket);
+                            }
+                          }}
+                        >
+                          <div className="subsea-flight-route">
+                            <div className="subsea-airport">
+                              <div className="subsea-airport-code">{routeCode(ticket.from)}</div>
+                              <div className="subsea-airport-city">{routeCity(ticket.from)}</div>
+                            </div>
+                            <div className="subsea-flight-line">
+                              <div className="subsea-flight-line-bar" />
+                              <div className="subsea-flight-dur">{ticket.trip?.replace('_', ' ') ?? 'One way'} · {ticket.class ?? 'Economy'}</div>
+                            </div>
+                            <div className="subsea-airport">
+                              <div className="subsea-airport-code">{routeCode(ticket.to)}</div>
+                              <div className="subsea-airport-city">{routeCity(ticket.to)}</div>
+                            </div>
+                            <div className="subsea-flight-status">
+                              <span className={`subsea-badge ${getTicketStatusBadgeClass(ticket)}`}>
+                                {getTicketStatusLabel(ticket)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="subsea-flight-meta">
+                            <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Pax</div><div className="subsea-flight-meta-val">{getCrewName(ticket)}</div></div>
+                            <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Project</div><div className="subsea-flight-meta-val">{getProjectTitle(ticket)}</div></div>
+                            <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Rig</div><div className="subsea-flight-meta-val">{getRigName(ticket)}</div></div>
+                            <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Booking ref</div><div className="subsea-flight-meta-val">{ticket.bookingReference || 'Pending'}</div></div>
+                            <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Fare</div><div className="subsea-flight-meta-val">{ticket.price != null ? displayMoney(ticket.price) : 'TBC'}</div></div>
+                            <button
+                              type="button"
+                              className="subsea-icon-action"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handlePreviewTicketPdf(ticket);
+                              }}
+                              disabled={previewingTicketId === ticket.id}
+                              aria-disabled={!canUseTicketPdf(ticket)}
+                              title={
+                                previewingTicketId === ticket.id
+                                  ? 'Opening ticket PDF…'
+                                  : canUseTicketPdf(ticket)
+                                    ? 'Preview ticket PDF in new tab'
+                                    : 'PDF available after approval'
+                              }
+                            >
+                              {previewingTicketId === ticket.id ? (
+                                <Loader2 size={14} className="animate-spin" aria-hidden />
+                              ) : (
+                                <ExternalLink size={14} />
+                              )}
+                            </button>
+                            {!isTicketCancelled(ticket) && (
+                            <button
+                              type="button"
+                              className="subsea-icon-action"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                requestCancelTicketFlow(ticket);
+                              }}
+                              title="Cancel ticket"
+                            >
+                              <Ban size={14} />
+                            </button>
+                            )}
                           </div>
                         </div>
-                        <div className="subsea-metric-val">{displayMoney(row.amount)}</div>
+                      ))}
+                    </div>
+                    {sortedRecentBookings.length > RECENT_BOOKINGS_PAGE_SIZE && (
+                      <div className="subsea-pagination">
+                        <span>
+                          Showing {(recentBookingsPage - 1) * RECENT_BOOKINGS_PAGE_SIZE + 1}-
+                          {Math.min(recentBookingsPage * RECENT_BOOKINGS_PAGE_SIZE, sortedRecentBookings.length)} of{' '}
+                          {sortedRecentBookings.length} bookings
+                        </span>
+                        <div>
+                          <button
+                            type="button"
+                            className="subsea-btn subsea-btn-default subsea-btn-sm"
+                            disabled={recentBookingsPage <= 1}
+                            onClick={() => setRecentBookingsPage((p) => Math.max(1, p - 1))}
+                          >
+                            Previous
+                          </button>
+                          {Array.from({ length: recentBookingsTotalPages }, (_, i) => i + 1).map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              className={`subsea-btn subsea-btn-sm ${p === recentBookingsPage ? 'subsea-btn-primary' : 'subsea-btn-default'}`}
+                              onClick={() => setRecentBookingsPage(p)}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className="subsea-btn subsea-btn-default subsea-btn-sm"
+                            disabled={recentBookingsPage >= recentBookingsTotalPages}
+                            onClick={() => setRecentBookingsPage((p) => Math.min(recentBookingsTotalPages, p + 1))}
+                          >
+                            Next
+                          </button>
+                        </div>
                       </div>
-                    ))
-                  )}
+                    )}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="spends" className="mt-0">
+              <div className="subsea-page-head">
+                <div>
+                  <h1>Report Spends</h1>
+                  <p>
+                    Flight spend analytics · {ticketDashboardStats.totalBookings} active booking
+                    {ticketDashboardStats.totalBookings !== 1 ? 's' : ''}
+                    {ticketDashboardStats.cancelledCount > 0
+                      ? ` · ${ticketDashboardStats.cancelledCount} cancelled excluded from spend`
+                      : ''}
+                    {projectFilter !== 'all' ? ' · filtered by project' : ''}
+                  </p>
                 </div>
               </div>
-              <div className="subsea-pane">
-                <div className="subsea-pane-head"><div className="subsea-pane-title">Bookings by Cabin Class</div></div>
-                <div className="subsea-pane-body subsea-pane-body-compact">
-                  {ticketDashboardStats.bookingsByClass.length === 0 ? (
-                    <div className="subsea-state">No bookings yet</div>
-                  ) : (
-                    ticketDashboardStats.bookingsByClass.map((row) => (
-                      <div className="subsea-metric-row" key={row.label}>
-                        <span className="subsea-metric-label">{row.label}</span>
-                        <span className="subsea-metric-val">{row.count} ({row.pct}%)</span>
-                      </div>
-                    ))
-                  )}
+
+              <div className="subsea-kpi-strip subsea-kpi-strip-4">
+                <div className="subsea-kpi">
+                  <div className="subsea-kpi-label">Total Spend MTD</div>
+                  <div className="subsea-kpi-value">{displayMoney(ticketDashboardStats.mtdSpend.total)}</div>
+                  <div className={`subsea-kpi-meta ${ticketDashboardStats.spendChangeTone}`}>
+                    {ticketDashboardStats.spendChangeMeta}
+                  </div>
+                  <div className="subsea-kpi-bar">
+                    <div className="subsea-kpi-fill teal" style={{ width: `${ticketDashboardStats.spendMtdBarPct}%` }} />
+                  </div>
+                </div>
+                <div className="subsea-kpi">
+                  <div className="subsea-kpi-label">Avg Ticket Cost</div>
+                  <div className="subsea-kpi-value">
+                    {ticketDashboardStats.mtdSpend.count
+                      ? displayMoney(ticketDashboardStats.mtdSpend.average)
+                      : '—'}
+                  </div>
+                  <div className="subsea-kpi-meta flat">{ticketDashboardStats.avgCostMeta}</div>
+                  <div className="subsea-kpi-bar">
+                    <div className="subsea-kpi-fill green" style={{ width: `${ticketDashboardStats.avgCostBarPct}%` }} />
+                  </div>
+                </div>
+                <div className="subsea-kpi">
+                  <div className="subsea-kpi-label">Priced Bookings</div>
+                  <div className="subsea-kpi-value">{ticketDashboardStats.mtdSpend.count}</div>
+                  <div className="subsea-kpi-meta flat">This month</div>
+                  <div className="subsea-kpi-bar">
+                    <div className="subsea-kpi-fill blue" style={{ width: `${Math.min(100, ticketDashboardStats.mtdSpend.count * 10)}%` }} />
+                  </div>
+                </div>
+                <div className="subsea-kpi">
+                  <div className="subsea-kpi-label">Destinations</div>
+                  <div className="subsea-kpi-value">{ticketDashboardStats.spendByDestination.length}</div>
+                  <div className="subsea-kpi-meta flat">With recorded spend</div>
+                  <div className="subsea-kpi-bar">
+                    <div className="subsea-kpi-fill amber" style={{ width: `${Math.min(100, ticketDashboardStats.spendByDestination.length * 20)}%` }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+
+              <div className="subsea-g2">
+                <div className="subsea-pane">
+                  <div className="subsea-pane-head"><div className="subsea-pane-title">Spend by Destination</div></div>
+                  <div className="subsea-pane-body subsea-pane-body-compact">
+                    {ticketDashboardStats.spendByDestination.length === 0 ? (
+                      <div className="subsea-state">No priced bookings yet</div>
+                    ) : (
+                      ticketDashboardStats.spendByDestination.map((row) => (
+                        <div className="subsea-metric-row" key={row.label}>
+                          <div className="subsea-metric-grow">
+                            <div className="subsea-metric-label">{row.label}</div>
+                            <div className="subsea-prog-bar">
+                              <div className={`subsea-prog-fill ${row.color}`} style={{ width: `${row.barPct}%` }} />
+                            </div>
+                          </div>
+                          <div className="subsea-metric-val">{displayMoney(row.amount)}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div className="subsea-pane">
+                  <div className="subsea-pane-head"><div className="subsea-pane-title">Bookings by Class</div></div>
+                  <div className="subsea-pane-body subsea-pane-body-compact">
+                    {ticketDashboardStats.bookingsByClass.length === 0 ? (
+                      <div className="subsea-state">No bookings yet</div>
+                    ) : (
+                      ticketDashboardStats.bookingsByClass.map((row) => (
+                        <div className="subsea-metric-row" key={row.label}>
+                          <span className="subsea-metric-label">{row.label}</span>
+                          <span className="subsea-metric-val">{row.count} ({row.pct}%)</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
-        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg max-h-[90vh] overflow-y-auto`}>
-          <DialogHeader>
-            <DialogTitle>Ticket details</DialogTitle>
-          </DialogHeader>
-        {selectedTicket && (
-          <div className="admin-tickets-detail-card">
-            <section className="admin-tickets-detail-section">
-              <h3 className="admin-tickets-detail-heading">Flight details</h3>
-              <dl className="admin-tickets-detail-list">
-                <div className="admin-tickets-detail-item">
-                  <dt>From</dt>
-                  <dd>{selectedTicket.from?.Name ?? '—'}</dd>
-                  <dd className="admin-tickets-detail-meta">
-                    {selectedTicket.from?.COUNTRYNAME ?? ''} ({selectedTicket.from?.COUNTRY ?? ''})
-                  </dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>To</dt>
-                  <dd>{selectedTicket.to?.Name ?? '—'}</dd>
-                  <dd className="admin-tickets-detail-meta">
-                    {selectedTicket.to?.COUNTRYNAME ?? ''} ({selectedTicket.to?.COUNTRY ?? ''})
-                  </dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Class</dt>
-                  <dd>{selectedTicket.class ?? '—'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Trip</dt>
-                  <dd>{selectedTicket.trip?.replace('_', ' ') ?? '—'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Passengers</dt>
-                  <dd>
-                    {[selectedTicket.adult && `${selectedTicket.adult} adult(s)`, selectedTicket.children ? `${selectedTicket.children} child(ren)` : null, selectedTicket.infants ? `${selectedTicket.infants} infant(s)` : null]
-                      .filter(Boolean)
-                      .join(', ') || '—'}
-                  </dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Price</dt>
-                  <dd>{selectedTicket.price != null ? `£${selectedTicket.price.toLocaleString()}` : '—'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Cashback</dt>
-                  <dd>{selectedTicket.cashback != null ? `£${selectedTicket.cashback.toLocaleString()}` : '—'}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="admin-tickets-detail-section">
-              <h3 className="admin-tickets-detail-heading">Crew</h3>
-              <dl className="admin-tickets-detail-list">
-                <div className="admin-tickets-detail-item">
-                  <dt>Name</dt>
-                  <dd>{getCrewName(selectedTicket)}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Email</dt>
-                  <dd>{(selectedTicket.crew_id as { email?: string })?.email ?? '—'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Phone</dt>
-                  <dd>{(selectedTicket.crew_id as { phone?: string })?.phone ?? '—'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Nationality</dt>
-                  <dd>{(selectedTicket.crew_id as { nationality?: string })?.nationality ?? '—'}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="admin-tickets-detail-section">
-              <h3 className="admin-tickets-detail-heading">Project</h3>
-              <dl className="admin-tickets-detail-list">
-                <div className="admin-tickets-detail-item">
-                  <dt>Title</dt>
-                  <dd>{getProjectTitle(selectedTicket)}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Status</dt>
-                  <dd>{selectedTicket.project_id?.status ?? '—'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Duration</dt>
-                  <dd>{formatProjectDuration(selectedTicket.project_id)}</dd>
-                </div>
-                {(selectedTicket.project_id as { description?: string })?.description && (
-                  <div className="admin-tickets-detail-item">
-                    <dt>Description</dt>
-                    <dd>{(selectedTicket.project_id as { description?: string }).description}</dd>
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} admin-tickets-detail-dialog`}>
+          {selectedTicket && (
+            <>
+              <DialogHeader className="admin-tickets-detail-header">
+                <div className="admin-tickets-detail-header-top">
+                  <div>
+                    <DialogTitle className="admin-tickets-detail-title">
+                      <TicketIcon size={18} className="text-primary" />
+                      Ticket details
+                    </DialogTitle>
+                    <p className="admin-tickets-detail-route">
+                      {routeCode(selectedTicket.from)} → {routeCode(selectedTicket.to)}
+                      <span className="admin-tickets-detail-route-cities">
+                        {routeCity(selectedTicket.from)} to {routeCity(selectedTicket.to)}
+                      </span>
+                    </p>
                   </div>
-                )}
-              </dl>
-            </section>
-
-            <section className="admin-tickets-detail-section">
-              <h3 className="admin-tickets-detail-heading">Rig</h3>
-              <dl className="admin-tickets-detail-list">
-                <div className="admin-tickets-detail-item">
-                  <dt>Name</dt>
-                  <dd>{getRigName(selectedTicket)}</dd>
+                  <span className={`subsea-badge ${getTicketStatusBadgeClass(selectedTicket)}`}>
+                    {getTicketStatusLabel(selectedTicket)}
+                  </span>
                 </div>
-                {selectedTicket.rig_id &&
-                  typeof selectedTicket.rig_id !== 'string' &&
-                  (selectedTicket.rig_id as { description?: string })?.description && (
-                    <div className="admin-tickets-detail-item">
-                      <dt>Description</dt>
-                      <dd>{(selectedTicket.rig_id as { description?: string }).description}</dd>
-                    </div>
+                <div className="admin-tickets-detail-chips">
+                  <span className="admin-tickets-detail-chip">
+                    Ref: {selectedTicket.bookingReference || 'Pending approval'}
+                  </span>
+                  <span className="admin-tickets-detail-chip">
+                    {selectedTicket.trip?.replace(/_/g, ' ') ?? '—'}
+                  </span>
+                  {selectedTicket.createdAt && (
+                    <span className="admin-tickets-detail-chip">
+                      Booked {new Date(selectedTicket.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
                   )}
-              </dl>
-            </section>
+                </div>
+              </DialogHeader>
 
-            <section className="admin-tickets-detail-section">
-              <h3 className="admin-tickets-detail-heading">Approval</h3>
-              <dl className="admin-tickets-detail-list">
-                <div className="admin-tickets-detail-item">
-                  <dt>Status</dt>
-                  <dd><span className={`subsea-badge ${getTicketStatusBadgeClass(selectedTicket)}`}>{getTicketStatusLabel(selectedTicket)}</span></dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Booking reference</dt>
-                  <dd>{selectedTicket.bookingReference || 'Pending approval'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Approved at</dt>
-                  <dd>{selectedTicket.approvedAt ? new Date(selectedTicket.approvedAt).toLocaleString() : '—'}</dd>
-                </div>
-                <div className="admin-tickets-detail-item">
-                  <dt>Ticket PDF</dt>
-                  <dd>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={
-                        !canUseTicketPdf(selectedTicket) ||
-                        previewingTicketId === selectedTicket.id
-                      }
-                      onClick={() => {
-                        void handlePreviewTicketPdf(selectedTicket);
-                      }}
-                    >
-                      {previewingTicketId === selectedTicket.id ? (
-                        <>
-                          <Loader2 size={16} className="mr-2 animate-spin" aria-hidden />
-                          Opening…
-                        </>
-                      ) : (
-                        <>
-                          <ExternalLink size={16} className="mr-2" />
-                          {canUseTicketPdf(selectedTicket) ? 'Preview ticket' : 'Available after approval'}
-                        </>
+              <div className="admin-tickets-detail-body">
+                <section className="admin-tickets-detail-section">
+                  <h3 className="admin-tickets-detail-heading">
+                    <Plane size={15} className="text-primary" />
+                    Flight details
+                  </h3>
+
+                  {selectedTicketSegments.length > 0 ? (
+                    <div className="admin-tickets-detail-segments">
+                      {selectedTicketSegments.map((segment, index) => (
+                        <article key={`${segment.flightCode}-${index}`} className="admin-tickets-detail-segment">
+                          <div className="admin-tickets-detail-segment-head">
+                            <div>
+                              <span className="admin-tickets-detail-segment-label">Flight {index + 1}</span>
+                              <strong>{segment.flightCode}</strong>
+                              <span className="admin-tickets-detail-segment-airline">{segment.airlineName}</span>
+                            </div>
+                            {segment.duration !== '—' && (
+                              <span className="admin-tickets-detail-duration">
+                                <Clock size={13} />
+                                {segment.duration}
+                              </span>
+                            )}
+                          </div>
+                          <div className="admin-tickets-detail-segment-route">
+                            <div className="admin-tickets-detail-segment-endpoint">
+                              <span className="admin-tickets-detail-iata">{segment.from}</span>
+                              <span className="admin-tickets-detail-airport">{segment.fromAirport}</span>
+                              <span className="admin-tickets-detail-datetime">
+                                {segment.departureTime} · {segment.departureDate}
+                              </span>
+                            </div>
+                            <div className="admin-tickets-detail-segment-arrow" aria-hidden>→</div>
+                            <div className="admin-tickets-detail-segment-endpoint admin-tickets-detail-segment-endpoint--arrival">
+                              <span className="admin-tickets-detail-iata">{segment.to}</span>
+                              <span className="admin-tickets-detail-airport">{segment.toAirport}</span>
+                              <span className="admin-tickets-detail-datetime">
+                                {segment.arrivalTime} · {segment.arrivalDate}
+                              </span>
+                            </div>
+                          </div>
+                          {(segment.cabin || segment.baggage || segment.layover) && (
+                            <div className="admin-tickets-detail-segment-meta">
+                              {segment.cabin && <span>Class: {segment.cabin}</span>}
+                              {segment.baggage && <span>Baggage: {segment.baggage}</span>}
+                              {segment.layover && <span>Layover: {segment.layover}</span>}
+                            </div>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <dl className="admin-tickets-detail-grid">
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>From</dt>
+                        <dd>{selectedTicket.from?.Name ?? '—'}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>To</dt>
+                        <dd>{selectedTicket.to?.Name ?? '—'}</dd>
+                      </div>
+                    </dl>
+                  )}
+
+                  <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--summary">
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Class</dt>
+                      <dd>{formatTicketClass(selectedTicket.class)}</dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Trip</dt>
+                      <dd>{selectedTicket.trip?.replace(/_/g, ' ') ?? '—'}</dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Duration</dt>
+                      <dd>{getTicketTotalDuration(selectedTicket)}</dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Airline</dt>
+                      <dd>{getTicketPrimaryAirline(selectedTicket)}</dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Departure</dt>
+                      <dd>{getTicketDepartureSummary(selectedTicket)}</dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Arrival</dt>
+                      <dd>{getTicketArrivalSummary(selectedTicket)}</dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Passengers</dt>
+                      <dd>
+                        {[
+                          selectedTicket.adult ? `${selectedTicket.adult} adult(s)` : null,
+                          selectedTicket.children ? `${selectedTicket.children} child(ren)` : null,
+                          selectedTicket.infants ? `${selectedTicket.infants} infant(s)` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(', ') || '—'}
+                      </dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Price</dt>
+                      <dd className="admin-tickets-detail-price">
+                        {selectedTicket.price != null ? displayMoney(selectedTicket.price) : '—'}
+                      </dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Cashback</dt>
+                      <dd className="admin-tickets-detail-cashback">
+                        {selectedTicket.cashback != null ? displayMoney(selectedTicket.cashback) : '—'}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <div className="admin-tickets-detail-columns">
+                  <section className="admin-tickets-detail-section">
+                    <h3 className="admin-tickets-detail-heading">
+                      <User size={15} className="text-primary" />
+                      Crew
+                    </h3>
+                    <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--compact">
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Name</dt>
+                        <dd>{getCrewName(selectedTicket)}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Email</dt>
+                        <dd>{(selectedTicket.crew_id as { email?: string })?.email ?? '—'}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Phone</dt>
+                        <dd>{(selectedTicket.crew_id as { phone?: string })?.phone ?? '—'}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Nationality</dt>
+                        <dd>{(selectedTicket.crew_id as { nationality?: string })?.nationality ?? '—'}</dd>
+                      </div>
+                    </dl>
+                  </section>
+
+                  <section className="admin-tickets-detail-section">
+                    <h3 className="admin-tickets-detail-heading">
+                      <Briefcase size={15} className="text-primary" />
+                      Project
+                    </h3>
+                    <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--compact">
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Title</dt>
+                        <dd>{getProjectTitle(selectedTicket)}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Status</dt>
+                        <dd>{selectedTicket.project_id?.status ?? '—'}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Duration</dt>
+                        <dd>{formatProjectDuration(selectedTicket.project_id)}</dd>
+                      </div>
+                      {(selectedTicket.project_id as { description?: string })?.description && (
+                        <div className="admin-tickets-detail-grid-item admin-tickets-detail-grid-item--full">
+                          <dt>Description</dt>
+                          <dd>{(selectedTicket.project_id as { description?: string }).description}</dd>
+                        </div>
                       )}
-                    </Button>
-                  </dd>
+                    </dl>
+                  </section>
                 </div>
-              </dl>
-            </section>
 
-            <div className="admin-tickets-detail-cancel-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => selectedTicket && requestCancelTicketFlow(selectedTicket)}
-              >
-                <Ban size={16} className="mr-2" />
-                Cancel ticket
-              </Button>
-            </div>
-          </div>
-        )}
+                <div className="admin-tickets-detail-columns">
+                  <section className="admin-tickets-detail-section">
+                    <h3 className="admin-tickets-detail-heading">
+                      <Anchor size={15} className="text-primary" />
+                      Rig
+                    </h3>
+                    <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--compact">
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Name</dt>
+                        <dd>{getRigName(selectedTicket)}</dd>
+                      </div>
+                      {selectedTicket.rig_id &&
+                        typeof selectedTicket.rig_id !== 'string' &&
+                        (selectedTicket.rig_id as { description?: string })?.description && (
+                          <div className="admin-tickets-detail-grid-item admin-tickets-detail-grid-item--full">
+                            <dt>Description</dt>
+                            <dd>{(selectedTicket.rig_id as { description?: string }).description}</dd>
+                          </div>
+                        )}
+                    </dl>
+                  </section>
+
+                  <section className="admin-tickets-detail-section">
+                    <h3 className="admin-tickets-detail-heading">
+                      <CheckCircle2 size={15} className="text-primary" />
+                      Approval
+                    </h3>
+                    <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--compact">
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Approval status</dt>
+                        <dd>{getTicketApprovalStatusLabel(selectedTicket)}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Booking reference</dt>
+                        <dd className="font-mono">{selectedTicket.bookingReference || 'Pending approval'}</dd>
+                      </div>
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Approved at</dt>
+                        <dd>
+                          {selectedTicket.approvedAt
+                            ? new Date(selectedTicket.approvedAt).toLocaleString('en-GB')
+                            : '—'}
+                        </dd>
+                      </div>
+                      {selectedTicket.approvedBy && (
+                        <div className="admin-tickets-detail-grid-item">
+                          <dt>Approved by</dt>
+                          <dd>{selectedTicket.approvedBy}</dd>
+                        </div>
+                      )}
+                    </dl>
+                  </section>
+                </div>
+
+                <section className="admin-tickets-detail-section admin-tickets-detail-cancellation">
+                  <h3 className="admin-tickets-detail-heading">
+                    <Ban size={15} className="text-destructive" />
+                    Cancellation
+                  </h3>
+                  <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--compact">
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Cancellation status</dt>
+                      <dd>
+                        <span className={`subsea-badge ${getTicketStatusBadgeClass(selectedTicket)}`}>
+                          {getTicketStatusLabel(selectedTicket)}
+                        </span>
+                      </dd>
+                    </div>
+                    {isTicketCancelled(selectedTicket) && selectedTicket.cancelledAt && (
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Cancelled at</dt>
+                        <dd>{new Date(selectedTicket.cancelledAt).toLocaleString('en-GB')}</dd>
+                      </div>
+                    )}
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Approval status</dt>
+                      <dd>{getTicketApprovalStatusLabel(selectedTicket)}</dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item">
+                      <dt>Can cancel</dt>
+                      <dd>
+                        {isTicketCancelled(selectedTicket)
+                          ? 'No — this booking is already cancelled'
+                          : 'Yes — marks booking as cancelled'}
+                      </dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item admin-tickets-detail-grid-item--full">
+                      <dt>Account cancellation debt</dt>
+                      <dd>
+                        {adminCancellation
+                          ? formatCancellationDebtSummary(adminCancellation.outstanding, adminCancellation.slots)
+                          : 'Loading account cancellation status…'}
+                      </dd>
+                    </div>
+                    <div className="admin-tickets-detail-grid-item admin-tickets-detail-grid-item--full">
+                      <dt>On cancel</dt>
+                      <dd>
+                        A platform cancellation fee may be added to your recovery debt when charges are configured.
+                        Future bookings recover debt via per-ticket installments.
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+              </div>
+
+              <div className="admin-tickets-detail-footer">
+                {!isTicketCancelled(selectedTicket) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                    onClick={() => requestCancelTicketFlow(selectedTicket)}
+                  >
+                    <Ban size={16} className="mr-2" />
+                    Cancel ticket
+                  </Button>
+                ) : (
+                  <span className="admin-tickets-cancelled-note">This booking has been cancelled.</span>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!canUseTicketPdf(selectedTicket) || previewingTicketId === selectedTicket.id}
+                  onClick={() => {
+                    void handlePreviewTicketPdf(selectedTicket);
+                  }}
+                >
+                  {previewingTicketId === selectedTicket.id ? (
+                    <>
+                      <Loader2 size={16} className="mr-2 animate-spin" aria-hidden />
+                      Opening…
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink size={16} className="mr-2" />
+                      {canUseTicketPdf(selectedTicket) ? 'Preview ticket PDF' : 'PDF after approval'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -2917,7 +3358,7 @@ const AdminTicketsPage = () => {
           if (!open && !cancelTicketSubmitting) setTicketToConfirmCancel(null);
         }}
       >
-        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
+        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} admin-tickets-cancel-dialog max-w-xl max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>Cancel this ticket?</DialogTitle>
             <DialogDescription className="text-left pt-1">
@@ -2929,12 +3370,57 @@ const AdminTicketsPage = () => {
                 <>
                   {' '}
                   on {getProjectTitle(ticketToConfirmCancel)} ({ticketToConfirmCancel.from?.Name ?? '—'} →{' '}
-                  {ticketToConfirmCancel.to?.Name ?? '—'}). If your workspace uses cancellation charges, the
-                  project owner may accrue cancellation debt according to policy.
+                  {ticketToConfirmCancel.to?.Name ?? '—'}).
                 </>
               ) : null}
             </DialogDescription>
           </DialogHeader>
+          {ticketToConfirmCancel && (
+            <div className="admin-tickets-cancel-status-panel">
+              <div className="admin-tickets-cancel-status-head">
+                <Ban size={16} className="text-destructive" />
+                <strong>Cancellation status</strong>
+              </div>
+              <dl className="admin-tickets-cancel-status-list">
+                <div>
+                  <dt>Current status</dt>
+                  <dd>
+                    <span className={`subsea-badge ${getTicketStatusBadgeClass(ticketToConfirmCancel)}`}>
+                      {getTicketStatusLabel(ticketToConfirmCancel)}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Approval status</dt>
+                  <dd>{getTicketApprovalStatusLabel(ticketToConfirmCancel)}</dd>
+                </div>
+                <div>
+                  <dt>After cancel</dt>
+                  <dd>
+                    <span className="subsea-badge subsea-b-red subsea-flight-status-cancelled">Cancelled</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Action</dt>
+                  <dd>Booking will be marked as cancelled and moved out of active bookings</dd>
+                </div>
+                <div>
+                  <dt>Account debt (before)</dt>
+                  <dd>
+                    {adminCancellation
+                      ? formatCancellationDebtSummary(adminCancellation.outstanding, adminCancellation.slots)
+                      : 'Loading…'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Charge policy</dt>
+                  <dd>
+                    If your workspace has cancellation charges enabled, a fee is added to recovery debt on cancel.
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
           <DialogFooter>
             <Button
               type="button"
@@ -2977,49 +3463,49 @@ const AdminTicketsPage = () => {
                   : 'Create flight tickets'}
             </DialogTitle>
           </DialogHeader>
-        <div className="admin-tickets-modal">
-          {submitSuccess ? (
-            <div className="admin-tickets-success" role="status">
-              Tickets created for {selectedCrewIds.length} crew member{selectedCrewIds.length !== 1 ? 's' : ''}. Approval may be required before PDF is available.
-            </div>
-          ) : modalStep === 'project' ? (
-            <>
-              <p className="admin-tickets-modal-intro">
-                Select a project to create flight tickets for enrolled crew.
-              </p>
-              <div className="admin-tickets-form-field">
-                <label htmlFor="create-ticket-project">Project</label>
-                <select
-                  id="create-ticket-project"
-                  value={createProjectId}
-                  onChange={(e) => setCreateProjectId(e.target.value)}
-                  className="admin-tickets-project-select"
-                >
-                  <option value="">Select a project…</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
+          <div className="admin-tickets-modal">
+            {submitSuccess ? (
+              <div className="admin-tickets-success" role="status">
+                Tickets created for {selectedCrewIds.length} crew member{selectedCrewIds.length !== 1 ? 's' : ''}. Approval may be required before PDF is available.
               </div>
-              {projects.length === 0 && (
-                <p className="admin-tickets-crew-empty">No projects available.</p>
-              )}
-              <div className="admin-tickets-modal-actions flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={closeCreateModal}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleProjectSelectAndContinue}
-                  disabled={!createProjectId}
-                >
-                  Continue
-                </Button>
-              </div>
-            </>
-          ) : modalStep === 'crew' ? (
+            ) : modalStep === 'project' ? (
+              <>
+                <p className="admin-tickets-modal-intro">
+                  Select a project to create flight tickets for enrolled crew.
+                </p>
+                <div className="admin-tickets-form-field">
+                  <label htmlFor="create-ticket-project">Project</label>
+                  <select
+                    id="create-ticket-project"
+                    value={createProjectId}
+                    onChange={(e) => setCreateProjectId(e.target.value)}
+                    className="admin-tickets-project-select"
+                  >
+                    <option value="">Select a project…</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {projects.length === 0 && (
+                  <p className="admin-tickets-crew-empty">No projects available.</p>
+                )}
+                <div className="admin-tickets-modal-actions flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={closeCreateModal}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleProjectSelectAndContinue}
+                    disabled={!createProjectId}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </>
+            ) : modalStep === 'crew' ? (
               <>
                 <p className="admin-tickets-modal-intro">
                   Select crew members from <strong>{selectedProject?.title ?? ''}</strong> to create flight tickets.
@@ -3481,6 +3967,114 @@ const AdminTicketsPage = () => {
                   Confirm Create
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Crew availability warning before flight search */}
+      <Dialog
+        open={!!crewAvailabilitySearchPending}
+        onOpenChange={(open) => {
+          if (!open) setCrewAvailabilitySearchPending(null);
+        }}
+      >
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-lg max-h-[90vh] overflow-y-auto`}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-amber-500" />
+              Crew not available for travel dates
+            </DialogTitle>
+            <DialogDescription className="text-left pt-2 text-muted-foreground">
+              The selected crew member(s) have availability conflicts during your travel window. Review the details below before continuing.
+            </DialogDescription>
+          </DialogHeader>
+          {crewAvailabilitySearchPending && (
+            <ul className="admin-tickets-availability-conflicts">
+              {crewAvailabilitySearchPending.conflicts.map((conflict) => (
+                <li key={`${conflict.crewId}-${conflict.periodFrom}`} className="admin-tickets-availability-conflict">
+                  <div className="admin-tickets-availability-conflict-head">
+                    <strong>{conflict.crewName}</strong>
+                    <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(conflict.status)}`}>
+                      {conflict.statusLabel}
+                    </span>
+                  </div>
+                  <p className="admin-tickets-availability-conflict-period">
+                    {conflict.periodFrom} – {conflict.periodTo}
+                  </p>
+                  <p className="admin-tickets-availability-conflict-reason">{conflict.reason}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCrewAvailabilitySearchPending(null)}>
+              Change selection
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!crewAvailabilitySearchPending) return;
+                const { criteria } = crewAvailabilitySearchPending;
+                setCrewAvailabilitySearchPending(null);
+                void runFlightSearch(criteria);
+              }}
+            >
+              Search anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Crew Status Confirmation Dialog */}
+      <Dialog
+        open={!!crewStatusConfirmPending}
+        onOpenChange={(open) => {
+          if (!open) setCrewStatusConfirmPending(null);
+        }}
+      >
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
+          <DialogHeader>
+            <DialogTitle>Crew Status Warning</DialogTitle>
+            <DialogDescription className="text-left pt-2 text-muted-foreground">
+              {crewStatusConfirmPending && (() => {
+                const { crew: crewMember } = crewStatusConfirmPending;
+                const statusLabel = crewStatusTierLabel(crewMember.current_status ?? 'Available');
+                return (
+                  <>
+                    <strong>{crewMember.firstname} {crewMember.lastname}</strong> is currently marked as{' '}
+                    <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(crewMember.current_status)}`} style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '0 2px' }}>
+                      {statusLabel}
+                    </span>.
+                    <br />
+                    <br />
+                    Are you sure you want to proceed with booking a flight ticket for this crew member?
+                  </>
+                );
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCrewStatusConfirmPending(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!crewStatusConfirmPending) return;
+                const { crew: crewMember, context } = crewStatusConfirmPending;
+                if (context === 'search') {
+                  setSearchCrewIds((prev) => [...prev, crewMember.id]);
+                }
+                setCrewStatusConfirmPending(null);
+              }}
+            >
+              <AlertTriangle size={16} className="mr-2" />
+              Proceed Anyway
             </Button>
           </DialogFooter>
         </DialogContent>

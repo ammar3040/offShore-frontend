@@ -205,9 +205,13 @@ const CrewListPage = () => {
   const paginatedCrew = useMemo(() => {
     const start = (page - 1) * pageSize;
     return filteredCrew.slice(start, start + pageSize);
-  }, [filteredCrew, page]);
+  }, [filteredCrew, page, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCrew.length / pageSize));
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages, pageSize, filteredCrew.length]);
 
   const handleAddCrewMember = () => {
     navigate('/crew/add');
@@ -664,18 +668,47 @@ const CrewListPage = () => {
                       </tbody>
                     </table>
                   </div>
-                  {totalPages > 1 && (
+                  {filteredCrew.length > 0 && (
                     <div className="subsea-pagination">
-                      <span>
-                        Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredCrew.length)} of {filteredCrew.length}
-                      </span>
-                      <div>
-                        <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                          <button key={p} type="button" className={`subsea-btn subsea-btn-sm ${p === page ? 'subsea-btn-primary' : 'subsea-btn-default'}`} onClick={() => setPage(p)}>{p}</button>
-                        ))}
-                        <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                      <div className="subsea-pagination-left">
+                        <span className="subsea-pagination-info">
+                          Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredCrew.length)} of {filteredCrew.length}
+                        </span>
+                        <div className="subsea-page-size-selector">
+                          <label htmlFor="availability-page-size" className="subsea-page-size-label">Rows per page</label>
+                          <select
+                            id="availability-page-size"
+                            className="subsea-page-size-select"
+                            value={pageSize}
+                            onChange={(e) => {
+                              setPageSize(Number(e.target.value));
+                              setPage(1);
+                            }}
+                          >
+                            {PAGE_SIZE_OPTIONS.map((size) => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
+                      {totalPages > 1 && (
+                        <div className="subsea-pagination-btns">
+                          <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                            .map((p, idx, arr) => {
+                              const prev = arr[idx - 1];
+                              const showEllipsis = prev != null && p - prev > 1;
+                              return (
+                                <span key={p}>
+                                  {showEllipsis && <span className="subsea-pagination-ellipsis">…</span>}
+                                  <button type="button" className={`subsea-btn subsea-btn-sm ${p === page ? 'subsea-btn-primary' : 'subsea-btn-default'}`} onClick={() => setPage(p)}>{p}</button>
+                                </span>
+                              );
+                            })}
+                          <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

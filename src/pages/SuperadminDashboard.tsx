@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FolderKanban, Ship, Ticket, TrendingUp, Plus, BadgeDollarSign, CircleX, Percent } from 'lucide-react';
+import { Users, FolderKanban, Ship, Ticket, TrendingUp, Plus, BadgeDollarSign, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getSuperadminAnalytics,
@@ -79,9 +79,6 @@ const SuperadminDashboard = () => {
   const [showCashbackForm, setShowCashbackForm] = useState(false);
   const [cashbackInput, setCashbackInput] = useState('');
   const [cashbackSaving, setCashbackSaving] = useState(false);
-  const [showCancellationForm, setShowCancellationForm] = useState(false);
-  const [cancellationInput, setCancellationInput] = useState('');
-  const [cancellationSaving, setCancellationSaving] = useState(false);
   const [analytics, setAnalytics] = useState<import('../api/superadmin').AdminAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -194,9 +191,6 @@ const SuperadminDashboard = () => {
   const displayCashback = rates && settings.cashbackGBP != null
     ? convert(settings.cashbackGBP, 'GBP', settings.baseCurrency, rates)
     : settings.cashbackGBP;
-  const displayCancellationCharges = rates && settings.cancellationChargesGBP != null
-    ? convert(settings.cancellationChargesGBP, 'GBP', settings.baseCurrency, rates)
-    : settings.cancellationChargesGBP;
 
   const handleSaveMarkupPercentage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,39 +269,6 @@ const SuperadminDashboard = () => {
     }
   };
 
-  const handleSaveCancellationCharges = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const value = parseFloat(cancellationInput.trim());
-    if (isNaN(value) || value < 0) {
-      toast.error('Invalid cancellation charge', {
-        description: 'Please enter a valid positive number.',
-      });
-      return;
-    }
-    if (!rates) return;
-    const gbpValue = convert(value, settings.baseCurrency, 'GBP', rates);
-    setCancellationSaving(true);
-    try {
-      const res = await updateSuperadminSettings({ cancellationCharges: gbpValue });
-      setSettings((s) => ({
-        ...s,
-        cancellationChargesGBP: res?.superAdmin?.cancellationCharges ?? gbpValue,
-      }));
-      setShowCancellationForm(false);
-      setCancellationInput('');
-      toast.success('Cancellation charges updated', {
-        description: 'Per-cancellation fee saved successfully.',
-      });
-    } catch (err) {
-      toast.error('Update failed', {
-        description:
-          err instanceof Error ? err.message : 'Failed to update cancellation charges.',
-      });
-    } finally {
-      setCancellationSaving(false);
-    }
-  };
-
   const openMarkupPercentageForm = () => {
     if (settings.markupPercentage != null) {
       setMarkupPercentageInput(String(settings.markupPercentage));
@@ -333,17 +294,6 @@ const SuperadminDashboard = () => {
       setCashbackInput('');
     }
     setShowCashbackForm(true);
-  };
-
-  const openCancellationForm = () => {
-    if (rates && settings.cancellationChargesGBP != null) {
-      setCancellationInput(
-        String(convert(settings.cancellationChargesGBP, 'GBP', settings.baseCurrency, rates))
-      );
-    } else {
-      setCancellationInput('');
-    }
-    setShowCancellationForm(true);
   };
 
   return (
@@ -579,77 +529,7 @@ const SuperadminDashboard = () => {
             )}
           </div>
         </Card>
-        <Card className="superadmin-dash-card superadmin-dash-card-cancellation">
-          <div className="superadmin-dash-card-icon superadmin-dash-icon--rose">
-            <CircleX size={24} />
-          </div>
-          <div className="superadmin-dash-card-content">
-            {showCancellationForm ? (
-              <form className="superadmin-markup-form" onSubmit={handleSaveCancellationCharges}>
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={cancellationInput}
-                  onChange={(e) => setCancellationInput(e.target.value)}
-                  placeholder={`e.g. 25.00 in ${settings.baseCurrency}`}
-                  className="superadmin-markup-input superadmin-cancellation-input"
-                  autoFocus
-                  disabled={cancellationSaving}
-                />
-                <span className="superadmin-input-currency-hint superadmin-input-currency-hint--cancellation">
-                  {symbol} {settings.baseCurrency}
-                </span>
-                <div className="superadmin-markup-actions">
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="superadmin-cancellation-save"
-                    disabled={cancellationSaving}
-                  >
-                    {cancellationSaving ? 'Saving…' : 'Save'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowCancellationForm(false);
-                      setCancellationInput('');
-                    }}
-                    disabled={cancellationSaving}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <span className="superadmin-dash-card-value">
-                  {displayCancellationCharges != null
-                    ? `${symbol}${displayCancellationCharges.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : '—'}
-                </span>
-                <span className="superadmin-dash-card-label">CANCELLATION CHARGE</span>
-                <span className="superadmin-dash-card-sublabel" title="Per cancelled ticket accrued to admin">
-                  Per cancelled booking
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="superadmin-markup-add-btn superadmin-cancellation-add-btn"
-                  onClick={openCancellationForm}
-                  title="Set cancellation charge"
-                  aria-label="Set cancellation charge"
-                >
-                  <Plus size={14} />
-                  Set Charge
-                </Button>
-              </>
-            )}
-          </div>
-        </Card>
+
       </div>
 
       <div className="superadmin-dashboard-panels">
@@ -680,18 +560,18 @@ const SuperadminDashboard = () => {
                         title="Cancellation outstanding (GBP)"
                       >
                         {typeof a.cancellationOutstanding === 'number' &&
-                        !Number.isNaN(a.cancellationOutstanding)
+                          !Number.isNaN(a.cancellationOutstanding)
                           ? `${formatGbpInDisplayCurrency(
-                              a.cancellationOutstanding,
-                              cancellationDisplayCurrency,
-                              rates
-                            )} out.`
+                            a.cancellationOutstanding,
+                            cancellationDisplayCurrency,
+                            rates
+                          )} out.`
                           : '—'}
                       </span>
                       <span className="superadmin-admin-stat" title="Cancellation slots remaining">
                         {typeof a.cancellationSlotsRemaining === 'number' &&
-                        !Number.isNaN(a.cancellationSlotsRemaining) &&
-                        Number.isFinite(a.cancellationSlotsRemaining)
+                          !Number.isNaN(a.cancellationSlotsRemaining) &&
+                          Number.isFinite(a.cancellationSlotsRemaining)
                           ? `${formatCancellationSlotsShort(a.cancellationSlotsRemaining)} slots`
                           : '—'}
                       </span>

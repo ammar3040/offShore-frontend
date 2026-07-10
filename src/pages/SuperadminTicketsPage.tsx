@@ -7,6 +7,8 @@ import {
   canUseTicketPdf,
   getTicketStatus,
   getTicketStatusLabel,
+  isTicketCancelled,
+  normalizeCrewTicket,
   openCrewTicketPdf,
   ticketHasStoredPdf,
   type CrewTicketApi,
@@ -117,10 +119,12 @@ const SuperadminTicketsPage = () => {
     return `${from} → ${to}`;
   };
 
-  const getTicketStatusClass = (ticket: CrewTicketApi) =>
-    getTicketStatus(ticket) === 'APPROVED'
-      ? 'superadmin-ticket-status-approved'
-      : 'superadmin-ticket-status-pending';
+  const getTicketStatusClass = (ticket: CrewTicketApi) => {
+    const status = getTicketStatus(ticket);
+    if (status === 'CANCELLED') return 'superadmin-ticket-status-cancelled';
+    if (status === 'APPROVED') return 'superadmin-ticket-status-approved';
+    return 'superadmin-ticket-status-pending';
+  };
 
   const replaceTicket = (updated: CrewTicketApi) => {
     setTickets((prev) => prev.map((ticket) => (ticket.id === updated.id ? updated : ticket)));
@@ -255,9 +259,13 @@ const SuperadminTicketsPage = () => {
 
   const handleDeleteTicketClick = (t: CrewTicketApi, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isTicketCancelled(t)) {
+      toast.info('Already cancelled', { description: 'This ticket is already marked as cancelled.' });
+      return;
+    }
     const crewId = getCrewId(t);
     if (!crewId) {
-      toast.error('Delete failed', { description: 'Could not determine crew ID for this ticket.' });
+      toast.error('Cancel failed', { description: 'Could not determine crew ID for this ticket.' });
       return;
     }
     setTicketToDelete(t);
@@ -265,22 +273,30 @@ const SuperadminTicketsPage = () => {
 
   const handleConfirmDelete = async () => {
     const t = ticketToDelete;
-    if (!t) return;
+    if (!t || isTicketCancelled(t)) return;
     const crewId = getCrewId(t);
     if (!crewId) {
-      toast.error('Delete failed', { description: 'Could not determine crew ID for this ticket.' });
+      toast.error('Cancel failed', { description: 'Could not determine crew ID for this ticket.' });
       setTicketToDelete(null);
       return;
     }
     setTicketToDelete(null);
     setDeletingTicketId(t.id);
     try {
-      await deleteSuperadminCrewTicket(crewId, t.id);
-      setTickets((prev) => prev.filter((x) => x.id !== t.id));
-      setSelectedTicket((current) => (current?.id === t.id ? null : current));
-      toast.success('Ticket deleted', { description: 'The ticket was deleted successfully.' });
+      const result = await deleteSuperadminCrewTicket(crewId, t.id);
+      const cancelledTicket =
+        result.crewTicket ??
+        normalizeCrewTicket({
+          ...t,
+          status: 'CANCELLED',
+          cancelledAt: new Date().toISOString(),
+        });
+      replaceTicket(cancelledTicket);
+      toast.success('Ticket cancelled', {
+        description: result.message ?? 'The ticket was marked as cancelled.',
+      });
     } catch (err) {
-      toast.error('Delete failed', { description: err instanceof Error ? err.message : 'Failed to delete ticket.' });
+      toast.error('Cancel failed', { description: err instanceof Error ? err.message : 'Failed to cancel ticket.' });
     } finally {
       setDeletingTicketId(null);
     }
@@ -466,12 +482,13 @@ const SuperadminTicketsPage = () => {
                       </>
                     )}
                   </Button>
+                  {!isTicketCancelled(t) && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={(e) => handleDeleteTicketClick(t, e)}
                     disabled={deletingTicketId === t.id}
-                    title="Delete ticket"
+                    title="Cancel ticket"
                     className="text-destructive hover:text-destructive"
                   >
                     {deletingTicketId === t.id ? (
@@ -479,10 +496,11 @@ const SuperadminTicketsPage = () => {
                     ) : (
                       <>
                         <Trash2 size={16} />
-                        Delete
+                        Cancel
                       </>
                     )}
                   </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -686,12 +704,13 @@ const SuperadminTicketsPage = () => {
                     </>
                   )}
                 </Button>
+                {!isTicketCancelled(selectedTicket) && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={(e) => { e.stopPropagation(); handleDeleteTicketClick(selectedTicket, e); }}
                   disabled={deletingTicketId === selectedTicket.id}
-                  title="Delete ticket"
+                  title="Cancel ticket"
                   className="text-destructive hover:text-destructive"
                 >
                   {deletingTicketId === selectedTicket.id ? (
@@ -699,10 +718,11 @@ const SuperadminTicketsPage = () => {
                   ) : (
                     <>
                       <Trash2 size={16} />
-                      Delete
+                      Cancel
                     </>
                   )}
                 </Button>
+                )}
               </div>
             </section>
           </div>
@@ -713,14 +733,14 @@ const SuperadminTicketsPage = () => {
       <Dialog open={!!ticketToDelete} onOpenChange={(open) => !open && setTicketToDelete(null)}>
         <DialogContent className="max-w-sm" showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Delete ticket</DialogTitle>
+            <DialogTitle>Cancel ticket</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this ticket? This action cannot be undone.
+              This marks the ticket as <strong>Cancelled</strong>. The booking will remain visible with cancelled status.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter showCloseButton={false}>
             <Button variant="outline" onClick={() => setTicketToDelete(null)}>
-              Cancel
+              Keep ticket
             </Button>
             <Button
               variant="destructive"
@@ -730,7 +750,7 @@ const SuperadminTicketsPage = () => {
               {ticketToDelete && deletingTicketId === ticketToDelete.id ? (
                 <span className="superadmin-ticket-send-spinner" />
               ) : (
-                'Delete'
+                'Cancel ticket'
               )}
             </Button>
           </DialogFooter>

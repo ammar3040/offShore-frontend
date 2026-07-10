@@ -5,6 +5,7 @@ import type {
 } from '../../api/ticket';
 import { escapeHtml } from '../invoice/format';
 import type { CrewTicketTemplateData } from './types';
+import { resolveFlightDuration } from './flightDuration';
 
 const DEFAULT_MEALS = 'MEAL';
 const DEFAULT_BAGGAGE = 'AS PER AIRLINE';
@@ -268,7 +269,7 @@ function buildFlightBlock(
   const arrTime = formatTime(segment.arrivalTime ?? leg.arrivalTime);
   const depDate = formatTicketDateUpper(segment.departureTime ?? leg.departureTime);
   const arrDate = formatTicketDateUpper(segment.arrivalTime ?? leg.arrivalTime);
-  const duration = (segment.duration ?? leg.duration)?.trim();
+  const duration = resolveFlightDuration(segment, leg);
   const baggage = getSegmentBaggage(segment, defaultBaggage);
   const stopLabel = row.fromItinerary ? 'NON-STOP' : getStopLabel(leg);
 
@@ -338,7 +339,7 @@ function buildFlightBlock(
 
   const aircraft = segment.aircraft?.trim();
   const detailContent = [
-    duration ? `DURATION: ${escapeHtml(duration)}` : null,
+    duration && duration !== '—' ? `DURATION: ${escapeHtml(duration.toUpperCase())}` : null,
     aircraft ? `AIRCRAFT: ${escapeHtml(aircraft)}` : null,
     `BAGGAGE: ${escapeHtml(baggage)}`,
     'STATUS: <span class="confirmed">CONFIRMED</span>',
