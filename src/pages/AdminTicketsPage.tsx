@@ -209,12 +209,6 @@ function formatTicketClass(cls?: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatCancellationDebtSummary(outstanding: number, slots: number): string {
-  if (outstanding <= 0) return 'No outstanding cancellation debt';
-  const installment = slots > 0 ? Math.round((outstanding / slots) * 100) / 100 : outstanding;
-  return `£${outstanding.toLocaleString('en-GB')} outstanding · ${slots} recovery slot${slots !== 1 ? 's' : ''} (~£${installment.toLocaleString('en-GB')} per booking)`;
-}
-
 function sumPricedTickets(tickets: CrewTicketApi[]): { total: number; count: number; average: number } {
   const priced = tickets.filter((ticket) => typeof ticket.price === 'number');
   const total = priced.reduce((sum, ticket) => sum + (ticket.price ?? 0), 0);
@@ -910,31 +904,17 @@ const AdminTicketsPage = () => {
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
   const [searchCrewFilter, setSearchCrewFilter] = useState('');
   const [, setAdminMarkup] = useState<number | null>(null);
-  const [adminCancellation, setAdminCancellation] = useState<{
-    outstanding: number;
-    slots: number;
-  } | null>(null);
   const selectedFlightSortValue = `${flightSortBy}:${flightSortOrder}` as FlightSortValue;
-
-  const refreshAdminCancellation = useCallback(() => {
-    return getAdminProfile()
-      .then((profile) => {
-        if (profile.markup != null) setAdminMarkup(profile.markup);
-        setAdminCancellation({
-          outstanding: profile.cancellationOutstanding ?? 0,
-          slots: profile.cancellationSlotsRemaining ?? 0,
-        });
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    refreshAdminCancellation().then(() => {
-      if (cancelled) return;
-    });
+    getAdminProfile()
+      .then((profile) => {
+        if (!cancelled && profile.markup != null) setAdminMarkup(profile.markup);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
-  }, [refreshAdminCancellation]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1116,8 +1096,7 @@ const AdminTicketsPage = () => {
     if (isTicketCancelled(ticket)) return;
     setSelectedTicket(null);
     setTicketToConfirmCancel(ticket);
-    void refreshAdminCancellation();
-  }, [refreshAdminCancellation]);
+  }, []);
 
   const handleConfirmCancelTicket = useCallback(async () => {
     if (!ticketToConfirmCancel || isTicketCancelled(ticketToConfirmCancel)) return;
@@ -1136,16 +1115,10 @@ const AdminTicketsPage = () => {
       setTickets((prev) => prev.map((t) => (t.id === id ? cancelledTicket : t)));
       setSelectedTicket(cancelledTicket);
       setTicketToConfirmCancel(null);
-      void refreshAdminCancellation();
       void fetchTickets();
 
-      const cancellation = result.cancellation;
-      const feeGbp = cancellation?.feeGbp ?? 0;
-      const outstanding = cancellation?.cancellationOutstanding ?? adminCancellation?.outstanding ?? 0;
-      const slots = cancellation?.cancellationSlotsRemaining ?? adminCancellation?.slots ?? 0;
-
       toast.success('Ticket cancelled', {
-        description: `Status updated to Cancelled${feeGbp > 0 ? ` · Fee £${feeGbp.toLocaleString('en-GB')}` : ''}. ${formatCancellationDebtSummary(outstanding, slots)}`,
+        description: 'The booking was marked as cancelled.',
       });
       window.dispatchEvent(new CustomEvent('admin-balance-refresh'));
     } catch (err) {
@@ -1156,7 +1129,7 @@ const AdminTicketsPage = () => {
     } finally {
       setCancelTicketSubmitting(false);
     }
-  }, [ticketToConfirmCancel, refreshAdminCancellation, adminCancellation, fetchTickets]);
+  }, [ticketToConfirmCancel, fetchTickets]);
 
   const handlePreviewTicketPdf = useCallback(async (ticket: CrewTicketApi) => {
     if (!canUseTicketPdf(ticket)) {
@@ -3259,56 +3232,6 @@ const AdminTicketsPage = () => {
                     </dl>
                   </section>
                 </div>
-
-                <section className="admin-tickets-detail-section admin-tickets-detail-cancellation">
-                  <h3 className="admin-tickets-detail-heading">
-                    <Ban size={15} className="text-destructive" />
-                    Cancellation
-                  </h3>
-                  <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--compact">
-                    <div className="admin-tickets-detail-grid-item">
-                      <dt>Cancellation status</dt>
-                      <dd>
-                        <span className={`subsea-badge ${getTicketStatusBadgeClass(selectedTicket)}`}>
-                          {getTicketStatusLabel(selectedTicket)}
-                        </span>
-                      </dd>
-                    </div>
-                    {isTicketCancelled(selectedTicket) && selectedTicket.cancelledAt && (
-                      <div className="admin-tickets-detail-grid-item">
-                        <dt>Cancelled at</dt>
-                        <dd>{new Date(selectedTicket.cancelledAt).toLocaleString('en-GB')}</dd>
-                      </div>
-                    )}
-                    <div className="admin-tickets-detail-grid-item">
-                      <dt>Approval status</dt>
-                      <dd>{getTicketApprovalStatusLabel(selectedTicket)}</dd>
-                    </div>
-                    <div className="admin-tickets-detail-grid-item">
-                      <dt>Can cancel</dt>
-                      <dd>
-                        {isTicketCancelled(selectedTicket)
-                          ? 'No — this booking is already cancelled'
-                          : 'Yes — marks booking as cancelled'}
-                      </dd>
-                    </div>
-                    <div className="admin-tickets-detail-grid-item admin-tickets-detail-grid-item--full">
-                      <dt>Account cancellation debt</dt>
-                      <dd>
-                        {adminCancellation
-                          ? formatCancellationDebtSummary(adminCancellation.outstanding, adminCancellation.slots)
-                          : 'Loading account cancellation status…'}
-                      </dd>
-                    </div>
-                    <div className="admin-tickets-detail-grid-item admin-tickets-detail-grid-item--full">
-                      <dt>On cancel</dt>
-                      <dd>
-                        A platform cancellation fee may be added to your recovery debt when charges are configured.
-                        Future bookings recover debt via per-ticket installments.
-                      </dd>
-                    </div>
-                  </dl>
-                </section>
               </div>
 
               <div className="admin-tickets-detail-footer">
@@ -3358,11 +3281,11 @@ const AdminTicketsPage = () => {
           if (!open && !cancelTicketSubmitting) setTicketToConfirmCancel(null);
         }}
       >
-        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} admin-tickets-cancel-dialog max-w-xl max-h-[90vh] overflow-y-auto`}>
+        <DialogContent showCloseButton={!cancelTicketSubmitting} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>Cancel this ticket?</DialogTitle>
             <DialogDescription className="text-left pt-1">
-              This removes the booking for{' '}
+              This marks the booking as cancelled for{' '}
               <span className="font-medium text-foreground">
                 {ticketToConfirmCancel ? getCrewName(ticketToConfirmCancel) : ''}
               </span>
@@ -3375,52 +3298,6 @@ const AdminTicketsPage = () => {
               ) : null}
             </DialogDescription>
           </DialogHeader>
-          {ticketToConfirmCancel && (
-            <div className="admin-tickets-cancel-status-panel">
-              <div className="admin-tickets-cancel-status-head">
-                <Ban size={16} className="text-destructive" />
-                <strong>Cancellation status</strong>
-              </div>
-              <dl className="admin-tickets-cancel-status-list">
-                <div>
-                  <dt>Current status</dt>
-                  <dd>
-                    <span className={`subsea-badge ${getTicketStatusBadgeClass(ticketToConfirmCancel)}`}>
-                      {getTicketStatusLabel(ticketToConfirmCancel)}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Approval status</dt>
-                  <dd>{getTicketApprovalStatusLabel(ticketToConfirmCancel)}</dd>
-                </div>
-                <div>
-                  <dt>After cancel</dt>
-                  <dd>
-                    <span className="subsea-badge subsea-b-red subsea-flight-status-cancelled">Cancelled</span>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Action</dt>
-                  <dd>Booking will be marked as cancelled and moved out of active bookings</dd>
-                </div>
-                <div>
-                  <dt>Account debt (before)</dt>
-                  <dd>
-                    {adminCancellation
-                      ? formatCancellationDebtSummary(adminCancellation.outstanding, adminCancellation.slots)
-                      : 'Loading…'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Charge policy</dt>
-                  <dd>
-                    If your workspace has cancellation charges enabled, a fee is added to recovery debt on cancel.
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          )}
           <DialogFooter>
             <Button
               type="button"
