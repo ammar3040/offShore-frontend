@@ -132,6 +132,8 @@ const CrewListPage = () => {
       filters.availabilityEnd = end || start;
       filters.type = searchType;
     }
+    // Always pass as-of date so Rig / status reflect selected search day (or today on roster)
+    filters.asOf = start || getTodayString();
     if (filterStatus) filters.status = filterStatus;
     if (filterRating) filters.rating = filterRating;
     if (filterBopOem) filters.bopOem = filterBopOem;
@@ -168,7 +170,7 @@ const CrewListPage = () => {
 
   useEffect(() => {
     if (availabilitySearchType === 'all') {
-      void loadCrew(true);
+      void loadCrew(true, startDateFilter);
     } else {
       void loadCrew(true, startDateFilter, endDateFilter, availabilitySearchType);
     }
@@ -176,7 +178,7 @@ const CrewListPage = () => {
 
   const refreshCrewData = useCallback(() => {
     if (availabilitySearchType === 'all') {
-      return loadCrew(false);
+      return loadCrew(false, startDateFilter);
     } else {
       return loadCrew(false, startDateFilter, endDateFilter, availabilitySearchType);
     }
@@ -620,6 +622,8 @@ const CrewListPage = () => {
                           <th>Name</th>
                           <th>Rank</th>
                           <th>Nationality</th>
+                          <th>Rig</th>
+                          <th>Personnel Status</th>
                           <th>Days</th>
                           <th>Status</th>
                           <th>Actions</th>
@@ -631,6 +635,12 @@ const CrewListPage = () => {
                           const availability = availabilityFromCrewSignal(memberSignal);
                           const status = crewStatus(availability);
                           const availDays = (member as CrewMemberApi & { availableDays?: number }).availableDays;
+                          const assignment = member.currentAssignment;
+                          const personnelStatus = member.current_status ?? 'Available';
+                          const rigLabel =
+                            assignment?.travelDirection === 'RIG_TO_HOME'
+                              ? '—'
+                              : assignment?.rig_vessel || '—';
                           return (
                             <tr key={member.id}>
                               <td style={{ color: 'var(--subsea-text-muted)', fontSize: '12px' }}>{(page - 1) * pageSize + idx + 1}</td>
@@ -645,6 +655,12 @@ const CrewListPage = () => {
                               </td>
                               <td>{field(member.rank)}</td>
                               <td>{field(member.nationality)}</td>
+                              <td className="s">{rigLabel}</td>
+                              <td>
+                                <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(personnelStatus)}`}>
+                                  {crewStatusTierLabel(personnelStatus)}
+                                </span>
+                              </td>
                               <td>
                                 {availDays != null ? (
                                   <span className={`subsea-badge ${availabilitySearchType === 'unavailable' ? 'subsea-b-red' : 'subsea-b-green'}`} style={{ fontSize: '11px' }}>
@@ -980,7 +996,11 @@ const CrewListPage = () => {
                             </td>
                             <td>{member.rank || member.organization || '—'}</td>
                             <td className="mono">{member.nationality || member.country || '—'}</td>
-                            <td>{assignment?.rig_vessel || project?.title || '—'}</td>
+                            <td>
+                              {assignment?.travelDirection === 'RIG_TO_HOME'
+                                ? '—'
+                                : assignment?.rig_vessel || project?.title || '—'}
+                            </td>
                             <td className="dev-new-field" data-dev-tag="NEW">
                               <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(personnelStatus)}`}>
                                 {crewStatusTierLabel(personnelStatus)}

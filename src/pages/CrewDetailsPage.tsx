@@ -31,6 +31,12 @@ import {
   type CrewMemberApi,
   type CrewAvailabilityAdminItem,
 } from '../api/crew';
+import {
+  getCrewTicketsByCrewId,
+  getTicketStatus,
+  getTicketStatusLabel,
+  type CrewTicketApi,
+} from '../api/ticket';
 import { EMPLOYER_OPTIONS } from '../constants/employers';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
@@ -56,6 +62,17 @@ function addDays(date: Date, days: number): Date {
 
 function dateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Prefer YYYY-MM-DD from ISO / value so travel days match calendar cells across timezones. */
+function calendarDayKey(value: string | Date): string {
+  if (typeof value === 'string') {
+    const m = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+  }
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
 function buildCalendarDays(month: Date): Date[] {
@@ -150,6 +167,7 @@ const CrewDetailsPage = () => {
   const navigate = useNavigate();
   const [crew, setCrew] = useState<CrewMemberApi | null>(null);
   const [projects, setProjects] = useState<CrewAssignedProject[]>([]);
+  const [crewTickets, setCrewTickets] = useState<CrewTicketApi[]>([]);
   const [loading, setLoading] = useState(() => Boolean(crewId));
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
@@ -305,13 +323,14 @@ const CrewDetailsPage = () => {
     const dStr = dateKey(day);
     for (const item of availabilityItems) {
       if (!item.from || !item.to) continue;
-      const start = dateKey(new Date(item.from));
-      const end = dateKey(new Date(item.to));
-      if (dStr >= start && dStr <= end) {
+      const start = calendarDayKey(item.from);
+      const end = calendarDayKey(item.to);
+      if (start && end && dStr >= start && dStr <= end) {
         return item.status || (item.isAvailable !== false ? 'Available' : 'Holiday / Not Available');
       }
     }
-    return 'none';
+    // No explicit record → treat as Available by default
+    return 'Available';
   };
 
   const isDayInSelectedRange = (day: Date): boolean => {
@@ -358,9 +377,13 @@ const CrewDetailsPage = () => {
     if (showSpinner) setLoading(true);
     setError(null);
     try {
-      const res = await getCrewById(crewId);
+      const [res, ticketsRes] = await Promise.all([
+        getCrewById(crewId),
+        getCrewTicketsByCrewId(crewId).catch(() => ({ crewTickets: [] as CrewTicketApi[] })),
+      ]);
       setCrew(res.crew);
       setProjects(res.projects ?? []);
+      setCrewTickets(ticketsRes.crewTickets ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load crew details');
     } finally {
@@ -385,6 +408,50 @@ const CrewDetailsPage = () => {
   const certExpiry = crew?.certificate_expiry_date || crew?.crew_certificate?.expiry_date;
   const passport = crew?.passport;
   const identity = crew?.identity;
+
+  const activeBookingBlocks = useMemo(
+    () =>
+      crewTickets.filter((t) => {
+        const st = getTicketStatus(t);
+        return st === 'APPROVED' || st === 'UNAPPROVED';
+      }),
+    [crewTickets]
+  );
+
+  const bookingWindowLabel = (ticket: CrewTicketApi) => {
+    const snap = ticket.flightSnapshot?.legs?.[0];
+    const start = ticket.travelStart || snap?.departureTime;
+    const legs = ticket.flightSnapshot?.legs ?? [];
+    const last = legs[legs.length - 1];
+    const end = ticket.travelEnd || last?.arrivalTime || snap?.arrivalTime;
+    const fmt = (v?: string) => {
+      if (!v) return '—';
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    return `${fmt(start)} – ${fmt(end)}`;
+  };
+
+  const travelDirectionLabel = (ticket: CrewTicketApi) => {
+    if (ticket.travelDirection === 'RIG_TO_HOME') return 'Rig → Home port';
+    if (ticket.travelDirection === 'HOME_TO_RIG') return 'Home port → Rig';
+    return '—';
+  };
+
+  const ticketRigLabel = (ticket: CrewTicketApi) => {
+    if (ticket.travelDirection === 'RIG_TO_HOME') return 'Home port';
+    const rig = ticket.rig_id;
+    if (rig && typeof rig === 'object' && 'name' in rig && rig.name) return String(rig.name);
+    return ticket.project_id?.title ?? '—';
+  };
+
+  const calendarSignalForTicket = (ticket: CrewTicketApi) => {
+    const st = getTicketStatus(ticket);
+    if (st === 'CANCELLED') return 'Available';
+    if (st === 'APPROVED') return 'On assignment for us';
+    return 'Confirmed';
+  };
 
   const tabs: Array<{ id: ProfileTab; label: string; icon: typeof User; badge?: string }> = [
     { id: 'overview', label: 'Overview', icon: User },
@@ -596,7 +663,21 @@ const CrewDetailsPage = () => {
                         </div>
                         <div className="subsea-detail-row">
                           <div className="subsea-detail-label">Rig / Vessel</div>
-                          <div className="subsea-detail-val">{field(crew.currentAssignment?.rig_vessel)}</div>
+                          <div className="subsea-detail-val">
+                            {crew.currentAssignment?.travelDirection === 'RIG_TO_HOME'
+                              ? 'Home port'
+                              : field(crew.currentAssignment?.rig_vessel)}
+                          </div>
+                        </div>
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Travel direction</div>
+                          <div className="subsea-detail-val">
+                            {crew.currentAssignment?.travelDirection === 'RIG_TO_HOME'
+                              ? 'Rig → Home port'
+                              : crew.currentAssignment?.travelDirection === 'HOME_TO_RIG'
+                                ? 'Home port → Rig'
+                                : '—'}
+                          </div>
                         </div>
                         <div className="subsea-detail-row">
                           <div className="subsea-detail-label">Available From</div>
@@ -641,19 +722,85 @@ const CrewDetailsPage = () => {
               )}
 
               {activeTab === 'records' && (
-                <div className="subsea-pane">
-                  <div className="subsea-pane-head"><div className="subsea-pane-title">Employment History</div><div className="subsea-pane-sub">{projects.length || 1} assigned projects</div></div>
-                  <div className="subsea-table-wrap">
-                    <table className="subsea-table">
-                      <thead><tr><th>Rig</th><th>Rank</th><th>Company</th><th>From</th><th>To</th><th>Status</th></tr></thead>
-                      <tbody>
-                        {(projects.length ? projects : [{ id: 'sample', title: assignment.rig, duration: { startDate: assignment.signOn, endDate: assignment.signOff }, status: assignment.status }]).map((project) => (
-                          <tr key={project.id}><td className="s">{project.title}</td><td>{rank}</td><td>Subseacore Ltd.</td><td>{formatDate(project.duration?.startDate)}</td><td>{formatDate(project.duration?.endDate)}</td><td><span className="subsea-badge subsea-b-gray">{project.status || 'Active'}</span></td></tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <>
+                  <div className="subsea-pane">
+                    <div className="subsea-pane-head">
+                      <div className="subsea-pane-title">Employment History</div>
+                      <div className="subsea-pane-sub">{projects.length} assigned projects</div>
+                    </div>
+                    <div className="subsea-table-wrap">
+                      <table className="subsea-table">
+                        <thead><tr><th>Rig / Project</th><th>Rank</th><th>Company</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+                        <tbody>
+                          {projects.length === 0 ? (
+                            <tr><td colSpan={6} className="subsea-empty-cell">No project employment records yet.</td></tr>
+                          ) : (
+                            projects.map((project) => (
+                              <tr key={project.id}>
+                                <td className="s">{project.title}</td>
+                                <td>{rank}</td>
+                                <td>Subseacore Ltd.</td>
+                                <td>{formatDate(project.duration?.startDate)}</td>
+                                <td>{formatDate(project.duration?.endDate)}</td>
+                                <td><span className="subsea-badge subsea-b-gray">{project.status || 'Active'}</span></td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                  <div className="subsea-pane" style={{ marginTop: 16 }}>
+                    <div className="subsea-pane-head">
+                      <div className="subsea-pane-title">Flight / travel records</div>
+                      <div className="subsea-pane-sub">{crewTickets.length} ticket{crewTickets.length === 1 ? '' : 's'} · mirrors availability calendar</div>
+                    </div>
+                    <div className="subsea-table-wrap">
+                      <table className="subsea-table">
+                        <thead>
+                          <tr>
+                            <th>Travel dates</th>
+                            <th>Direction</th>
+                            <th>Rig</th>
+                            <th>Route</th>
+                            <th>Project</th>
+                            <th>Ticket</th>
+                            <th>Calendar status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {crewTickets.length === 0 ? (
+                            <tr><td colSpan={7} className="subsea-empty-cell">No flight bookings recorded for this crew.</td></tr>
+                          ) : (
+                            crewTickets.map((ticket) => {
+                              const signal = calendarSignalForTicket(ticket);
+                              const st = getTicketStatus(ticket);
+                              return (
+                                <tr key={`rec-${ticket.id}`}>
+                                  <td>{bookingWindowLabel(ticket)}</td>
+                                  <td>{travelDirectionLabel(ticket)}</td>
+                                  <td className="s">{ticketRigLabel(ticket)}</td>
+                                  <td>{ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}</td>
+                                  <td>{ticket.project_id?.title ?? '—'}</td>
+                                  <td>
+                                    <span className={`subsea-badge ${st === 'APPROVED' ? 'subsea-b-green' : st === 'CANCELLED' ? 'subsea-b-red' : 'subsea-b-orange'}`}>
+                                      {getTicketStatusLabel(ticket)}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(signal)}`}>
+                                      {crewStatusTierLabel(signal)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               )}
 
               {activeTab === 'documents' && (
@@ -675,20 +822,71 @@ const CrewDetailsPage = () => {
               {activeTab === 'jobs' && (
                 <>
                   <div className="subsea-kpi-strip subsea-kpi-strip-4">
-                    <div className="subsea-kpi"><div className="subsea-kpi-label">Total Rotations</div><div className="subsea-kpi-value">{Math.max(projects.length, 1)}</div><div className="subsea-kpi-meta flat">Assigned projects</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill blue" style={{ width: '70%' }} /></div></div>
-                    <div className="subsea-kpi"><div className="subsea-kpi-label">Sea Days</div><div className="subsea-kpi-value">3,840</div><div className="subsea-kpi-meta flat">~10.5 years</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill teal" style={{ width: '85%' }} /></div></div>
-                    <div className="subsea-kpi"><div className="subsea-kpi-label">Rigs Served</div><div className="subsea-kpi-value">{Math.max(projects.length, 1)}</div><div className="subsea-kpi-meta flat">Current roster</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill green" style={{ width: '45%' }} /></div></div>
-                    <div className="subsea-kpi"><div className="subsea-kpi-label">Current Tour</div><div className="subsea-kpi-value">227d</div><div className="subsea-kpi-meta flat">of 304d contract</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill amber" style={{ width: '75%' }} /></div></div>
+                    <div className="subsea-kpi"><div className="subsea-kpi-label">Total Rotations</div><div className="subsea-kpi-value">{Math.max(projects.length, 0)}</div><div className="subsea-kpi-meta flat">Assigned projects</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill blue" style={{ width: '70%' }} /></div></div>
+                    <div className="subsea-kpi"><div className="subsea-kpi-label">Active Bookings</div><div className="subsea-kpi-value">{activeBookingBlocks.length}</div><div className="subsea-kpi-meta flat">Pending + approved tickets</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill teal" style={{ width: `${Math.min(100, activeBookingBlocks.length * 20)}%` }} /></div></div>
+                    <div className="subsea-kpi"><div className="subsea-kpi-label">Rigs Served</div><div className="subsea-kpi-value">{Math.max(projects.length, 0)}</div><div className="subsea-kpi-meta flat">Current roster</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill green" style={{ width: '45%' }} /></div></div>
+                    <div className="subsea-kpi"><div className="subsea-kpi-label">Cancelled</div><div className="subsea-kpi-value">{crewTickets.filter((t) => getTicketStatus(t) === 'CANCELLED').length}</div><div className="subsea-kpi-meta flat">Freed calendar days</div><div className="subsea-kpi-bar"><div className="subsea-kpi-fill amber" style={{ width: '35%' }} /></div></div>
                   </div>
                   <div className="subsea-pane">
+                    <div className="subsea-pane-head"><div className="subsea-pane-title">Flight bookings / occupied windows</div></div>
+                    <div className="subsea-table-wrap">
+                      <table className="subsea-table">
+                        <thead>
+                          <tr>
+                            <th>Route</th>
+                            <th>Travel dates</th>
+                            <th>Direction</th>
+                            <th>Rig</th>
+                            <th>Project</th>
+                            <th>Status</th>
+                            <th>Calendar signal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {crewTickets.length === 0 ? (
+                            <tr><td colSpan={7} className="subsea-empty-cell">No flight bookings for this crew yet.</td></tr>
+                          ) : (
+                            crewTickets.map((ticket) => {
+                              const st = getTicketStatus(ticket);
+                              const signal = calendarSignalForTicket(ticket);
+                              return (
+                                <tr key={ticket.id}>
+                                  <td className="s">{ticket.from?.Name ?? '—'} → {ticket.to?.Name ?? '—'}</td>
+                                  <td>{bookingWindowLabel(ticket)}</td>
+                                  <td>{travelDirectionLabel(ticket)}</td>
+                                  <td>{ticketRigLabel(ticket)}</td>
+                                  <td>{ticket.project_id?.title ?? '—'}</td>
+                                  <td>
+                                    <span className={`subsea-badge ${st === 'APPROVED' ? 'subsea-b-green' : st === 'CANCELLED' ? 'subsea-b-red' : 'subsea-b-orange'}`}>
+                                      {getTicketStatusLabel(ticket)}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(signal)}`}>
+                                      {crewStatusTierLabel(signal)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="subsea-pane" style={{ marginTop: 16 }}>
                     <div className="subsea-pane-head"><div className="subsea-pane-title">Rotation Schedule</div></div>
                     <div className="subsea-table-wrap">
                       <table className="subsea-table">
                         <thead><tr><th>Rig</th><th>Rank</th><th>Sign-On</th><th>Sign-Off</th><th>Status</th></tr></thead>
                         <tbody>
-                          {(projects.length ? projects : [{ id: 'sample', title: assignment.rig, duration: { startDate: assignment.signOn, endDate: assignment.signOff }, status: assignment.status }]).map((project) => (
-                            <tr key={project.id}><td className="s">{project.title}</td><td>{rank}</td><td>{formatDate(project.duration?.startDate)}</td><td>{formatDate(project.duration?.endDate)}</td><td><span className="subsea-badge subsea-b-green">{project.status || 'Active'}</span></td></tr>
-                          ))}
+                          {projects.length === 0 ? (
+                            <tr><td colSpan={5} className="subsea-empty-cell">No project rotations assigned.</td></tr>
+                          ) : (
+                            projects.map((project) => (
+                              <tr key={project.id}><td className="s">{project.title}</td><td>{rank}</td><td>{formatDate(project.duration?.startDate)}</td><td>{formatDate(project.duration?.endDate)}</td><td><span className="subsea-badge subsea-b-green">{project.status || 'Active'}</span></td></tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>

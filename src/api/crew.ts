@@ -196,6 +196,9 @@ export interface CrewMemberApi {
     country?: string;
     available_from?: string;
     notes?: string;
+    travelDirection?: 'HOME_TO_RIG' | 'RIG_TO_HOME' | string;
+    from?: string;
+    to?: string;
   };
   expiryWarnings?: string[];
 }
@@ -204,6 +207,8 @@ export interface GetCrewListFilters {
   availabilityStart?: string;
   availabilityEnd?: string;
   type?: 'available' | 'unavailable';
+  /** Calendar day for Rig / Personnel Status / Available From (defaults to today on API). */
+  asOf?: string;
   status?: string;
   rating?: string;
   bopOem?: string;
@@ -546,6 +551,9 @@ export async function getCrewList(filters?: GetCrewListFilters): Promise<GetCrew
   }
   if (filters?.type) {
     queryParams.append('type', filters.type);
+  }
+  if (filters?.asOf) {
+    queryParams.append('asOf', filters.asOf);
   }
   if (filters?.status) {
     queryParams.append('status', filters.status);
@@ -1071,6 +1079,7 @@ export interface CrewAvailabilityItem {
   client?: string;
   rig_vessel?: string;
   country?: string;
+  ticket_id?: string;
   notes?: string;
   available_from?: string;
   status?: string;

@@ -109,6 +109,11 @@ export interface CrewTicketApi {
   pdf?: string;
   /** Flight details captured at booking time — used for PDF rendering. */
   flightSnapshot?: CrewTicketFlightSnapshot;
+  /** Travel window from booking (occupies availability calendar). */
+  travelStart?: string;
+  travelEnd?: string;
+  /** Home port ↔ Rig direction chosen at booking. */
+  travelDirection?: 'HOME_TO_RIG' | 'RIG_TO_HOME';
   createdAt?: string;
 }
 
@@ -413,13 +418,10 @@ export async function downloadCrewTicketPdf(
 }
 
 /**
- * Fetches crew tickets for a specific crew member (requires crew token).
- * GET /crew-ticket/crew/:crew_id
+ * Fetches crew tickets for a specific crew member.
+ * GET /crew-ticket/crew/:crew_id (admin or crew token).
  */
 export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTicketsResponse> {
-  const crewToken = localStorage.getItem(env.crewTokenKey);
-  if (!crewToken) throw new Error('Not authenticated');
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
 
@@ -427,7 +429,7 @@ export async function getCrewTicketsByCrewId(crewId: string): Promise<GetCrewTic
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${crewToken}`,
+      ...getCrewTicketPdfAuthHeaders(),
     },
     signal: controller.signal,
   });

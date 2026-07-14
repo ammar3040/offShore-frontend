@@ -822,6 +822,9 @@ const AdminTicketsPage = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [bookingFlightKey, setBookingFlightKey] = useState<string | null>(null);
   const [flightToBook, setFlightToBook] = useState<Flight | null>(null);
+  const [bookingTravelDirection, setBookingTravelDirection] = useState<'HOME_TO_RIG' | 'RIG_TO_HOME'>('HOME_TO_RIG');
+  const [bookingConfirmConflicts, setBookingConfirmConflicts] = useState<CrewTravelConflict[]>([]);
+  const [bookingConfirmConflictsLoading, setBookingConfirmConflictsLoading] = useState(false);
   const [showManualConfirm, setShowManualConfirm] = useState(false);
   const [searchBookingSuccess, setSearchBookingSuccess] = useState(false);
   const [searchSuccessMessage, setSearchSuccessMessage] = useState('');
@@ -1533,6 +1536,7 @@ const AdminTicketsPage = () => {
           adult: searchAdultCount,
           children: 0,
           infants: 0,
+          travelDirection: bookingTravelDirection,
         });
         const returnedTickets = Array.isArray(data.crewTickets) ? data.crewTickets : Array.isArray(data.tickets) ? data.tickets : [];
         const ticketCount = returnedTickets.length;
@@ -1610,15 +1614,69 @@ const AdminTicketsPage = () => {
       activeMultiLegIndex,
       multiSegments.length,
       fetchTickets,
+      bookingTravelDirection,
     ]
   );
 
   const handleBookNow = useCallback(
     (flight: Flight) => {
+      setBookingConfirmConflicts([]);
+      setBookingTravelDirection('HOME_TO_RIG');
       setFlightToBook(flight);
     },
     []
   );
+
+  const selectedSearchCrewMembers = useMemo(
+    () => searchCrewList.filter((c) => searchCrewIds.includes(c.id)),
+    [searchCrewList, searchCrewIds]
+  );
+
+  useEffect(() => {
+    if (!flightToBook || searchCrewIds.length === 0) {
+      setBookingConfirmConflicts([]);
+      return;
+    }
+    const firstLeg = flightToBook.legs?.[0];
+    const lastLeg = flightToBook.legs?.[flightToBook.legs.length - 1];
+    const dep = firstLeg?.departureTime ?? '';
+    const arr = lastLeg?.arrivalTime ?? firstLeg?.arrivalTime ?? dep;
+    const depYmd = dep ? String(dep).slice(0, 10) : '';
+    const arrYmd = arr ? String(arr).slice(0, 10) : depYmd;
+    const range = getTravelDateRange(depYmd, arrYmd);
+    if (!range) {
+      setBookingConfirmConflicts([]);
+      return;
+    }
+
+    let cancelled = false;
+    setBookingConfirmConflictsLoading(true);
+    getBulkCrewAvailabilitiesAdmin(searchCrewIds)
+      .then((availabilities) => {
+        if (cancelled) return;
+        const conflicts = findCrewTravelConflicts(
+          searchCrewIds,
+          (id) => {
+            const crew = searchCrewList.find((c) => c.id === id);
+            return crew ? `${crew.firstname} ${crew.lastname}`.trim() : 'Crew member';
+          },
+          range.start,
+          range.end,
+          availabilities
+        );
+        setBookingConfirmConflicts(conflicts);
+      })
+      .catch(() => {
+        if (!cancelled) setBookingConfirmConflicts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setBookingConfirmConflictsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [flightToBook, searchCrewIds, searchCrewList]);
 
   const handleSearchBack = useCallback(() => {
     setSearchResults(null);
@@ -3652,10 +3710,12 @@ const AdminTicketsPage = () => {
         onOpenChange={(open) => {
           if (!open && !bookingFlightKey && !searchBookingSuccess) {
             setFlightToBook(null);
+            setBookingConfirmConflicts([]);
+            setBookingTravelDirection('HOME_TO_RIG');
           }
         }}
       >
-        <DialogContent showCloseButton={!bookingFlightKey && !searchBookingSuccess} className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
+        <DialogContent showCloseButton={!bookingFlightKey && !searchBookingSuccess} className={`${SUBSEA_FORM_LIGHT_CLASS} admin-tickets-booking-confirm-dialog max-w-2xl max-h-[92vh] overflow-y-auto`}>
           {searchBookingSuccess ? (
             <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 animate-bounce">
@@ -3673,7 +3733,7 @@ const AdminTicketsPage = () => {
               <DialogHeader>
                 <DialogTitle>Book flight tickets?</DialogTitle>
                 <DialogDescription className="text-left pt-2 text-muted-foreground">
-                  Are you sure you want to book this flight for the selected crew?
+                  Confirm booking for the selected crew. Travel days will be marked occupied on their availability calendar until the ticket is cancelled.
                 </DialogDescription>
               </DialogHeader>
 
@@ -3693,7 +3753,7 @@ const AdminTicketsPage = () => {
                 const priceAmount = firstFare?.totalFare ?? 0;
 
                 return (
-                  <div className="mt-2">
+                  <div className="mt-2 space-y-4">
                     <div className="booking-confirm-card">
                       <div className="booking-confirm-header">
                         <div className="booking-confirm-airline">
@@ -3729,6 +3789,97 @@ const AdminTicketsPage = () => {
                         </div>
                       </div>
                     </div>
+
+                    <div className="booking-confirm-direction" role="group" aria-label="Travel direction">
+                      <div className="booking-confirm-direction-head">
+                        <Plane size={15} className="text-primary" />
+                        <strong>Travel direction</strong>
+                      </div>
+                      <p className="booking-confirm-direction-hint">
+                        Choose whether this booking is outbound to the rig or return to home port.
+                      </p>
+                      <div className="booking-confirm-direction-toggle">
+                        <button
+                          type="button"
+                          className={bookingTravelDirection === 'HOME_TO_RIG' ? 'is-active' : ''}
+                          aria-pressed={bookingTravelDirection === 'HOME_TO_RIG'}
+                          onClick={() => setBookingTravelDirection('HOME_TO_RIG')}
+                          disabled={!!bookingFlightKey}
+                        >
+                          Home port → Rig
+                        </button>
+                        <button
+                          type="button"
+                          className={bookingTravelDirection === 'RIG_TO_HOME' ? 'is-active' : ''}
+                          aria-pressed={bookingTravelDirection === 'RIG_TO_HOME'}
+                          onClick={() => setBookingTravelDirection('RIG_TO_HOME')}
+                          disabled={!!bookingFlightKey}
+                        >
+                          Rig → Home port
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="booking-confirm-crew-panel">
+                      <div className="booking-confirm-crew-head">
+                        <User size={15} className="text-primary" />
+                        <strong>
+                          Selected crew ({selectedSearchCrewMembers.length || searchCrewIds.length || 0})
+                        </strong>
+                      </div>
+                      {selectedSearchCrewMembers.length === 0 ? (
+                        <p className="booking-confirm-crew-empty">
+                          {searchCrewIds.length === 0
+                            ? 'No crew selected for this booking. Select crew in Search Flights before confirming.'
+                            : 'Selected crew IDs could not be resolved from the roster.'}
+                        </p>
+                      ) : (
+                        <ul className="booking-confirm-crew-list">
+                          {selectedSearchCrewMembers.map((crew) => {
+                            const conflict = bookingConfirmConflicts.find((c) => c.crewId === crew.id);
+                            const status = crew.current_status ?? 'Available';
+                            return (
+                              <li key={crew.id} className="booking-confirm-crew-item">
+                                <div className="booking-confirm-crew-main">
+                                  <span className={crewStatusTierDotClass(status)} title={crewStatusTierLabel(status)} />
+                                  <div>
+                                    <strong>{crew.firstname} {crew.lastname}</strong>
+                                    <span className="booking-confirm-crew-email">{crew.email}</span>
+                                  </div>
+                                </div>
+                                <span className={`subsea-badge crew-status-badge ${crewStatusTierBadgeClass(status)}`}>
+                                  {crewStatusTierLabel(status)}
+                                </span>
+                                {conflict && (
+                                  <p className="booking-confirm-crew-conflict">
+                                    Not fully available {conflict.periodFrom} – {conflict.periodTo}: {conflict.statusLabel}
+                                    {conflict.reason ? ` · ${conflict.reason}` : ''}
+                                  </p>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+
+                    {bookingConfirmConflictsLoading && (
+                      <p className="text-sm text-muted-foreground">Checking crew availability for travel dates…</p>
+                    )}
+
+                    {!bookingConfirmConflictsLoading && bookingConfirmConflicts.length > 0 && (
+                      <div className="booking-confirm-warning" role="alert">
+                        <AlertTriangle size={16} />
+                        <div>
+                          <strong>Availability warning</strong>
+                          <p>
+                            {bookingConfirmConflicts.length} selected crew member
+                            {bookingConfirmConflicts.length !== 1 ? 's are' : ' is'} not available for all travel dates.
+                            You can still confirm if you want to proceed.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -3737,7 +3888,11 @@ const AdminTicketsPage = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setFlightToBook(null)}
+                  onClick={() => {
+                    setFlightToBook(null);
+                    setBookingConfirmConflicts([]);
+                    setBookingTravelDirection('HOME_TO_RIG');
+                  }}
                   disabled={!!bookingFlightKey}
                 >
                   Cancel
@@ -3745,7 +3900,7 @@ const AdminTicketsPage = () => {
                 <Button
                   type="button"
                   onClick={() => flightToBook && executeSearchBooking(flightToBook)}
-                  disabled={!!bookingFlightKey || !flightToBook}
+                  disabled={!!bookingFlightKey || !flightToBook || searchCrewIds.length === 0}
                 >
                   {bookingFlightKey ? (
                     <>

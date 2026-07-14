@@ -389,18 +389,28 @@ function findStatusForDay(
   items: CrewAvailabilityItem[],
   day: Date
 ): CrewStatusTier | 'none' {
-  const d = new Date(day);
-  d.setHours(0, 0, 0, 0);
+  const dKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
   for (const avail of items) {
-    const start = new Date(avail.from);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(avail.to);
-    end.setHours(23, 59, 59, 999);
-    if (d >= start && d <= end) {
+    const startRaw = String(avail.from ?? '');
+    const endRaw = String(avail.to ?? '');
+    const start = startRaw.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+      ?? (() => {
+        const s = new Date(avail.from);
+        if (Number.isNaN(s.getTime())) return '';
+        return `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, '0')}-${String(s.getUTCDate()).padStart(2, '0')}`;
+      })();
+    const end = endRaw.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+      ?? (() => {
+        const e = new Date(avail.to);
+        if (Number.isNaN(e.getTime())) return '';
+        return `${e.getUTCFullYear()}-${String(e.getUTCMonth() + 1).padStart(2, '0')}-${String(e.getUTCDate()).padStart(2, '0')}`;
+      })();
+    if (start && end && dKey >= start && dKey <= end) {
       return resolveAvailabilityItemStatus(avail);
     }
   }
-  return 'none';
+  // No explicit record → Available by default
+  return 'Available';
 }
 
 const TimelinePage = () => {
@@ -959,23 +969,32 @@ const TimelinePage = () => {
   }, [filteredEvents]);
 
   const getDayAvailStatus = useMemo(() => {
-    if (selectedCrewId === 'all' || selectedCrewAvailabilities.length === 0) {
+    if (selectedCrewId === 'all') {
       return (): string | 'none' => 'none';
     }
 
     return (day: Date): string | 'none' => {
-      const d = new Date(day);
-      d.setHours(0, 0, 0, 0);
+      const dKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
       for (const avail of selectedCrewAvailabilities) {
-        const start = new Date(avail.from);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(avail.to);
-        end.setHours(23, 59, 59, 999);
-        if (d >= start && d <= end) {
+        const startRaw = String(avail.from ?? '');
+        const endRaw = String(avail.to ?? '');
+        const start = startRaw.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+          ?? (() => {
+            const s = new Date(avail.from);
+            if (Number.isNaN(s.getTime())) return '';
+            return `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, '0')}-${String(s.getUTCDate()).padStart(2, '0')}`;
+          })();
+        const end = endRaw.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+          ?? (() => {
+            const e = new Date(avail.to);
+            if (Number.isNaN(e.getTime())) return '';
+            return `${e.getUTCFullYear()}-${String(e.getUTCMonth() + 1).padStart(2, '0')}-${String(e.getUTCDate()).padStart(2, '0')}`;
+          })();
+        if (start && end && dKey >= start && dKey <= end) {
           return resolveAvailabilityItemStatus(avail);
         }
       }
-      return 'none';
+      return 'Available';
     };
   }, [selectedCrewId, selectedCrewAvailabilities]);
 
@@ -1850,7 +1869,7 @@ const TimelinePage = () => {
                         ))}
                         <span className="timeline-legend-item">
                           <span className="timeline-legend-swatch timeline-legend-swatch-empty" />
-                          No data
+                          Default Available
                         </span>
                       </div>
                     </section>

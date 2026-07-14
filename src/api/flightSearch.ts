@@ -63,6 +63,8 @@ export interface BookFlightPayload {
   adult: number;
   children: number;
   infants: number;
+  /** Mobilization direction */
+  travelDirection?: 'HOME_TO_RIG' | 'RIG_TO_HOME';
 }
 
 function getAuthToken(): string | null {
@@ -150,6 +152,7 @@ export async function bookFlight(params: {
   adult?: number;
   children?: number;
   infants?: number;
+  travelDirection?: 'HOME_TO_RIG' | 'RIG_TO_HOME';
 }): Promise<{
   message?: string;
   bookingReference?: string;
@@ -208,10 +211,11 @@ export async function bookFlight(params: {
     },
     cashback: params.cashback ?? 0,
     price: params.price ?? 0,
-    currency: params.currency ?? 'USD',
+    currency: params.currency ?? 'GBP',
     adult: params.adult ?? 1,
     children: params.children ?? 0,
     infants: params.infants ?? 0,
+    travelDirection: params.travelDirection ?? 'HOME_TO_RIG',
   };
 
   const response = await fetch(`${API_BASE}/crew-ticket/book`, {
