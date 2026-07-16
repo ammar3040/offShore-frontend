@@ -774,49 +774,38 @@ const AdminTicketsPage = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Load initial search state from localStorage on script load/init
-  const savedState = (() => {
-    try {
-      const saved = localStorage.getItem('admin_tickets_search_state');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  })();
-
   /* Search & Book tab state */
   const [activeTab, setActiveTab] = useState<TicketsTab>(() => {
     const params = new URLSearchParams(window.location.search);
     const qTab = params.get('tab');
     if (qTab === 'search' || qTab === 'tickets' || qTab === 'spends') return qTab;
-    return savedState?.activeTab ?? 'tickets';
+    return 'tickets';
   });
-  const [searchTripTypeUI, setSearchTripTypeUI] = useState<SearchUITripType>(() => savedState?.searchTripTypeUI ?? 'one-way');
-  const [multiSegments, setMultiSegments] = useState<MultiFlightSegment[]>(() => savedState?.multiSegments ?? initialMultiSegments());
-  const [activeMultiLegIndex, setActiveMultiLegIndex] = useState(() => savedState?.activeMultiLegIndex ?? 0);
-  const [preferNonStopPerLeg, setPreferNonStopPerLeg] = useState(() => savedState?.preferNonStopPerLeg ?? false);
-  const [searchFrom, setSearchFrom] = useState<Airport | null>(() => savedState?.searchFrom ?? AIRPORTS[0] ?? null);
-  const [searchTo, setSearchTo] = useState<Airport | null>(() => savedState?.searchTo ?? AIRPORTS[1] ?? null);
-  const [departureDate, setDepartureDate] = useState(() => savedState?.departureDate ?? '');
+  const [searchTripTypeUI, setSearchTripTypeUI] = useState<SearchUITripType>('one-way');
+  const [multiSegments, setMultiSegments] = useState<MultiFlightSegment[]>(() => initialMultiSegments());
+  const [activeMultiLegIndex, setActiveMultiLegIndex] = useState(0);
+  const [preferNonStopPerLeg, setPreferNonStopPerLeg] = useState(false);
+  const [searchFrom, setSearchFrom] = useState<Airport | null>(() => AIRPORTS[0] ?? null);
+  const [searchTo, setSearchTo] = useState<Airport | null>(() => AIRPORTS[1] ?? null);
+  const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState(() => {
-    if (savedState?.returnDate !== undefined) return savedState.returnDate;
     const d = new Date();
     d.setDate(d.getDate() + 7);
     return toYYYYMMDD(d);
   });
-  const [returnTime, setReturnTime] = useState(() => savedState?.returnTime ?? '');
-  const [departureTime, setDepartureTime] = useState(() => savedState?.departureTime ?? '');
-  const [arrivalDate, setArrivalDate] = useState(() => savedState?.arrivalDate ?? '');
-  const [arrivalTime, setArrivalTime] = useState(() => savedState?.arrivalTime ?? '');
-  const [adults, setAdults] = useState(() => savedState?.adults ?? 1);
-  const [cabinClass, setCabinClass] = useState<CabinClass>(() => savedState?.cabinClass ?? 'economy');
-  const [currency, setCurrency] = useState<CurrencyCode>(() => savedState?.currency ?? 'GBP');
-  const [flightSortBy, setFlightSortBy] = useState<FlightSortBy>(() => savedState?.flightSortBy ?? 'price');
-  const [flightSortOrder, setFlightSortOrder] = useState<FlightSortOrder>(() => savedState?.flightSortOrder ?? 'asc');
-  const [searchResults, setSearchResults] = useState<Flight[] | null>(() => savedState?.searchResults ?? null);
-  const [searchTotalCount, setSearchTotalCount] = useState<number>(() => savedState?.searchTotalCount ?? 0);
-  const [searchPage, setSearchPage] = useState<number>(() => savedState?.searchPage ?? 1);
-  const [searchCriteria, setSearchCriteria] = useState<SearchPayload | null>(() => savedState?.searchCriteria ?? null);
+  const [returnTime, setReturnTime] = useState('');
+  const [departureTime, setDepartureTime] = useState('');
+  const [arrivalDate, setArrivalDate] = useState('');
+  const [arrivalTime, setArrivalTime] = useState('');
+  const [adults, setAdults] = useState(1);
+  const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
+  const [currency, setCurrency] = useState<CurrencyCode>('GBP');
+  const [flightSortBy, setFlightSortBy] = useState<FlightSortBy>('price');
+  const [flightSortOrder, setFlightSortOrder] = useState<FlightSortOrder>('asc');
+  const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
+  const [searchTotalCount, setSearchTotalCount] = useState<number>(0);
+  const [searchPage, setSearchPage] = useState<number>(1);
+  const [searchCriteria, setSearchCriteria] = useState<SearchPayload | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -841,68 +830,17 @@ const AdminTicketsPage = () => {
   } | null>(null);
 
   /* Project & crew for search form */
-  const [searchProjectId, setSearchProjectId] = useState<string>(() => savedState?.searchProjectId ?? '');
-  const [searchCrewIds, setSearchCrewIds] = useState<string[]>(() => savedState?.searchCrewIds ?? []);
+  const [searchProjectId, setSearchProjectId] = useState<string>('');
+  const [searchCrewIds, setSearchCrewIds] = useState<string[]>([]);
 
-  // Save state to localStorage when any search parameters or results change
+  // Clear any existing localStorage item on mount
   useEffect(() => {
     try {
-      const stateToSave = {
-        activeTab,
-        searchTripTypeUI,
-        multiSegments,
-        activeMultiLegIndex,
-        preferNonStopPerLeg,
-        searchFrom,
-        searchTo,
-        departureDate,
-        returnDate,
-        returnTime,
-        departureTime,
-        arrivalDate,
-        arrivalTime,
-        adults,
-        cabinClass,
-        currency,
-        flightSortBy,
-        flightSortOrder,
-        searchResults,
-        searchTotalCount,
-        searchPage,
-        searchCriteria,
-        searchProjectId,
-        searchCrewIds,
-      };
-      localStorage.setItem('admin_tickets_search_state', JSON.stringify(stateToSave));
+      localStorage.removeItem('admin_tickets_search_state');
     } catch (e) {
-      console.error('Failed to save search state', e);
+      console.error(e);
     }
-  }, [
-    activeTab,
-    searchTripTypeUI,
-    multiSegments,
-    activeMultiLegIndex,
-    preferNonStopPerLeg,
-    searchFrom,
-    searchTo,
-    departureDate,
-    returnDate,
-    returnTime,
-    departureTime,
-    arrivalDate,
-    arrivalTime,
-    adults,
-    cabinClass,
-    currency,
-    flightSortBy,
-    flightSortOrder,
-    searchResults,
-    searchTotalCount,
-    searchPage,
-    searchCriteria,
-    searchProjectId,
-    searchCrewIds,
-  ]);
+  }, []);
   const [searchCrewList, setSearchCrewList] = useState<CrewMemberApi[]>([]);
   const [searchCrewLoading, setSearchCrewLoading] = useState(false);
   const [searchCrewFilter, setSearchCrewFilter] = useState('');
@@ -915,7 +853,7 @@ const AdminTicketsPage = () => {
       .then((profile) => {
         if (!cancelled && profile.markup != null) setAdminMarkup(profile.markup);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, []);
 
@@ -1519,6 +1457,46 @@ const AdminTicketsPage = () => {
     activeMultiLegIndex,
   ]);
 
+  const clearSearchStateAndReset = useCallback(() => {
+    try {
+      localStorage.removeItem('admin_tickets_search_state');
+    } catch (e) {
+      console.error('Failed to clear search state', e);
+    }
+    setSearchTripTypeUI('one-way');
+    setMultiSegments(initialMultiSegments());
+    setActiveMultiLegIndex(0);
+    setPreferNonStopPerLeg(false);
+    setSearchFrom(null);
+    setSearchTo(null);
+    setDepartureDate('');
+
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    setReturnDate(toYYYYMMDD(d));
+
+    setReturnTime('');
+    setDepartureTime('');
+    setArrivalDate('');
+    setArrivalTime('');
+    setAdults(1);
+    setCabinClass('economy');
+    setCurrency('GBP');
+    setSearchResults(null);
+    setSearchTotalCount(0);
+    setSearchPage(1);
+    setSearchCriteria(null);
+    setSearchProjectId('');
+    setSearchCrewIds([]);
+    setSearchError(null);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'search') {
+      clearSearchStateAndReset();
+    }
+  }, [activeTab, clearSearchStateAndReset]);
+
   const executeSearchBooking = useCallback(
     async (flight: Flight) => {
       const bookKey =
@@ -1580,6 +1558,8 @@ const AdminTicketsPage = () => {
               setMultiSegments(initialMultiSegments());
               setFlightToBook(null);
               setSearchBookingSuccess(false);
+              setActiveTab('tickets');
+              clearSearchStateAndReset();
             }, 2500);
           }
         } else {
@@ -1591,6 +1571,8 @@ const AdminTicketsPage = () => {
             setSearchTotalCount((prev) => Math.max(0, prev - 1));
             setFlightToBook(null);
             setSearchBookingSuccess(false);
+            setActiveTab('tickets');
+            clearSearchStateAndReset();
           }, 2500);
         }
       } catch (err) {
@@ -1616,6 +1598,7 @@ const AdminTicketsPage = () => {
       multiSegments.length,
       fetchTickets,
       bookingTravelDirection,
+      clearSearchStateAndReset,
     ]
   );
 
@@ -2764,9 +2747,9 @@ const AdminTicketsPage = () => {
                         ? 'No approved tickets'
                         : statusFilter === 'cancelled'
                           ? 'No cancelled tickets'
-                        : projectFilter === 'all'
-                          ? 'No tickets yet'
-                          : 'No tickets for this project'}
+                          : projectFilter === 'all'
+                            ? 'No tickets yet'
+                            : 'No tickets for this project'}
                   </h3>
                   <p>
                     {statusFilter === 'pending'
@@ -2775,9 +2758,9 @@ const AdminTicketsPage = () => {
                         ? 'No approved bookings match the current project filter.'
                         : statusFilter === 'cancelled'
                           ? 'Cancelled bookings will appear here after you cancel an active ticket.'
-                        : projectFilter === 'all'
-                          ? 'Create tickets for crew on your projects.'
-                          : 'Try selecting all projects or book a new flight.'}
+                          : projectFilter === 'all'
+                            ? 'Create tickets for crew on your projects.'
+                            : 'Try selecting all projects or book a new flight.'}
                   </p>
                   <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
                     <Plus size={12} /> Book Flight
@@ -2810,13 +2793,12 @@ const AdminTicketsPage = () => {
                       {paginatedRecentBookings.map((ticket) => (
                         <div
                           key={ticket.id}
-                          className={`subsea-flight-card${
-                            getTicketStatus(ticket) === 'CANCELLED'
+                          className={`subsea-flight-card${getTicketStatus(ticket) === 'CANCELLED'
                               ? ' cancelled'
                               : getTicketStatus(ticket) !== 'APPROVED'
                                 ? ' pending'
                                 : ''
-                          }`}
+                            }`}
                           onClick={() => setSelectedTicket(ticket)}
                           role="button"
                           tabIndex={0}
@@ -2876,17 +2858,17 @@ const AdminTicketsPage = () => {
                               )}
                             </button>
                             {!isTicketCancelled(ticket) && (
-                            <button
-                              type="button"
-                              className="subsea-icon-action"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                requestCancelTicketFlow(ticket);
-                              }}
-                              title="Cancel ticket"
-                            >
-                              <Ban size={14} />
-                            </button>
+                              <button
+                                type="button"
+                                className="subsea-icon-action"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  requestCancelTicketFlow(ticket);
+                                }}
+                                title="Cancel ticket"
+                              >
+                                <Ban size={14} />
+                              </button>
                             )}
                           </div>
                         </div>
@@ -3957,7 +3939,7 @@ const AdminTicketsPage = () => {
                 </div>
                 {formData.trip && (
                   <div className="booking-summary-row">
-                    <span className="label">Trip Type</span>
+                    <span className="label">Trip Typedd</span>
                     <span className="value font-semibold">
                       {formData.trip === 'ROUND_TRIP' ? 'Round Trip' : 'One Way'}
                     </span>
