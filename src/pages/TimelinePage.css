@@ -715,6 +715,18 @@
   border-left-color: #3b82f6;
 }
 
+.timeline-cal-crew-pill-tier.crew-status-tier--in-flight {
+  background: rgba(6, 182, 212, 0.14);
+  color: #155e75;
+  border-left-color: #06b6d4;
+}
+
+.timeline-cal-crew-pill-tier.crew-status-tier--in-project {
+  background: rgba(139, 92, 246, 0.14);
+  color: #5b21b6;
+  border-left-color: #8b5cf6;
+}
+
 .timeline-cal-crew-pill-tier.crew-status-tier--on-assignment {
   background: rgba(168, 85, 247, 0.14);
   color: #6b21a8;
@@ -763,6 +775,8 @@
 .cal-popup-row-tier.crew-status-tier--available .cal-popup-row-indicator { background: #22c55e; }
 .cal-popup-row-tier.crew-status-tier--offered .cal-popup-row-indicator { background: #eab308; }
 .cal-popup-row-tier.crew-status-tier--confirmed .cal-popup-row-indicator { background: #3b82f6; }
+.cal-popup-row-tier.crew-status-tier--in-flight .cal-popup-row-indicator { background: #06b6d4; }
+.cal-popup-row-tier.crew-status-tier--in-project .cal-popup-row-indicator { background: #8b5cf6; }
 .cal-popup-row-tier.crew-status-tier--on-assignment .cal-popup-row-indicator { background: #a855f7; }
 .cal-popup-row-tier.crew-status-tier--offshore-competitor .cal-popup-row-indicator { background: #ef4444; }
 .cal-popup-row-tier.crew-status-tier--holiday .cal-popup-row-indicator { background: #f97316; }
@@ -1126,6 +1140,8 @@
 .allcrew-gantt-day-cell.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.28); }
 .allcrew-gantt-day-cell.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.28); }
 .allcrew-gantt-day-cell.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.28); }
+.allcrew-gantt-day-cell.allcrew-day-tier-in-flight { background: rgba(6, 182, 212, 0.28); }
+.allcrew-gantt-day-cell.allcrew-day-tier-in-project { background: rgba(139, 92, 246, 0.28); }
 .allcrew-gantt-day-cell.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.28); }
 .allcrew-gantt-day-cell.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.24); }
 .allcrew-gantt-day-cell.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.24); }
@@ -1134,6 +1150,8 @@
 .allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.36); }
 .allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.36); }
 .allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.36); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-in-flight { background: rgba(6, 182, 212, 0.36); }
+.allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-in-project { background: rgba(139, 92, 246, 0.36); }
 .allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.36); }
 .allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.32); }
 .allcrew-gantt-day-cell.allcrew-today.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.32); }
@@ -1142,6 +1160,8 @@
 .allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.38); }
 .allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.38); }
 .allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.38); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-in-flight { background: rgba(6, 182, 212, 0.38); }
+.allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-in-project { background: rgba(139, 92, 246, 0.38); }
 .allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.38); }
 .allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.34); }
 .allcrew-gantt-row:hover .allcrew-gantt-day-cell.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.34); }
@@ -1150,6 +1170,8 @@
 .timeline-legend-swatch.allcrew-day-tier-available { background: rgba(34, 197, 94, 0.65); }
 .timeline-legend-swatch.allcrew-day-tier-offered { background: rgba(234, 179, 8, 0.65); }
 .timeline-legend-swatch.allcrew-day-tier-confirmed { background: rgba(59, 130, 246, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-in-flight { background: rgba(6, 182, 212, 0.65); }
+.timeline-legend-swatch.allcrew-day-tier-in-project { background: rgba(139, 92, 246, 0.65); }
 .timeline-legend-swatch.allcrew-day-tier-on-assignment { background: rgba(168, 85, 247, 0.65); }
 .timeline-legend-swatch.allcrew-day-tier-offshore-competitor { background: rgba(239, 68, 68, 0.65); }
 .timeline-legend-swatch.allcrew-day-tier-holiday { background: rgba(249, 115, 22, 0.65); }

@@ -434,13 +434,13 @@ const CrewDetailsPage = () => {
   };
 
   const travelDirectionLabel = (ticket: CrewTicketApi) => {
-    if (ticket.travelDirection === 'RIG_TO_HOME') return 'Rig → Home port';
-    if (ticket.travelDirection === 'HOME_TO_RIG') return 'Home port → Rig';
+    if (ticket.travelDirection === 'RIG_TO_HOME') return 'Off signer';
+    if (ticket.travelDirection === 'HOME_TO_RIG') return 'On signer';
     return '—';
   };
 
   const ticketRigLabel = (ticket: CrewTicketApi) => {
-    if (ticket.travelDirection === 'RIG_TO_HOME') return 'Home port';
+    if (ticket.travelDirection === 'RIG_TO_HOME') return 'Home airport';
     const rig = ticket.rig_id;
     if (rig && typeof rig === 'object' && 'name' in rig && rig.name) return String(rig.name);
     return ticket.project_id?.title ?? '—';
@@ -626,7 +626,7 @@ const CrewDetailsPage = () => {
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Passport No.</div><div className="subsea-detail-val">{field(passport?.passport_number)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Identity No.</div><div className="subsea-detail-val">{field(identity?.identity_number)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Vantage No.</div><div className="subsea-detail-val">{field(crew.vantage_number || crew.azerbaijan_vantage_number)}</div></div>
-                      <div className="subsea-detail-row"><div className="subsea-detail-label">Home Port</div><div className="subsea-detail-val">{field(crew.city || crew.country)}</div></div>
+                      <div className="subsea-detail-row"><div className="subsea-detail-label">Home Airport</div><div className="subsea-detail-val">{field(crew.city || crew.country)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Address</div><div className="subsea-detail-val">{field(crew.address)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Gender</div><div className="subsea-detail-val">{field(crew.gender)}</div></div>
                       <div className="subsea-detail-row"><div className="subsea-detail-label">Visa</div><div className="subsea-detail-val">{field(crew.visa || crew.visa_country)}</div></div>
@@ -665,7 +665,7 @@ const CrewDetailsPage = () => {
                           <div className="subsea-detail-label">Rig / Vessel</div>
                           <div className="subsea-detail-val">
                             {crew.currentAssignment?.travelDirection === 'RIG_TO_HOME'
-                              ? 'Home port'
+                              ? 'Home airport'
                               : field(crew.currentAssignment?.rig_vessel)}
                           </div>
                         </div>
@@ -673,9 +673,9 @@ const CrewDetailsPage = () => {
                           <div className="subsea-detail-label">Travel direction</div>
                           <div className="subsea-detail-val">
                             {crew.currentAssignment?.travelDirection === 'RIG_TO_HOME'
-                              ? 'Rig → Home port'
+                              ? 'Off signer'
                               : crew.currentAssignment?.travelDirection === 'HOME_TO_RIG'
-                                ? 'Home port → Rig'
+                                ? 'On signer'
                                 : '—'}
                           </div>
                         </div>

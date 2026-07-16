@@ -7,6 +7,8 @@ export type CrewStatusTier =
   | 'Available'
   | 'Offered'
   | 'Confirmed'
+  | 'In Flight'
+  | 'In Project'
   | 'On assignment for us'
   | 'Offshore (Competitor)'
   | 'Holiday / Not Available'
@@ -16,6 +18,8 @@ export const CREW_STATUS_TIER_OPTIONS: CrewStatusTier[] = [
   'Available',
   'Offered',
   'Confirmed',
+  'In Flight',
+  'In Project',
   // TODO: confirm with client — see MD Section 9 #2 (display label "On Assignment" vs enum "On assignment for us")
   'On assignment for us',
   // TODO: confirm with client — see MD Section 9 #3 (Red=Competitor vs doc1 colour mix-up)
@@ -31,6 +35,8 @@ const CREW_STATUS_BADGE_CLASS: Record<CrewStatusTier, string> = {
   Available: 'crew-status-tier--available',
   Offered: 'crew-status-tier--offered',
   Confirmed: 'crew-status-tier--confirmed',
+  'In Flight': 'crew-status-tier--in-flight',
+  'In Project': 'crew-status-tier--in-project',
   'On assignment for us': 'crew-status-tier--on-assignment',
   'Offshore (Competitor)': 'crew-status-tier--offshore-competitor',
   'Holiday / Not Available': 'crew-status-tier--holiday',
@@ -41,6 +47,8 @@ const CREW_STATUS_BADGE_CLASS: Record<CrewStatusTier, string> = {
 export function crewStatusTierLabel(status: string | undefined | null): string {
   if (!status) return 'Available';
   if (status === 'On assignment for us') return 'On Assignment';
+  if (status === 'In Flight') return 'In Flight';
+  if (status === 'In Project') return 'In Project';
   if (status === 'Holiday / Not Available') return 'Holiday';
   if (status === 'Unknown / Inactive') return 'Inactive';
   if (status === 'Offshore (Competitor)') return 'Offshore (Competitor)';
@@ -81,6 +89,8 @@ export function crewStatusTierTint(status: string | undefined | null, alpha = 0.
     Available: `rgba(34, 197, 94, ${alpha})`,
     Offered: `rgba(234, 179, 8, ${alpha})`,
     Confirmed: `rgba(59, 130, 246, ${alpha})`,
+    'In Flight': `rgba(6, 182, 212, ${alpha})`,
+    'In Project': `rgba(139, 92, 246, ${alpha})`,
     'On assignment for us': `rgba(168, 85, 247, ${alpha})`,
     'Offshore (Competitor)': `rgba(239, 68, 68, ${alpha})`,
     'Holiday / Not Available': `rgba(249, 115, 22, ${alpha})`,

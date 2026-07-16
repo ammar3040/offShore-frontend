@@ -164,6 +164,10 @@ function getCalendarDayStyle(status: string | undefined): React.CSSProperties {
       return { backgroundColor: 'rgba(234, 179, 8, 0.08)' };
     case 'Confirmed':
       return { backgroundColor: 'rgba(59, 130, 246, 0.08)' };
+    case 'In Flight':
+      return { backgroundColor: 'rgba(6, 182, 212, 0.08)' };
+    case 'In Project':
+      return { backgroundColor: 'rgba(139, 92, 246, 0.08)' };
     case 'On assignment for us':
       return { backgroundColor: 'rgba(168, 85, 247, 0.08)' };
     case 'Offshore (Competitor)':

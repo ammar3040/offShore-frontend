@@ -4069,6 +4069,8 @@
 .crew-status-dot.crew-status-tier--available { background: #22c55e; }
 .crew-status-dot.crew-status-tier--offered { background: #eab308; }
 .crew-status-dot.crew-status-tier--confirmed { background: #3b82f6; }
+.crew-status-dot.crew-status-tier--in-flight { background: #06b6d4; }
+.crew-status-dot.crew-status-tier--in-project { background: #8b5cf6; }
 .crew-status-dot.crew-status-tier--on-assignment { background: #a855f7; }
 .crew-status-dot.crew-status-tier--offshore-competitor { background: #ef4444; }
 .crew-status-dot.crew-status-tier--holiday { background: #f97316; }
@@ -4093,6 +4095,14 @@
 .crew-status-inline-label.crew-status-tier--confirmed {
   color: #1d4ed8;
   background: rgba(59, 130, 246, 0.12);
+}
+.crew-status-inline-label.crew-status-tier--in-flight {
+  color: #00838f;
+  background: rgba(6, 182, 212, 0.12);
+}
+.crew-status-inline-label.crew-status-tier--in-project {
+  color: #7c3aed;
+  background: rgba(139, 92, 246, 0.12);
 }
 .crew-status-inline-label.crew-status-tier--on-assignment {
   color: #7e22ce;
@@ -4120,6 +4130,12 @@
 }
 .crew-status-badge.crew-status-tier--confirmed {
   color: #1d4ed8; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3);
+}
+.crew-status-badge.crew-status-tier--in-flight {
+  color: #00838f; background: rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.3);
+}
+.crew-status-badge.crew-status-tier--in-project {
+  color: #7c3aed; background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.3);
 }
 .crew-status-badge.crew-status-tier--on-assignment {
   color: #7e22ce; background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.3);

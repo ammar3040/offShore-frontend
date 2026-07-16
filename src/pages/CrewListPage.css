@@ -1061,6 +1061,10 @@
 .subsea-c-av.crew-status-tier--offered { background: #fef9c3; color: #854d0e; }
 .crew-status-badge.crew-status-tier--confirmed,
 .subsea-c-av.crew-status-tier--confirmed { background: #dbeafe; color: #1e40af; }
+.crew-status-badge.crew-status-tier--in-flight,
+.subsea-c-av.crew-status-tier--in-flight { background: #e0f7fa; color: #00838f; }
+.crew-status-badge.crew-status-tier--in-project,
+.subsea-c-av.crew-status-tier--in-project { background: #f3e8ff; color: #6b21a8; }
 .crew-status-badge.crew-status-tier--on-assignment,
 .subsea-c-av.crew-status-tier--on-assignment { background: #f3e8ff; color: #6b21a8; }
 .crew-status-badge.crew-status-tier--offshore-competitor,
@@ -1081,6 +1085,8 @@
 .crew-status-dot.crew-status-tier--available { background: #22c55e; }
 .crew-status-dot.crew-status-tier--offered { background: #eab308; }
 .crew-status-dot.crew-status-tier--confirmed { background: #3b82f6; }
+.crew-status-dot.crew-status-tier--in-flight { background: #06b6d4; }
+.crew-status-dot.crew-status-tier--in-project { background: #8b5cf6; }
 .crew-status-dot.crew-status-tier--on-assignment { background: #a855f7; }
 .crew-status-dot.crew-status-tier--offshore-competitor { background: #ef4444; }
 .crew-status-dot.crew-status-tier--holiday { background: #f97316; }

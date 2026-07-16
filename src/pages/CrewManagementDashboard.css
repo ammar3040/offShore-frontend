@@ -968,6 +968,8 @@
 .crew-status-dot.crew-status-tier--available { background: #22c55e; }
 .crew-status-dot.crew-status-tier--offered { background: #eab308; }
 .crew-status-dot.crew-status-tier--confirmed { background: #3b82f6; }
+.crew-status-dot.crew-status-tier--in-flight { background: #06b6d4; }
+.crew-status-dot.crew-status-tier--in-project { background: #8b5cf6; }
 .crew-status-dot.crew-status-tier--on-assignment { background: #a855f7; }
 .crew-status-dot.crew-status-tier--offshore-competitor { background: #ef4444; }
 .crew-status-dot.crew-status-tier--holiday { background: #f97316; }

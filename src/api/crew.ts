@@ -216,6 +216,8 @@ export interface GetCrewListFilters {
   client?: string;
   availableWithinDays?: number;
   expiredCerts?: boolean;
+  /** When set, only return crew available for the entire project duration. */
+  projectId?: string;
 }
 
 export interface GetCrewResponse {
@@ -575,6 +577,9 @@ export async function getCrewList(filters?: GetCrewListFilters): Promise<GetCrew
   }
   if (filters?.client) {
     queryParams.append('client', filters.client);
+  }
+  if (filters?.projectId) {
+    queryParams.append('projectId', filters.projectId);
   }
 
   const queryString = queryParams.toString();

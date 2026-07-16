@@ -922,7 +922,8 @@ const AdminTicketsPage = () => {
   useEffect(() => {
     let cancelled = false;
     setSearchCrewLoading(true);
-    getCrewList()
+    const filters = searchProjectId ? { projectId: searchProjectId } : undefined;
+    getCrewList(filters)
       .then((res) => {
         if (cancelled) return;
         setSearchCrewList(res.crew ?? []);
@@ -936,7 +937,7 @@ const AdminTicketsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchProjectId]);
   useEffect(() => {
     if (location.state?.crewId && projects.length > 0) {
       const { crewId, projectId } = location.state;
@@ -3796,7 +3797,7 @@ const AdminTicketsPage = () => {
                         <strong>Travel direction</strong>
                       </div>
                       <p className="booking-confirm-direction-hint">
-                        Choose whether this booking is outbound to the rig or return to home port.
+                        Choose whether this booking is outbound to the rig (On signer) or return to home airport (Off signer).
                       </p>
                       <div className="booking-confirm-direction-toggle">
                         <button
@@ -3806,7 +3807,7 @@ const AdminTicketsPage = () => {
                           onClick={() => setBookingTravelDirection('HOME_TO_RIG')}
                           disabled={!!bookingFlightKey}
                         >
-                          Home port → Rig
+                          On signer
                         </button>
                         <button
                           type="button"
@@ -3815,7 +3816,7 @@ const AdminTicketsPage = () => {
                           onClick={() => setBookingTravelDirection('RIG_TO_HOME')}
                           disabled={!!bookingFlightKey}
                         >
-                          Rig → Home port
+                          Off signer
                         </button>
                       </div>
                     </div>
