@@ -43,7 +43,7 @@ import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
 import { Calendar as UiCalendar } from '../components/ui/calendar';
-import { availabilityFromCrewSignal, getCrewSignal, CREW_STATUS_TIER_OPTIONS, type CrewStatusTier, crewStatusTierLabel, crewStatusTierBadgeClass } from '../utils/crewAvailability';
+import { availabilityFromCrewSignal, getCrewSignal, CREW_STATUS_TIER_OPTIONS, type CrewStatusTier, crewStatusTierLabel, crewStatusTierBadgeClass, resolveAvailabilityItemStatus } from '../utils/crewAvailability';
 import { toast } from 'sonner';
 import './RigsPage.css';
 import './TimelinePage.css';
@@ -149,6 +149,10 @@ function getCalendarDayStyle(status: string | undefined): React.CSSProperties {
       return { backgroundColor: 'rgba(234, 179, 8, 0.08)' };
     case 'Confirmed':
       return { backgroundColor: 'rgba(59, 130, 246, 0.08)' };
+    case 'In Flight':
+      return { backgroundColor: 'rgba(6, 182, 212, 0.08)' };
+    case 'In Project':
+      return { backgroundColor: 'rgba(139, 92, 246, 0.08)' };
     case 'On assignment for us':
       return { backgroundColor: 'rgba(168, 85, 247, 0.08)' };
     case 'Offshore (Competitor)':
@@ -319,14 +323,14 @@ const CrewDetailsPage = () => {
     }
   };
 
-  const getDayAvailabilityStatus = (day: Date): string | 'none' => {
+  const getDayAvailabilityStatus = (day: Date): CrewStatusTier => {
     const dStr = dateKey(day);
     for (const item of availabilityItems) {
       if (!item.from || !item.to) continue;
       const start = calendarDayKey(item.from);
       const end = calendarDayKey(item.to);
       if (start && end && dStr >= start && dStr <= end) {
-        return item.status || (item.isAvailable !== false ? 'Available' : 'Holiday / Not Available');
+        return resolveAvailabilityItemStatus(item);
       }
     }
     // No explicit record → treat as Available by default
@@ -1231,11 +1235,64 @@ const CrewDetailsPage = () => {
                         availabilityItems.map((item) => {
                           const fromStr = item.from ? new Date(item.from).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
                           const toStr = item.to ? new Date(item.to).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }) : '';
-                          const isAvail = item.isAvailable !== false;
-                          const bg = isAvail ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)';
-                          const border = isAvail ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
-                          const titleColor = isAvail ? 'var(--subsea-text-success, #059669)' : 'var(--subsea-text-danger, #ef4444)';
-                          const titleLabel = isAvail ? 'Available Window' : 'Unavailable Window';
+                          const resolvedStatus = resolveAvailabilityItemStatus(item);
+                          const isAvail = resolvedStatus === 'Available';
+                          const themeMap: Record<CrewStatusTier, { bg: string; border: string; text: string }> = {
+                            Available: {
+                              bg: 'rgba(34, 197, 94, 0.05)',
+                              border: 'rgba(34, 197, 94, 0.2)',
+                              text: 'var(--subsea-text-success, #059669)',
+                            },
+                            Offered: {
+                              bg: 'rgba(234, 179, 8, 0.05)',
+                              border: 'rgba(234, 179, 8, 0.2)',
+                              text: '#d97706',
+                            },
+                            Confirmed: {
+                              bg: 'rgba(59, 130, 246, 0.05)',
+                              border: 'rgba(59, 130, 246, 0.2)',
+                              text: '#2563eb',
+                            },
+                            'In Flight': {
+                              bg: 'rgba(6, 182, 212, 0.05)',
+                              border: 'rgba(6, 182, 212, 0.2)',
+                              text: '#0891b2',
+                            },
+                            'In Project': {
+                              bg: 'rgba(139, 92, 246, 0.05)',
+                              border: 'rgba(139, 92, 246, 0.2)',
+                              text: '#7c3aed',
+                            },
+                            'On assignment for us': {
+                              bg: 'rgba(168, 85, 247, 0.05)',
+                              border: 'rgba(168, 85, 247, 0.2)',
+                              text: '#9333ea',
+                            },
+                            'Offshore (Competitor)': {
+                              bg: 'rgba(239, 68, 68, 0.05)',
+                              border: 'rgba(239, 68, 68, 0.2)',
+                              text: '#dc2626',
+                            },
+                            'Holiday / Not Available': {
+                              bg: 'rgba(249, 115, 22, 0.05)',
+                              border: 'rgba(249, 115, 22, 0.2)',
+                              text: '#ea580c',
+                            },
+                            'Unknown / Inactive': {
+                              bg: 'rgba(156, 163, 175, 0.05)',
+                              border: 'rgba(156, 163, 175, 0.2)',
+                              text: '#4b5563',
+                            },
+                          };
+                          const theme = themeMap[resolvedStatus] ?? themeMap.Available;
+                          const bg = theme.bg;
+                          const border = theme.border;
+                          const titleColor = theme.text;
+                          const titleLabel = resolvedStatus === 'Available'
+                            ? 'Available Window'
+                            : resolvedStatus === 'Holiday / Not Available'
+                              ? 'Unavailable Window'
+                              : `${crewStatusTierLabel(resolvedStatus)} Window`;
                           return (
                             <div key={item.id} className="p-3 border rounded-lg flex items-center justify-between" style={{ backgroundColor: bg, borderColor: border }}>
                               <div>

@@ -329,7 +329,7 @@ const CrewManagementDashboard = () => {
           <section className="subsea-welcome">
             <div className="subsea-wb-left">
               <div className="subsea-wb-greeting">{getGreeting()}</div>
-              <div className="subsea-wb-name">Welcome bddack, <span>Pranav</span> 👋</div>
+              <div className="subsea-wb-name">Welcome back, <span>Pranav</span> 👋</div>
               <div className="subsea-wb-sub">Here's what's happening across your fleet today from the integrated backend APIs.</div>
               <div className="subsea-wb-chips">
                 <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />{expiringCrew.length} certs need attention</span>
