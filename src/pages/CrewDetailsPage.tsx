@@ -323,7 +323,7 @@ const CrewDetailsPage = () => {
     }
   };
 
-  const getDayAvailabilityStatus = (day: Date): CrewStatusTier => {
+  const getDayAvailabilityStatus = (day: Date): CrewStatusTier | 'none' => {
     const dStr = dateKey(day);
     for (const item of availabilityItems) {
       if (!item.from || !item.to) continue;
