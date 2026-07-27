@@ -247,19 +247,24 @@ const CrewDetailsPage = () => {
     setAvailError(null);
     try {
       const isAvail = newAvailType === 'Available';
-      const assignment =
-        newAvailType === 'Offshore (Competitor)'
-          ? {
-              ...(newAvailEmployer ? { employer: newAvailEmployer } : {}),
-              ...(newAvailEmployer === 'Other' && newAvailEmployerOther.trim()
-                ? { employer_other: newAvailEmployerOther.trim() }
-                : {}),
-              ...(newAvailClient.trim() ? { client: newAvailClient.trim() } : {}),
-              ...(newAvailRigVessel.trim() ? { rig_vessel: newAvailRigVessel.trim() } : {}),
-              ...(newAvailCountry.trim() ? { country: newAvailCountry.trim() } : {}),
-              ...(newAvailNotes.trim() ? { notes: newAvailNotes.trim() } : {}),
-            }
-          : undefined;
+      const showAssignmentFields =
+        newAvailType === 'Offshore (Competitor)' || newAvailType === 'On assignment for us';
+      const assignment = showAssignmentFields
+        ? {
+            ...(newAvailType === 'Offshore (Competitor)' && newAvailEmployer
+              ? { employer: newAvailEmployer }
+              : {}),
+            ...(newAvailType === 'Offshore (Competitor)' &&
+            newAvailEmployer === 'Other' &&
+            newAvailEmployerOther.trim()
+              ? { employer_other: newAvailEmployerOther.trim() }
+              : {}),
+            ...(newAvailClient.trim() ? { client: newAvailClient.trim() } : {}),
+            ...(newAvailRigVessel.trim() ? { rig_vessel: newAvailRigVessel.trim() } : {}),
+            ...(newAvailCountry.trim() ? { country: newAvailCountry.trim() } : {}),
+            ...(newAvailNotes.trim() ? { notes: newAvailNotes.trim() } : {}),
+          }
+        : undefined;
       await addCrewAvailabilityAdmin(crewId, newAvailFrom, newAvailTo, isAvail, assignment, newAvailType);
       
       const startFormatted = new Date(newAvailFrom).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -276,7 +281,7 @@ const CrewDetailsPage = () => {
       setNewAvailNotes('');
       setRangeStart(null);
       setRangeEnd(null);
-      await loadAvailabilities();
+      await Promise.all([loadAvailabilities(), loadCrewDetails(false)]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add range';
       setAvailError(msg);
@@ -360,7 +365,7 @@ const CrewDetailsPage = () => {
     try {
       await deleteCrewAvailabilityAdmin(deleteTargetId);
       toast.success('Availability window deleted successfully');
-      await loadAvailabilities();
+      await Promise.all([loadAvailabilities(), loadCrewDetails(false)]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to delete availability';
       setAvailError(msg);
@@ -651,16 +656,18 @@ const CrewDetailsPage = () => {
                             </span>
                           </div>
                         </div>
-                        <div className="subsea-detail-row">
-                          <div className="subsea-detail-label">Current Employer</div>
-                          <div className="subsea-detail-val">
-                            {field(
-                              crew.currentAssignment?.employer === 'Other'
-                                ? crew.currentAssignment?.employer_other
-                                : crew.currentAssignment?.employer
-                            )}
+                        {crew.current_status === 'Offshore (Competitor)' && (
+                          <div className="subsea-detail-row">
+                            <div className="subsea-detail-label">Current Employer</div>
+                            <div className="subsea-detail-val">
+                              {field(
+                                crew.currentAssignment?.employer === 'Other'
+                                  ? crew.currentAssignment?.employer_other
+                                  : crew.currentAssignment?.employer
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div className="subsea-detail-row">
                           <div className="subsea-detail-label">Client</div>
                           <div className="subsea-detail-val">{field(crew.currentAssignment?.client)}</div>
@@ -698,6 +705,10 @@ const CrewDetailsPage = () => {
                         <div className="subsea-detail-row">
                           <div className="subsea-detail-label">Country</div>
                           <div className="subsea-detail-val">{field(crew.currentAssignment?.country)}</div>
+                        </div>
+                        <div className="subsea-detail-row">
+                          <div className="subsea-detail-label">Notes</div>
+                          <div className="subsea-detail-val">{field(crew.currentAssignment?.notes)}</div>
                         </div>
                       </div>
                     </div>
@@ -1122,7 +1133,14 @@ const CrewDetailsPage = () => {
                           <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">STATUS</label>
                           <select
                             value={newAvailType}
-                            onChange={(e) => setNewAvailType(e.target.value as CrewStatusTier)}
+                            onChange={(e) => {
+                              const next = e.target.value as CrewStatusTier;
+                              setNewAvailType(next);
+                              if (next !== 'Offshore (Competitor)') {
+                                setNewAvailEmployer('');
+                                setNewAvailEmployerOther('');
+                              }
+                            }}
                             className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
                             style={{ borderColor: '#cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', height: '30px' }}
                           >
@@ -1134,37 +1152,40 @@ const CrewDetailsPage = () => {
                           </select>
                         </div>
                       </div>
-                      {newAvailType === 'Offshore (Competitor)' && (
+                      {(newAvailType === 'Offshore (Competitor)' || newAvailType === 'On assignment for us') && (
                         <div className="grid grid-cols-2 gap-2">
-                          {/* MD Section 3.3 — employer dropdown */}
-                          <div className="dev-new-field" data-dev-tag="NEW">
-                            <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">CURRENT EMPLOYER</label>
-                            <select
-                              value={newAvailEmployer}
-                              onChange={(e) => setNewAvailEmployer(e.target.value)}
-                              className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
-                              style={{ borderColor: '#cbd5e1', height: '30px' }}
-                            >
-                              <option value="">Select employer</option>
-                              {EMPLOYER_OPTIONS.map((emp) => (
-                                <option key={emp} value={emp}>{emp}</option>
-                              ))}
-                            </select>
-                          </div>
-                          {newAvailEmployer === 'Other' && (
-                            <div className="dev-new-field" data-dev-tag="NEW">
-                              <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">EMPLOYER (OTHER)</label>
-                              <input
-                                type="text"
-                                value={newAvailEmployerOther}
-                                onChange={(e) => setNewAvailEmployerOther(e.target.value)}
-                                className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
-                                style={{ borderColor: '#cbd5e1', height: '30px' }}
-                                placeholder="Free text"
-                              />
-                            </div>
+                          {/* Current Employer is Offshore (Competitor) only */}
+                          {newAvailType === 'Offshore (Competitor)' && (
+                            <>
+                              <div className="dev-new-field" data-dev-tag="NEW">
+                                <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">CURRENT EMPLOYER</label>
+                                <select
+                                  value={newAvailEmployer}
+                                  onChange={(e) => setNewAvailEmployer(e.target.value)}
+                                  className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                                  style={{ borderColor: '#cbd5e1', height: '30px' }}
+                                >
+                                  <option value="">Select employer</option>
+                                  {EMPLOYER_OPTIONS.map((emp) => (
+                                    <option key={emp} value={emp}>{emp}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              {newAvailEmployer === 'Other' && (
+                                <div className="dev-new-field" data-dev-tag="NEW">
+                                  <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">EMPLOYER (OTHER)</label>
+                                  <input
+                                    type="text"
+                                    value={newAvailEmployerOther}
+                                    onChange={(e) => setNewAvailEmployerOther(e.target.value)}
+                                    className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
+                                    style={{ borderColor: '#cbd5e1', height: '30px' }}
+                                    placeholder="Free text"
+                                  />
+                                </div>
+                              )}
+                            </>
                           )}
-                          {/* MD Section 3.3 — client / operator */}
                           <div className="dev-new-field" data-dev-tag="NEW">
                             <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">CLIENT / OPERATOR</label>
                             <input
@@ -1176,7 +1197,6 @@ const CrewDetailsPage = () => {
                               placeholder="e.g. Transocean"
                             />
                           </div>
-                          {/* MD Section 3.3 — rig / vessel */}
                           <div className="dev-new-field" data-dev-tag="NEW">
                             <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">RIG / VESSEL</label>
                             <input
@@ -1188,7 +1208,6 @@ const CrewDetailsPage = () => {
                               placeholder="e.g. Deepwater Atlas"
                             />
                           </div>
-                          {/* MD Section 3.3 — country */}
                           <div className="dev-new-field" data-dev-tag="NEW">
                             <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">COUNTRY</label>
                             <input
@@ -1199,7 +1218,6 @@ const CrewDetailsPage = () => {
                               style={{ borderColor: '#cbd5e1', height: '30px' }}
                             />
                           </div>
-                          {/* MD Section 3.3 — notes */}
                           <div className="col-span-full dev-new-field" data-dev-tag="NEW">
                             <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">NOTES</label>
                             <input
@@ -1298,9 +1316,15 @@ const CrewDetailsPage = () => {
                               <div>
                                 <div className="text-xs font-semibold" style={{ color: titleColor }}>{titleLabel}</div>
                                 <div className="text-sm font-bold" style={{ color: 'var(--subsea-text)' }}>{fromStr} — {toStr}</div>
-                                {!isAvail && (item.employer || item.client || item.rig_vessel) && (
+                                {!isAvail && (item.employer || item.client || item.rig_vessel || item.country || item.notes) && (
                                   <div className="text-[10px] text-muted-foreground mt-1 dev-new-field" data-dev-tag="NEW">
-                                    {[item.employer === 'Other' ? item.employer_other : item.employer, item.client, item.rig_vessel, item.country]
+                                    {[
+                                      item.employer === 'Other' ? item.employer_other : item.employer,
+                                      item.client,
+                                      item.rig_vessel,
+                                      item.country,
+                                      item.notes,
+                                    ]
                                       .filter(Boolean)
                                       .join(' · ')}
                                     {item.available_from && (
