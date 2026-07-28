@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plane, Check, Lock, ArrowRight, Mail, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { authLogin } from '../api/auth';
-import { getAdminTheme, setAdminTheme, type AdminTheme } from '../lib/adminTheme';
+import { useAppTheme } from '../lib/useAppTheme';
 import './LoginPage.css';
 import './AdminLoginPage.css';
 
@@ -12,18 +12,8 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<AdminTheme>(() => getAdminTheme());
+  const { theme, toggleTheme } = useAppTheme();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
-
-  const toggleTheme = () => {
-    const next: AdminTheme = theme === 'dark' ? 'light' : 'dark';
-    setAdminTheme(next);
-    setTheme(next);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     console.log('handleSubmit called, preventing default...');

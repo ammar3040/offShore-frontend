@@ -4,8 +4,6 @@ import { ChevronLeft, Loader2, UserPlus, Users } from 'lucide-react';
 import CrewMemberForm, { type CrewMemberFormData } from '../components/forms/CrewMemberForm';
 import { getCrewById, createCrewMember, updateCrewMember, crewApiToFormData } from '../api/crew';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { clearCrewMemberFormDraft } from '../utils/crewMemberFormDraft';
 import './RigsPage.css';
 
@@ -76,7 +74,6 @@ const CrewMemberFormPage: React.FC = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="crew" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -122,8 +119,6 @@ const CrewMemberFormPage: React.FC = () => {
             {isEdit ? 'Editing profile' : 'Creating profile'}
           </div>
           <div className="subsea-top-actions">
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

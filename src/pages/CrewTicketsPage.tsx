@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plane, FileCheck } from 'lucide-react';
+import { FileCheck } from 'lucide-react';
 import { getCrewMe } from '../api/crew';
 import { toast } from 'sonner';
 import {
@@ -27,6 +27,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
+import { PageHeader } from '../components/app/PageHeader';
+import { DataPanel } from '../components/app/DataPanel';
 import './CrewTicketsPage.css';
 
 const CrewTicketsPage = () => {
@@ -83,41 +85,20 @@ const CrewTicketsPage = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="crew-tickets-loading">
-        <div className="crew-tickets-spinner" />
-        <p>Loading…</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="crew-tickets-page">
-        <header className="crew-tickets-header">
-          <h1 className="crew-tickets-title">Tickets</h1>
-          <p className="crew-tickets-subtitle">Your flight tickets for assigned projects</p>
-        </header>
-        <div className="crew-tickets-error" role="alert">{error}</div>
-      </div>
-    );
-  }
-
   return (
     <div className="crew-tickets-page">
-      <header className="crew-tickets-header">
-        <h1 className="crew-tickets-title">Tickets</h1>
-        <p className="crew-tickets-subtitle">Your flight tickets for assigned projects</p>
-      </header>
+      <PageHeader
+        title="Tickets"
+        description="Your flight tickets for assigned projects"
+      />
 
-      {tickets.length === 0 ? (
-        <div className="crew-tickets-placeholder">
-          <Plane size={48} className="crew-tickets-icon" />
-          <p>No flight tickets assigned yet.</p>
-          <p className="crew-tickets-placeholder-hint">Enroll in a project to receive flight tickets.</p>
-        </div>
-      ) : (
+      <DataPanel
+        loading={loading}
+        error={error}
+        empty={!loading && !error && tickets.length === 0}
+        emptyTitle="No flight tickets yet"
+        emptyDescription="Enroll in a project to receive flight tickets."
+      >
         <Card className="crew-tickets-table-wrap overflow-hidden">
           <Table>
             <TableHeader>
@@ -191,7 +172,7 @@ const CrewTicketsPage = () => {
             </TableBody>
           </Table>
         </Card>
-      )}
+      </DataPanel>
 
       <Dialog open={!!selectedTicket} onOpenChange={(open) => !open && setSelectedTicket(null)}>
         <DialogContent className="max-w-lg">

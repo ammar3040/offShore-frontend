@@ -30,8 +30,6 @@ import {
   ticketHasStoredPdf,
   type CrewTicketApi,
 } from '../api/ticket';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import {
   availabilityFromCrewSignal,
   crewAvailabilityDotClass,
@@ -1094,7 +1092,6 @@ const TimelinePage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="timeline" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -1242,11 +1239,7 @@ const TimelinePage = () => {
           >
             <ArrowLeft size={12} className="mr-1.5" /> Back
           </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Timeline & Calendar</span>
-          </div>
+          <div className="subsea-crumb"><span className="subsea-crumb-active">Timeline & Calendar</span></div>
           <div className="subsea-sync-pill"><span className="subsea-sync-dot" />Live schedule · {filteredEvents.length} events</div>
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
@@ -1255,8 +1248,6 @@ const TimelinePage = () => {
             <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm">
               <Plus size={12} /> Add Event
             </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 
@@ -1267,6 +1258,16 @@ const TimelinePage = () => {
               <p>Crew movements, flight bookings, project windows, certificate renewals and fleet changes</p>
             </div>
             <div className="subsea-ph-right">
+              <div className="relative min-w-[200px]">
+                <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 opacity-50" />
+                <input
+                  type="text"
+                  placeholder="Search crew, events..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] py-1.5 pr-3 pl-8 text-sm"
+                />
+              </div>
               <div className="subsea-view-toggle">
                 <button type="button" className={`subsea-vt-btn${viewMode === 'calendar' ? ' active' : ''}`} onClick={() => setViewMode('calendar')}>
                   <CalendarDays size={12} /> Calendar

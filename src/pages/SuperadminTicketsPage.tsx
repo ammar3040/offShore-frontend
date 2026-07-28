@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PageHeader } from '@/components/app/PageHeader';
 import './SuperadminTicketsPage.css';
 
 const SuperadminTicketsPage = () => {
@@ -304,30 +305,28 @@ const SuperadminTicketsPage = () => {
 
   return (
     <div className="superadmin-tickets-page">
-      <header className="superadmin-tickets-header">
-        <div>
-          <h1 className="superadmin-tickets-title">Crew Tickets</h1>
-          <p className="superadmin-tickets-subtitle">
-            View all crew flight tickets across projects.
-          </p>
-        </div>
-        <div className="superadmin-tickets-filter">
-          <label htmlFor="sa-tickets-project">Filter by project</label>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger id="sa-tickets-project" className="superadmin-tickets-select w-[240px]">
-              <SelectValue placeholder="All projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All projects</SelectItem>
-              {projectOptions.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </header>
+      <PageHeader
+        title="Crew Tickets"
+        description="View all crew flight tickets across projects."
+        actions={
+          <div className="superadmin-tickets-filter">
+            <label htmlFor="sa-tickets-project">Filter by project</label>
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger id="sa-tickets-project" className="superadmin-tickets-select w-[240px]">
+                <SelectValue placeholder="All projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All projects</SelectItem>
+                {projectOptions.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
       {error && (
         <div className="superadmin-tickets-error" role="alert">

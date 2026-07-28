@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { crewChangePassword, crewForgotPassword } from '../api/crew';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
+import { PageHeader } from '../components/app/PageHeader';
 import './CrewSettingsPage.css';
 
 const CrewSettingsPage = () => {
@@ -79,10 +80,7 @@ const CrewSettingsPage = () => {
 
   return (
     <div className="crew-settings-page">
-      <header className="crew-settings-header">
-        <h1 className="crew-settings-title">Settings</h1>
-        <p className="crew-settings-subtitle">Manage your account preferences</p>
-      </header>
+      <PageHeader title="Settings" description="Account preferences for your crew portal." />
 
       <section className="crew-settings-card">
         <h2 className="crew-settings-card-title">

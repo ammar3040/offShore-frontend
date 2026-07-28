@@ -1,13 +1,16 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Layout from './components/Layout';
+import AdminPanelLayout from './components/AdminPanelLayout';
 import CrewPanelLayout from './components/CrewPanelLayout';
 import SuperadminPanelLayout from './components/SuperadminPanelLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedSuperadminRoute from './components/ProtectedSuperadminRoute';
 import PageLoader from './components/PageLoader';
 import { Toaster } from './components/ui/sonner';
+import { applyAppTheme } from './lib/useAppTheme';
 import './App.css';
+
+applyAppTheme();
 
 const CrewManagementDashboard = lazy(() => import('./pages/CrewManagementDashboard'));
 const CrewListPage = lazy(() => import('./pages/CrewListPage'));
@@ -44,10 +47,8 @@ function App() {
       <Toaster theme="light" richColors position="bottom-right" />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Unified login - choose Admin, Crew, or Superadmin */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Superadmin portal */}
           <Route path="/panel/superadmin/login" element={<SuperadminLoginPage />} />
           <Route
             path="/panel/superadmin"
@@ -64,10 +65,7 @@ function App() {
             <Route index element={<Navigate to="/panel/superadmin/dashboard" replace />} />
           </Route>
 
-          {/* Crew portal login (no sidebar layout) */}
           <Route path="/crew/login" element={<CrewLogin redirectTo="/panel/crew/dashboard" />} />
-
-          {/* Crew panel - detached from admin, own URL space */}
           <Route
             path="/panel/crew/login"
             element={<CrewLogin redirectTo="/panel/crew/dashboard" />}
@@ -83,44 +81,33 @@ function App() {
             <Route index element={<Navigate to="/panel/crew/dashboard" replace />} />
           </Route>
 
-          {/* Crew dashboard - after crew login (with layout) */}
+          {/* Admin CRM — shared AppShell layout */}
           <Route
-            path="/crew/dashboard"
+            path="/"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <CrewManagementDashboard />
-                </Layout>
+                <AdminPanelLayout />
               </ProtectedRoute>
             }
-          />
-
-          {/* Main app routes — subsea pages include their own shell (no legacy Layout wrapper) */}
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <Routes>
-                  <Route path="/" element={<CrewManagementDashboard />} />
-                  <Route path="/crew" element={<CrewListPage />} />
-                  <Route path="/crew/add" element={<CrewMemberFormPage />} />
-                  <Route path="/crew/edit/:crewId" element={<CrewMemberFormPage />} />
-                  <Route path="/crew/:crewId" element={<CrewDetailsPage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
-                  <Route path="/rig" element={<RigsPage />} />
-                  <Route path="/rig/:rigId" element={<RigDetailsPage />} />
-                  <Route path="/timeline" element={<TimelinePage />} />
-                  <Route path="/tickets" element={<AdminTicketsPage />} />
-                  <Route path="/payroll" element={<PayrollPage />} />
-                  <Route path="/contracts" element={<ContractsPage />} />
-                  <Route path="/bills" element={<AdminBillsPage />} />
-                  <Route path="/documents" element={<DocumentsCertsPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route index element={<CrewManagementDashboard />} />
+            <Route path="crew" element={<CrewListPage />} />
+            <Route path="crew/add" element={<CrewMemberFormPage />} />
+            <Route path="crew/edit/:crewId" element={<CrewMemberFormPage />} />
+            <Route path="crew/:crewId" element={<CrewDetailsPage />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
+            <Route path="rig" element={<RigsPage />} />
+            <Route path="rig/:rigId" element={<RigDetailsPage />} />
+            <Route path="timeline" element={<TimelinePage />} />
+            <Route path="tickets" element={<AdminTicketsPage />} />
+            <Route path="payroll" element={<PayrollPage />} />
+            <Route path="contracts" element={<ContractsPage />} />
+            <Route path="bills" element={<AdminBillsPage />} />
+            <Route path="documents" element={<DocumentsCertsPage />} />
+            <Route path="crew/dashboard" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
         </Routes>
       </Suspense>
     </Router>

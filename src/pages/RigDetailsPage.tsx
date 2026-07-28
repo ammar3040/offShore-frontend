@@ -7,8 +7,6 @@ import {
   MapPin,
   Ship,
 } from 'lucide-react';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import type { ProjectApi } from '../api/project';
 import { getRigById, type RigApi, type RigCreatedByAdmin } from '../api/rig';
 import './RigsPage.css';
@@ -107,7 +105,6 @@ const RigDetailsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="rigs" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -157,8 +154,6 @@ const RigDetailsPage = () => {
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/rig')}>
               <ArrowLeft size={12} /> Back
             </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

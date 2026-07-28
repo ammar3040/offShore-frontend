@@ -1,19 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  Anchor,
   ArrowUpRight,
   BadgeCheck,
   CircleDollarSign,
-  Download,
   FileText,
-  Filter,
-  LayoutDashboard,
   Plane,
   Plus,
   Radio,
-  Search,
-  ShieldCheck,
   Ship,
   UserPlus,
   Users,
@@ -24,12 +18,10 @@ import { getProjects, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewTickets, type CrewTicketApi } from '../api/ticket';
 import { useCommandPaletteOpen } from '../components/CommandPalette';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { availabilityFromCrewSignal, crewStatusTierDotClass, crewStatusTierLabel } from '../utils/crewAvailability';
 import { useUtcClock } from '../utils/useUtcClock';
 import './CrewManagementDashboard.css';
-
+import './RigsPage.css';
 type DashboardState = {
   crew: CrewMemberApi[];
   rigs: RigApi[];
@@ -256,87 +248,19 @@ const CrewManagementDashboard = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="dashboard" />
-
-      <aside className="subsea-sidebar">
-        <div className="subsea-sb-head">
-          <span className="subsea-sb-title">Dashboard</span>
-          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
-            <Filter size={13} />
-          </button>
-        </div>
-        <div className="subsea-sb-search">
-          <div className="subsea-sb-search-wrap">
-            <Search size={13} />
-            <input type="text" placeholder="Search crew, rigs..." />
-          </div>
-        </div>
-        <div className="subsea-sb-body">
-          <div className="subsea-sb-group">Operations</div>
-          <button type="button" className="subsea-sb-link active">
-            <LayoutDashboard size={13} /> Fleet Overview <span className="subsea-sb-count">Live</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
-            <Ship size={13} /> Rig Fleet <span className="subsea-sb-count">{loading ? '...' : dashboard.rigs.length}</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <Users size={13} /> Crew Roster <span className="subsea-sb-count">{loading ? '...' : dashboard.crew.length}</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <UserPlus size={13} /> Ready for Mobilization <span className="subsea-sb-count">{loading ? '...' : readyForMobilizationCount}</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <Users size={13} /> Assigned to Project <span className="subsea-sb-count">{loading ? '...' : assignedToProjectCount}</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
-            <Plane size={13} /> Flight Bookings <span className="subsea-sb-count">{loading ? '...' : dashboard.tickets.length}</span>
-          </button>
-          <div className="subsea-sb-group">Compliance</div>
-          <button type="button" className="subsea-sb-link">
-            <BadgeCheck size={13} /> Certifications <span className="subsea-sb-count subsea-sb-count-red">{loading ? '...' : expiringCrew.length}</span>
-          </button>
-          <button type="button" className="subsea-sb-link">
-            <ShieldCheck size={13} /> Audit Logs
-          </button>
-          <div className="subsea-sb-group">Projects</div>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/projects')}>
-            <Anchor size={13} /> Active Projects <span className="subsea-sb-count">{loading ? '...' : activeProjectsCount}</span>
-          </button>
-        </div>
-      </aside>
-
       <div className="subsea-main">
-        <div className="subsea-topbar">
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Dashboard</span>
-          </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · {utcTime}</div>
-          <div className="subsea-top-actions">
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
-              <Download size={12} /> Export
-            </button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => navigate('/crew')}>
-              <Plus size={12} /> New
-            </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
-          </div>
-        </div>
-
         <main className="subsea-content">
           <section className="subsea-welcome">
             <div className="subsea-wb-left">
               <div className="subsea-wb-greeting">{getGreeting()}</div>
-              <div className="subsea-wb-name">Welcome back, <span>Pranav</span> 👋</div>
-              <div className="subsea-wb-sub">Here's what's happening across your fleet today from the integrated backend APIs.</div>
+              <div className="subsea-wb-name">Fleet overview</div>
+              <div className="subsea-wb-sub">Crew, rigs, projects, and flights — quick links for daily work.</div>
               <div className="subsea-wb-chips">
                 <span className="subsea-wb-chip subsea-wb-chip-amber"><AlertTriangle size={12} />{expiringCrew.length} certs need attention</span>
                 <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/crew')}><UserPlus size={12} />{loading ? '...' : readyForMobilizationCount} ready for mobilization</button>
                 <button type="button" className="subsea-wb-chip subsea-wb-chip-blue" onClick={() => navigate('/crew')}><Users size={12} />{loading ? '...' : assignedToProjectCount} assigned to projects</button>
                 <button type="button" className="subsea-wb-chip subsea-wb-chip-green" onClick={() => navigate('/rig')}><Ship size={12} />{dashboard.rigs.length} rigs loaded</button>
-                <button type="button" className="subsea-wb-chip subsea-wb-chip-blue" onClick={openCommandPalette}><Radio size={12} />Open Command Center</button>
+                <button type="button" className="subsea-wb-chip subsea-wb-chip-blue" onClick={openCommandPalette}><Radio size={12} />Search (Ctrl+K)</button>
               </div>
             </div>
             <div className="subsea-wb-right">
@@ -344,9 +268,13 @@ const CrewManagementDashboard = () => {
                 <div className="subsea-wb-date">{utcTime}</div>
                 <div className="subsea-wb-time">Coordinated Universal Time</div>
               </div>
-              <div className="subsea-wb-status-row">
-                <span className="subsea-wb-status-dot" />
-                <span>GMDSS Online · All systems nominal</span>
+              <div className="subsea-top-actions" style={{ marginTop: 12 }}>
+                <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/tickets')}>
+                  <Plane size={12} /> Book flight
+                </button>
+                <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => navigate('/crew/add')}>
+                  <Plus size={12} /> Add crew
+                </button>
               </div>
             </div>
           </section>

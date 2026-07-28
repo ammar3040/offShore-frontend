@@ -4,6 +4,7 @@ import { User, Mail, MapPin, FileText, CreditCard } from 'lucide-react';
 import { getCrewMe } from '../api/crew';
 import { getStoredCrewPanelUser, hasCrewAccessToken } from '../lib/crewPanelAuth';
 import type { CrewMemberApi } from '../api/crew';
+import { PageHeader } from '../components/app/PageHeader';
 import './CrewProfilePage.css';
 
 function field(value: string): string {
@@ -73,10 +74,7 @@ const CrewProfilePage = () => {
 
   return (
     <div className="crew-profile-page">
-      <header className="crew-profile-header">
-        <h1 className="crew-profile-title">Profile</h1>
-        <p className="crew-profile-subtitle">Your crew information</p>
-      </header>
+      <PageHeader title="Profile" description="Your personal and travel details." />
 
       <div className="crew-profile-grid">
         <section className="crew-profile-card crew-profile-card--span-2">

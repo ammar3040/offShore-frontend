@@ -14,7 +14,6 @@ import {
   Phone,
   Plane,
   Printer,
-  Settings,
   Ship,
   User,
   Trash2,
@@ -39,12 +38,11 @@ import {
 } from '../api/ticket';
 import { EMPLOYER_OPTIONS } from '../constants/employers';
 import Modal from '../components/Modal';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
 import { Calendar as UiCalendar } from '../components/ui/calendar';
 import { availabilityFromCrewSignal, getCrewSignal, CREW_STATUS_TIER_OPTIONS, type CrewStatusTier, crewStatusTierLabel, crewStatusTierBadgeClass, resolveAvailabilityItemStatus } from '../utils/crewAvailability';
 import { toast } from 'sonner';
+import { ViewTabs } from '../components/app/ViewTabs';
 import './RigsPage.css';
 import './TimelinePage.css';
 
@@ -474,65 +472,37 @@ const CrewDetailsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="crew" />
-
-      <aside className="subsea-sidebar">
-        <div className="subsea-sb-head">
-          <span className="subsea-sb-title">Crew Profile</span>
-          <button type="button" className="subsea-sb-btn" aria-label="Profile settings">
-            <Settings size={13} />
-          </button>
-        </div>
-        <div className="subsea-sb-body">
-          <div className="subsea-sb-group">Profile</div>
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={`subsea-sb-link${activeTab === tab.id ? ' active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <Icon size={13} /> {tab.label}
-                {tab.badge && <span className="subsea-sb-count subsea-sb-count-red">{tab.badge}</span>}
-              </button>
-            );
-          })}
-          <div className="subsea-sb-group">Actions</div>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <ArrowLeft size={13} /> Back to Crew
-          </button>
-        </div>
-      </aside>
-
       <div className="subsea-main">
         <div className="subsea-topbar">
           <button
             type="button"
             className="subsea-btn subsea-btn-default subsea-btn-sm"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/crew')}
           >
-            <ArrowLeft size={12} className="mr-1.5" /> Back
+            <ArrowLeft size={12} className="mr-1.5" /> Back to Crew
           </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span>Crew Management</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Crew Profile</span>
-          </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
           <div className="subsea-top-actions">
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><Printer size={12} /> Print</button>
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm"><MessageSquare size={12} /> Message</button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => void openEditModal()} disabled={!crewId || loading}><User size={12} /> Edit Profile</button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => void openEditModal()} disabled={!crewId || loading}>
+              <User size={12} /> Edit Profile
+            </button>
           </div>
         </div>
 
         <main className="subsea-content">
+          <ViewTabs
+            value={activeTab}
+            onChange={(id) => setActiveTab(id as ProfileTab)}
+            items={tabs.map((tab) => ({
+              id: tab.id,
+              label: tab.label,
+              count: tab.badge,
+              countTone: tab.badge ? ('danger' as const) : ('default' as const),
+              icon: (() => {
+                const Icon = tab.icon;
+                return <Icon size={14} />;
+              })(),
+            }))}
+          />
           <div className="subsea-page-head">
             <div className="subsea-profile-head-left">
               <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => navigate('/crew')}>

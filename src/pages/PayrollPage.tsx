@@ -12,8 +12,6 @@ import {
   Wallet,
 } from 'lucide-react';
 import Modal from '../components/Modal';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getProjects, type ProjectApi } from '../api/project';
 import {
   getCrewList,
@@ -330,7 +328,6 @@ const PayrollPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="payroll" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -400,11 +397,7 @@ const PayrollPage = () => {
           >
             <ArrowLeft size={12} className="mr-1.5" /> Back
           </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Payroll</span>
-          </div>
+          <div className="subsea-crumb"><span className="subsea-crumb-active">Payroll</span></div>
           <div className="subsea-sync-pill">
             <span className="subsea-sync-dot" />
             GMDSS Online · {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} UTC
@@ -413,8 +406,6 @@ const PayrollPage = () => {
             <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openAddPayModal}>
               <Plus size={12} /> Set Pay
             </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

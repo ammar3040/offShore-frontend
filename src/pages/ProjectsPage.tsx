@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   AlertTriangle,
-  ArrowLeft,
   Award,
   BadgeCheck,
   Banknote,
@@ -22,11 +21,10 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
 import { getCrewAvailableForProject, getCrewList, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
+import { ViewTabs } from '../components/app/ViewTabs';
 import './ProjectsPage.css';
 import './RigsPage.css';
 
@@ -396,106 +394,61 @@ const ProjectsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="projects" />
-
-      <aside className="subsea-sidebar">
-        <div className="subsea-sb-head">
-          <span className="subsea-sb-title">Projects</span>
-          <button type="button" className="subsea-sb-btn" aria-label="Filter projects">
-            <Filter size={13} />
-          </button>
-        </div>
-        <div className="subsea-sb-search">
-          <div className="subsea-sb-search-wrap">
-            <Search size={13} />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-        </div>
-        <div className="subsea-sb-body">
-          <div className="subsea-sb-group">Portfolio</div>
-          <button
-            type="button"
-            className={`subsea-sb-link${statusFilter === 'all' ? ' active' : ''}`}
-            onClick={() => {
-              setStatusFilter('all');
-              setPage(1);
-            }}
-          >
-            <FolderKanban size={13} /> All Projects <span className="subsea-sb-count">{projects.length}</span>
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${statusFilter === 'active' ? ' active' : ''}`}
-            onClick={() => {
-              setStatusFilter('active');
-              setPage(1);
-            }}
-          >
-            <CheckSquare size={13} /> Active <span className="subsea-sb-count">{activeCount}</span>
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${statusFilter === 'at-risk' ? ' active' : ''}`}
-            onClick={openAtRiskView}
-          >
-            <AlertTriangle size={13} /> At Risk <span className="subsea-sb-count subsea-sb-count-red">{crewRosterLoading ? '...' : atRiskCrewCount}</span>
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${statusFilter === 'completed' ? ' active' : ''}`}
-            onClick={() => {
-              setStatusFilter('completed');
-              setPage(1);
-            }}
-          >
-            <BadgeCheck size={13} /> Completed <span className="subsea-sb-count">{completedCount}</span>
-          </button>
-          <div className="subsea-sb-group">Views</div>
-          <button type="button" className="subsea-sb-link" onClick={() => setViewMode('board')}>
-            <Kanban size={13} /> Board
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => setViewMode('list')}>
-            <List size={13} /> List
-          </button>
-        </div>
-      </aside>
-
       <div className="subsea-main">
-        <div className="subsea-topbar">
-          <button
-            type="button"
-            className="subsea-btn subsea-btn-default subsea-btn-sm"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft size={12} className="mr-1.5" /> Back
-          </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Projects</span>
-          </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
-          <div className="subsea-top-actions">
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
-              <Filter size={12} /> Filter
-            </button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
-              <Plus size={12} /> New Project
-            </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
-          </div>
-        </div>
-
         <main className="subsea-content">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1 max-w-md">
+              <Search size={14} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--text-tertiary)]" />
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] py-2 pr-3 pl-8 text-sm outline-none focus:border-[var(--blue)]"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`subsea-btn subsea-btn-default subsea-btn-sm${viewMode === 'board' ? ' active' : ''}`}
+                onClick={() => setViewMode('board')}
+              >
+                <Kanban size={12} /> Board
+              </button>
+              <button
+                type="button"
+                className={`subsea-btn subsea-btn-default subsea-btn-sm${viewMode === 'list' ? ' active' : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                <List size={12} /> List
+              </button>
+              <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
+                <Plus size={12} /> New Project
+              </button>
+            </div>
+          </div>
+
+          <ViewTabs
+            value={statusFilter}
+            onChange={(id) => {
+              if (id === 'at-risk') {
+                openAtRiskView();
+                return;
+              }
+              setStatusFilter(id as typeof statusFilter);
+              setPage(1);
+            }}
+            items={[
+              { id: 'all', label: 'All Projects', count: projects.length, icon: <FolderKanban size={14} /> },
+              { id: 'active', label: 'Active', count: activeCount, icon: <CheckSquare size={14} /> },
+              { id: 'at-risk', label: 'At Risk', count: crewRosterLoading ? '…' : atRiskCrewCount, countTone: 'danger', icon: <AlertTriangle size={14} /> },
+              { id: 'completed', label: 'Completed', count: completedCount, icon: <BadgeCheck size={14} /> },
+            ]}
+          />
+
           <div className="subsea-page-head">
             <div>
               <h1>Projects</h1>

@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PageHeader } from '@/components/app/PageHeader';
 import './SuperadminAdminsPage.css';
 
 function formatCancellationSlotsRemaining(n: number | null | undefined): string {
@@ -168,20 +169,16 @@ const SuperadminAdminsPage = () => {
 
   return (
     <div className="superadmin-admins-page">
-      <header className="superadmin-admins-header">
-        <div>
-          <h1 className="superadmin-admins-title">Admins</h1>
-          <p className="superadmin-admins-subtitle">
-            Manage platform admins. {admins.length} admin{admins.length !== 1 ? 's' : ''} total.
-            Cancellation amounts are stored in GBP; shown in {currencyMeta?.label ?? displayCurrency},{' '}
-            same as the admin panel balance currency.
-          </p>
-        </div>
-        <Button onClick={handleOpenCreate}>
-          <UserPlus size={18} className="mr-2" />
-          Create Admin
-        </Button>
-      </header>
+      <PageHeader
+        title="Admins"
+        description={`Manage platform admins. ${admins.length} admin${admins.length !== 1 ? 's' : ''} total. Cancellation amounts are stored in GBP; shown in ${currencyMeta?.label ?? displayCurrency}, same as the admin panel balance currency.`}
+        actions={
+          <Button onClick={handleOpenCreate}>
+            <UserPlus size={18} className="mr-2" />
+            Create Admin
+          </Button>
+        }
+      />
 
       {error && (
         <div className="superadmin-admins-error" role="alert">

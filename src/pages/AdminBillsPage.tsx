@@ -9,8 +9,6 @@ import {
   Receipt,
   Search,
 } from 'lucide-react';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import {
   fetchAdminInvoicePdfBlob,
   getAdminInvoiceKey,
@@ -155,7 +153,6 @@ const AdminBillsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="bills" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -195,17 +192,12 @@ const AdminBillsPage = () => {
           >
             <ArrowLeft size={12} className="mr-1.5" /> Back
           </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Bills</span>
-          </div>
+          <div className="subsea-crumb"><span className="subsea-crumb-active">Bills</span></div>
           <div className="subsea-sync-pill">
             <span className="subsea-sync-dot" />
             GMDSS Online · {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} UTC
           </div>
           <div className="subsea-top-actions">
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

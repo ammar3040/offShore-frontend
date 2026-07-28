@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Anchor,
-  ArrowLeft,
   Download,
-  Filter,
   Plus,
   Search,
   Ship,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { createRig, getRigs, type CreateRigPayload, type RigApi } from '../api/rig';
 import './RigsPage.css';
 
@@ -189,44 +185,10 @@ const RigsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="rigs" />
-
-      <aside className="subsea-sidebar">
-        <div className="subsea-sb-head">
-          <span className="subsea-sb-title">Rig Fleet</span>
-          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
-            <Filter size={13} />
-          </button>
-        </div>
-        <div className="subsea-sb-search">
-          <div className="subsea-sb-search-wrap">
-            <Search size={13} />
-            <input type="text" placeholder="Search rigs, regions..." />
-          </div>
-        </div>
-        <div className="subsea-sb-body">
-          <div className="subsea-sb-group">Fleet</div>
-          <button type="button" className="subsea-sb-link active">
-            <Anchor size={13} /> All Rigs <span className="subsea-sb-count">{loading ? '...' : rigs.length}</span>
-          </button>
-        </div>
-      </aside>
-
         <div className="subsea-main">
           <div className="subsea-topbar">
-            <button
-              type="button"
-              className="subsea-btn subsea-btn-default subsea-btn-sm"
-              onClick={() => navigate(-1)}
-            >
-              <ArrowLeft size={12} className="mr-1.5" /> Back
-            </button>
-            <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Rig Fleet</span>
-          </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
+            <div className="subsea-crumb"><span className="subsea-crumb-active">Rig Fleet</span></div>
+          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />UTC</div>
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
@@ -234,8 +196,6 @@ const RigsPage = () => {
             <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openCreateModal}>
               <Plus size={12} /> Add Rig
             </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

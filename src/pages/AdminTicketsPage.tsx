@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   AlertTriangle,
-  ArrowLeft,
   ChevronDown,
   ChevronLeft,
   Download,
   ExternalLink,
-  Filter,
   Info,
   Loader2,
   Plane,
@@ -24,10 +22,8 @@ import {
   Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SubseaNavRail } from '@/components/SubseaNavRail';
-import { SubseaProfileMenu } from '@/components/SubseaProfileMenu';
 import { SUBSEA_FORM_LIGHT_CLASS } from '@/lib/subseaTheme';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -110,6 +106,7 @@ import {
 } from '../utils/crewAvailabilityForDates';
 import './AdminTicketsPage.css';
 import './RigsPage.css';
+import { ViewTabs } from '@/components/app/ViewTabs';
 
 type ModalStep = 'project' | 'crew' | 'form';
 type TicketsTab = 'tickets' | 'search' | 'spends';
@@ -731,7 +728,6 @@ const filterMarineFares = (flights: Flight[]): Flight[] => {
 };
 
 const AdminTicketsPage = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
@@ -1959,105 +1955,50 @@ const AdminTicketsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="tickets" />
-
-      <aside className="subsea-sidebar">
-        <div className="subsea-sb-head">
-          <span className="subsea-sb-title">Flight Bookings</span>
-          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
-            <Filter size={13} />
-          </button>
-        </div>
-        <div className="subsea-sb-search">
-          <div className="subsea-sb-search-wrap">
-            <Search size={13} />
-            <input type="text" placeholder="Search flights, PNR..." />
-          </div>
-        </div>
-        <div className="subsea-sb-body">
-          <div className="subsea-sb-group">Bookings</div>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'all' ? ' active' : ''}`}
-            onClick={() => {
-              setActiveTab('tickets');
-              setStatusFilter('all');
-            }}
-          >
-            <TicketIcon size={13} /> Active Bookings <span className="subsea-sb-count">{activeBookingsCount}</span>
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeTab === 'search' ? ' active' : ''}`}
-            onClick={() => setActiveTab('search')}
-          >
-            <Search size={13} /> Search Flights
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeTab === 'spends' ? ' active' : ''}`}
-            onClick={() => setActiveTab('spends')}
-          >
-            <CircleDollarSign size={13} /> Report Spends
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'pending' ? ' active' : ''}`}
-            onClick={() => {
-              setActiveTab('tickets');
-              setStatusFilter('pending');
-            }}
-          >
-            <AlertTriangle size={13} /> Pending Approval <span className="subsea-sb-count subsea-sb-count-red">{pendingApprovalCount}</span>
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'cancelled' ? ' active' : ''}`}
-            onClick={() => {
-              setActiveTab('tickets');
-              setStatusFilter('cancelled');
-            }}
-          >
-            <Ban size={13} /> Cancelled <span className="subsea-sb-count">{cancelledBookingsCount}</span>
-          </button>
-          <div className="subsea-sb-group">Operations</div>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/crew')}>
-            <Plane size={13} /> Upcoming Departures
-          </button>
-        </div>
-      </aside>
-
       <div className="subsea-main">
-        <div className="subsea-topbar">
-          <button
-            type="button"
-            className="subsea-btn subsea-btn-default subsea-btn-sm"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft size={12} className="mr-1.5" /> Back
-          </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Flight Bookings</span>
-          </div>
-          <div className="subsea-sync-pill">
-            <span className="subsea-sync-dot" />
-            GMDSS Online · {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
-          </div>
-          <div className="subsea-top-actions">
+        <main className="subsea-content">
+          <div className="mb-1 flex flex-wrap items-center justify-end gap-2">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
             </button>
             <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => setActiveTab('search')}>
               <Plane size={12} /> Book Flight
             </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
-        </div>
 
-        <main className="subsea-content">
+          <ViewTabs
+            value={
+              activeTab === 'search'
+                ? 'search'
+                : activeTab === 'spends'
+                  ? 'spends'
+                  : statusFilter === 'pending'
+                    ? 'pending'
+                    : statusFilter === 'cancelled'
+                      ? 'cancelled'
+                      : 'all'
+            }
+            onChange={(id) => {
+              if (id === 'search') {
+                setActiveTab('search');
+                return;
+              }
+              if (id === 'spends') {
+                setActiveTab('spends');
+                return;
+              }
+              setActiveTab('tickets');
+              setStatusFilter(id === 'pending' ? 'pending' : id === 'cancelled' ? 'cancelled' : 'all');
+            }}
+            items={[
+              { id: 'all', label: 'Active Bookings', count: activeBookingsCount, icon: <TicketIcon size={14} /> },
+              { id: 'search', label: 'Search Flights', icon: <Search size={14} /> },
+              { id: 'spends', label: 'Report Spends', icon: <CircleDollarSign size={14} /> },
+              { id: 'pending', label: 'Pending Approval', count: pendingApprovalCount, countTone: 'danger', icon: <AlertTriangle size={14} /> },
+              { id: 'cancelled', label: 'Cancelled', count: cancelledBookingsCount, icon: <Ban size={14} /> },
+            ]}
+          />
+
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TicketsTab)}>
             <TabsContent value="search" className="mt-0">
               <div className="admin-tickets-search-view">

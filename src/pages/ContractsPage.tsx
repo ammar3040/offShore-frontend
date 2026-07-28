@@ -14,8 +14,6 @@ import {
 import { getSignedContracts, type SignedProjectContract } from '../api/contract';
 import { getCrewList, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { getProjects, type ProjectApi } from '../api/project';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import {
   DEFAULT_CONTRACT_DRAFT_TEMPLATE,
   deleteContractDraft,
@@ -286,7 +284,6 @@ const ContractsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="contracts" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -361,17 +358,12 @@ const ContractsPage = () => {
           >
             <ArrowLeft size={12} className="mr-1.5" /> Back
           </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Contracts</span>
-          </div>
+          <div className="subsea-crumb"><span className="subsea-crumb-active">Contracts</span></div>
           <div className="subsea-sync-pill">
             <span className="subsea-sync-dot" />
             GMDSS Online · {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} UTC
           </div>
           <div className="subsea-top-actions">
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

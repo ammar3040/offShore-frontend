@@ -12,6 +12,9 @@ import {
 import { getCrewMeDashboard } from '../api/crew';
 import { getStoredCrewPanelUser, hasCrewAccessToken } from '../lib/crewPanelAuth';
 import type { CrewMemberApi, CrewEnrolledProject, CrewAvailability } from '../api/crew';
+import { PageHeader } from '../components/app/PageHeader';
+import { DataPanel } from '../components/app/DataPanel';
+import { Button } from '@/components/ui/button';
 import './CrewPanelDashboard.css';
 
 function placeholderCrewProfile(email: string): CrewMemberApi {
@@ -81,12 +84,7 @@ const CrewPanelDashboard = () => {
   }, [navigate]);
 
   if (loading) {
-    return (
-      <div className="crew-panel-dashboard crew-panel-dashboard--loading">
-        <div className="crew-panel-dashboard-spinner" />
-        <p>Loading your dashboard…</p>
-      </div>
-    );
+    return <DataPanel loading />;
   }
 
   const completedProjects = enrolledProjects.filter((p) => (p.status || '').toLowerCase() === 'completed');
@@ -96,10 +94,17 @@ const CrewPanelDashboard = () => {
 
   return (
     <div className="crew-panel-dashboard">
-      <header className="crew-panel-dashboard-header">
-        <h1 className="crew-panel-dashboard-title">Dashboard</h1>
-        <p className="crew-panel-dashboard-subtitle">Welcome back{crew ? `, ${crew.firstname}` : ''}. Here's your overview.</p>
-      </header>
+      <PageHeader
+        title="Dashboard"
+        description={`Welcome back${crew ? `, ${crew.firstname}` : ''}. Here’s your overview.`}
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/panel/crew/enrolled-projects">
+              Projects <ArrowRight className="size-3.5" />
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="crew-panel-dashboard-cards">
         <div className="crew-panel-dash-card">

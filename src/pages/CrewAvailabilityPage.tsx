@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarRange } from 'lucide-react';
 import { getCrewAvailability, updateCrewAvailability } from '../api/crew';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
+import { PageHeader } from '../components/app/PageHeader';
 import './CrewAvailabilityPage.css';
 
 function formatDate(iso: string): string {
@@ -112,12 +113,7 @@ const CrewAvailabilityPage = () => {
 
   return (
     <div className="crew-availability-page">
-      <header className="crew-availability-header">
-        <h1 className="crew-availability-title">Availability</h1>
-        <p className="crew-availability-subtitle">
-          Set when you are available so admins can see your availability window.
-        </p>
-      </header>
+      <PageHeader title="Availability" description="Set when you are free for mobilization." />
 
       <div className="crew-availability-card">
         <div className="crew-availability-card-header">

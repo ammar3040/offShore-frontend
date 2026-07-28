@@ -7,23 +7,19 @@ import {
   CreditCard,
   Download,
   FileText,
-  Filter,
   FolderOpen,
   Loader2,
   Mail,
   MapPin,
   Pencil,
-  Plane,
   Plus,
   Search,
   Send,
-  Ship,
   Trash2,
   Upload,
   User,
   UserCheck,
   UserMinus,
-  ArrowLeft,
   UserPlus,
 } from 'lucide-react';
 import { getCrewList, getCrewById, deleteCrewMember, inviteCrewToProject, removeCrewFromProject, type CrewMemberApi, type CrewAssignedProject, type GetCrewListFilters } from '../api/crew';
@@ -31,10 +27,9 @@ import { getProjects, type ProjectApi } from '../api/project';
 import { availabilityFromCrewSignal, getCrewSignal, crewStatusTierBadgeClass, crewStatusTierLabel, crewStatusTierDotClass, CREW_STATUS_TIER_OPTIONS, PREFERRED_RATING_OPTIONS, BOP_OEM_OPTIONS, type CrewAvailability } from '../utils/crewAvailability';
 import { EMPLOYER_OPTIONS } from '../constants/employers';
 import Modal from '../components/Modal';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import ErrorAlertPopup from '../components/ErrorAlertPopup';
 import { DatePickerTime } from '../components/ui/date-picker-time';
+import { ViewTabs } from '../components/app/ViewTabs';
 import './CrewListPage.css';
 import './RigsPage.css';
 import { useUtcClock } from '../utils/useUtcClock';
@@ -356,96 +351,45 @@ const CrewListPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="crew" />
-
-      <aside className="subsea-sidebar">
-        <div className="subsea-sb-head">
-          <span className="subsea-sb-title">Crew Management</span>
-          <button type="button" className="subsea-sb-btn" aria-label="Filter panel">
-            <Filter size={13} />
-          </button>
-        </div>
-        <div className="subsea-sb-search">
-          <div className="subsea-sb-search-wrap">
-            <Search size={13} />
-            <input type="text" placeholder="Search crew, rigs..." />
-          </div>
-        </div>
-        <div className="subsea-sb-body">
-          <div className="subsea-sb-group">Crew</div>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeView === 'roster' && rosterTab === 'available' ? ' active' : ''}`}
-            onClick={() => {
-              setActiveView('roster');
-              setRosterTab('available');
-              setPage(1);
-            }}
-          >
-            <UserPlus size={13} /> Available <span className="subsea-sb-count">{loading ? '...' : availableCount}</span>
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeView === 'roster' && rosterTab === 'inProject' ? ' active' : ''}`}
-            onClick={() => {
-              setActiveView('roster');
-              setRosterTab('inProject');
-              setPage(1);
-            }}
-          >
-            <UserCheck size={13} /> In Project <span className="subsea-sb-count">{loading ? '...' : onProjectCount}</span>
-          </button>
-          <button
-            type="button"
-            className={`subsea-sb-link${activeView === 'searchAvailability' ? ' active' : ''}`}
-            onClick={() => {
-              setActiveView('searchAvailability');
-              if (availabilitySearchType === 'all') {
-                setAvailabilitySearchType('available');
-              }
-            }}
-          >
-            <CalendarRange size={13} /> Search Availability
-          </button>
-
-          <div className="subsea-sb-group">Operations</div>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/rig')}>
-            <Ship size={13} /> Rig Assignments <span className="subsea-sb-count">11</span>
-          </button>
-          <button type="button" className="subsea-sb-link" onClick={() => navigate('/tickets')}>
-            <Plane size={13} /> Crew Flights <span className="subsea-sb-count">31</span>
-          </button>
-        </div>
-      </aside>
-
       <div className="subsea-main">
-        <div className="subsea-topbar">
-          <button
-            type="button"
-            className="subsea-btn subsea-btn-default subsea-btn-sm"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft size={12} className="mr-1.5" /> Back
-          </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Crew Management</span>
-          </div>
-          <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · {utcTime}</div>
-          <div className="subsea-top-actions">
-            <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
-              <Download size={12} /> Export
-            </button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={handleAddCrewMember}>
-              <Plus size={12} /> Add Crew
-            </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
-          </div>
-        </div>
-
         <main className="subsea-content">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">{utcTime} UTC</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
+                <Download size={12} /> Export
+              </button>
+              <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={handleAddCrewMember}>
+                <Plus size={12} /> Add Crew
+              </button>
+            </div>
+          </div>
+
+          <ViewTabs
+            value={
+              activeView === 'searchAvailability'
+                ? 'availability'
+                : rosterTab === 'available'
+                  ? 'available'
+                  : 'inProject'
+            }
+            onChange={(id) => {
+              if (id === 'availability') {
+                setActiveView('searchAvailability');
+                if (availabilitySearchType === 'all') setAvailabilitySearchType('available');
+                return;
+              }
+              setActiveView('roster');
+              setRosterTab(id === 'available' ? 'available' : 'inProject');
+              setPage(1);
+            }}
+            items={[
+              { id: 'available', label: 'Available', count: loading ? '…' : availableCount, icon: <UserPlus size={14} /> },
+              { id: 'inProject', label: 'In Project', count: loading ? '…' : onProjectCount, icon: <UserCheck size={14} /> },
+              { id: 'availability', label: 'Search Availability', icon: <CalendarRange size={14} /> },
+            ]}
+          />
+
           {activeView === 'searchAvailability' && (
             <div className="admin-tickets-search-view">
               <div style={{

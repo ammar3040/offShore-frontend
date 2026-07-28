@@ -14,6 +14,7 @@ import {
 import Modal from '../components/Modal';
 import { buildFullContractDocument } from '../lib/contractsStore';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
+import { PageHeader } from '../components/app/PageHeader';
 import './CrewEnrolledProjectsPage.css';
 
 function formatDate(iso: string): string {
@@ -136,10 +137,7 @@ const CrewEnrolledProjectsPage = () => {
 
   return (
     <div className="crew-enrolled-page">
-      <header className="crew-enrolled-header">
-        <h1 className="crew-enrolled-title">Enrolled Projects</h1>
-        <p className="crew-enrolled-subtitle">Your projects and pending invitations</p>
-      </header>
+      <PageHeader title="Enrolled Projects" description="Projects you are enrolled in and invitations awaiting your response." />
 
       <div className="crew-enrolled-section">
         <h2 className="crew-enrolled-section-title">My Projects</h2>

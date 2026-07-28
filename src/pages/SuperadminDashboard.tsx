@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PageHeader } from '@/components/app/PageHeader';
 import './SuperadminDashboard.css';
 
 const CURRENCY_LABELS: { value: CurrencyCode; label: string; symbol: string }[] = [
@@ -298,32 +299,32 @@ const SuperadminDashboard = () => {
 
   return (
     <div className="superadmin-dashboard">
-      <header className="superadmin-dashboard-header">
-        <div>
-          <h1 className="superadmin-dashboard-greeting">{getGreeting()}, Superadmin</h1>
-          <p className="superadmin-dashboard-date">Today is {formatDate(new Date())}.</p>
-        </div>
-        {rates && (
-          <div className="superadmin-base-currency">
-            <label htmlFor="base-currency" className="superadmin-base-currency-label">
-              Base currency
-            </label>
-            <Select value={settings.baseCurrency} onValueChange={(v) => handleCurrencyChange(v as CurrencyCode)}>
-              <SelectTrigger id="base-currency" className="w-[180px]">
-                <SelectValue placeholder="Base currency" />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCY_LABELS.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label} ({c.symbol})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className="superadmin-base-currency-hint">All values in this currency</span>
-          </div>
-        )}
-      </header>
+      <PageHeader
+        title={`${getGreeting()}, Superadmin`}
+        description={`Today is ${formatDate(new Date())}.`}
+        actions={
+          rates ? (
+            <div className="superadmin-base-currency">
+              <label htmlFor="base-currency" className="superadmin-base-currency-label">
+                Base currency
+              </label>
+              <Select value={settings.baseCurrency} onValueChange={(v) => handleCurrencyChange(v as CurrencyCode)}>
+                <SelectTrigger id="base-currency" className="w-[180px]">
+                  <SelectValue placeholder="Base currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_LABELS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label} ({c.symbol})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="superadmin-base-currency-hint">All values in this currency</span>
+            </div>
+          ) : null
+        }
+      />
 
       {error && (
         <div className="superadmin-dashboard-error" role="alert">

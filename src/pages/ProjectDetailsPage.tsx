@@ -10,8 +10,6 @@ import {
   Wrench,
 } from 'lucide-react';
 import Modal from '../components/Modal';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import { getCrewAvailableForProject, getCrewEnrolledInProject, inviteCrewToProject, type CrewMemberApi } from '../api/crew';
 import { getProjectById, type ProjectApi } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
@@ -210,7 +208,6 @@ const ProjectDetailsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="projects" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -263,8 +260,6 @@ const ProjectDetailsPage = () => {
             <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={openInviteModal} disabled={!project}>
               <UserPlus size={12} /> Invite Crew
             </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 

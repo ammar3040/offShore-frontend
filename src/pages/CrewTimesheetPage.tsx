@@ -10,6 +10,7 @@ import {
   type GetCrewTimesheetForProjectResponse,
 } from '../api/crew';
 import { hasCrewAccessToken } from '../lib/crewPanelAuth';
+import { PageHeader } from '../components/app/PageHeader';
 import './CrewTimesheetPage.css';
 
 type AttendanceStatus = 'present' | 'absent' | 'leave' | null;
@@ -221,10 +222,7 @@ const CrewTimesheetPage = () => {
 
   return (
     <div className="crew-timesheet-page">
-      <header className="crew-timesheet-header">
-        <h1 className="crew-timesheet-title">Timesheet</h1>
-        <p className="crew-timesheet-subtitle">Track your attendance for enrolled projects</p>
-      </header>
+      <PageHeader title="Timesheet" description="Track attendance and hours on your projects." />
 
       {projects.length === 0 ? (
         <div className="crew-timesheet-empty">

@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { PageHeader } from '@/components/app/PageHeader';
 import './SuperadminAdminInvoicePage.css';
 
 type GeneratedPdfState = Record<string, File>;
@@ -268,14 +269,10 @@ const SuperadminAdminInvoicePage = () => {
 
   return (
     <div className="superadmin-admin-invoice-page">
-      <header className="superadmin-admin-invoice-header">
-        <div>
-          <h1 className="superadmin-admin-invoice-title">Admin Invoices</h1>
-          <p className="superadmin-admin-invoice-subtitle">
-            One invoice per approved ticket. Add an optional margin, generate the Lynq Travel invoice PDF, and send it to the admin.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Admin Invoices"
+        description="One invoice per approved ticket. Add an optional margin, generate the Lynq Travel invoice PDF, and send it to the admin."
+      />
 
       {error && (
         <div className="superadmin-admin-invoice-error" role="alert">

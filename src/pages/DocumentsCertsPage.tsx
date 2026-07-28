@@ -14,8 +14,6 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { getCrewList, type CrewMemberApi } from '../api/crew';
-import { SubseaNavRail } from '../components/SubseaNavRail';
-import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
 import './DocumentsCertsPage.css';
 import './RigsPage.css';
 
@@ -259,7 +257,6 @@ const DocumentsCertsPage = () => {
 
   return (
     <div className="subsea-shell">
-      <SubseaNavRail activeModule="documents" />
 
       <aside className="subsea-sidebar">
         <div className="subsea-sb-head">
@@ -317,18 +314,12 @@ const DocumentsCertsPage = () => {
           >
             <ArrowLeft size={12} className="mr-1.5" /> Back
           </button>
-          <div className="subsea-crumb">
-            <span>Subseacore</span>
-            <span className="subsea-crumb-sep">/</span>
-            <span className="subsea-crumb-active">Documents & Certificates</span>
-          </div>
+          <div className="subsea-crumb"><span className="subsea-crumb-active">Documents & Certificates</span></div>
           <div className="subsea-sync-pill"><span className="subsea-sync-dot" />GMDSS Online · 14:32 UTC</div>
           <div className="subsea-top-actions">
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
             </button>
-            <span className="subsea-vr" />
-            <SubseaProfileMenu size="sm" />
           </div>
         </div>
 
