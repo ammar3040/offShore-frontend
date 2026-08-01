@@ -37,10 +37,10 @@ export function ViewTabs({ items, value, onChange, trailing, className }: ViewTa
               aria-selected={active}
               onClick={() => onChange(item.id)}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors',
                 active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-card text-muted-foreground shadow-sm ring-1 ring-border/70 hover:bg-accent hover:text-accent-foreground'
               )}
             >
               {item.icon}
@@ -48,12 +48,12 @@ export function ViewTabs({ items, value, onChange, trailing, className }: ViewTa
               {item.count != null ? (
                 <span
                   className={cn(
-                    'rounded px-1.5 py-0.5 text-[11px] font-semibold',
+                    'rounded-full px-1.5 py-0.5 text-[11px] font-semibold',
                     active
                       ? 'bg-primary-foreground/20 text-primary-foreground'
                       : item.countTone === 'danger'
                         ? 'bg-destructive/15 text-destructive'
-                        : 'bg-background/80 text-foreground'
+                        : 'bg-muted text-foreground'
                   )}
                 >
                   {item.count}

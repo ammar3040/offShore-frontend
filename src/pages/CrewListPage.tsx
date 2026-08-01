@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Award,
   Briefcase,
@@ -61,14 +61,23 @@ function crewStatus(kind: CrewAvailability | 'unavailable'): { label: string; cl
 
 const CrewListPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const utcTime = useUtcClock();
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [rosterTab, setRosterTab] = useState<RosterTab>('available');
-  const [activeView, setActiveView] = useState<CrewActiveView>('roster');
   const [page, setPage] = useState(1);
+  const viewParam = searchParams.get('view');
+  const rosterTab: RosterTab = viewParam === 'inProject' ? 'inProject' : 'available';
+  const activeView: CrewActiveView = viewParam === 'availability' ? 'searchAvailability' : 'roster';
+  const setCrewView = useCallback(
+    (next: 'available' | 'inProject' | 'availability') => {
+      setSearchParams({ view: next }, { replace: true });
+      setPage(1);
+    },
+    [setSearchParams]
+  );
   const [selectedCrew, setSelectedCrew] = useState<CrewMemberApi | null>(null);
   const [crewDetailData, setCrewDetailData] = useState<{ crew: CrewMemberApi; projects: CrewAssignedProject[] } | null>(null);
   const [crewDetailLoading] = useState(false);
@@ -375,13 +384,11 @@ const CrewListPage = () => {
             }
             onChange={(id) => {
               if (id === 'availability') {
-                setActiveView('searchAvailability');
+                setCrewView('availability');
                 if (availabilitySearchType === 'all') setAvailabilitySearchType('available');
                 return;
               }
-              setActiveView('roster');
-              setRosterTab(id === 'available' ? 'available' : 'inProject');
-              setPage(1);
+              setCrewView(id === 'available' ? 'available' : 'inProject');
             }}
             items={[
               { id: 'available', label: 'Available', count: loading ? '…' : availableCount, icon: <UserPlus size={14} /> },
@@ -829,7 +836,7 @@ const CrewListPage = () => {
               type="button"
               className="subsea-btn subsea-btn-default subsea-btn-sm"
               onClick={() => {
-                setActiveView('searchAvailability');
+                setCrewView('availability');
                 if (availabilitySearchType === 'all') {
                   setAvailabilitySearchType('available');
                 }

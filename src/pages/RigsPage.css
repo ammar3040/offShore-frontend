@@ -1,35 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 .subsea-shell {
-  --shell: #f0f2f5;
+  --shell: #f3f6fb;
   --surface: #ffffff;
-  --surface2: #f7f8fa;
-  --surface3: #eff1f4;
-  --border: #dde1e8;
-  --border2: #c5cad4;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-tertiary: #9ca3af;
+  --surface2: #f8f9fb;
+  --surface3: #eef1f4;
+  --border: #e4e7ec;
+  --border2: #d0d5dd;
+  --text-primary: #1a1d21;
+  --text-secondary: #5b6470;
+  --text-tertiary: #98a2b3;
   --blue: #1a56db;
   --blue-h: #1648c0;
   --blue-light: #ebf0ff;
   --blue-border: #bfceff;
-  --teal: #0e7490;
-  --teal-light: #ecfeff;
-  --teal-border: #a5f3fc;
+  --teal: #1a56db;
+  --teal-light: #ebf0ff;
+  --teal-border: #bfceff;
   --green: #16a34a;
-  --green-light: #f0fdf4;
+  --green-light: #e7f6ee;
   --green-border: #bbf7d0;
   --amber: #b45309;
-  --amber-light: #fffbeb;
+  --amber-light: #ffe8d6;
   --amber-border: #fde68a;
   --red: #dc2626;
   --red-light: #fef2f2;
   --red-border: #fecaca;
   --orange: #c2410c;
-  --orange-light: #fff7ed;
+  --orange-light: #ffe8d6;
   --orange-border: #fdba74;
-  --nav: #0f2040;
+  --nav: #1a1d21;
   --nav-w: 0px;
   --sb-w: 0px;
   --top-h: 42px;
@@ -198,7 +198,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1a56db, #0e7490);
+  background: linear-gradient(135deg, #1a56db, #1648c0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -544,7 +544,7 @@
   justify-content: center;
   gap: 5px;
   padding: 5px 11px;
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -607,7 +607,7 @@
 
 .subsea-welcome {
   background: linear-gradient(120deg, #0f2040 0%, #1a3a6a 45%, #0e4a6e 100%);
-  border-radius: 10px;
+  border-radius: 20px;
   padding: 20px 24px;
   margin-bottom: 16px;
   display: flex;
@@ -805,8 +805,9 @@
 .subsea-pane {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 8px 20px rgba(15, 23, 42, 0.03);
 }
 
 .subsea-kpi {

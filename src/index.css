@@ -48,77 +48,86 @@
 
 @layer base {
   :root {
-    /* Offshore shared light theme (desk-work default) */
-    --background: 210 20% 98%;
-    --foreground: 215 28% 17%;
+    /* v4 Blue / White — see .cursor/skills/offshore-theme/SKILL.md */
+    --background: 214 32% 97%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
+    --popover-foreground: 222 47% 11%;
     --primary: 214 84% 40%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 20% 94%;
-    --secondary-foreground: 215 28% 17%;
-    --muted: 214 16% 94%;
-    --muted-foreground: 215 14% 42%;
-    --accent: 214 25% 93%;
-    --accent-foreground: 215 28% 17%;
+    --secondary: 214 25% 94%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 214 20% 95%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 214 70% 95%;
+    --accent-foreground: 214 84% 32%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
+    --border: 214 24% 90%;
+    --input: 214 24% 90%;
     --ring: 214 84% 40%;
-    --radius: 0.5rem;
+    --radius: 0.875rem;
     --chart-1: 214 84% 40%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --sidebar: 0 0% 100%;
-    --sidebar-foreground: 215 28% 17%;
+    --sidebar: 214 60% 99%;
+    --sidebar-foreground: 222 35% 18%;
     --sidebar-primary: 214 84% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 40% 94%;
+    --sidebar-accent: 214 70% 95%;
     --sidebar-accent-foreground: 214 84% 32%;
-    --sidebar-border: 214 20% 90%;
+    --sidebar-border: 214 35% 91%;
     --sidebar-ring: 214 84% 40%;
+    --pastel-peach: 28 100% 94%;
+    --pastel-mint: 152 45% 94%;
+    --pastel-sky: 214 100% 95%;
+    --pastel-lilac: 270 100% 96%;
+    --pastel-teal: 176 45% 93%;
   }
 
   .dark {
-    color-scheme: dark; /* native form controls (select, input) use dark styling */
-    /* AMOLED: true black, neutral grays, no blue tint */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 9%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 0 0% 14%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    color-scheme: dark;
+    --background: 222 30% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 28% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 28% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 214 84% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 20% 16%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 20% 16%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 214 40% 18%;
+    --accent-foreground: 214 80% 80%;
+    --destructive: 0 62.8% 40%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14%;
-    --input: 0 0% 14%;
-    --ring: 0 0% 83%;
-    --chart-1: 0 0% 70%;
-    --chart-2: 0 0% 55%;
-    --chart-3: 0 0% 40%;
-    --chart-4: 0 0% 85%;
-    --chart-5: 0 0% 95%;
-    --sidebar: 0 0% 2%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent: 0 0% 9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 0 0% 83%;
+    --border: 217 20% 18%;
+    --input: 217 20% 18%;
+    --ring: 214 84% 56%;
+    --chart-1: 214 84% 56%;
+    --chart-2: 173 50% 45%;
+    --chart-3: 197 40% 50%;
+    --chart-4: 43 70% 55%;
+    --chart-5: 27 80% 55%;
+    --sidebar: 222 28% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 214 84% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 20% 16%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 20% 18%;
+    --sidebar-ring: 214 84% 56%;
+    --pastel-peach: 28 40% 18%;
+    --pastel-mint: 152 30% 16%;
+    --pastel-sky: 214 40% 18%;
+    --pastel-lilac: 270 30% 18%;
+    --pastel-teal: 176 30% 16%;
   }
 }
 
@@ -128,8 +137,20 @@
     @apply border-border outline-ring/50;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     }
+}
+
+/* Pastel KPI card helpers (theme v3) */
+.theme-pastel-peach { background-color: hsl(var(--pastel-peach)); }
+.theme-pastel-mint { background-color: hsl(var(--pastel-mint)); }
+.theme-pastel-sky { background-color: hsl(var(--pastel-sky)); }
+.theme-pastel-lilac { background-color: hsl(var(--pastel-lilac)); }
+.theme-pastel-teal { background-color: hsl(var(--pastel-teal)); }
+.theme-card-soft {
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+  border: 1px solid hsl(var(--border) / 0.7);
 }
 
 /* White calendar theme & datepicker overlay overrides */
@@ -163,7 +184,7 @@
 .admin-tickets-search-overlay [data-slot="calendar"] button[data-selected-single="true"]:hover,
 .admin-tickets-search-overlay [data-slot="calendar"] button[data-range-start="true"]:hover,
 .admin-tickets-search-overlay [data-slot="calendar"] button[data-range-end="true"]:hover {
-  background-color: #1a56db !important;
+  background-color: #1648c0 !important;
   color: #ffffff !important;
 }
 

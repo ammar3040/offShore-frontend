@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SUBSEA_FORM_LIGHT_CLASS } from '@/lib/subseaTheme';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -729,6 +729,7 @@ const filterMarineFares = (flights: Flight[]): Flight[] => {
 
 const AdminTicketsPage = () => {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState<CrewTicketApi[]>([]);
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [rigs, setRigs] = useState<RigApi[]>([]);
@@ -771,12 +772,38 @@ const AdminTicketsPage = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   /* Search & Book tab state */
-  const [activeTab, setActiveTab] = useState<TicketsTab>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const qTab = params.get('tab');
-    if (qTab === 'search' || qTab === 'tickets' || qTab === 'spends') return qTab;
-    return 'tickets';
-  });
+  const [activeTab, setActiveTab] = useState<TicketsTab>('tickets');
+
+  useEffect(() => {
+    const qTab = searchParams.get('tab');
+    if (qTab === 'search' || qTab === 'spends') {
+      setActiveTab(qTab);
+      return;
+    }
+    if (qTab === 'pending' || qTab === 'cancelled' || qTab === 'all') {
+      setActiveTab('tickets');
+      setStatusFilter(qTab === 'all' ? 'all' : qTab);
+      return;
+    }
+    if (qTab === 'tickets') {
+      setActiveTab('tickets');
+      setStatusFilter('all');
+    }
+  }, [searchParams]);
+
+  const setTicketsView = useCallback(
+    (id: string) => {
+      setSearchParams({ tab: id }, { replace: true });
+      if (id === 'search' || id === 'spends') {
+        setActiveTab(id);
+        return;
+      }
+      setActiveTab('tickets');
+      setStatusFilter(id === 'pending' ? 'pending' : id === 'cancelled' ? 'cancelled' : 'all');
+    },
+    [setSearchParams]
+  );
+
   const [searchTripTypeUI, setSearchTripTypeUI] = useState<SearchUITripType>('one-way');
   const [multiSegments, setMultiSegments] = useState<MultiFlightSegment[]>(() => initialMultiSegments());
   const [activeMultiLegIndex, setActiveMultiLegIndex] = useState(0);
@@ -1961,7 +1988,7 @@ const AdminTicketsPage = () => {
             <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm">
               <Download size={12} /> Export
             </button>
-            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => setActiveTab('search')}>
+            <button type="button" className="subsea-btn subsea-btn-primary subsea-btn-sm" onClick={() => setTicketsView('search')}>
               <Plane size={12} /> Book Flight
             </button>
           </div>
@@ -1978,18 +2005,7 @@ const AdminTicketsPage = () => {
                       ? 'cancelled'
                       : 'all'
             }
-            onChange={(id) => {
-              if (id === 'search') {
-                setActiveTab('search');
-                return;
-              }
-              if (id === 'spends') {
-                setActiveTab('spends');
-                return;
-              }
-              setActiveTab('tickets');
-              setStatusFilter(id === 'pending' ? 'pending' : id === 'cancelled' ? 'cancelled' : 'all');
-            }}
+            onChange={setTicketsView}
             items={[
               { id: 'all', label: 'Active Bookings', count: activeBookingsCount, icon: <TicketIcon size={14} /> },
               { id: 'search', label: 'Search Flights', icon: <Search size={14} /> },
@@ -1999,7 +2015,7 @@ const AdminTicketsPage = () => {
             ]}
           />
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TicketsTab)}>
+          <Tabs value={activeTab} onValueChange={(v) => setTicketsView(v === 'tickets' ? 'all' : v)}>
             <TabsContent value="search" className="mt-0">
               <div className="admin-tickets-search-view">
                 {searchResults == null ? (

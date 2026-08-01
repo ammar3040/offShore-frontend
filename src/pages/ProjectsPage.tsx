@@ -19,7 +19,7 @@ import {
   Users,
   Wrench,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Modal from '../components/Modal';
 import { getProjects, createProject, type ProjectApi, type CreateProjectPayload } from '../api/project';
 import { getRigs, type RigApi } from '../api/rig';
@@ -167,6 +167,7 @@ function projectInitials(project: ProjectApi): string[] {
 
 const ProjectsPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<ProjectApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,9 +177,27 @@ const ProjectsPage = () => {
   const [createRigId, setCreateRigId] = useState('');
   const [rigs, setRigs] = useState<RigApi[]>([]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  const statusFilter = searchParams.get('status') || 'all';
+  const viewMode = (searchParams.get('layout') === 'list' ? 'list' : 'board') as 'board' | 'list';
+  const setStatusFilter = useCallback(
+    (status: string) => {
+      const next = new URLSearchParams(searchParams);
+      next.set('status', status);
+      setSearchParams(next, { replace: true });
+      setPage(1);
+    },
+    [searchParams, setSearchParams]
+  );
+  const setViewMode = useCallback(
+    (layout: 'board' | 'list') => {
+      const next = new URLSearchParams(searchParams);
+      next.set('layout', layout);
+      if (!next.get('status')) next.set('status', 'all');
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   const [inviteProject, setInviteProject] = useState<ProjectApi | null>(null);
   const [crew, setCrew] = useState<CrewMemberApi[]>([]);
@@ -281,8 +300,7 @@ const ProjectsPage = () => {
 
   const openAtRiskView = useCallback(() => {
     setStatusFilter('at-risk');
-    setPage(1);
-  }, []);
+  }, [setStatusFilter]);
 
   const paginatedProjects = useMemo(() => {
     const start = (page - 1) * pageSize;
