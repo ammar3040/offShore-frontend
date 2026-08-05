@@ -6,6 +6,7 @@ import {
   CalendarDays,
   FileText,
   HelpCircle,
+  IdCard,
   LayoutDashboard,
   Plane,
   Radio,
@@ -26,6 +27,7 @@ export type SubseaNavModule =
   | 'payroll'
   | 'contracts'
   | 'documents'
+  | 'visa'
   | 'projects'
   | 'timeline'
   | 'bills';
@@ -50,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: FileText, label: 'Contracts', path: '/contracts', module: 'contracts' },
   { icon: Receipt, label: 'Bills', path: '/bills', module: 'bills' },
   { icon: BadgeCheck, label: 'Documents & Certs', path: '/documents', module: 'documents', badge: true },
+  { icon: IdCard, label: 'VEVO Visa', path: '/visa', module: 'visa' },
   { divider: true },
   { icon: Radio, label: 'Command Center', action: 'commandPalette' },
   { divider: true },

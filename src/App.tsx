@@ -37,6 +37,7 @@ const PayrollPage = lazy(() => import('./pages/PayrollPage'));
 const ContractsPage = lazy(() => import('./pages/ContractsPage'));
 const AdminBillsPage = lazy(() => import('./pages/AdminBillsPage'));
 const DocumentsCertsPage = lazy(() => import('./pages/DocumentsCertsPage'));
+const VevoVisaPage = lazy(() => import('./pages/VevoVisaPage'));
 
 function App() {
   return (
@@ -116,6 +117,7 @@ function App() {
                   <Route path="/contracts" element={<ContractsPage />} />
                   <Route path="/bills" element={<AdminBillsPage />} />
                   <Route path="/documents" element={<DocumentsCertsPage />} />
+                  <Route path="/visa" element={<VevoVisaPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </ProtectedRoute>

@@ -6,6 +6,7 @@ import {
   Banknote,
   Calendar,
   CreditCard,
+  ExternalLink,
   History,
   IdCard,
   Mail,
@@ -37,7 +38,10 @@ import {
   getTicketStatusLabel,
   type CrewTicketApi,
 } from '../api/ticket';
+import { fetchVisaDetails, type VevoApiResponse, type VevoMetadata } from '../api/visa';
 import { EMPLOYER_OPTIONS } from '../constants/employers';
+import { VEVO_DEFAULT_APPLICANT } from '../constants/vevoDefaults';
+import { downloadPdfFromDataUri } from '../lib/downloadPdf';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
@@ -47,6 +51,26 @@ import { availabilityFromCrewSignal, getCrewSignal, CREW_STATUS_TIER_OPTIONS, ty
 import { toast } from 'sonner';
 import './RigsPage.css';
 import './TimelinePage.css';
+import './VevoVisaPage.css';
+
+const VEVO_PORTAL_URL = 'https://online.immi.gov.au/evo/firstParty?actionType=query';
+
+function toIsoDateInput(value?: string | null): string {
+  if (!value?.trim()) return '';
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return trimmed;
+  return date.toISOString().slice(0, 10);
+}
+
+function visaStatusBadgeClass(status?: string): string {
+  const s = (status ?? '').toLowerCase();
+  if (s === 'active') return 'subsea-b-green';
+  if (s === 'expired') return 'subsea-b-red';
+  if (s === 'not found' || s === 'invalid request') return 'subsea-b-amber';
+  return 'subsea-b-gray';
+}
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -197,6 +221,13 @@ const CrewDetailsPage = () => {
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [newAvailType, setNewAvailType] = useState<CrewStatusTier>('Available');
+
+  const [vevoGrantNumber, setVevoGrantNumber] = useState(VEVO_DEFAULT_APPLICANT.grantNumber);
+  const [vevoPassportNumber, setVevoPassportNumber] = useState(VEVO_DEFAULT_APPLICANT.passportNumber);
+  const [vevoDateOfBirth, setVevoDateOfBirth] = useState(VEVO_DEFAULT_APPLICANT.dateOfBirth);
+  const [vevoCountry, setVevoCountry] = useState(VEVO_DEFAULT_APPLICANT.country);
+  const [vevoFetching, setVevoFetching] = useState(false);
+  const [vevoResult, setVevoResult] = useState<VevoApiResponse | null>(null);
 
   const monthStart = startOfMonth(calendarDate);
   const calendarDays = useMemo(() => buildCalendarDays(monthStart), [monthStart]);
@@ -404,11 +435,58 @@ const CrewDetailsPage = () => {
     void loadCrewDetails();
   }, [loadCrewDetails]);
 
+  useEffect(() => {
+    if (!crew) return;
+    setVevoGrantNumber(crew.visa_details?.vevo_reference_number?.trim() || VEVO_DEFAULT_APPLICANT.grantNumber);
+    setVevoPassportNumber(crew.passport?.passport_number?.trim() || VEVO_DEFAULT_APPLICANT.passportNumber);
+    setVevoDateOfBirth(toIsoDateInput(crew.dateOfBirth) || VEVO_DEFAULT_APPLICANT.dateOfBirth);
+    const issuing = (crew.passport?.issuing_country ?? '').trim().toUpperCase();
+    setVevoCountry(
+      issuing === 'AUSTRALIA' || issuing === 'AU'
+        ? 'AUS'
+        : issuing.slice(0, 3) || VEVO_DEFAULT_APPLICANT.country
+    );
+    setVevoResult(null);
+  }, [crew]);
+
+  const handleVevoFetch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vevoGrantNumber.trim() || !vevoPassportNumber.trim() || !vevoDateOfBirth.trim()) {
+      toast.error('Grant number, passport number, and date of birth are required');
+      return;
+    }
+    setVevoFetching(true);
+    setVevoResult(null);
+    try {
+      const fullName = crew ? `${crew.firstname ?? ''} ${crew.lastname ?? ''}`.trim() : '';
+      const response = await fetchVisaDetails({
+        fullName: fullName || undefined,
+        dateOfBirth: vevoDateOfBirth.trim(),
+        grantNumber: vevoGrantNumber.trim(),
+        passportNumber: vevoPassportNumber.trim(),
+        country: vevoCountry.trim() || 'AUS',
+      });
+      setVevoResult(response);
+      if (response.success && response.data) {
+        toast.success(response.message || 'VEVO verification succeeded');
+      } else {
+        toast.error(response.message || 'VEVO verification failed');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'VEVO fetch failed';
+      toast.error(msg);
+    } finally {
+      setVevoFetching(false);
+    }
+  };
+
   const openEditModal = () => {
     if (crewId) {
       navigate(`/crew/edit/${crewId}`);
     }
   };
+
+  const vevoData: VevoMetadata | undefined = vevoResult?.data;
 
   const status = statusMeta(crew, projects);
   const pageError = !crewId ? 'Missing crew id' : error;
@@ -910,11 +988,180 @@ const CrewDetailsPage = () => {
               )}
 
               {activeTab === 'visa' && (
-                <div className="subsea-pane">
-                  <div className="subsea-pane-head">
-                    <div className="subsea-pane-title">Visa</div>
+                <div className="subsea-g2 vevo-page">
+                  <div className="subsea-pane">
+                    <div className="subsea-pane-head">
+                      <div className="subsea-pane-title">VEVO grant check</div>
+                      <a
+                        href={VEVO_PORTAL_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="subsea-btn subsea-btn-default subsea-btn-sm"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <ExternalLink size={12} /> VEVO portal
+                      </a>
+                    </div>
+                    <div className="subsea-pane-body-flat">
+                      <p className="vevo-inline-note">
+                        Enter grant number, passport, and date of birth to fetch entitlement status and certificate.
+                      </p>
+                      <form onSubmit={(e) => void handleVevoFetch(e)} className="vevo-inline-form">
+                        <div className="vevo-field">
+                          <label>Grant number *</label>
+                          <div className="vevo-input-wrap">
+                            <input
+                              value={vevoGrantNumber}
+                              onChange={(e) => setVevoGrantNumber(e.target.value)}
+                              placeholder="Visa grant number"
+                              autoComplete="off"
+                              style={{ paddingLeft: 12 }}
+                            />
+                          </div>
+                        </div>
+                        <div className="vevo-field">
+                          <label>Passport number *</label>
+                          <div className="vevo-input-wrap">
+                            <input
+                              value={vevoPassportNumber}
+                              onChange={(e) => setVevoPassportNumber(e.target.value)}
+                              placeholder="Document number"
+                              autoComplete="off"
+                              style={{ paddingLeft: 12 }}
+                            />
+                          </div>
+                        </div>
+                        <div className="vevo-field">
+                          <label>Date of birth *</label>
+                          <div className="vevo-input-wrap">
+                            <input
+                              type="date"
+                              value={vevoDateOfBirth}
+                              onChange={(e) => setVevoDateOfBirth(e.target.value)}
+                              style={{ paddingLeft: 12 }}
+                            />
+                          </div>
+                        </div>
+                        <div className="vevo-field">
+                          <label>Country</label>
+                          <div className="vevo-input-wrap">
+                            <input
+                              value={vevoCountry}
+                              onChange={(e) => setVevoCountry(e.target.value.toUpperCase())}
+                              placeholder="AUS"
+                              maxLength={3}
+                              style={{ paddingLeft: 12 }}
+                            />
+                          </div>
+                        </div>
+                        <div className="vevo-field full">
+                          <button type="submit" className="vevo-btn vevo-btn-primary" disabled={vevoFetching}>
+                            {vevoFetching ? 'Checking…' : 'Fetch VEVO details'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
                   </div>
-                  <div className="subsea-empty-cell">No visa records yet.</div>
+
+                  <div className="subsea-pane vevo-result">
+                    <div className="subsea-pane-head">
+                      <div className="subsea-pane-title">Verification result</div>
+                      {vevoData?.visaStatus && (
+                        <span className={`subsea-badge ${visaStatusBadgeClass(vevoData.visaStatus)}`}>
+                          {vevoData.visaStatus}
+                        </span>
+                      )}
+                    </div>
+                    {!vevoResult ? (
+                      <div className="vevo-result-empty" style={{ minHeight: 220 }}>
+                        <div>
+                          <div className="vevo-result-empty-icon">—</div>
+                          <strong>No check yet</strong>
+                          <p>Submit the form to load entitlement status.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="subsea-pane-body-flat">
+                        <div className="vevo-metrics" style={{ padding: 0, marginBottom: 12 }}>
+                          <div className="vevo-metric">
+                            <label>Applicant</label>
+                            <strong>{field(vevoData?.applicantName)}</strong>
+                          </div>
+                          <div className="vevo-metric">
+                            <label>Subclass</label>
+                            <strong>{field(vevoData?.visaSubclass)}</strong>
+                          </div>
+                          <div className="vevo-metric">
+                            <label>Expiry</label>
+                            <strong>{formatDate(vevoData?.expiryDate ?? undefined)}</strong>
+                          </div>
+                          <div className="vevo-metric">
+                            <label>Class</label>
+                            <strong>{field(vevoData?.visaClass)}</strong>
+                          </div>
+                        </div>
+                        <div className="vevo-rights" style={{ margin: '0 0 12px' }}>
+                          <label>Work entitlements</label>
+                          <p>{field(vevoData?.workEntitlements)}</p>
+                        </div>
+                        {vevoData?.pdfStream && (
+                          <button
+                            type="button"
+                            className="vevo-btn vevo-btn-primary"
+                            onClick={() => {
+                              try {
+                                downloadPdfFromDataUri(
+                                  vevoData.pdfStream!,
+                                  `vevo-${vevoData.grantNumber || 'certificate'}.pdf`
+                                );
+                                toast.success('PDF downloaded');
+                              } catch {
+                                toast.error('Could not download PDF');
+                              }
+                            }}
+                          >
+                            Download entitlement PDF
+                          </button>
+                        )}
+                        {vevoResult.errors?.length ? (
+                          <p style={{ marginTop: 10, fontSize: 12, color: 'var(--danger, #b91c1c)' }}>
+                            {vevoResult.errors.join(' · ')}
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="subsea-pane" style={{ gridColumn: '1 / -1' }}>
+                    <div className="subsea-pane-head">
+                      <div className="subsea-pane-title">Entitlements on file</div>
+                      <button type="button" className="subsea-btn subsea-btn-default subsea-btn-sm" onClick={() => void openEditModal()}>
+                        Edit Profile
+                      </button>
+                    </div>
+                    <div className="subsea-pane-body-flat" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div className="subsea-detail-row">
+                        <div className="subsea-detail-label">Reference on file</div>
+                        <div className="subsea-detail-val">{field(crew.visa_details?.vevo_reference_number)}</div>
+                      </div>
+                      <div className="subsea-detail-row">
+                        <div className="subsea-detail-label">Visa subclass</div>
+                        <div className="subsea-detail-val">{field(crew.visa_details?.visa_subclass)}</div>
+                      </div>
+                      <div className="subsea-detail-row">
+                        <div className="subsea-detail-label">Expiry on file</div>
+                        <div className="subsea-detail-val">
+                          {formatDate(crew.visa_details?.visa_expiry_date || crew.visa_expiry_date)}
+                        </div>
+                      </div>
+                      <div className="subsea-detail-row">
+                        <div className="subsea-detail-label">Conditions</div>
+                        <div className="subsea-detail-val" style={{ whiteSpace: 'pre-wrap' }}>
+                          {field(crew.visa_details?.visa_conditions)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

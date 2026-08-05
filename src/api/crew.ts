@@ -116,6 +116,38 @@ export function crewApiToFormData(crew: CrewMemberApi): CrewMemberFormData {
       pickString(raw, 'visa_expiry_date', 'visaExpiryDate') ||
         pickString((raw.visa_details as Record<string, unknown> | undefined) ?? {}, 'visa_expiry_date')
     ),
+    vevoDocumentType: pickString(
+      (raw.visa_details as Record<string, unknown> | undefined) ?? {},
+      'vevo_document_type',
+      'vevoDocumentType'
+    ),
+    vevoReferenceType: pickString(
+      (raw.visa_details as Record<string, unknown> | undefined) ?? {},
+      'vevo_reference_type',
+      'vevoReferenceType'
+    ),
+    vevoReferenceNumber: pickString(
+      (raw.visa_details as Record<string, unknown> | undefined) ?? {},
+      'vevo_reference_number',
+      'vevoReferenceNumber'
+    ),
+    visaSubclass: pickString(
+      (raw.visa_details as Record<string, unknown> | undefined) ?? {},
+      'visa_subclass',
+      'visaSubclass'
+    ),
+    visaConditions: pickString(
+      (raw.visa_details as Record<string, unknown> | undefined) ?? {},
+      'visa_conditions',
+      'visaConditions'
+    ),
+    lastVevoCheckedAt: toDateInputValue(
+      pickString(
+        (raw.visa_details as Record<string, unknown> | undefined) ?? {},
+        'last_vevo_checked_at',
+        'lastVevoCheckedAt'
+      )
+    ),
     preferredRating: pickString(raw, 'preferred_rating', 'preferredRating') || 'None',
     primaryBopOem: pickString(raw, 'primary_bop_oem', 'primaryBopOem') || 'Other',
     secondarySkills: Array.isArray(raw.secondary_skills)
@@ -187,6 +219,12 @@ export interface CrewMemberApi {
     visa_country?: string;
     visa_issue_date?: string;
     visa_expiry_date?: string;
+    vevo_document_type?: string;
+    vevo_reference_type?: string;
+    vevo_reference_number?: string;
+    visa_subclass?: string;
+    visa_conditions?: string;
+    last_vevo_checked_at?: string;
   };
   currentAssignment?: {
     employer?: string;
@@ -427,14 +465,36 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
   const hasVisaCountry = data.visaCountry?.trim();
   const hasVisaIssueDate = data.visaIssueDate?.trim();
   const hasVisaExpiryDate = data.visaExpiryDate?.trim();
+  const hasVevoDocumentType = data.vevoDocumentType?.trim();
+  const hasVevoReferenceType = data.vevoReferenceType?.trim();
+  const hasVevoReferenceNumber = data.vevoReferenceNumber?.trim();
+  const hasVisaSubclass = data.visaSubclass?.trim();
+  const hasVisaConditions = data.visaConditions?.trim();
+  const hasLastVevoCheckedAt = data.lastVevoCheckedAt?.trim();
   const hasVisaFreeform = data.visa?.trim();
-  if (hasVisaCountry || hasVisaIssueDate || hasVisaExpiryDate) {
+  if (
+    hasVisaCountry ||
+    hasVisaIssueDate ||
+    hasVisaExpiryDate ||
+    hasVevoDocumentType ||
+    hasVevoReferenceType ||
+    hasVevoReferenceNumber ||
+    hasVisaSubclass ||
+    hasVisaConditions ||
+    hasLastVevoCheckedAt
+  ) {
     formData.append(
       'visa_details',
       JSON.stringify({
         ...(hasVisaCountry ? { visa_country: data.visaCountry!.trim() } : {}),
         ...(hasVisaIssueDate ? { visa_issue_date: data.visaIssueDate!.trim() } : {}),
         ...(hasVisaExpiryDate ? { visa_expiry_date: data.visaExpiryDate!.trim() } : {}),
+        ...(hasVevoDocumentType ? { vevo_document_type: data.vevoDocumentType!.trim() } : {}),
+        ...(hasVevoReferenceType ? { vevo_reference_type: data.vevoReferenceType!.trim() } : {}),
+        ...(hasVevoReferenceNumber ? { vevo_reference_number: data.vevoReferenceNumber!.trim() } : {}),
+        ...(hasVisaSubclass ? { visa_subclass: data.visaSubclass!.trim() } : {}),
+        ...(hasVisaConditions ? { visa_conditions: data.visaConditions!.trim() } : {}),
+        ...(hasLastVevoCheckedAt ? { last_vevo_checked_at: data.lastVevoCheckedAt!.trim() } : {}),
       })
     );
   }

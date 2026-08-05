@@ -100,6 +100,13 @@ export interface CrewMemberFormData {
   visaCountry: string;
   visaIssueDate: string;
   visaExpiryDate: string;
+  /** VEVO (immi.gov.au) enquiry fields */
+  vevoDocumentType: string;
+  vevoReferenceType: string;
+  vevoReferenceNumber: string;
+  visaSubclass: string;
+  visaConditions: string;
+  lastVevoCheckedAt: string;
 
   // Contractor profile fields
   preferredRating: string;
@@ -155,6 +162,12 @@ const defaultFormData: CrewMemberFormData = {
   visaCountry: '',
   visaIssueDate: '',
   visaExpiryDate: '',
+  vevoDocumentType: 'Passport',
+  vevoReferenceType: '',
+  vevoReferenceNumber: '',
+  visaSubclass: '',
+  visaConditions: '',
+  lastVevoCheckedAt: '',
   preferredRating: 'None',
   primaryBopOem: 'Other',
   secondarySkills: '',
@@ -263,6 +276,7 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
     data.identityExpiryDate = toDateInputValue(data.identityExpiryDate);
     data.visaIssueDate = toDateInputValue(data.visaIssueDate);
     data.visaExpiryDate = toDateInputValue(data.visaExpiryDate);
+    data.lastVevoCheckedAt = toDateInputValue(data.lastVevoCheckedAt);
     data.lastWorked = toDateInputValue(data.lastWorked);
     if (!data.certificates?.length && (source as unknown as Record<string, unknown>).certificateIssueDate != null) {
       const leg = source as typeof source & { certificateIssueDate?: string; certificateExpiryDate?: string; certificateDocuments?: File[] };
@@ -1601,7 +1615,76 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
           {currentStep === 7 && (
             <>
               <div className="section-title">Visa Details</div>
+              <p className="text-sm text-muted-foreground mb-3" style={{ marginTop: '-4px' }}>
+                Fields match the Australian{' '}
+                <a
+                  href="https://online.immi.gov.au/evo/firstParty?actionType=query"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  VEVO visa holder enquiry
+                </a>
+                . Date of birth, passport number, and passport country from earlier steps are used on VEVO.
+              </p>
               <div className="grid">
+                <div className="field">
+                  <label htmlFor="vevoDocumentType">Document type <span className="opt">(VEVO)</span></label>
+                  <select
+                    id="vevoDocumentType"
+                    name="vevoDocumentType"
+                    value={formData.vevoDocumentType}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Please choose a document type</option>
+                    <option value="Passport">Passport</option>
+                    <option value="ImmiCard">ImmiCard</option>
+                    <option value="Travel Document">Travel Document</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="vevoReferenceType">Reference type <span className="opt">(VEVO)</span></label>
+                  <select
+                    id="vevoReferenceType"
+                    name="vevoReferenceType"
+                    value={formData.vevoReferenceType}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select reference type</option>
+                    <option value="Transaction Reference Number (TRN)">Transaction Reference Number (TRN)</option>
+                    <option value="Visa Grant Number">Visa Grant Number</option>
+                    <option value="Visa Evidence Number">Visa Evidence Number</option>
+                    <option value="Password">Password</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="vevoReferenceNumber">Reference number <span className="opt">(optional)</span></label>
+                  <input
+                    type="text"
+                    id="vevoReferenceNumber"
+                    name="vevoReferenceNumber"
+                    value={formData.vevoReferenceNumber}
+                    onChange={handleInputChange}
+                    placeholder="TRN / grant / evidence number"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="visaSubclass">Visa subclass / class <span className="opt">(optional)</span></label>
+                  <input
+                    type="text"
+                    id="visaSubclass"
+                    name="visaSubclass"
+                    value={formData.visaSubclass}
+                    onChange={handleInputChange}
+                    placeholder="e.g. 482, 400"
+                    autoComplete="off"
+                  />
+                </div>
+
                 <div className="field">
                   <label htmlFor="visaCountry">Visa Country <span className="opt">(optional)</span></label>
                   <Popover open={visaCountryOpen} onOpenChange={setVisaCountryOpen} modal={false}>
@@ -1686,6 +1769,40 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                     onChange={handleInputChange}
                   />
                 </div>
+
+                <div className="field">
+                  <label htmlFor="lastVevoCheckedAt">Last VEVO check <span className="opt">(optional)</span></label>
+                  <input
+                    type="date"
+                    id="lastVevoCheckedAt"
+                    name="lastVevoCheckedAt"
+                    value={formData.lastVevoCheckedAt}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <label htmlFor="visaConditions">Visa conditions / work rights <span className="opt">(optional)</span></label>
+                  <textarea
+                    id="visaConditions"
+                    name="visaConditions"
+                    value={formData.visaConditions}
+                    onChange={handleInputChange}
+                    rows={3}
+                    placeholder="Paste conditions from VEVO result (e.g. work rights, study, travel)"
+                  />
+                </div>
+              </div>
+              <div className="mt-3">
+                <a
+                  href="https://online.immi.gov.au/evo/firstParty?actionType=query"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost"
+                  style={{ display: 'inline-flex', textDecoration: 'none' }}
+                >
+                  Open VEVO enquiry →
+                </a>
               </div>
             </>
           )}
