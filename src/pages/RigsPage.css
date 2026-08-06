@@ -7,11 +7,11 @@
   --surface3: #eff1f4;
   --border: #dde1e8;
   --border2: #c5cad4;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-tertiary: #9ca3af;
+  --text-primary: #0b1220;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
   --blue: #1a56db;
-  --blue-h: #1648c0;
+  --blue-h: #1347c0;
   --blue-light: #ebf0ff;
   --blue-border: #bfceff;
   --teal: #0e7490;
@@ -57,6 +57,23 @@
 .subsea-shell button,
 .subsea-shell input {
   font: inherit;
+}
+
+.subsea-shell input[type='text'],
+.subsea-shell input[type='email'],
+.subsea-shell input[type='tel'],
+.subsea-shell input[type='number'],
+.subsea-shell input[type='password'],
+.subsea-shell input[type='date'],
+.subsea-shell select,
+.subsea-shell textarea {
+  min-height: 42px;
+  font-size: 14px;
+}
+
+.subsea-shell :focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 .subsea-nav {

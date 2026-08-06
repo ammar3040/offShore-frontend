@@ -6,6 +6,7 @@ import { countries as phoneCountries } from 'country-codes-flags-phone-codes';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { SUBSEA_OVERLAY_LIGHT_CLASS } from '@/lib/subseaTheme';
+import { AccessibleDateField } from '@/components/AccessibleDateField';
 import { BOP_OEM_OPTIONS, CREW_STATUS_TIER_OPTIONS, PREFERRED_RATING_OPTIONS } from '@/utils/crewAvailability';
 import {
   buildDraftFromFormState,
@@ -817,13 +818,15 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
                 <div className="field">
                   <label htmlFor="dateOfBirth">Date of Birth *</label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="dateOfBirth"
                     name="dateOfBirth"
+                    mode="birth"
+                    required
                     value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    className={cn(validationErrors.dateOfBirth && 'border-red-500')}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, dateOfBirth: iso }))}
+                    error={Boolean(validationErrors.dateOfBirth)}
+                    hint="Type year directly (e.g. 12/03/2005) or use calendar year dropdown"
                   />
                   {validationErrors.dateOfBirth && <span className="text-xs text-red-500">{validationErrors.dateOfBirth}</span>}
                 </div>
@@ -1175,26 +1178,27 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
                 <div className="field">
                   <label htmlFor="passportIssueDate">Issue Date</label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="passportIssueDate"
                     name="passportIssueDate"
+                    mode="any"
                     value={formData.passportIssueDate}
-                    onChange={handleInputChange}
-                    className={cn(validationErrors.passportIssueDate && 'border-red-500')}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, passportIssueDate: iso }))}
+                    error={Boolean(validationErrors.passportIssueDate)}
                   />
                   {validationErrors.passportIssueDate && <span className="text-xs text-red-500">{validationErrors.passportIssueDate}</span>}
                 </div>
 
                 <div className="field">
                   <label htmlFor="passportExpiryDate">Expiry Date *</label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="passportExpiryDate"
                     name="passportExpiryDate"
+                    mode="any"
+                    required
                     value={formData.passportExpiryDate}
-                    onChange={handleInputChange}
-                    className={cn(validationErrors.passportExpiryDate && 'border-red-500')}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, passportExpiryDate: iso }))}
+                    error={Boolean(validationErrors.passportExpiryDate)}
                   />
                   {validationErrors.passportExpiryDate && <span className="text-xs text-red-500">{validationErrors.passportExpiryDate}</span>}
                 </div>
@@ -1285,25 +1289,25 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
                 <div className="field">
                   <label htmlFor="identityIssueDate">Issue Date</label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="identityIssueDate"
                     name="identityIssueDate"
+                    mode="any"
                     value={formData.identityIssueDate}
-                    onChange={handleInputChange}
-                    className={cn(validationErrors.identityIssueDate && 'border-red-500')}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, identityIssueDate: iso }))}
+                    error={Boolean(validationErrors.identityIssueDate)}
                   />
                   {validationErrors.identityIssueDate && <span className="text-xs text-red-500">{validationErrors.identityIssueDate}</span>}
                 </div>
 
                 <div className="field">
                   <label htmlFor="identityExpiryDate">Expiry Date <span className="opt">(optional)</span></label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="identityExpiryDate"
                     name="identityExpiryDate"
+                    mode="any"
                     value={formData.identityExpiryDate}
-                    onChange={handleInputChange}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, identityExpiryDate: iso }))}
                   />
                 </div>
 
@@ -1405,18 +1409,18 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
                     </div>
                     <div className="field">
                       <label>Issue Date</label>
-                      <input
-                        type="date"
+                      <AccessibleDateField
+                        mode="any"
                         value={cert.issueDate}
-                        onChange={(e) => updateCertificate(certIndex, 'issueDate', e.target.value)}
+                        onChange={(iso) => updateCertificate(certIndex, 'issueDate', iso)}
                       />
                     </div>
                     <div className="field">
                       <label>Expiry Date</label>
-                      <input
-                        type="date"
+                      <AccessibleDateField
+                        mode="any"
                         value={cert.expiryDate}
-                        onChange={(e) => updateCertificate(certIndex, 'expiryDate', e.target.value)}
+                        onChange={(iso) => updateCertificate(certIndex, 'expiryDate', iso)}
                       />
                     </div>
                     <div className="field full">
@@ -1600,12 +1604,12 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
                 <div className="field">
                   <label htmlFor="lastWorked">Last Worked (Subseaquence)</label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="lastWorked"
                     name="lastWorked"
+                    mode="any"
                     value={formData.lastWorked}
-                    onChange={handleInputChange}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, lastWorked: iso }))}
                   />
                 </div>
               </div>
@@ -1750,34 +1754,34 @@ const CrewMemberForm = ({ onSubmit, onCancel, isLoading = false, initialData, su
 
                 <div className="field">
                   <label htmlFor="visaIssueDate">Visa Issue Date <span className="opt">(optional)</span></label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="visaIssueDate"
                     name="visaIssueDate"
+                    mode="any"
                     value={formData.visaIssueDate}
-                    onChange={handleInputChange}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, visaIssueDate: iso }))}
                   />
                 </div>
 
                 <div className="field">
                   <label htmlFor="visaExpiryDate">Visa Expiry Date <span className="opt">(optional)</span></label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="visaExpiryDate"
                     name="visaExpiryDate"
+                    mode="any"
                     value={formData.visaExpiryDate}
-                    onChange={handleInputChange}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, visaExpiryDate: iso }))}
                   />
                 </div>
 
                 <div className="field">
                   <label htmlFor="lastVevoCheckedAt">Last VEVO check <span className="opt">(optional)</span></label>
-                  <input
-                    type="date"
+                  <AccessibleDateField
                     id="lastVevoCheckedAt"
                     name="lastVevoCheckedAt"
+                    mode="any"
                     value={formData.lastVevoCheckedAt}
-                    onChange={handleInputChange}
+                    onChange={(iso) => setFormData((prev) => ({ ...prev, lastVevoCheckedAt: iso }))}
                   />
                 </div>
 

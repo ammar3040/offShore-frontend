@@ -27,8 +27,9 @@ function Calendar({
 }) {
   const defaultClassNames = getDefaultClassNames()
   const currentYear = new Date().getFullYear()
-  const defaultStartMonth = new Date(currentYear - 6, 0)
-  const defaultEndMonth = new Date(currentYear + 15, 11)
+  // Wide default range so year dropdown can jump (e.g. DOB ~19+ years) without endless scrolling
+  const defaultStartMonth = new Date(currentYear - 100, 0)
+  const defaultEndMonth = new Date(currentYear + 30, 11)
 
   return (
     <DayPicker

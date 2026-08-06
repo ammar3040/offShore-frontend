@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  CalendarDays,
   CheckCircle2,
   Download,
   ExternalLink,
@@ -27,6 +26,7 @@ import {
 } from '../api/visa';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
+import { AccessibleDateField } from '../components/AccessibleDateField';
 import { VEVO_DEFAULT_APPLICANT, VEVO_DEFAULT_RAW_TEXT } from '../constants/vevoDefaults';
 import { downloadPdfFromDataUri } from '../lib/downloadPdf';
 import { toast } from 'sonner';
@@ -237,16 +237,14 @@ const VevoVisaPage = () => {
 
                       <div className="vevo-field">
                         <label htmlFor="vevoDob">Date of birth *</label>
-                        <div className="vevo-input-wrap">
-                          <CalendarDays size={15} />
-                          <input
-                            id="vevoDob"
-                            type="date"
-                            value={form.dateOfBirth}
-                            onChange={(e) => onField('dateOfBirth', e.target.value)}
-                            required
-                          />
-                        </div>
+                        <AccessibleDateField
+                          id="vevoDob"
+                          mode="birth"
+                          required
+                          value={form.dateOfBirth}
+                          onChange={(iso) => onField('dateOfBirth', iso)}
+                          hint="Type e.g. 12/01/1981 or pick year from dropdown"
+                        />
                       </div>
 
                       <div className="vevo-field">

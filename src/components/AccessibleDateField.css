@@ -1,0 +1,116 @@
+.accessible-date-field {
+  width: 100%;
+}
+
+.accessible-date-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.accessible-date-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1.5px solid #c5cad4;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  font-size: 15px;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.accessible-date-input::placeholder {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.accessible-date-input:hover:not(:disabled) {
+  border-color: #9aa3b2;
+}
+
+.accessible-date-input:focus {
+  border-color: #1a56db;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.18);
+}
+
+.accessible-date-input-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.accessible-date-cal-btn {
+  flex-shrink: 0;
+  width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #c5cad4;
+  border-radius: 10px;
+  background: #f7f8fa;
+  color: #1a56db;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.accessible-date-cal-btn:hover:not(:disabled) {
+  background: #ebf0ff;
+  border-color: #1a56db;
+}
+
+.accessible-date-cal-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.accessible-date-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.35;
+}
+
+.accessible-date-hint-error {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.accessible-date-popover-hint {
+  padding: 10px 12px 0;
+  font-size: 11px;
+  color: #6b7280;
+  max-width: 280px;
+  line-height: 1.4;
+}
+
+/* Theme accessibility: larger form controls in subsea shells */
+.subsea-shell input[type='text'],
+.subsea-shell input[type='email'],
+.subsea-shell input[type='tel'],
+.subsea-shell input[type='number'],
+.subsea-shell input[type='password'],
+.subsea-shell input[type='date'],
+.subsea-shell select,
+.subsea-shell textarea {
+  min-height: 42px;
+  font-size: 14px;
+}
+
+.subsea-shell .subsea-btn {
+  min-height: 36px;
+}
+
+.subsea-shell .subsea-btn-sm {
+  min-height: 32px;
+  font-size: 12.5px;
+}
+
+.subsea-shell :focus-visible {
+  outline: 2px solid #1a56db;
+  outline-offset: 2px;
+}

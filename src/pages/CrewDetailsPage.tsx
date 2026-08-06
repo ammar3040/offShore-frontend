@@ -42,16 +42,16 @@ import { fetchVisaDetails, type VevoApiResponse, type VevoMetadata } from '../ap
 import { EMPLOYER_OPTIONS } from '../constants/employers';
 import { VEVO_DEFAULT_APPLICANT } from '../constants/vevoDefaults';
 import { downloadPdfFromDataUri } from '../lib/downloadPdf';
+import { AccessibleDateField } from '../components/AccessibleDateField';
 import Modal from '../components/Modal';
 import { SubseaNavRail } from '../components/SubseaNavRail';
 import { SubseaProfileMenu } from '../components/SubseaProfileMenu';
-import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
-import { Calendar as UiCalendar } from '../components/ui/calendar';
 import { availabilityFromCrewSignal, getCrewSignal, CREW_STATUS_TIER_OPTIONS, type CrewStatusTier, crewStatusTierLabel, crewStatusTierBadgeClass, resolveAvailabilityItemStatus } from '../utils/crewAvailability';
 import { toast } from 'sonner';
 import './RigsPage.css';
 import './TimelinePage.css';
 import './VevoVisaPage.css';
+import '../components/AccessibleDateField.css';
 
 const VEVO_PORTAL_URL = 'https://online.immi.gov.au/evo/firstParty?actionType=query';
 
@@ -157,12 +157,6 @@ function currentAssignment(projects: CrewAssignedProject[], crew?: CrewMemberApi
     status: project?.status || 'Active',
   };
 }
-
-const formatDateToDisplay = (dateStr: string) => {
-  if (!dateStr) return '';
-  const [yyyy, mm, dd] = dateStr.split('-');
-  return `${dd}/${mm}/${yyyy}`;
-};
 
 function getCalendarDayStyle(status: string | undefined): React.CSSProperties {
   if (!status) return {};
@@ -1033,14 +1027,13 @@ const CrewDetailsPage = () => {
                         </div>
                         <div className="vevo-field">
                           <label>Date of birth *</label>
-                          <div className="vevo-input-wrap">
-                            <input
-                              type="date"
-                              value={vevoDateOfBirth}
-                              onChange={(e) => setVevoDateOfBirth(e.target.value)}
-                              style={{ paddingLeft: 12 }}
-                            />
-                          </div>
+                          <AccessibleDateField
+                            mode="birth"
+                            required
+                            value={vevoDateOfBirth}
+                            onChange={setVevoDateOfBirth}
+                            hint="Type DD/MM/YYYY or use year dropdown"
+                          />
                         </div>
                         <div className="vevo-field">
                           <label>Country</label>
@@ -1322,59 +1315,23 @@ const CrewDetailsPage = () => {
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">START DATE</label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="w-full text-xs p-1.5 border rounded bg-white text-slate-900 h-[30px] flex items-center justify-between border-[#cbd5e1]"
-                              >
-                                <span className="truncate">{newAvailFrom ? formatDateToDisplay(newAvailFrom) : 'dd/mm/yyyy'}</span>
-                                <Calendar size={12} className="text-slate-400 shrink-0 ml-1" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <UiCalendar
-                                mode="single"
-                                selected={newAvailFrom ? new Date(newAvailFrom) : undefined}
-                                onSelect={(date) => {
-                                  if (date) {
-                                    const yyyy = date.getFullYear();
-                                    const mm = String(date.getMonth() + 1).padStart(2, '0');
-                                    const dd = String(date.getDate()).padStart(2, '0');
-                                    handleFromChange(`${yyyy}-${mm}-${dd}`);
-                                  }
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <AccessibleDateField
+                            mode="any"
+                            value={newAvailFrom}
+                            onChange={handleFromChange}
+                            placeholder="DD/MM/YYYY"
+                            inputClassName="!min-h-[36px] !text-xs"
+                          />
                         </div>
                         <div>
                           <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">END DATE</label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="w-full text-xs p-1.5 border rounded bg-white text-slate-900 h-[30px] flex items-center justify-between border-[#cbd5e1]"
-                              >
-                                <span className="truncate">{newAvailTo ? formatDateToDisplay(newAvailTo) : 'dd/mm/yyyy'}</span>
-                                <Calendar size={12} className="text-slate-400 shrink-0 ml-1" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <UiCalendar
-                                mode="single"
-                                selected={newAvailTo ? new Date(newAvailTo) : undefined}
-                                onSelect={(date) => {
-                                  if (date) {
-                                    const yyyy = date.getFullYear();
-                                    const mm = String(date.getMonth() + 1).padStart(2, '0');
-                                    const dd = String(date.getDate()).padStart(2, '0');
-                                    handleToChange(`${yyyy}-${mm}-${dd}`);
-                                  }
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <AccessibleDateField
+                            mode="any"
+                            value={newAvailTo}
+                            onChange={handleToChange}
+                            placeholder="DD/MM/YYYY"
+                            inputClassName="!min-h-[36px] !text-xs"
+                          />
                         </div>
                         <div>
                           <label className="text-[10px] text-slate-500 block mb-1 font-semibold uppercase">STATUS</label>
@@ -1389,7 +1346,7 @@ const CrewDetailsPage = () => {
                               }
                             }}
                             className="w-full text-xs p-1.5 border rounded bg-white text-slate-900"
-                            style={{ borderColor: '#cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', height: '30px' }}
+                            style={{ borderColor: '#cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', height: '44px' }}
                           >
                             {CREW_STATUS_TIER_OPTIONS.map((statusTier) => (
                               <option key={statusTier} value={statusTier}>
