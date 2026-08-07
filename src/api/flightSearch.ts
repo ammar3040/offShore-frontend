@@ -54,6 +54,7 @@ export interface BookFlightPayload {
   crew_ids?: string[];
   flight: {
     id: string;
+    supplier?: 'riya' | 'travelterminus';
     legs: BookLeg[];
     fares?: BookFare[];
   };
@@ -170,6 +171,7 @@ export async function bookFlight(params: {
     ...(params.crew_ids && params.crew_ids.length > 0 ? { crew_ids: params.crew_ids } : {}),
     flight: {
       id: params.flight.id,
+      ...(params.flight.supplier ? { supplier: params.flight.supplier } : {}),
       legs: (params.flight.legs ?? []).map((leg) => ({
         airlineName: leg.airlineName,
         airlineCode: leg.airlineCode,

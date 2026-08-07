@@ -119,6 +119,23 @@ const SuperadminTicketsPage = () => {
     return `${from} → ${to}`;
   };
 
+  const getSupplierLabel = (t: CrewTicketApi) => {
+    if (t.supplier === 'travelterminus') return 'Travel Terminus';
+    if (t.supplier === 'riya') return 'Riya Marine';
+    if (t.flightSnapshot && 'supplier' in (t.flightSnapshot as object)) {
+      const snap = (t.flightSnapshot as { supplier?: string }).supplier;
+      if (snap === 'travelterminus') return 'Travel Terminus';
+      if (snap === 'riya') return 'Riya Marine';
+    }
+    return 'Riya Marine';
+  };
+
+  const getSupplierClass = (t: CrewTicketApi) =>
+    t.supplier === 'travelterminus' ||
+    (t.flightSnapshot as { supplier?: string } | undefined)?.supplier === 'travelterminus'
+      ? 'superadmin-ticket-supplier--tt'
+      : 'superadmin-ticket-supplier--riya';
+
   const getTicketStatusClass = (ticket: CrewTicketApi) => {
     const status = getTicketStatus(ticket);
     if (status === 'CANCELLED') return 'superadmin-ticket-status-cancelled';
@@ -385,6 +402,9 @@ const SuperadminTicketsPage = () => {
                   </div>
                 </div>
                 <div className="superadmin-ticket-badges">
+                  <span className={`superadmin-ticket-supplier ${getSupplierClass(t)}`}>
+                    {getSupplierLabel(t)}
+                  </span>
                   <span className="superadmin-ticket-class">{t.class}</span>
                   <span className="superadmin-ticket-trip">{t.trip}</span>
                   <span className={`superadmin-ticket-status ${getTicketStatusClass(t)}`}>
@@ -540,6 +560,14 @@ const SuperadminTicketsPage = () => {
                 <div className="superadmin-tickets-detail-item">
                   <dt>Trip</dt>
                   <dd>{selectedTicket.trip?.replace('_', ' ') ?? '—'}</dd>
+                </div>
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Supplier</dt>
+                  <dd>
+                    <span className={`superadmin-ticket-supplier ${getSupplierClass(selectedTicket)}`}>
+                      {getSupplierLabel(selectedTicket)}
+                    </span>
+                  </dd>
                 </div>
                 <div className="superadmin-tickets-detail-item">
                   <dt>Passengers</dt>

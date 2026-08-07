@@ -1,32 +1,50 @@
 import type { VevoFetchInput } from '../api/visa';
 
-/** Default demo applicant for VEVO forms (matches backend mock grant records). */
+/** Default country of document — same as VEVO Burp capture. */
+export const VEVO_DEFAULT_COUNTRY = 'GBR';
+export const VEVO_DEFAULT_COUNTRY_LABEL = 'UNITED KINGDOM - BRITISH CITIZEN';
+
+/**
+ * Default VEVO form applicant (client sample credential from Burp / VEVO enquiry).
+ * @see https://online.immi.gov.au/evo/firstParty
+ */
 export const VEVO_DEFAULT_APPLICANT: Required<VevoFetchInput> = {
-  fullName: 'Scott Archibald',
-  dateOfBirth: '1981-01-12',
-  grantNumber: '0289584963243',
-  passportNumber: '151662015',
-  country: 'AUS',
+  fullName: 'John Ross Dingwall',
+  dateOfBirth: '1984-03-14',
+  grantNumber: '0289500084806',
+  passportNumber: '142828174',
+  country: VEVO_DEFAULT_COUNTRY,
 };
 
-/** Sample raw text for batch/parse tab demos. */
+/**
+ * Multi-user batch sample — paste more records in this format for bulk validity checks.
+ * Country defaults to GBR when omitted by the parser.
+ */
 export const VEVO_DEFAULT_RAW_TEXT = `Record 1:
+- Name: John Ross Dingwall
+- Date of Birth: 14 March 1984
+- Grant Number: 0289500084806
+- Passport Number: 142828174
+- Country: GBR
+
+Record 2:
 - Name: Scott Archibald
 - Date of Birth: 12 January 1981
 - Grant Number: 0289584963243
 - Passport Number: 151662015
-- Country: AUS
+- Country: GBR
 
-Record 2:
+Record 3:
 - Name: Clive Mercer
 - Date of Birth: 3 November 1978
 - Grant Number: 0289584959964
 - Passport Number: 151730613
-- Country: AUS
+- Country: GBR
 
-Record 3:
-- Date of Birth: 27 October 1974
-- Grant Number: 0289584946860
-- Passport Number: 133951532
-- Country: AUS
+Record 4:
+- Name: Darryl Keen
+- Date of Birth: 26 November 1976
+- Grant Number: 0289584959969
+- Passport Number: 124777283
+- Country: GBR
 `;

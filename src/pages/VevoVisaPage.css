@@ -234,7 +234,8 @@
 }
 
 .vevo-input-wrap input,
-.vevo-input-wrap textarea {
+.vevo-input-wrap textarea,
+.vevo-input-wrap select {
   width: 100%;
   min-height: 42px;
   padding: 10px 12px 10px 38px;
@@ -257,12 +258,14 @@
 }
 
 .vevo-input-wrap input:hover,
-.vevo-input-wrap textarea:hover {
+.vevo-input-wrap textarea:hover,
+.vevo-input-wrap select:hover {
   border-color: #b8c5d9;
 }
 
 .vevo-input-wrap input:focus,
-.vevo-input-wrap textarea:focus {
+.vevo-input-wrap textarea:focus,
+.vevo-input-wrap select:focus {
   border-color: var(--vevo-accent);
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.14);
   background: #fcfdff;
@@ -512,6 +515,195 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.vevo-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.vevo-progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.vevo-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #fff;
+  transition: width 0.3s ease;
+}
+
+.vevo-progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+.vevo-provider-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  animation: vevo-fade-up 0.4s ease both;
+}
+
+.vevo-provider-banner p {
+  margin: 0;
+}
+
+.vevo-provider-banner code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(15, 32, 64, 0.08);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+}
+
+.vevo-provider-banner.live {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #14532d;
+}
+
+.vevo-provider-banner.offline {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #78350f;
+}
+
+.vevo-intake .vevo-input-wrap textarea {
+  padding-left: 12px;
+  min-height: 132px;
+}
+
+.vevo-chip.vevo-chip-bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: var(--vevo-bad);
+}
+
+.vevo-parse-errors {
+  margin: 10px 0 0;
+  padding: 10px 12px 10px 28px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #7f1d1d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.vevo-parse-errors code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  color: #991b1b;
+}
+
+.vevo-crew-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--vevo-line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.vevo-crew-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #eef2f7;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.vevo-crew-row:last-child {
+  border-bottom: 0;
+}
+
+.vevo-crew-row:hover {
+  background: var(--vevo-soft);
+}
+
+.vevo-crew-row.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.vevo-crew-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--vevo-accent);
+}
+
+.vevo-crew-name {
+  font-weight: 600;
+  color: var(--vevo-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vevo-crew-meta {
+  font-size: 11.5px;
+  color: var(--vevo-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vevo-verdict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  border: 1px solid var(--vevo-line);
+  background: var(--vevo-soft);
+  color: var(--vevo-ink);
+}
+
+.vevo-verdict span {
+  font-size: 12px;
+  color: var(--vevo-muted);
+}
+
+.vevo-verdict.valid {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #14532d;
+}
+
+.vevo-verdict.expiring {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #78350f;
+}
+
+.vevo-verdict.expired {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #7f1d1d;
+}
+
+.vevo-page tr.vevo-row-active {
+  background: #eff6ff;
 }
 
 .vevo-batch-table-wrap {

@@ -61,6 +61,8 @@ export interface Flight {
   fares: Fare[];
   cashback?: number | null;
   markup?: number | null;
+  /** Set by backend dual search — not shown on admin search UI. */
+  supplier?: 'riya' | 'travelterminus';
 }
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';

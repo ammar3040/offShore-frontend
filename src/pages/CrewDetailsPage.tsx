@@ -435,11 +435,19 @@ const CrewDetailsPage = () => {
     setVevoPassportNumber(crew.passport?.passport_number?.trim() || VEVO_DEFAULT_APPLICANT.passportNumber);
     setVevoDateOfBirth(toIsoDateInput(crew.dateOfBirth) || VEVO_DEFAULT_APPLICANT.dateOfBirth);
     const issuing = (crew.passport?.issuing_country ?? '').trim().toUpperCase();
-    setVevoCountry(
-      issuing === 'AUSTRALIA' || issuing === 'AU'
-        ? 'AUS'
-        : issuing.slice(0, 3) || VEVO_DEFAULT_APPLICANT.country
-    );
+    if (issuing === 'AUSTRALIA' || issuing === 'AU' || issuing === 'AUS') {
+      setVevoCountry('AUS');
+    } else if (
+      issuing.includes('UNITED KINGDOM') ||
+      issuing.includes('BRITISH') ||
+      issuing === 'GB' ||
+      issuing === 'GBR' ||
+      issuing === 'UK'
+    ) {
+      setVevoCountry('GBR');
+    } else {
+      setVevoCountry(issuing.slice(0, 3) || VEVO_DEFAULT_APPLICANT.country);
+    }
     setVevoResult(null);
   }, [crew]);
 
@@ -458,7 +466,7 @@ const CrewDetailsPage = () => {
         dateOfBirth: vevoDateOfBirth.trim(),
         grantNumber: vevoGrantNumber.trim(),
         passportNumber: vevoPassportNumber.trim(),
-        country: vevoCountry.trim() || 'AUS',
+        country: vevoCountry.trim() || 'GBR',
       });
       setVevoResult(response);
       if (response.success && response.data) {
@@ -1036,15 +1044,22 @@ const CrewDetailsPage = () => {
                           />
                         </div>
                         <div className="vevo-field">
-                          <label>Country</label>
+                          <label>Country of document</label>
                           <div className="vevo-input-wrap">
-                            <input
+                            <select
                               value={vevoCountry}
-                              onChange={(e) => setVevoCountry(e.target.value.toUpperCase())}
-                              placeholder="AUS"
-                              maxLength={3}
-                              style={{ paddingLeft: 12 }}
-                            />
+                              onChange={(e) => setVevoCountry(e.target.value)}
+                              style={{ paddingLeft: 12, width: '100%', minHeight: 42 }}
+                            >
+                              <option value="GBR">UNITED KINGDOM - BRITISH CITIZEN</option>
+                              <option value="AUS">AUSTRALIA</option>
+                              <option value="USA">UNITED STATES OF AMERICA</option>
+                              <option value="NZL">NEW ZEALAND</option>
+                              <option value="CAN">CANADA</option>
+                              <option value="IRL">IRELAND</option>
+                              <option value="IND">INDIA</option>
+                              <option value="PHL">PHILIPPINES</option>
+                            </select>
                           </div>
                         </div>
                         <div className="vevo-field full">

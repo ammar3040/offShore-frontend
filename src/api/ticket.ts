@@ -114,6 +114,8 @@ export interface CrewTicketApi {
   travelEnd?: string;
   /** Home port ↔ Rig direction chosen at booking. */
   travelDirection?: 'HOME_TO_RIG' | 'RIG_TO_HOME';
+  /** Inventory source — shown on Superadmin tickets only. */
+  supplier?: 'riya' | 'travelterminus';
   createdAt?: string;
 }
 
