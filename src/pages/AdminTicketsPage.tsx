@@ -545,7 +545,7 @@ function FlightResultCard({
   const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
   const departureTime = firstLeg?.departureTime ?? '';
   const arrivalTime = lastLeg?.arrivalTime ?? '';
-  const duration = firstLeg?.duration ?? '—';
+  const duration = formatElapsedDuration(departureTime, arrivalTime, firstLeg?.duration ?? '—');
   const overnightCount = countFlightOvernights(departureTime, arrivalTime);
   const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
   const via = firstLeg?.via;
@@ -553,15 +553,21 @@ function FlightResultCard({
   const airlineCode = (flight as { airlineCode?: string }).airlineCode ?? '';
   const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
   const segments = flight.legs?.flatMap((leg) => leg.itinerary ?? []) ?? [];
+  const supplier = supplierLabel(flight);
 
   return (
-    <div className={'atfc-card' + (hasMarineFare ? ' atfc-card--marine' : '')}>
+    <div className={'atfc-card' + (hasMarineFare ? ' atfc-card--marine' : '') + (supplier === 'Travel Terminus' ? ' atfc-card--tt' : '')}>
       {/* ── Main row ── */}
       <div className="atfc-main">
         {/* Airline */}
         <div className="atfc-airline">
           <span className="atfc-airline-name">{airlineName}</span>
           <span className="atfc-airline-code">{airlineCode}</span>
+          {supplier && (
+            <span className={`atfc-supplier ${supplier === 'Travel Terminus' ? 'atfc-supplier--tt' : 'atfc-supplier--riya'}`}>
+              {supplier}
+            </span>
+          )}
         </div>
 
         {/* Route */}
@@ -714,21 +720,37 @@ function FlightResultCard({
   );
 }
 
-const isMarineFare = (f: Fare): boolean => {
-  const ind = typeof f.indicator === 'string' ? f.indicator.trim().toUpperCase() : '';
-  if (ind === 'M') return true;
-  const label = `${f.name ?? ''} ${f.type ?? ''}`;
-  return /\bmarine\b/i.test(label);
+/** Prefer cheapest fare first so displayed price matches duration→money ranking. */
+const preferCheapestFares = (flights: Flight[]): Flight[] => {
+  return flights.map((flight) => {
+    const fares = [...(flight.fares ?? [])];
+    if (fares.length <= 1) return flight;
+    fares.sort((a, b) => {
+      const pa = Number((a as Fare & { price?: number }).price ?? a.totalFare ?? Number.POSITIVE_INFINITY);
+      const pb = Number((b as Fare & { price?: number }).price ?? b.totalFare ?? Number.POSITIVE_INFINITY);
+      return pa - pb;
+    });
+    return { ...flight, fares };
+  });
 };
 
-const filterMarineFares = (flights: Flight[]): Flight[] => {
-  return flights
-    .map((flight) => ({
-      ...flight,
-      fares: (flight.fares ?? []).filter(isMarineFare),
-    }))
-    .filter((flight) => flight.fares.length > 0);
-};
+function formatElapsedDuration(departureTime?: string, arrivalTime?: string, fallback?: string): string {
+  if (!departureTime || !arrivalTime) return fallback || '—';
+  const dep = new Date(departureTime).getTime();
+  const arr = new Date(arrivalTime).getTime();
+  if (!Number.isFinite(dep) || !Number.isFinite(arr) || arr < dep) return fallback || '—';
+  const totalMins = Math.round((arr - dep) / 60_000);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function supplierLabel(flight: Flight): string | null {
+  if (flight.supplier === 'travelterminus') return 'Travel Terminus';
+  if (flight.supplier === 'riya') return 'Riya Marine';
+  if (typeof flight.id === 'string' && flight.id.startsWith('tt-')) return 'Travel Terminus';
+  return null;
+}
 
 const AdminTicketsPage = () => {
   const navigate = useNavigate();
@@ -800,7 +822,7 @@ const AdminTicketsPage = () => {
   const [adults, setAdults] = useState(1);
   const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
   const [currency, setCurrency] = useState<CurrencyCode>('GBP');
-  const [flightSortBy, setFlightSortBy] = useState<FlightSortBy>('price');
+  const [flightSortBy, setFlightSortBy] = useState<FlightSortBy>('duration');
   const [flightSortOrder, setFlightSortOrder] = useState<FlightSortOrder>('asc');
   const [searchResults, setSearchResults] = useState<Flight[] | null>(null);
   const [searchTotalCount, setSearchTotalCount] = useState<number>(0);
@@ -1254,7 +1276,7 @@ const AdminTicketsPage = () => {
     setIsSearching(true);
     try {
       const data = await searchFlights(criteria);
-      setSearchResults(filterMarineFares(data.flights));
+      setSearchResults(preferCheapestFares(data.flights));
       setSearchTotalCount(data.total);
       setSearchPage(data.page ?? 1);
     } catch (e) {
@@ -1411,7 +1433,7 @@ const AdminTicketsPage = () => {
       setIsSearching(true);
       try {
         const data = await searchFlights(criteria);
-        setSearchResults(filterMarineFares(data.flights));
+        setSearchResults(preferCheapestFares(data.flights));
         setSearchTotalCount(data.total);
         setSearchPage(data.page ?? 1);
       } catch (e) {
@@ -1438,7 +1460,11 @@ const AdminTicketsPage = () => {
     setIsLoadingMore(true);
     try {
       const data = await searchFlights(criteria);
-      setSearchResults((prev) => (prev ? [...prev, ...filterMarineFares(data.flights)] : filterMarineFares(data.flights)));
+      setSearchResults((prev) =>
+        prev
+          ? [...prev, ...preferCheapestFares(data.flights)]
+          : preferCheapestFares(data.flights)
+      );
       setSearchTotalCount(data.total);
       setSearchPage(data.page ?? nextPage);
     } catch (e) {

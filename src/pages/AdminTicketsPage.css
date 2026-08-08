@@ -2063,6 +2063,33 @@
   width: fit-content;
 }
 
+.atfc-supplier {
+  display: inline-flex;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  width: fit-content;
+}
+
+.atfc-supplier--riya {
+  color: #1e3a5f;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+}
+
+.atfc-supplier--tt {
+  color: #5b21b6;
+  background: #f3e8ff;
+  border: 1px solid #e9d5ff;
+}
+
+.atfc-card--tt {
+  border-color: #ddd6fe;
+}
+
 /* Route */
 .atfc-route {
   display: flex;
