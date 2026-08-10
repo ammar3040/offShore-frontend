@@ -558,6 +558,11 @@ function FlightResultCard({
       <div className="atfc-main">
         {/* Airline */}
         <div className="atfc-airline">
+          {flight.ticketNumber ? (
+            <span className="atfc-ticket-number" title="Ticket number">
+              #{flight.ticketNumber}
+            </span>
+          ) : null}
           <span className="atfc-airline-name">{airlineName}</span>
           <span className="atfc-airline-code">{airlineCode}</span>
         </div>
@@ -1548,10 +1553,19 @@ const AdminTicketsPage = () => {
           infants: 0,
           travelDirection: bookingTravelDirection,
         });
-        const returnedTickets = Array.isArray(data.crewTickets) ? data.crewTickets : Array.isArray(data.tickets) ? data.tickets : [];
+        const returnedTickets = Array.isArray(data.crewTickets)
+          ? data.crewTickets
+          : Array.isArray(data.tickets)
+            ? data.tickets
+            : [];
         const ticketCount = returnedTickets.length;
+        const numbers = returnedTickets
+          .map((t) => (t && typeof t === 'object' && 'ticketNumber' in t ? String((t as { ticketNumber?: string }).ticketNumber ?? '') : ''))
+          .filter(Boolean)
+          .join(', ');
         const refNote = data.bookingReference ? ` Ref: ${data.bookingReference}` : '';
-        const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked and sent for approval.${refNote}`;
+        const numNote = numbers ? ` Ticket #: ${numbers}.` : '';
+        const baseDesc = `${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} booked and sent for approval.${numNote}${refNote}`;
 
         setSearchSuccessMessage(baseDesc);
         setSearchBookingSuccess(true);
@@ -2858,6 +2872,7 @@ const AdminTicketsPage = () => {
                             </div>
                           </div>
                           <div className="subsea-flight-meta">
+                            <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Ticket #</div><div className="subsea-flight-meta-val">{ticket.ticketNumber || '—'}</div></div>
                             <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Pax</div><div className="subsea-flight-meta-val">{getCrewName(ticket)}</div></div>
                             <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Project</div><div className="subsea-flight-meta-val">{getProjectTitle(ticket)}</div></div>
                             <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Rig</div><div className="subsea-flight-meta-val">{getRigName(ticket)}</div></div>
@@ -3277,6 +3292,10 @@ const AdminTicketsPage = () => {
                       Approval
                     </h3>
                     <dl className="admin-tickets-detail-grid admin-tickets-detail-grid--compact">
+                      <div className="admin-tickets-detail-grid-item">
+                        <dt>Ticket number</dt>
+                        <dd className="font-mono">{selectedTicket.ticketNumber || '—'}</dd>
+                      </div>
                       <div className="admin-tickets-detail-grid-item">
                         <dt>Approval status</dt>
                         <dd>{getTicketApprovalStatusLabel(selectedTicket)}</dd>

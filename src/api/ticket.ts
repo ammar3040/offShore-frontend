@@ -91,6 +91,8 @@ export interface CrewTicketApi {
   cashback?: number;
   /** Approval flow status. Missing legacy values should be treated as UNAPPROVED. */
   status?: CrewTicketStatus | string;
+  /** Unique CRM ticket number (e.g. "0001") — not airline PNR. */
+  ticketNumber?: string;
   /** Reference supplied by superadmin during approval. */
   bookingReference?: string;
   /** Approval timestamp from backend. */
@@ -126,6 +128,7 @@ export type CrewTicketApiRaw = CrewTicketApi & {
   pdf_download_url?: string;
   cancelled_at?: string;
   cancelled_by?: string;
+  ticket_number?: string;
 };
 
 export type CrewTicketPdfAuthRole = 'admin' | 'crew' | 'superadmin';
@@ -225,6 +228,12 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
       : typeof raw.booking_reference === 'string'
         ? raw.booking_reference
         : undefined;
+  const ticketNumber =
+    typeof row.ticketNumber === 'string'
+      ? row.ticketNumber
+      : typeof raw.ticket_number === 'string'
+        ? raw.ticket_number
+        : undefined;
   const iso = getCrewTicketCreatedIso(row) ?? (id ? createdAtIsoFromMongoObjectId(id) : undefined);
   const normalizedStatus = getTicketStatus(row);
   const cancelledAt =
@@ -263,6 +272,7 @@ export function normalizeCrewTicket(row: CrewTicketApiRaw): CrewTicketApi {
   const normalized: CrewTicketApi = {
     ...base,
     id,
+    ticketNumber,
     bookingReference,
     hasPdf,
     pdfDownloadUrl,

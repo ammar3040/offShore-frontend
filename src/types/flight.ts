@@ -57,6 +57,8 @@ export interface Journey {
 
 export interface Flight {
   id: string;
+  /** Unique search-result serial from backend (e.g. "0001"). */
+  ticketNumber?: string;
   legs: Journey[];
   fares: Fare[];
   cashback?: number | null;

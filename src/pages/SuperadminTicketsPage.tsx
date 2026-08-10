@@ -394,6 +394,11 @@ const SuperadminTicketsPage = () => {
                   <FileText size={20} />
                 </div>
                 <div className="superadmin-ticket-main">
+                  {t.ticketNumber ? (
+                    <div className="superadmin-ticket-number-row">
+                      <span className="superadmin-ticket-number">Ticket #{t.ticketNumber}</span>
+                    </div>
+                  ) : null}
                   <div className="superadmin-ticket-route">{getRoute(t)}</div>
                   <div className="superadmin-ticket-meta">
                     <span className="superadmin-ticket-crew">{getCrewName(t)}</span>
@@ -610,6 +615,10 @@ const SuperadminTicketsPage = () => {
                 )}
               </p>
               <dl className="superadmin-tickets-detail-list">
+                <div className="superadmin-tickets-detail-item">
+                  <dt>Ticket number</dt>
+                  <dd className="font-mono">{selectedTicket.ticketNumber || '—'}</dd>
+                </div>
                 <div className="superadmin-tickets-detail-item">
                   <dt>Status</dt>
                   <dd>

@@ -119,6 +119,27 @@
   white-space: nowrap;
 }
 
+.superadmin-ticket-number-row {
+  margin-bottom: 4px;
+}
+
+.superadmin-ticket-number {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #f0f9ff;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border: 1px solid #075985;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgba(3, 105, 161, 0.25);
+}
+
 .superadmin-ticket-sep {
   margin: 0 6px;
   color: hsl(var(--muted-foreground));

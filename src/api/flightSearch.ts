@@ -55,6 +55,8 @@ export interface BookFlightPayload {
   flight: {
     id: string;
     supplier?: 'riya' | 'travelterminus';
+    /** Search-result serial (e.g. "0001") — persisted on the booked ticket. */
+    ticketNumber?: string;
     legs: BookLeg[];
     fares?: BookFare[];
   };
@@ -172,6 +174,7 @@ export async function bookFlight(params: {
     flight: {
       id: params.flight.id,
       ...(params.flight.supplier ? { supplier: params.flight.supplier } : {}),
+      ...(params.flight.ticketNumber ? { ticketNumber: params.flight.ticketNumber } : {}),
       legs: (params.flight.legs ?? []).map((leg) => ({
         airlineName: leg.airlineName,
         airlineCode: leg.airlineCode,
