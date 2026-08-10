@@ -529,12 +529,10 @@ function FlightResultCard({
   const [expanded, setExpanded] = useState(false);
   const fares = flight.fares ?? [];
 
-  const hasMarineFare = fares.some((f) => {
-    const ind = typeof f.indicator === 'string' ? f.indicator.trim().toUpperCase() : '';
-    if (ind === 'M') return true;
-    const label = `${f.name ?? ''} ${f.type ?? ''}`;
-    return /\bmarine\b/i.test(label);
-  });
+  const isTravelTerminus =
+    flight.supplier === 'travelterminus' ||
+    (typeof flight.id === 'string' && flight.id.startsWith('tt-'));
+  const sideTagClass = isTravelTerminus ? 'atfc-card--general' : 'atfc-card--marine';
 
   const firstLeg = flight.legs?.[0];
   const lastLeg = flight.legs?.[flight.legs.length - 1];
@@ -553,21 +551,15 @@ function FlightResultCard({
   const airlineCode = (flight as { airlineCode?: string }).airlineCode ?? '';
   const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
   const segments = flight.legs?.flatMap((leg) => leg.itinerary ?? []) ?? [];
-  const supplier = supplierLabel(flight);
 
   return (
-    <div className={'atfc-card' + (hasMarineFare ? ' atfc-card--marine' : '') + (supplier === 'Travel Terminus' ? ' atfc-card--tt' : '')}>
+    <div className={`atfc-card ${sideTagClass}`}>
       {/* ── Main row ── */}
       <div className="atfc-main">
         {/* Airline */}
         <div className="atfc-airline">
           <span className="atfc-airline-name">{airlineName}</span>
           <span className="atfc-airline-code">{airlineCode}</span>
-          {supplier && (
-            <span className={`atfc-supplier ${supplier === 'Travel Terminus' ? 'atfc-supplier--tt' : 'atfc-supplier--riya'}`}>
-              {supplier}
-            </span>
-          )}
         </div>
 
         {/* Route */}
@@ -745,11 +737,24 @@ function formatElapsedDuration(departureTime?: string, arrivalTime?: string, fal
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-function supplierLabel(flight: Flight): string | null {
-  if (flight.supplier === 'travelterminus') return 'Travel Terminus';
-  if (flight.supplier === 'riya') return 'Riya Marine';
-  if (typeof flight.id === 'string' && flight.id.startsWith('tt-')) return 'Travel Terminus';
-  return null;
+function FlightSearchSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="atfc-skeleton-list" aria-busy="true" aria-label="Loading flights">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="atfc-skeleton-card">
+          <div className="atfc-skeleton-bar atfc-skeleton-bar--side" />
+          <div className="atfc-skeleton-body">
+            <div className="atfc-skeleton-line atfc-skeleton-line--sm" />
+            <div className="atfc-skeleton-line atfc-skeleton-line--md" />
+            <div className="atfc-skeleton-row">
+              <div className="atfc-skeleton-line atfc-skeleton-line--lg" />
+              <div className="atfc-skeleton-line atfc-skeleton-line--btn" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 const AdminTicketsPage = () => {
@@ -2087,7 +2092,7 @@ const AdminTicketsPage = () => {
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TicketsTab)}>
             <TabsContent value="search" className="mt-0">
               <div className="admin-tickets-search-view">
-                {searchResults == null ? (
+                {searchResults == null && !isSearching ? (
                   <>
                     <div className="admin-tickets-flights-hero">
                       <div className="admin-tickets-flights-hero-left">
@@ -2561,20 +2566,12 @@ const AdminTicketsPage = () => {
                               ? !(multiSegments[activeMultiLegIndex]?.from && multiSegments[activeMultiLegIndex]?.to)
                               : !searchFrom || !searchTo)
                           }
+                          aria-busy={isSearching}
                         >
-                          {isSearching ? (
-                            <>
-                              <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
-                              Searching…
-                            </>
-                          ) : (
-                            <>
-                              <Search size={18} />
-                              {searchTripTypeUI === 'multi-city'
-                                ? `Search leg ${activeMultiLegIndex + 1}`
-                                : 'Search flights'}
-                            </>
-                          )}
+                          <Search size={18} />
+                          {searchTripTypeUI === 'multi-city'
+                            ? `Search leg ${activeMultiLegIndex + 1}`
+                            : 'Search flights'}
                         </Button>
                       </div>
                     </div>
@@ -2582,7 +2579,12 @@ const AdminTicketsPage = () => {
                 ) : (
                   <div className="admin-tickets-results-wrap">
                     <div className="admin-tickets-results-header">
-                      <Button variant="outline" type="button" onClick={handleSearchBack}>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={handleSearchBack}
+                        disabled={isSearching}
+                      >
                         <ChevronLeft size={18} />
                         Back to search
                       </Button>
@@ -2622,11 +2624,13 @@ const AdminTicketsPage = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        {isSearching ? <span className="admin-tickets-spinner admin-tickets-spinner-inline" /> : null}
                       </div>
                       <p className="admin-tickets-results-count">
-                        {searchTotalCount} flight{searchTotalCount !== 1 ? 's' : ''} found
-                        {searchTripTypeUI === 'multi-city' &&
+                        {isSearching
+                          ? 'Finding flights…'
+                          : `${searchTotalCount} flight${searchTotalCount !== 1 ? 's' : ''} found`}
+                        {!isSearching &&
+                          searchTripTypeUI === 'multi-city' &&
                           preferNonStopPerLeg &&
                           displayedSearchFlights &&
                           searchResults &&
@@ -2639,7 +2643,9 @@ const AdminTicketsPage = () => {
                       </p>
                     </div>
                     <div className="admin-tickets-results-list">
-                      {searchResults.length === 0 ? (
+                      {isSearching || searchResults == null ? (
+                        <FlightSearchSkeleton />
+                      ) : searchResults.length === 0 ? (
                         <p className="admin-tickets-results-empty">No flights match your criteria.</p>
                       ) : (displayedSearchFlights?.length ?? 0) === 0 ? (
                         <p className="admin-tickets-results-empty">
@@ -2671,10 +2677,7 @@ const AdminTicketsPage = () => {
                                 className="admin-tickets-load-more-btn"
                               >
                                 {isLoadingMore ? (
-                                  <>
-                                    <span className="admin-tickets-spinner admin-tickets-spinner-inline" />
-                                    Loading…
-                                  </>
+                                  <span className="admin-tickets-spinner admin-tickets-spinner-inline" aria-label="Loading" />
                                 ) : (
                                   `Load more (showing ${searchResults.length} of ${searchTotalCount})`
                                 )}

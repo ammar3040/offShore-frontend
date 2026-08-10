@@ -1992,15 +1992,16 @@
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
-/* Marine fare — vertical ribbon along the left edge */
-.atfc-card--marine {
+/* Side ribbon — Riya (MARINE) / Travel Terminus (GENERAL) */
+.atfc-card--marine,
+.atfc-card--general {
   position: relative;
   padding-left: 28px;
   border-left: none;
 }
 
-.atfc-card--marine::before {
-  content: 'MARINE';
+.atfc-card--marine::before,
+.atfc-card--general::before {
   position: absolute;
   left: 0;
   top: 0;
@@ -2011,7 +2012,6 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #0284c7 0%, #0369a1 55%, #0c4a6e 100%);
   color: #f0f9ff;
   font-size: 0.625rem;
   font-weight: 800;
@@ -2021,6 +2021,17 @@
   text-orientation: mixed;
   border-radius: 16px 0 0 16px;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.atfc-card--marine::before {
+  content: 'MARINE';
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 55%, #0c4a6e 100%);
+}
+
+.atfc-card--general::before {
+  content: 'GENERAL';
+  background: linear-gradient(180deg, #64748b 0%, #475569 55%, #334155 100%);
+  color: #f8fafc;
 }
 
 .atfc-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); }
@@ -2063,31 +2074,69 @@
   width: fit-content;
 }
 
-.atfc-supplier {
-  display: inline-flex;
-  margin-top: 6px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  width: fit-content;
+/* Search loading skeletons */
+.atfc-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.atfc-supplier--riya {
-  color: #1e3a5f;
-  background: #e0f2fe;
-  border: 1px solid #bae6fd;
+.atfc-skeleton-card {
+  display: flex;
+  min-height: 112px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  overflow: hidden;
 }
 
-.atfc-supplier--tt {
-  color: #5b21b6;
-  background: #f3e8ff;
-  border: 1px solid #e9d5ff;
+.atfc-skeleton-bar {
+  width: 24px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
 }
 
-.atfc-card--tt {
-  border-color: #ddd6fe;
+.atfc-skeleton-bar--side {
+  animation: atfc-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.atfc-skeleton-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 24px;
+}
+
+.atfc-skeleton-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.atfc-skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+  background-size: 200% 100%;
+  animation: atfc-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.atfc-skeleton-line--sm { width: 88px; }
+.atfc-skeleton-line--md { width: 55%; max-width: 320px; height: 16px; }
+.atfc-skeleton-line--lg { width: 40%; max-width: 220px; height: 22px; }
+.atfc-skeleton-line--btn { width: 96px; height: 36px; border-radius: 8px; flex-shrink: 0; }
+
+@keyframes atfc-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@keyframes atfc-skeleton-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 /* Route */
@@ -2925,6 +2974,26 @@
   color: hsl(204 94% 96%);
 }
 
+.layout--dark .atfc-card--general::before {
+  background: linear-gradient(
+    180deg,
+    hsl(215 16% 40%) 0%,
+    hsl(215 19% 30%) 55%,
+    hsl(217 22% 22%) 100%
+  );
+  color: hsl(210 40% 96%);
+}
+
+.layout--dark .atfc-skeleton-card {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.layout--dark .atfc-skeleton-line {
+  background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--border)) 50%, hsl(var(--muted)) 100%);
+  background-size: 200% 100%;
+}
+
 .layout--dark .atfc-card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
@@ -3520,6 +3589,11 @@
 
 .subsea-shell .atfc-card--marine::before {
   background: linear-gradient(180deg, var(--blue), var(--teal));
+  border-radius: 8px 0 0 8px;
+}
+
+.subsea-shell .atfc-card--general::before {
+  background: linear-gradient(180deg, #64748b, #334155);
   border-radius: 8px 0 0 8px;
 }
 

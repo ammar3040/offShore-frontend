@@ -490,7 +490,7 @@ const VevoVisaPage = () => {
 
   return (
     <div className="subsea-shell vevo-page">
-      <SubseaNavRail activeModule="visa" />
+      <SubseaNavRail />
 
       <div className="subsea-main">
         <div className="subsea-topbar">
