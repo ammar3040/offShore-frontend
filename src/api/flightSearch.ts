@@ -33,6 +33,7 @@ export interface BookLeg {
   duration?: string;
   stops?: number;
   via?: string | null;
+  supplier?: 'riya' | 'travelterminus';
   itinerary?: BookItinerarySegment[];
 }
 
@@ -54,7 +55,8 @@ export interface BookFlightPayload {
   crew_ids?: string[];
   flight: {
     id: string;
-    supplier?: 'riya' | 'travelterminus';
+    supplier?: 'riya' | 'travelterminus' | 'mixed';
+    optimized?: boolean;
     /** Search-result serial (e.g. "0001") — persisted on the booked ticket. */
     ticketNumber?: string;
     legs: BookLeg[];
@@ -139,6 +141,62 @@ export async function searchFlights(payload: SearchPayload): Promise<SearchFligh
   return { flights, total, page, limit };
 }
 
+export interface OptimizeFlightsResult {
+  flights: Flight[];
+  total: number;
+  baseline?: { bestPrice: number | null; bestDurationMinutes: number | null };
+  hubs?: string[];
+}
+
+/**
+ * POST /crew-ticket/optimize-flights – stitch dual-supplier segments into a shortlist.
+ */
+export async function optimizeFlights(payload: SearchPayload & {
+  minConnectionHours?: number;
+  maxHops?: number;
+  limit?: number;
+}): Promise<OptimizeFlightsResult> {
+  const controller = new AbortController();
+  const timeoutMs = Math.max(env.flightSearchTimeout, 120_000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const response = await fetch(`${API_BASE}/crew-ticket/optimize-flights`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      ...payload,
+      tripType: 'one-way',
+      minConnectionHours: payload.minConnectionHours ?? 3,
+      maxHops: payload.maxHops ?? 2,
+      limit: payload.limit ?? 8,
+    }),
+    signal: controller.signal,
+  });
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    let message = `Optimize failed (${response.status})`;
+    try {
+      const err = await response.json();
+      message = (err as { error?: string; message?: string }).error
+        || (err as { message?: string }).message
+        || message;
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  const flights = Array.isArray(data?.flights) ? data.flights : [];
+  return {
+    flights,
+    total: flights.length,
+    baseline: data?.baseline,
+    hubs: Array.isArray(data?.hubs) ? data.hubs : undefined,
+  };
+}
+
 /**
  * POST /crew-ticket/book – submit booking for selected crew on a project.
  * Payload is extracted from search flight result to match backend bookFlightSchema.
@@ -174,6 +232,10 @@ export async function bookFlight(params: {
     flight: {
       id: params.flight.id,
       ...(params.flight.supplier ? { supplier: params.flight.supplier } : {}),
+      ...(params.flight.optimized ? { optimized: true } : {}),
+      ...(typeof params.flight.isMarineFare === 'boolean'
+        ? { isMarineFare: params.flight.isMarineFare }
+        : {}),
       ...(params.flight.ticketNumber ? { ticketNumber: params.flight.ticketNumber } : {}),
       legs: (params.flight.legs ?? []).map((leg) => ({
         airlineName: leg.airlineName,
@@ -185,6 +247,7 @@ export async function bookFlight(params: {
         duration: leg.duration,
         stops: leg.stops,
         via: leg.via,
+        ...(leg.supplier ? { supplier: leg.supplier } : {}),
         itinerary: leg.itinerary?.map((seg) => ({
           airlineName: seg.airlineName,
           airlineCode: seg.airlineCode,

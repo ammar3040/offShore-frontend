@@ -188,6 +188,18 @@
   border: 1px solid #e9d5ff;
 }
 
+.superadmin-ticket-supplier--published {
+  color: #3730a3;
+  background: #e0e7ff;
+  border: 1px solid #c7d2fe;
+}
+
+.superadmin-ticket-status-requested {
+  color: #0f766e;
+  background: #ccfbf1;
+  border: 1px solid #99f6e4;
+}
+
 .superadmin-ticket-class,
 .superadmin-ticket-trip {
   background: hsl(var(--muted));

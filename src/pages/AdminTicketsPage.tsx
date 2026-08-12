@@ -64,6 +64,8 @@ import {
   type CreateFlightTicketPayload,
   type AirportLocation,
   type CrewTicketApi,
+  confirmQuotedCrewTicket,
+  ackCrewTicketApprovalNotification,
   getTicketStatus,
   getTicketStatusLabel,
   getTicketApprovalStatusLabel,
@@ -73,7 +75,7 @@ import {
   parseCrewTicketCreatedAt,
 } from '../api/ticket';
 import { getAdminProfile } from '../api/admin';
-import { searchFlights, bookFlight } from '../api/flightSearch';
+import { searchFlights, bookFlight, optimizeFlights } from '../api/flightSearch';
 import { searchAirportsApi } from '../api/airports';
 import { AIRPORTS, getAirportDisplayName, searchAirports } from '../lib/airports';
 import type {
@@ -113,7 +115,7 @@ import './RigsPage.css';
 
 type ModalStep = 'project' | 'crew' | 'form';
 type TicketsTab = 'tickets' | 'search' | 'spends';
-type StatusFilter = 'all' | 'pending' | 'approved' | 'cancelled';
+type StatusFilter = 'all' | 'pending' | 'requested' | 'quoted' | 'approved' | 'cancelled';
 
 /** Search tab trip UI; API uses SearchPayload tripType (`multi-city` maps to `one-way` per leg). */
 type SearchUITripType = 'one-way' | 'round-trip' | 'multi-city';
@@ -529,10 +531,28 @@ function FlightResultCard({
   const [expanded, setExpanded] = useState(false);
   const fares = flight.fares ?? [];
 
+  const isOptimized = Boolean(flight.optimized);
   const isTravelTerminus =
-    flight.supplier === 'travelterminus' ||
-    (typeof flight.id === 'string' && flight.id.startsWith('tt-'));
-  const sideTagClass = isTravelTerminus ? 'atfc-card--general' : 'atfc-card--marine';
+    !isOptimized &&
+    (flight.supplier === 'travelterminus' ||
+      (typeof flight.id === 'string' && flight.id.startsWith('tt-')));
+  const isMarine =
+    !isOptimized &&
+    !isTravelTerminus &&
+    (flight.isMarineFare === true ||
+      (flight.fares ?? []).some((f) => {
+        const ind = String(f.indicator || '').toUpperCase();
+        const type = String(f.type || '').toUpperCase();
+        const name = String(f.name || '').toUpperCase();
+        return ind === 'M' || type === 'MARINE' || name.includes('MARINE');
+      }));
+  const sideTagClass = isOptimized
+    ? 'atfc-card--mixed'
+    : isTravelTerminus
+      ? 'atfc-card--general'
+      : isMarine
+        ? 'atfc-card--marine'
+        : 'atfc-card--published';
 
   const firstLeg = flight.legs?.[0];
   const lastLeg = flight.legs?.[flight.legs.length - 1];
@@ -543,14 +563,53 @@ function FlightResultCard({
   const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
   const departureTime = firstLeg?.departureTime ?? '';
   const arrivalTime = lastLeg?.arrivalTime ?? '';
-  const duration = formatElapsedDuration(departureTime, arrivalTime, firstLeg?.duration ?? '—');
+  const duration = formatElapsedDuration(
+    departureTime,
+    arrivalTime,
+    flight.duration ?? firstLeg?.duration ?? '—'
+  );
   const overnightCount = countFlightOvernights(departureTime, arrivalTime);
-  const stops = (flight as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
+  const stops = flight.stops ?? firstLeg?.stops ?? 0;
   const via = firstLeg?.via;
-  const airlineName = (flight as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
-  const airlineCode = (flight as { airlineCode?: string }).airlineCode ?? '';
+  const airlineName = flight.airlineName ?? firstLeg?.airlineName ?? '—';
+  const airlineCode = flight.airlineCode ?? '';
   const cabin = selectedFare?.cabin ?? firstSeg?.cabin ?? '—';
   const segments = flight.legs?.flatMap((leg) => leg.itinerary ?? []) ?? [];
+
+  const routeChain = (flight.legs ?? [])
+    .map((leg, i) => {
+      const code =
+        String(leg.from ?? '')
+          .match(/\[([A-Z]{3})\]/)?.[1] ??
+        String(leg.from ?? '').match(/\b([A-Z]{3})\b/)?.[1] ??
+        leg.from;
+      if (i === 0) {
+        const toCode =
+          String(leg.to ?? '')
+            .match(/\[([A-Z]{3})\]/)?.[1] ??
+          String(leg.to ?? '').match(/\b([A-Z]{3})\b/)?.[1] ??
+          leg.to;
+        return `${code} → ${toCode}`;
+      }
+      const toCode =
+        String(leg.to ?? '')
+          .match(/\[([A-Z]{3})\]/)?.[1] ??
+        String(leg.to ?? '').match(/\b([A-Z]{3})\b/)?.[1] ??
+        leg.to;
+      return toCode;
+    })
+    .join(flight.legs && flight.legs.length > 1 ? ' → ' : '');
+
+  const kindLabel =
+    flight.optimizationKind === 'cheaper_faster'
+      ? 'Best value'
+      : flight.optimizationKind === 'faster'
+        ? 'Faster'
+        : flight.optimizationKind === 'cheaper'
+          ? 'Cheaper'
+          : flight.optimizationKind === 'balanced'
+            ? 'Balanced'
+            : null;
 
   return (
     <div className={`atfc-card ${sideTagClass}`}>
@@ -563,8 +622,9 @@ function FlightResultCard({
               #{flight.ticketNumber}
             </span>
           ) : null}
-          <span className="atfc-airline-name">{airlineName}</span>
-          <span className="atfc-airline-code">{airlineCode}</span>
+          {kindLabel ? <span className="atfc-opt-kind">{kindLabel}</span> : null}
+          <span className="atfc-airline-name">{isOptimized ? 'Optimized' : airlineName}</span>
+          <span className="atfc-airline-code">{isOptimized ? 'MIXED' : airlineCode}</span>
         </div>
 
         {/* Route */}
@@ -583,9 +643,22 @@ function FlightResultCard({
               <span className="atfc-route-bar" />
               <span className="atfc-route-dot" />
             </div>
-            <span className="atfc-stops">
-              {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}${via ? ` via ${via}` : ''}`}
-            </span>
+            {isOptimized && routeChain ? (
+              <span className="atfc-stops atfc-route-chain">{routeChain}</span>
+            ) : (
+              <span className="atfc-stops">
+                {stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}${via ? ` via ${via}` : ''}`}
+              </span>
+            )}
+            {isOptimized && (flight.connectionGaps?.length ?? 0) > 0 ? (
+              <div className="atfc-connection-gaps">
+                {flight.connectionGaps!.map((gap, i) => (
+                  <span key={i} className="atfc-connection-chip">
+                    {gap.airport || 'Layover'} · {gap.duration || `${gap.hours ?? '?'}h`} connection
+                  </span>
+                ))}
+              </div>
+            ) : null}
             {overnightCount > 0 ? (
               <span className="atfc-overnight-badge" title={`${overnightCount} overnight${overnightCount !== 1 ? 's' : ''} in transit`}>
                 {overnightCount} overnight{overnightCount !== 1 ? 's' : ''}
@@ -661,7 +734,44 @@ function FlightResultCard({
 
       {expanded && (
         <div className="atfc-segments">
-          {segments.map((seg, i) => {
+          {isOptimized
+            ? (flight.legs ?? []).map((leg, li) => {
+                const legTt = leg.supplier === 'travelterminus';
+                return (
+                  <div key={li} className={`atfc-opt-leg ${legTt ? 'atfc-opt-leg--general' : 'atfc-opt-leg--marine'}`}>
+                    <div className="atfc-opt-leg-header">
+                      <span className="atfc-opt-leg-tag">{legTt ? 'GENERAL' : 'MARINE'}</span>
+                      <span>
+                        {leg.from} → {leg.to}
+                      </span>
+                      <span className="atfc-opt-leg-meta">
+                        {leg.departureTime ? fmtTime(leg.departureTime) : '—'} –{' '}
+                        {leg.arrivalTime ? fmtTime(leg.arrivalTime) : '—'}
+                      </span>
+                    </div>
+                    {(leg.itinerary ?? []).map((seg, i) => (
+                      <div key={i} className="atfc-seg">
+                        <div className="atfc-seg-header">
+                          <span className="atfc-seg-airline">
+                            {seg.airlineName} {seg.airlineCode} {seg.flightNumber}
+                          </span>
+                          <span className="atfc-seg-cabin">{seg.cabin}</span>
+                        </div>
+                        <div className="atfc-seg-route">
+                          <span>
+                            {fmtTime(seg.departureTime)} {seg.fromAirport || seg.from}
+                          </span>
+                          <span>→</span>
+                          <span>
+                            {fmtTime(seg.arrivalTime)} {seg.toAirport || seg.to}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })
+            : segments.map((seg, i) => {
             const nextSeg = segments[i + 1];
             const layoverArrival = seg.arrivalTime;
             const layoverDeparture = nextSeg?.departureTime;
@@ -841,7 +951,18 @@ const AdminTicketsPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [resultsMode, setResultsMode] = useState<'normal' | 'optimized'>('normal');
+  const [optimizedResults, setOptimizedResults] = useState<Flight[] | null>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizeError, setOptimizeError] = useState<string | null>(null);
+  const [optimizeBaseline, setOptimizeBaseline] = useState<{
+    bestPrice: number | null;
+    bestDurationMinutes: number | null;
+  } | null>(null);
+  const [showOptimizeGapDialog, setShowOptimizeGapDialog] = useState(false);
+  const [connectionGapHours, setConnectionGapHours] = useState(3);
   const [bookingFlightKey, setBookingFlightKey] = useState<string | null>(null);
+  const [confirmingQuoteId, setConfirmingQuoteId] = useState<string | null>(null);
   const [flightToBook, setFlightToBook] = useState<Flight | null>(null);
   const [bookingTravelDirection, setBookingTravelDirection] = useState<'HOME_TO_RIG' | 'RIG_TO_HOME'>('HOME_TO_RIG');
   const [bookingConfirmConflicts, setBookingConfirmConflicts] = useState<CrewTravelConflict[]>([]);
@@ -1175,6 +1296,12 @@ const AdminTicketsPage = () => {
     if (statusFilter === 'pending') {
       return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'UNAPPROVED');
     }
+    if (statusFilter === 'requested') {
+      return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'REQUESTED');
+    }
+    if (statusFilter === 'quoted') {
+      return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'QUOTED');
+    }
     if (statusFilter === 'approved') {
       return projectFilteredTickets.filter((t) => getTicketStatus(t) === 'APPROVED');
     }
@@ -1183,6 +1310,40 @@ const AdminTicketsPage = () => {
     }
     return projectFilteredTickets;
   }, [projectFilteredTickets, statusFilter]);
+
+  // One-time toast when a request-flow ticket becomes approved
+  useEffect(() => {
+    const unseen = tickets.filter(
+      (t) =>
+        getTicketStatus(t) === 'APPROVED' &&
+        Boolean(t.requestFlow) &&
+        !t.adminApprovalSeenAt
+    );
+    if (unseen.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      for (const t of unseen) {
+        if (cancelled) break;
+        toast.success('Requested ticket approved', {
+          description: `Ticket #${t.ticketNumber || t.id.slice(-6)} is approved. Final price: £${Number(t.price ?? 0).toLocaleString()}.`,
+          duration: 8000,
+        });
+        try {
+          await ackCrewTicketApprovalNotification(t.id);
+          setTickets((prev) =>
+            prev.map((row) =>
+              row.id === t.id ? { ...row, adminApprovalSeenAt: new Date().toISOString() } : row
+            )
+          );
+        } catch {
+          // keep toast from repeating only after successful ack
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tickets]);
 
   useEffect(() => {
     setRecentBookingsPage(1);
@@ -1278,11 +1439,21 @@ const AdminTicketsPage = () => {
   }, []);
 
   const runFlightSearch = useCallback(async (criteria: SearchPayload) => {
+    if (!criteria.departureDate?.trim()) {
+      setSearchError('Please select a departure date.');
+      setSearchResults(null);
+      setSearchCriteria(null);
+      return;
+    }
     setSearchCriteria(criteria);
     setSearchResults(null);
     setSearchTotalCount(0);
     setSearchPage(1);
     setSearchError(null);
+    setResultsMode('normal');
+    setOptimizedResults(null);
+    setOptimizeError(null);
+    setOptimizeBaseline(null);
     setIsSearching(true);
     try {
       const data = await searchFlights(criteria);
@@ -1314,6 +1485,10 @@ const AdminTicketsPage = () => {
           return;
         }
         const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : seg.departureDate;
+        if (!String(dDate ?? '').trim()) {
+          setSearchError('Please select a departure date.');
+          return;
+        }
         const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : seg.departureTime;
         const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : seg.arrivalDate;
         const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : seg.arrivalTime;
@@ -1321,7 +1496,7 @@ const AdminTicketsPage = () => {
           tripType: 'one-way',
           from: seg.from,
           to: seg.to,
-          departureDate: dDate,
+          departureDate: dDate.trim(),
           adults: searchAdultCount,
           children: 0,
           infants: 0,
@@ -1343,17 +1518,25 @@ const AdminTicketsPage = () => {
           return;
         }
         const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : departureDate;
+        if (!String(dDate ?? '').trim()) {
+          setSearchError('Please select a departure date.');
+          return;
+        }
         const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : departureTime;
         const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : arrivalDate;
         const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : arrivalTime;
         const rDate = overrides?.returnDate !== undefined ? overrides.returnDate : returnDate;
         const rTime = overrides?.returnTime !== undefined ? overrides.returnTime : returnTime;
+        if (searchTripTypeUI === 'round-trip' && !String(rDate ?? '').trim()) {
+          setSearchError('Please select a return date.');
+          return;
+        }
         criteria = {
           tripType: searchTripTypeUI,
           from: searchFrom,
           to: searchTo,
-          departureDate: dDate,
-          returnDate: searchTripTypeUI === 'round-trip' ? rDate : undefined,
+          departureDate: dDate.trim(),
+          returnDate: searchTripTypeUI === 'round-trip' ? String(rDate).trim() : undefined,
           ...(searchTripTypeUI === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
           adults: searchAdultCount,
           children: 0,
@@ -1525,6 +1708,10 @@ const AdminTicketsPage = () => {
     setSearchProjectId('');
     setSearchCrewIds([]);
     setSearchError(null);
+    setResultsMode('normal');
+    setOptimizedResults(null);
+    setOptimizeBaseline(null);
+    setOptimizeError(null);
   }, []);
 
   useEffect(() => {
@@ -1708,20 +1895,62 @@ const AdminTicketsPage = () => {
   }, [flightToBook, searchCrewIds, searchCrewList]);
 
   const handleSearchBack = useCallback(() => {
+    if (resultsMode === 'optimized') {
+      setResultsMode('normal');
+      setOptimizeError(null);
+      return;
+    }
     setSearchResults(null);
     setSearchTotalCount(0);
     setSearchPage(1);
     setSearchCriteria(null);
     setSearchError(null);
-  }, []);
+    setOptimizedResults(null);
+    setOptimizeBaseline(null);
+    setOptimizeError(null);
+  }, [resultsMode]);
+
+  const handleOptimizeTickets = useCallback(async (gapHours?: number) => {
+    if (!searchCriteria || searchCriteria.tripType !== 'one-way') return;
+    const minConnectionHours = Math.min(
+      24,
+      Math.max(1, Number(gapHours ?? connectionGapHours) || 3)
+    );
+    setConnectionGapHours(minConnectionHours);
+    setShowOptimizeGapDialog(false);
+    setIsOptimizing(true);
+    setOptimizeError(null);
+    setResultsMode('optimized');
+    setOptimizedResults(null);
+    try {
+      const data = await optimizeFlights({
+        ...searchCriteria,
+        tripType: 'one-way',
+        page: 1,
+        limit: 8,
+        minConnectionHours,
+        maxHops: 2,
+      });
+      setOptimizedResults(preferCheapestFares(data.flights));
+      setOptimizeBaseline(data.baseline ?? null);
+    } catch (e) {
+      setOptimizeError(e instanceof Error ? e.message : 'Optimize failed');
+      setOptimizedResults([]);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [searchCriteria, connectionGapHours]);
 
   const displayedSearchFlights = useMemo(() => {
+    if (resultsMode === 'optimized') {
+      return optimizedResults;
+    }
     if (!searchResults) return null;
     if (searchTripTypeUI === 'multi-city' && preferNonStopPerLeg) {
       return searchResults.filter(isFlightNonStop);
     }
     return searchResults;
-  }, [searchResults, searchTripTypeUI, preferNonStopPerLeg]);
+  }, [searchResults, searchTripTypeUI, preferNonStopPerLeg, resultsMode, optimizedResults]);
 
   const handleSubmitTickets = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1976,10 +2205,22 @@ const AdminTicketsPage = () => {
     [projectFilteredTickets]
   );
 
+  const requestedTicketsCount = useMemo(
+    () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) === 'REQUESTED').length,
+    [projectFilteredTickets]
+  );
+
+  const quotedTicketsCount = useMemo(
+    () => projectFilteredTickets.filter((ticket) => getTicketStatus(ticket) === 'QUOTED').length,
+    [projectFilteredTickets]
+  );
+
   const getTicketStatusBadgeClass = (ticket: CrewTicketApi) => {
     const status = getTicketStatus(ticket);
     if (status === 'CANCELLED') return 'subsea-b-red subsea-flight-status-cancelled';
     if (status === 'APPROVED') return 'subsea-b-green subsea-flight-status-approved';
+    if (status === 'REQUESTED') return 'subsea-b-blue subsea-flight-status-requested';
+    if (status === 'QUOTED') return 'subsea-b-teal subsea-flight-status-quoted';
     return 'subsea-b-orange subsea-flight-status-pending';
   };
 
@@ -2054,6 +2295,26 @@ const AdminTicketsPage = () => {
             }}
           >
             <AlertTriangle size={13} /> Pending Approval <span className="subsea-sb-count subsea-sb-count-red">{pendingApprovalCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'quoted' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('tickets');
+              setStatusFilter('quoted');
+            }}
+          >
+            <CircleDollarSign size={13} /> Requested approvals <span className="subsea-sb-count">{quotedTicketsCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`subsea-sb-link${activeTab === 'tickets' && statusFilter === 'requested' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('tickets');
+              setStatusFilter('requested');
+            }}
+          >
+            <Info size={13} /> Requests <span className="subsea-sb-count">{requestedTicketsCount}</span>
           </button>
           <button
             type="button"
@@ -2577,8 +2838,15 @@ const AdminTicketsPage = () => {
                           disabled={
                             isSearching ||
                             (searchTripTypeUI === 'multi-city'
-                              ? !(multiSegments[activeMultiLegIndex]?.from && multiSegments[activeMultiLegIndex]?.to)
-                              : !searchFrom || !searchTo)
+                              ? !(
+                                  multiSegments[activeMultiLegIndex]?.from &&
+                                  multiSegments[activeMultiLegIndex]?.to &&
+                                  multiSegments[activeMultiLegIndex]?.departureDate?.trim()
+                                )
+                              : !searchFrom ||
+                                !searchTo ||
+                                !departureDate?.trim() ||
+                                (searchTripTypeUI === 'round-trip' && !returnDate?.trim()))
                           }
                           aria-busy={isSearching}
                         >
@@ -2597,10 +2865,10 @@ const AdminTicketsPage = () => {
                         variant="outline"
                         type="button"
                         onClick={handleSearchBack}
-                        disabled={isSearching}
+                        disabled={isSearching || isOptimizing}
                       >
                         <ChevronLeft size={18} />
-                        Back to search
+                        {resultsMode === 'optimized' ? 'Back to results' : 'Back to search'}
                       </Button>
                       {searchCriteria && (
                         <p className="admin-tickets-results-summary">
@@ -2625,7 +2893,7 @@ const AdminTicketsPage = () => {
                           onValueChange={(value) => {
                             void handleResultSortChange(value as FlightSortValue);
                           }}
-                          disabled={isSearching || isLoadingMore}
+                          disabled={isSearching || isLoadingMore || resultsMode === 'optimized'}
                         >
                           <SelectTrigger id="flight-results-sort" className="admin-tickets-results-sort-trigger">
                             <SelectValue placeholder="Sort results" />
@@ -2639,11 +2907,33 @@ const AdminTicketsPage = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                      {searchTripTypeUI === 'one-way' && (
+                        <Button
+                          type="button"
+                          variant={resultsMode === 'optimized' ? 'default' : 'outline'}
+                          className="admin-tickets-optimize-btn"
+                          onClick={() => setShowOptimizeGapDialog(true)}
+                          disabled={
+                            isSearching ||
+                            isOptimizing ||
+                            !searchCriteria ||
+                            searchResults == null ||
+                            searchResults.length === 0
+                          }
+                        >
+                          {isOptimizing ? 'Optimizing…' : 'Optimized tickets'}
+                        </Button>
+                      )}
                       <p className="admin-tickets-results-count">
-                        {isSearching
-                          ? 'Finding flights…'
-                          : `${searchTotalCount} flight${searchTotalCount !== 1 ? 's' : ''} found`}
+                        {resultsMode === 'optimized'
+                          ? isOptimizing
+                            ? 'Building optimized connections…'
+                            : `${optimizedResults?.length ?? 0} optimized option${(optimizedResults?.length ?? 0) !== 1 ? 's' : ''}${connectionGapHours ? ` · ≥${connectionGapHours}h gap` : ''}`
+                          : isSearching
+                            ? 'Finding flights…'
+                            : `${searchTotalCount} flight${searchTotalCount !== 1 ? 's' : ''} found`}
                         {!isSearching &&
+                          resultsMode !== 'optimized' &&
                           searchTripTypeUI === 'multi-city' &&
                           preferNonStopPerLeg &&
                           displayedSearchFlights &&
@@ -2656,8 +2946,42 @@ const AdminTicketsPage = () => {
                           )}
                       </p>
                     </div>
+                    {(optimizeError || searchError) && resultsMode === 'optimized' ? (
+                      <p className="admin-tickets-results-empty admin-tickets-optimize-error">
+                        {optimizeError || searchError}
+                      </p>
+                    ) : null}
                     <div className="admin-tickets-results-list">
-                      {isSearching || searchResults == null ? (
+                      {resultsMode === 'optimized' ? (
+                        isOptimizing || optimizedResults == null ? (
+                          <FlightSearchSkeleton />
+                        ) : optimizedResults.length === 0 ? (
+                          <p className="admin-tickets-results-empty">
+                            No better connections found with a 3-hour+ layover.
+                          </p>
+                        ) : (
+                          <>
+                            {optimizeBaseline?.bestPrice != null && (
+                              <p className="admin-tickets-optimize-baseline">
+                                Baseline best: {getCurrencySymbol(currency)}
+                                {optimizeBaseline.bestPrice.toLocaleString()}
+                                {optimizeBaseline.bestDurationMinutes != null
+                                  ? ` · ${Math.floor(optimizeBaseline.bestDurationMinutes / 60)}h ${optimizeBaseline.bestDurationMinutes % 60}m`
+                                  : ''}
+                              </p>
+                            )}
+                            {optimizedResults.map((flight) => (
+                              <FlightResultCard
+                                key={flight.id}
+                                flight={flight}
+                                currency={currency}
+                                onBook={handleBookNow}
+                                isBooking={bookingFlightKey === flight.id}
+                              />
+                            ))}
+                          </>
+                        )
+                      ) : isSearching || searchResults == null ? (
                         <FlightSearchSkeleton />
                       ) : searchResults.length === 0 ? (
                         <p className="admin-tickets-results-empty">No flights match your criteria.</p>
@@ -2878,6 +3202,36 @@ const AdminTicketsPage = () => {
                             <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Rig</div><div className="subsea-flight-meta-val">{getRigName(ticket)}</div></div>
                             <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Booking ref</div><div className="subsea-flight-meta-val">{ticket.bookingReference || 'Pending'}</div></div>
                             <div className="subsea-flight-meta-item"><div className="subsea-flight-meta-label">Fare</div><div className="subsea-flight-meta-val">{ticket.price != null ? displayMoney(ticket.price) : 'TBC'}</div></div>
+                            {getTicketStatus(ticket) === 'QUOTED' && (
+                              <button
+                                type="button"
+                                className="subsea-btn subsea-btn-primary subsea-btn-sm"
+                                disabled={confirmingQuoteId === ticket.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void (async () => {
+                                    setConfirmingQuoteId(ticket.id);
+                                    try {
+                                      const res = await confirmQuotedCrewTicket(ticket.id);
+                                      toast.success('Sent for pending approval', {
+                                        description: res.message || 'Ticket moved to pending approval.',
+                                      });
+                                      setTickets((prev) =>
+                                        prev.map((row) => (row.id === ticket.id ? res.crewTicket : row))
+                                      );
+                                    } catch (err) {
+                                      toast.error('Confirm failed', {
+                                        description: err instanceof Error ? err.message : 'Please try again.',
+                                      });
+                                    } finally {
+                                      setConfirmingQuoteId(null);
+                                    }
+                                  })();
+                                }}
+                              >
+                                {confirmingQuoteId === ticket.id ? 'Confirming…' : 'Confirm & send for approval'}
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="subsea-icon-action"
@@ -3777,11 +4131,16 @@ const AdminTicketsPage = () => {
                 const toAirport = lastSeg?.toAirport ?? lastLeg?.to ?? '—';
                 const departureTime = firstLeg?.departureTime ?? '';
                 const arrivalTime = lastLeg?.arrivalTime ?? '';
-                const duration = firstLeg?.duration ?? '—';
-                const stops = (flightToBook as { stops?: number }).stops ?? firstLeg?.stops ?? 0;
-                const airlineName = (flightToBook as { airlineName?: string }).airlineName ?? firstLeg?.airlineName ?? '—';
+                const duration =
+                  flightToBook.duration ??
+                  formatElapsedDuration(departureTime, arrivalTime, firstLeg?.duration ?? '—');
+                const stops = flightToBook.stops ?? firstLeg?.stops ?? 0;
+                const airlineName = flightToBook.optimized
+                  ? 'Optimized itinerary'
+                  : flightToBook.airlineName ?? firstLeg?.airlineName ?? '—';
                 const firstFare = flightToBook.fares?.[0];
                 const priceAmount = firstFare?.totalFare ?? 0;
+                const isOptimizedBook = Boolean(flightToBook.optimized);
 
                 return (
                   <div className="mt-2 space-y-4">
@@ -3789,11 +4148,31 @@ const AdminTicketsPage = () => {
                       <div className="booking-confirm-header">
                         <div className="booking-confirm-airline">
                           <span>{airlineName}</span>
+                          {isOptimizedBook ? (
+                            <span className="atfc-opt-kind" style={{ marginLeft: 8 }}>
+                              Optimized / Mixed
+                            </span>
+                          ) : null}
                         </div>
                         <span className="booking-confirm-price">
                           {currency} {priceAmount.toLocaleString()}
                         </span>
                       </div>
+                      {isOptimizedBook && (flightToBook.legs?.length ?? 0) > 1 ? (
+                        <ul className="booking-confirm-legs" style={{ margin: '0.75rem 0 0', paddingLeft: '1.1rem' }}>
+                          {flightToBook.legs.map((leg, i) => (
+                            <li key={i} style={{ marginBottom: '0.35rem', fontSize: '0.875rem' }}>
+                              <strong>{leg.supplier === 'travelterminus' ? 'GENERAL' : 'MARINE'}</strong>
+                              {' · '}
+                              {leg.from} → {leg.to}
+                              {' · '}
+                              {leg.departureTime ? fmtTime(leg.departureTime) : '—'}
+                              {' – '}
+                              {leg.arrivalTime ? fmtTime(leg.arrivalTime) : '—'}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
 
                       <div className="booking-confirm-details">
                         <div className="booking-confirm-node departure">
@@ -4079,11 +4458,72 @@ const AdminTicketsPage = () => {
               onClick={() => {
                 if (!crewAvailabilitySearchPending) return;
                 const { criteria } = crewAvailabilitySearchPending;
+                if (!criteria.departureDate?.trim()) {
+                  setSearchError('Please select a departure date.');
+                  setCrewAvailabilitySearchPending(null);
+                  return;
+                }
                 setCrewAvailabilitySearchPending(null);
                 void runFlightSearch(criteria);
               }}
             >
               Search anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Optimized tickets — connection gap */}
+      <Dialog
+        open={showOptimizeGapDialog}
+        onOpenChange={(open) => {
+          if (!open && !isOptimizing) setShowOptimizeGapDialog(false);
+        }}
+      >
+        <DialogContent className={`${SUBSEA_FORM_LIGHT_CLASS} max-w-md max-h-[90vh] overflow-y-auto`}>
+          <DialogHeader>
+            <DialogTitle>Connection gap</DialogTitle>
+            <DialogDescription className="text-left pt-2 text-muted-foreground">
+              Minimum layover between stitched tickets (hours). Next departure must be at least this
+              long after arrival at the connection airport.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <label htmlFor="optimize-connection-gap" className="text-sm font-medium">
+              Gap between tickets (hours)
+            </label>
+            <Input
+              id="optimize-connection-gap"
+              type="number"
+              min={1}
+              max={24}
+              step={1}
+              value={connectionGapHours}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                setConnectionGapHours(Number.isFinite(n) ? n : 3);
+              }}
+              disabled={isOptimizing}
+            />
+            <p className="text-xs text-muted-foreground">
+              Suggested: 3 hours domestic, 4–6 hours for international / long-haul.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowOptimizeGapDialog(false)}
+              disabled={isOptimizing}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleOptimizeTickets(connectionGapHours)}
+              disabled={isOptimizing || !searchCriteria}
+            >
+              {isOptimizing ? 'Optimizing…' : 'Find optimized tickets'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -10,6 +10,7 @@ import {
   isTicketCancelled,
   normalizeCrewTicket,
   openCrewTicketPdf,
+  quoteCrewTicketPrice,
   ticketHasStoredPdf,
   type CrewTicketApi,
 } from '../api/ticket';
@@ -38,6 +39,9 @@ const SuperadminTicketsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'requested' | 'quoted' | 'approved' | 'cancelled'>('all');
+  const [quotePrices, setQuotePrices] = useState<Record<string, string>>({});
+  const [quotingTicketId, setQuotingTicketId] = useState<string | null>(null);
   const [uploadingTicketId, setUploadingTicketId] = useState<string | null>(null);
   const [sendingTicketId, setSendingTicketId] = useState<string | null>(null);
   const [approvingTicketId, setApprovingTicketId] = useState<string | null>(null);
@@ -80,12 +84,34 @@ const SuperadminTicketsPage = () => {
   }, []);
 
   const filteredTickets = useMemo(() => {
-    if (projectFilter === 'all') return tickets;
-    return tickets.filter((t) => {
-      const pid = t.project_id?._id ?? (t.project_id as { id?: string })?.id;
-      return pid === projectFilter;
-    });
-  }, [tickets, projectFilter]);
+    let list = tickets;
+    if (projectFilter !== 'all') {
+      list = list.filter((t) => {
+        const pid = t.project_id?._id ?? (t.project_id as { id?: string })?.id;
+        return pid === projectFilter;
+      });
+    }
+    if (statusFilter === 'pending') {
+      list = list.filter((t) => getTicketStatus(t) === 'UNAPPROVED');
+    } else if (statusFilter === 'requested') {
+      list = list.filter((t) => getTicketStatus(t) === 'REQUESTED');
+    } else if (statusFilter === 'quoted') {
+      list = list.filter((t) => getTicketStatus(t) === 'QUOTED');
+    } else if (statusFilter === 'approved') {
+      list = list.filter((t) => getTicketStatus(t) === 'APPROVED');
+    } else if (statusFilter === 'cancelled') {
+      list = list.filter((t) => getTicketStatus(t) === 'CANCELLED');
+    }
+    return list;
+  }, [tickets, projectFilter, statusFilter]);
+
+  const requestQueueCount = useMemo(
+    () => tickets.filter((t) => {
+      const s = getTicketStatus(t);
+      return s === 'REQUESTED' || s === 'QUOTED';
+    }).length,
+    [tickets]
+  );
 
   const uniqueProjectsFromTickets = useMemo(() => {
     const seen = new Set<string>();
@@ -120,26 +146,34 @@ const SuperadminTicketsPage = () => {
   };
 
   const getSupplierLabel = (t: CrewTicketApi) => {
-    if (t.supplier === 'travelterminus') return 'Travel Terminus';
-    if (t.supplier === 'riya') return 'Riya Marine';
-    if (t.flightSnapshot && 'supplier' in (t.flightSnapshot as object)) {
-      const snap = (t.flightSnapshot as { supplier?: string }).supplier;
-      if (snap === 'travelterminus') return 'Travel Terminus';
-      if (snap === 'riya') return 'Riya Marine';
+    if (t.inventoryKind === 'optimized' || t.supplier === 'mixed') return 'Optimized / Mixed';
+    if (t.inventoryKind === 'general' || t.supplier === 'travelterminus') return 'Travel Terminus';
+    if (t.inventoryKind === 'published' || (t.supplier === 'riya' && t.isMarineFare === false)) {
+      return 'Published';
     }
+    if (t.inventoryKind === 'marine' || t.isMarineFare) return 'Riya Marine';
+    if (t.supplier === 'riya') return 'Riya Marine';
+    const snap = t.flightSnapshot as { supplier?: string; isMarineFare?: boolean } | undefined;
+    if (snap?.supplier === 'mixed') return 'Optimized / Mixed';
+    if (snap?.supplier === 'travelterminus') return 'Travel Terminus';
+    if (snap?.isMarineFare === false) return 'Published';
+    if (snap?.supplier === 'riya') return 'Riya Marine';
     return 'Riya Marine';
   };
 
-  const getSupplierClass = (t: CrewTicketApi) =>
-    t.supplier === 'travelterminus' ||
-    (t.flightSnapshot as { supplier?: string } | undefined)?.supplier === 'travelterminus'
-      ? 'superadmin-ticket-supplier--tt'
-      : 'superadmin-ticket-supplier--riya';
+  const getSupplierClass = (t: CrewTicketApi) => {
+    const label = getSupplierLabel(t);
+    if (label.includes('Mixed') || label.includes('Optimized')) return 'superadmin-ticket-supplier--mixed';
+    if (label.includes('Terminus')) return 'superadmin-ticket-supplier--tt';
+    if (label.includes('Published')) return 'superadmin-ticket-supplier--published';
+    return 'superadmin-ticket-supplier--riya';
+  };
 
   const getTicketStatusClass = (ticket: CrewTicketApi) => {
     const status = getTicketStatus(ticket);
     if (status === 'CANCELLED') return 'superadmin-ticket-status-cancelled';
     if (status === 'APPROVED') return 'superadmin-ticket-status-approved';
+    if (status === 'REQUESTED' || status === 'QUOTED') return 'superadmin-ticket-status-requested';
     return 'superadmin-ticket-status-pending';
   };
 
@@ -237,6 +271,12 @@ const SuperadminTicketsPage = () => {
 
   const handleApproveTicket = async (ticket: CrewTicketApi, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (getTicketStatus(ticket) !== 'UNAPPROVED') {
+      toast.error('Not ready for approval', {
+        description: 'Set a quoted price and wait for admin confirmation first (request flow).',
+      });
+      return;
+    }
     const bookingReference = (approvalRefs[ticket.id] ?? ticket.bookingReference ?? '').trim();
     if (!bookingReference) {
       setApprovalErrors((prev) => ({ ...prev, [ticket.id]: 'Enter a booking reference.' }));
@@ -268,6 +308,30 @@ const SuperadminTicketsPage = () => {
       toast.error('Approval failed', { description: message });
     } finally {
       setApprovingTicketId(null);
+    }
+  };
+
+  const handleQuotePrice = async (ticket: CrewTicketApi, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const raw = quotePrices[ticket.id] ?? String(ticket.quotedPrice ?? ticket.price ?? '');
+    const price = Number(raw);
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Invalid price', { description: 'Enter a valid GBP amount.' });
+      return;
+    }
+    setQuotingTicketId(ticket.id);
+    try {
+      const res = await quoteCrewTicketPrice(ticket.id, price);
+      replaceTicket(res.crewTicket);
+      toast.success('Price quoted', {
+        description: res.message || `Quoted £${price.toLocaleString()} for admin confirmation.`,
+      });
+    } catch (err) {
+      toast.error('Quote failed', {
+        description: err instanceof Error ? err.message : 'Could not save quoted price.',
+      });
+    } finally {
+      setQuotingTicketId(null);
     }
   };
 
@@ -329,6 +393,25 @@ const SuperadminTicketsPage = () => {
           </p>
         </div>
         <div className="superadmin-tickets-filter">
+          <label htmlFor="sa-tickets-status">Status</label>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) =>
+              setStatusFilter(v as 'all' | 'pending' | 'requested' | 'quoted' | 'approved' | 'cancelled')
+            }
+          >
+            <SelectTrigger id="sa-tickets-status" className="superadmin-tickets-select w-[200px]">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="requested">Requests ({requestQueueCount})</SelectItem>
+              <SelectItem value="quoted">Quoted</SelectItem>
+              <SelectItem value="pending">Pending approval</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
           <label htmlFor="sa-tickets-project">Filter by project</label>
           <Select value={projectFilter} onValueChange={setProjectFilter}>
             <SelectTrigger id="sa-tickets-project" className="superadmin-tickets-select w-[240px]">
@@ -417,7 +500,35 @@ const SuperadminTicketsPage = () => {
                   </span>
                 </div>
                 <div className="superadmin-ticket-actions">
-                  {getTicketStatus(t) !== 'APPROVED' && (
+                  {(getTicketStatus(t) === 'REQUESTED' || getTicketStatus(t) === 'QUOTED') && (
+                    <div className="superadmin-ticket-approve-inline" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={quotePrices[t.id] ?? String(t.quotedPrice ?? t.price ?? '')}
+                        onChange={(e) =>
+                          setQuotePrices((prev) => ({ ...prev, [t.id]: e.target.value }))
+                        }
+                        placeholder="GBP price"
+                        aria-label={`Quoted GBP price for ${getRoute(t)}`}
+                      />
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={(e) => handleQuotePrice(t, e)}
+                        disabled={quotingTicketId === t.id}
+                        title="Save quoted price for admin"
+                      >
+                        {quotingTicketId === t.id ? (
+                          <span className="superadmin-ticket-send-spinner" />
+                        ) : (
+                          <>Set price</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  {getTicketStatus(t) === 'UNAPPROVED' && (
                     <div className="superadmin-ticket-approve-inline" onClick={(e) => e.stopPropagation()}>
                       <input
                         value={approvalRefs[t.id] ?? ''}

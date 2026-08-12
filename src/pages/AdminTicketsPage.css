@@ -1992,16 +1992,20 @@
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
-/* Side ribbon — Riya (MARINE) / Travel Terminus (GENERAL) */
+/* Side ribbon — Riya Marine / Riya Published / Travel Terminus GENERAL / Optimized MIXED */
 .atfc-card--marine,
-.atfc-card--general {
+.atfc-card--general,
+.atfc-card--mixed,
+.atfc-card--published {
   position: relative;
   padding-left: 28px;
   border-left: none;
 }
 
 .atfc-card--marine::before,
-.atfc-card--general::before {
+.atfc-card--general::before,
+.atfc-card--mixed::before,
+.atfc-card--published::before {
   position: absolute;
   left: 0;
   top: 0;
@@ -2026,6 +2030,107 @@
 .atfc-card--marine::before {
   content: 'MARINE';
   background: linear-gradient(180deg, #0284c7 0%, #0369a1 55%, #0c4a6e 100%);
+}
+
+.atfc-card--published::before {
+  content: 'PUBLISHED';
+  color: #f8fafc;
+  background: linear-gradient(180deg, #4f46e5 0%, #4338ca 55%, #312e81 100%);
+  letter-spacing: 0.08em;
+  font-size: 0.55rem;
+}
+
+.atfc-card--mixed::before {
+  content: 'MIXED';
+  color: #f8fafc;
+  background: linear-gradient(180deg, #0f766e 0%, #0e7490 50%, #0369a1 100%);
+}
+
+.atfc-opt-kind {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+  background: #ccfbf1;
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.atfc-route-chain {
+  font-weight: 600;
+}
+
+.atfc-connection-gaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  margin-top: 0.35rem;
+}
+
+.atfc-connection-chip {
+  font-size: 0.6875rem;
+  color: #334155;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+}
+
+.atfc-opt-leg {
+  border-left: 3px solid #0369a1;
+  padding-left: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.atfc-opt-leg--general {
+  border-left-color: #b45309;
+}
+
+.atfc-opt-leg-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.atfc-opt-leg-tag {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: #0369a1;
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+}
+
+.atfc-opt-leg--general .atfc-opt-leg-tag {
+  background: #b45309;
+}
+
+.atfc-opt-leg-meta {
+  font-weight: 500;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.admin-tickets-optimize-btn {
+  white-space: nowrap;
+}
+
+.admin-tickets-optimize-baseline {
+  font-size: 0.8125rem;
+  color: #475569;
+  margin: 0 0 0.75rem;
+}
+
+.admin-tickets-optimize-error {
+  color: #b91c1c;
 }
 
 .atfc-card--general::before {

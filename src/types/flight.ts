@@ -53,7 +53,11 @@ export interface Journey {
   stops: number;
   via: string | null;
   itinerary: ItinerarySegment[];
+  /** Per-leg supplier on optimized / mixed itineraries. */
+  supplier?: 'riya' | 'travelterminus';
 }
+
+export type OptimizationKind = 'cheaper_faster' | 'faster' | 'cheaper' | 'balanced';
 
 export interface Flight {
   id: string;
@@ -64,7 +68,17 @@ export interface Flight {
   cashback?: number | null;
   markup?: number | null;
   /** Set by backend dual search — not shown on admin search UI. */
-  supplier?: 'riya' | 'travelterminus';
+  supplier?: 'riya' | 'travelterminus' | 'mixed';
+  /** True when Riya returns a Marine fare indicator. */
+  isMarineFare?: boolean;
+  optimized?: boolean;
+  optimizationKind?: OptimizationKind;
+  connectionGaps?: Array<{ airport?: string; duration?: string; hours?: number }>;
+  duration?: string;
+  stops?: number;
+  airlineName?: string;
+  airlineCode?: string;
+  baselineDelta?: { price?: number; durationMinutes?: number };
 }
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';

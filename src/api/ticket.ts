@@ -34,7 +34,9 @@ export interface CrewTicketRigRef {
   [key: string]: unknown;
 }
 
-export type CrewTicketStatus = 'UNAPPROVED' | 'APPROVED' | 'CANCELLED';
+export type CrewTicketStatus = 'UNAPPROVED' | 'REQUESTED' | 'QUOTED' | 'APPROVED' | 'CANCELLED';
+
+export type TicketInventoryKind = 'marine' | 'published' | 'general' | 'optimized';
 
 export interface CrewTicketFlightItinerarySegment {
   airlineName?: string;
@@ -62,6 +64,7 @@ export interface CrewTicketFlightLeg {
   duration?: string;
   airlineName?: string;
   airlineCode?: string;
+  supplier?: 'riya' | 'travelterminus';
   itinerary?: CrewTicketFlightItinerarySegment[];
 }
 
@@ -71,6 +74,8 @@ export interface CrewTicketFlightSnapshot {
   currency?: string;
   legs?: CrewTicketFlightLeg[];
   fares?: Array<{ totalFare?: number; cabin?: string; name?: string }>;
+  supplier?: 'riya' | 'travelterminus' | 'mixed';
+  isMarineFare?: boolean;
 }
 
 export interface CrewTicketApi {
@@ -117,7 +122,13 @@ export interface CrewTicketApi {
   /** Home port ↔ Rig direction chosen at booking. */
   travelDirection?: 'HOME_TO_RIG' | 'RIG_TO_HOME';
   /** Inventory source — shown on Superadmin tickets only. */
-  supplier?: 'riya' | 'travelterminus';
+  supplier?: 'riya' | 'travelterminus' | 'mixed';
+  isMarineFare?: boolean;
+  inventoryKind?: TicketInventoryKind;
+  requestFlow?: boolean;
+  quotedPrice?: number;
+  quotedAt?: string;
+  adminApprovalSeenAt?: string;
   createdAt?: string;
 }
 
@@ -179,6 +190,8 @@ export function getTicketStatus(ticket: Pick<CrewTicketApi, 'status'>): CrewTick
   const raw = ticket.status?.toString().trim().toUpperCase();
   if (raw === 'CANCELLED') return 'CANCELLED';
   if (raw === 'APPROVED') return 'APPROVED';
+  if (raw === 'REQUESTED') return 'REQUESTED';
+  if (raw === 'QUOTED') return 'QUOTED';
   return 'UNAPPROVED';
 }
 
@@ -186,6 +199,8 @@ export function getTicketStatusLabel(ticket: Pick<CrewTicketApi, 'status'>): str
   const status = getTicketStatus(ticket);
   if (status === 'CANCELLED') return 'Cancelled';
   if (status === 'APPROVED') return 'Approved';
+  if (status === 'REQUESTED') return 'Requested';
+  if (status === 'QUOTED') return 'Quoted — confirm';
   return 'Pending Approval';
 }
 
@@ -306,8 +321,24 @@ function getAuthToken(): string | null {
   return localStorage.getItem(env.authTokenKey);
 }
 
+function getSuperadminAuthToken(): string | null {
+  return localStorage.getItem(env.superadminTokenKey);
+}
+
 function getHeaders(): HeadersInit {
   const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+/** Headers for superadmin-only crew-ticket mutations (quote price, etc.). */
+function getSuperadminHeaders(): HeadersInit {
+  const token = getSuperadminAuthToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -704,6 +735,77 @@ export async function uploadCrewTicketPdfByCrew(ticketId: string, file: File): P
   }
 
   return response.json();
+}
+
+/** Superadmin quotes GBP price on a REQUESTED ticket. */
+export async function quoteCrewTicketPrice(
+  ticketId: string,
+  price: number
+): Promise<{ message?: string; crewTicket: CrewTicketApi }> {
+  const response = await fetch(
+    `${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/quote-price`,
+    {
+      method: 'PATCH',
+      headers: getSuperadminHeaders(),
+      body: JSON.stringify({ price }),
+    }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Quote failed (${response.status})`;
+    try {
+      message = JSON.parse(text)?.message || message;
+    } catch {
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+  const data = await response.json();
+  return {
+    message: data?.message,
+    crewTicket: normalizeCrewTicket(data?.crewTicket ?? data),
+  };
+}
+
+/** Admin confirms quoted request → pending approval. */
+export async function confirmQuotedCrewTicket(
+  ticketId: string
+): Promise<{ message?: string; crewTicket: CrewTicketApi }> {
+  const response = await fetch(
+    `${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/confirm-quote`,
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({}),
+    }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Confirm failed (${response.status})`;
+    try {
+      message = JSON.parse(text)?.message || message;
+    } catch {
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+  const data = await response.json();
+  return {
+    message: data?.message,
+    crewTicket: normalizeCrewTicket(data?.crewTicket ?? data),
+  };
+}
+
+/** Mark one-time approval toast as seen. */
+export async function ackCrewTicketApprovalNotification(ticketId: string): Promise<void> {
+  await fetch(
+    `${env.apiBaseUrl}/crew-ticket/${encodeURIComponent(ticketId)}/ack-approval-notification`,
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({}),
+    }
+  );
 }
 
 export interface CrewTicketReportSpends {
