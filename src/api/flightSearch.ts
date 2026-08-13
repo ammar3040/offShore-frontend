@@ -184,6 +184,10 @@ export async function optimizeFlights(payload: SearchPayload & {
     } catch {
       // ignore
     }
+    if (response.status === 404) {
+      message =
+        'Optimized flights API is not available on this server (404). Redeploy the backend that includes POST /crew-ticket/optimize-flights.';
+    }
     throw new Error(message);
   }
 

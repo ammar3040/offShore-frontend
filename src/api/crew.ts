@@ -379,7 +379,14 @@ export async function crewForgotPassword(email: string): Promise<void> {
   }
 }
 
-function buildCrewFormData(data: CrewMemberFormData): FormData {
+function buildCrewFormData(
+  data: CrewMemberFormData,
+  uploaded?: {
+    passportUrl?: string;
+    identityUrl?: string;
+    certificateUrls?: string[];
+  }
+): FormData {
   const formData = new FormData();
 
   formData.append('firstname', data.firstName);
@@ -407,30 +414,18 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
     (c) => c.certificateName?.trim() && c.issueDate && c.expiryDate
   );
   const certsWithDocs = certsWithMeta.filter((c) => c.document);
+  const certificateUrls = uploaded?.certificateUrls ?? [];
 
-  if (certsWithDocs.length === 1 && certsWithMeta.length === 1) {
-    const cert = certsWithDocs[0]!;
-    formData.append('certificate_name', cert.certificateName.trim());
-    formData.append('certificate_issue_date', cert.issueDate);
-    formData.append('certificate_expiry_date', cert.expiryDate);
-    formData.append('certificate_document', cert.document!);
-  } else if (certsWithDocs.length > 1) {
-    formData.append(
-      'certificates',
-      JSON.stringify(
-        certsWithMeta.map((c) => ({
-          certificate_name: c.certificateName.trim(),
-          issue_date: c.issueDate,
-          expiry_date: c.expiryDate,
-        }))
-      )
-    );
-    certsWithDocs.forEach((c) => formData.append('certificate_document', c.document!));
-  } else if (certsWithMeta.length === 1) {
+  if (certsWithMeta.length === 1 && (certsWithDocs.length === 1 || certificateUrls.length === 1)) {
     const cert = certsWithMeta[0]!;
     formData.append('certificate_name', cert.certificateName.trim());
     formData.append('certificate_issue_date', cert.issueDate);
     formData.append('certificate_expiry_date', cert.expiryDate);
+    if (certificateUrls[0]) {
+      formData.append('certificate_document_url', certificateUrls[0]);
+    } else if (cert.document) {
+      formData.append('certificate_document', cert.document);
+    }
   } else if (certsWithMeta.length > 1) {
     formData.append(
       'certificates',
@@ -442,6 +437,16 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
         }))
       )
     );
+    if (certificateUrls.length > 0) {
+      formData.append('certificate_document_urls', JSON.stringify(certificateUrls));
+    } else {
+      certsWithDocs.forEach((c) => formData.append('certificate_document', c.document!));
+    }
+  } else if (certsWithMeta.length === 1) {
+    const cert = certsWithMeta[0]!;
+    formData.append('certificate_name', cert.certificateName.trim());
+    formData.append('certificate_issue_date', cert.issueDate);
+    formData.append('certificate_expiry_date', cert.expiryDate);
   }
 
   if (data.azerbaijanVantageNumber?.trim()) {
@@ -521,14 +526,97 @@ function buildCrewFormData(data: CrewMemberFormData): FormData {
     formData.append('last_worked', data.lastWorked.trim());
   }
 
-  data.passportDocuments.forEach((file) => {
-    formData.append('passport_document', file);
-  });
-  data.identityDocuments.forEach((file) => {
-    formData.append('identity_document', file);
-  });
+  if (uploaded?.passportUrl) {
+    formData.append('passport_document_url', uploaded.passportUrl);
+  } else {
+    data.passportDocuments.forEach((file) => {
+      formData.append('passport_document', file);
+    });
+  }
+  if (uploaded?.identityUrl) {
+    formData.append('identity_document_url', uploaded.identityUrl);
+  } else {
+    data.identityDocuments.forEach((file) => {
+      formData.append('identity_document', file);
+    });
+  }
 
   return formData;
+}
+
+type CrewUploadKind = 'passport' | 'identity' | 'certificate';
+
+interface CloudinarySignResponse {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+}
+
+async function getCrewCloudinarySign(kind: CrewUploadKind): Promise<CloudinarySignResponse> {
+  const token = getAuthToken();
+  const response = await fetch(`${env.apiBaseUrl}/crew/cloudinary-sign`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ kind }),
+  });
+  const data = (await response.json().catch(() => ({}))) as CloudinarySignResponse & {
+    message?: string;
+  };
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to get upload signature (${response.status})`);
+  }
+  return data;
+}
+
+async function uploadCrewFileToCloudinary(file: File, kind: CrewUploadKind): Promise<string> {
+  const sign = await getCrewCloudinarySign(kind);
+  const body = new FormData();
+  body.append('file', file);
+  body.append('api_key', sign.apiKey);
+  body.append('timestamp', String(sign.timestamp));
+  body.append('signature', sign.signature);
+  body.append('folder', sign.folder);
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/auto/upload`, {
+    method: 'POST',
+    body,
+  });
+  const data = (await response.json().catch(() => ({}))) as {
+    secure_url?: string;
+    error?: { message?: string };
+  };
+  if (!response.ok || !data.secure_url) {
+    throw new Error(data.error?.message || `Document upload failed (${response.status})`);
+  }
+  return data.secure_url;
+}
+
+/** Upload local files to Cloudinary first so POST/PATCH /crew stays under host body limits (avoids 413). */
+async function uploadCrewDocumentsForSubmit(data: CrewMemberFormData): Promise<{
+  passportUrl?: string;
+  identityUrl?: string;
+  certificateUrls?: string[];
+}> {
+  const passportFile = data.passportDocuments[0];
+  const identityFile = data.identityDocuments[0];
+  const certificateFiles = data.certificates
+    .filter((c) => c.certificateName?.trim() && c.issueDate && c.expiryDate && c.document)
+    .map((c) => c.document!);
+
+  const [passportUrl, identityUrl, certificateUrls] = await Promise.all([
+    passportFile ? uploadCrewFileToCloudinary(passportFile, 'passport') : Promise.resolve(undefined),
+    identityFile ? uploadCrewFileToCloudinary(identityFile, 'identity') : Promise.resolve(undefined),
+    certificateFiles.length
+      ? Promise.all(certificateFiles.map((file) => uploadCrewFileToCloudinary(file, 'certificate')))
+      : Promise.resolve(undefined),
+  ]);
+
+  return { passportUrl, identityUrl, certificateUrls };
 }
 
 function getAuthToken(): string | null {
@@ -1470,7 +1558,8 @@ export async function deleteCrewAvailabilityAdmin(availabilityId: string): Promi
 
 
 export async function createCrewMember(data: CrewMemberFormData): Promise<Response> {
-  const formData = buildCrewFormData(data);
+  const uploaded = await uploadCrewDocumentsForSubmit(data);
+  const formData = buildCrewFormData(data, uploaded);
   const token = getAuthToken();
 
   const headers: HeadersInit = {};
@@ -1478,8 +1567,10 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Document binaries go to Cloudinary first; create payload is small, but signing+create can still take time.
+  const timeoutMs = Math.max(env.apiTimeout, 120000);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${env.apiBaseUrl}/crew`, {
@@ -1488,6 +1579,19 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
       body: formData,
       signal: controller.signal,
     });
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `Failed to create crew member (${response.status})`;
+      if (text) {
+        try {
+          const j = JSON.parse(text) as { message?: string };
+          if (j.message) message = j.message;
+        } catch {
+          /* keep default */
+        }
+      }
+      throw new Error(message);
+    }
     return response;
   } finally {
     clearTimeout(timeoutId);
@@ -1498,7 +1602,8 @@ export async function createCrewMember(data: CrewMemberFormData): Promise<Respon
  * Updates a crew member. PATCH /crew/:id
  */
 export async function updateCrewMember(id: string, data: CrewMemberFormData): Promise<Response> {
-  const formData = buildCrewFormData(data);
+  const uploaded = await uploadCrewDocumentsForSubmit(data);
+  const formData = buildCrewFormData(data, uploaded);
   const token = getAuthToken();
 
   const headers: HeadersInit = {};
@@ -1506,8 +1611,9 @@ export async function updateCrewMember(id: string, data: CrewMemberFormData): Pr
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const timeoutMs = Math.max(env.apiTimeout, 120000);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), env.apiTimeout);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${env.apiBaseUrl}/crew/${encodeURIComponent(id)}`, {
@@ -1516,6 +1622,19 @@ export async function updateCrewMember(id: string, data: CrewMemberFormData): Pr
       body: formData,
       signal: controller.signal,
     });
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `Failed to update crew member (${response.status})`;
+      if (text) {
+        try {
+          const j = JSON.parse(text) as { message?: string };
+          if (j.message) message = j.message;
+        } catch {
+          /* keep default */
+        }
+      }
+      throw new Error(message);
+    }
     return response;
   } finally {
     clearTimeout(timeoutId);
