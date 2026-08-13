@@ -157,7 +157,7 @@ export async function optimizeFlights(payload: SearchPayload & {
   limit?: number;
 }): Promise<OptimizeFlightsResult> {
   const controller = new AbortController();
-  const timeoutMs = Math.max(env.flightSearchTimeout, 120_000);
+  const timeoutMs = Math.max(env.flightSearchTimeout, 150_000);
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const response = await fetch(`${API_BASE}/crew-ticket/optimize-flights`, {

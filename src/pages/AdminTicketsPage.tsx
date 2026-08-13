@@ -2957,7 +2957,7 @@ const AdminTicketsPage = () => {
                           <FlightSearchSkeleton />
                         ) : optimizedResults.length === 0 ? (
                           <p className="admin-tickets-results-empty">
-                            No better connections found with a 3-hour+ layover.
+                            No optimized connections found for this gap. Try a shorter connection gap or another date.
                           </p>
                         ) : (
                           <>
