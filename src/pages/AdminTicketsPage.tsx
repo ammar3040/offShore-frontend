@@ -611,6 +611,17 @@ function FlightResultCard({
             ? 'Balanced'
             : null;
 
+  const supplierMix = flight.supplierMix ?? flight.supplier;
+  const supplierMixLabel = isOptimized
+    ? supplierMix === 'mixed'
+      ? 'Riya + Travel Terminus'
+      : supplierMix === 'travelterminus'
+        ? 'Travel Terminus'
+        : supplierMix === 'riya'
+          ? 'Riya Marine'
+          : null
+    : null;
+
   return (
     <div className={`atfc-card ${sideTagClass}`}>
       {/* ── Main row ── */}
@@ -623,8 +634,15 @@ function FlightResultCard({
             </span>
           ) : null}
           {kindLabel ? <span className="atfc-opt-kind">{kindLabel}</span> : null}
+          {supplierMixLabel ? (
+            <span className="atfc-opt-kind" title="Suppliers combined for this itinerary">
+              {supplierMixLabel}
+            </span>
+          ) : null}
           <span className="atfc-airline-name">{isOptimized ? 'Optimized' : airlineName}</span>
-          <span className="atfc-airline-code">{isOptimized ? 'MIXED' : airlineCode}</span>
+          <span className="atfc-airline-code">
+            {isOptimized ? (supplierMix === 'mixed' ? 'MIXED' : supplierMix === 'travelterminus' ? 'TT' : 'RIYA') : airlineCode}
+          </span>
         </div>
 
         {/* Route */}
@@ -1439,8 +1457,15 @@ const AdminTicketsPage = () => {
   }, []);
 
   const runFlightSearch = useCallback(async (criteria: SearchPayload) => {
-    if (!criteria.departureDate?.trim()) {
-      setSearchError('Please select a departure date.');
+    const hasDeparture = Boolean(criteria.departureDate?.trim());
+    const hasArrival = Boolean(criteria.arrivalDate?.trim());
+    // One-way accepts either date; round-trip / split-tickets still need departure.
+    if (criteria.tripType === 'one-way' ? !hasDeparture && !hasArrival : !hasDeparture) {
+      setSearchError(
+        criteria.tripType === 'one-way'
+          ? 'Please select a departure date or an arrival date.'
+          : 'Please select a departure date.'
+      );
       setSearchResults(null);
       setSearchCriteria(null);
       return;
@@ -1485,18 +1510,19 @@ const AdminTicketsPage = () => {
           return;
         }
         const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : seg.departureDate;
-        if (!String(dDate ?? '').trim()) {
-          setSearchError('Please select a departure date.');
-          return;
-        }
         const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : seg.departureTime;
         const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : seg.arrivalDate;
         const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : seg.arrivalTime;
+        const hasDep = Boolean(String(dDate ?? '').trim());
+        const hasArr = Boolean(String(aDate ?? '').trim());
+        if (!hasDep && !hasArr) {
+          setSearchError('Please select a departure date or an arrival date for this flight.');
+          return;
+        }
         criteria = {
           tripType: 'one-way',
           from: seg.from,
           to: seg.to,
-          departureDate: dDate.trim(),
           adults: searchAdultCount,
           children: 0,
           infants: 0,
@@ -1505,10 +1531,11 @@ const AdminTicketsPage = () => {
           page: 1,
           sortBy: flightSortBy,
           sortOrder: flightSortOrder,
+          ...(hasDep ? { departureDate: dDate.trim() } : {}),
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
           ...(dTime.trim() ? { departureTime: dTime.trim() } : {}),
-          ...(aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
+          ...(hasArr ? { arrivalDate: aDate.trim() } : {}),
           ...(aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
           ...(preferNonStopPerLeg ? { stops: ['0'] } : {}),
         };
@@ -1518,25 +1545,31 @@ const AdminTicketsPage = () => {
           return;
         }
         const dDate = overrides?.departureDate !== undefined ? overrides.departureDate : departureDate;
-        if (!String(dDate ?? '').trim()) {
-          setSearchError('Please select a departure date.');
-          return;
-        }
         const dTime = overrides?.departureTime !== undefined ? overrides.departureTime : departureTime;
         const aDate = overrides?.arrivalDate !== undefined ? overrides.arrivalDate : arrivalDate;
         const aTime = overrides?.arrivalTime !== undefined ? overrides.arrivalTime : arrivalTime;
         const rDate = overrides?.returnDate !== undefined ? overrides.returnDate : returnDate;
         const rTime = overrides?.returnTime !== undefined ? overrides.returnTime : returnTime;
+        const hasDep = Boolean(String(dDate ?? '').trim());
+        const hasArr = Boolean(String(aDate ?? '').trim());
         if (searchTripTypeUI === 'round-trip' && !String(rDate ?? '').trim()) {
           setSearchError('Please select a return date.');
+          return;
+        }
+        if (searchTripTypeUI === 'one-way' ? !hasDep && !hasArr : !hasDep) {
+          setSearchError(
+            searchTripTypeUI === 'one-way'
+              ? 'Please select a departure date or an arrival date.'
+              : 'Please select a departure date.'
+          );
           return;
         }
         criteria = {
           tripType: searchTripTypeUI,
           from: searchFrom,
           to: searchTo,
-          departureDate: dDate.trim(),
           returnDate: searchTripTypeUI === 'round-trip' ? String(rDate).trim() : undefined,
+          ...(hasDep ? { departureDate: dDate.trim() } : {}),
           ...(searchTripTypeUI === 'round-trip' && rTime.trim() ? { returnTime: rTime.trim() } : {}),
           adults: searchAdultCount,
           children: 0,
@@ -1549,13 +1582,14 @@ const AdminTicketsPage = () => {
           ...(searchProjectId ? { project_id: searchProjectId } : {}),
           ...(searchCrewIds.length > 0 ? { crew_ids: searchCrewIds } : {}),
           ...(searchTripTypeUI === 'one-way' && dTime.trim() ? { departureTime: dTime.trim() } : {}),
-          ...(searchTripTypeUI === 'one-way' && aDate.trim() ? { arrivalDate: aDate.trim() } : {}),
+          ...(searchTripTypeUI === 'one-way' && hasArr ? { arrivalDate: aDate.trim() } : {}),
           ...(searchTripTypeUI === 'one-way' && aTime.trim() ? { arrivalTime: aTime.trim() } : {}),
         };
       }
 
-      if (searchCrewIds.length > 0 && criteria.departureDate?.trim()) {
-        const range = getTravelDateRange(criteria.departureDate, criteria.returnDate);
+      const travelAnchor = criteria.departureDate?.trim() || criteria.arrivalDate?.trim();
+      if (searchCrewIds.length > 0 && travelAnchor) {
+        const range = getTravelDateRange(travelAnchor, criteria.returnDate);
         if (range) {
           try {
             const availabilities = await getBulkCrewAvailabilitiesAdmin(searchCrewIds);
@@ -2841,11 +2875,14 @@ const AdminTicketsPage = () => {
                               ? !(
                                   multiSegments[activeMultiLegIndex]?.from &&
                                   multiSegments[activeMultiLegIndex]?.to &&
-                                  multiSegments[activeMultiLegIndex]?.departureDate?.trim()
+                                  (multiSegments[activeMultiLegIndex]?.departureDate?.trim() ||
+                                    multiSegments[activeMultiLegIndex]?.arrivalDate?.trim())
                                 )
                               : !searchFrom ||
                                 !searchTo ||
-                                !departureDate?.trim() ||
+                                (searchTripTypeUI === 'one-way'
+                                  ? !departureDate?.trim() && !arrivalDate?.trim()
+                                  : !departureDate?.trim()) ||
                                 (searchTripTypeUI === 'round-trip' && !returnDate?.trim()))
                           }
                           aria-busy={isSearching}
@@ -2876,12 +2913,14 @@ const AdminTicketsPage = () => {
                             <>
                               Leg {activeMultiLegIndex + 1} of {multiSegments.length}:{' '}
                               {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
-                              {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                              {searchCriteria.departureDate && ` · Dep ${searchCriteria.departureDate}`}
+                              {searchCriteria.arrivalDate && ` · Arr ${searchCriteria.arrivalDate}`}
                             </>
                           ) : (
                             <>
                               {searchCriteria.from?.Name ?? '—'} → {searchCriteria.to?.Name ?? '—'}
-                              {searchCriteria.departureDate && ` · ${searchCriteria.departureDate}`}
+                              {searchCriteria.departureDate && ` · Dep ${searchCriteria.departureDate}`}
+                              {searchCriteria.arrivalDate && ` · Arr ${searchCriteria.arrivalDate}`}
                             </>
                           )}
                         </p>
@@ -4458,8 +4497,10 @@ const AdminTicketsPage = () => {
               onClick={() => {
                 if (!crewAvailabilitySearchPending) return;
                 const { criteria } = crewAvailabilitySearchPending;
-                if (!criteria.departureDate?.trim()) {
-                  setSearchError('Please select a departure date.');
+                const hasAnyDate =
+                  !!criteria.departureDate?.trim() || !!criteria.arrivalDate?.trim();
+                if (!hasAnyDate) {
+                  setSearchError('Please select a departure date or an arrival date.');
                   setCrewAvailabilitySearchPending(null);
                   return;
                 }

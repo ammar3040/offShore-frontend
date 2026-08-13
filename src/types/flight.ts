@@ -73,6 +73,8 @@ export interface Flight {
   isMarineFare?: boolean;
   optimized?: boolean;
   optimizationKind?: OptimizationKind;
+  /** For optimized combos: whether legs come from Riya, Travel Terminus, or both. */
+  supplierMix?: 'riya' | 'travelterminus' | 'mixed';
   connectionGaps?: Array<{ airport?: string; duration?: string; hours?: number }>;
   duration?: string;
   stops?: number;
@@ -90,7 +92,12 @@ export interface SearchPayload {
   tripType: 'one-way' | 'round-trip' | 'split-tickets';
   from: Airport | null;
   to: Airport | null;
-  departureDate: string;
+  /**
+   * Departure date, YYYY-MM-DD. Optional for one-way — if omitted an
+   * `arrivalDate` must be supplied and the backend will infer the departure
+   * date window (arrival − 2 days by default).
+   */
+  departureDate?: string;
   returnDate?: string;
   /** Return time for round-trip, HH:mm (e.g. "18:00") */
   returnTime?: string;
